@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ta">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0620" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="Kaippesi Jothidar — live South Indian astrology, Jathagam, Horai and AI Prasnam." />
+  <title>Kaippesi Jothidar</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@500;700&family=Noto+Sans+Tamil:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="importmap">{ "imports": { "astronomy-engine": "/vendor/astronomy-engine.js" } }</script>
+</head>
+<body>
+  <canvas id="sky" aria-hidden="true"></canvas>
+  <div class="planets-bg" aria-hidden="true">
+    <div class="orb sun"></div>
+    <div class="orb saturn"><span class="ring"></span></div>
+    <div class="orb moon"></div>
+    <div class="orb jupiter"></div>
+    <div class="orb mars"></div>
+  </div>
+
+  <!-- Splash -->
+  <section id="splash" class="splash">
+    <div class="splash-wheel">
+      <svg viewBox="0 0 200 200" class="zodiac-spin" aria-hidden="true">
+        <defs>
+          <radialGradient id="sg" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffe7a3" /><stop offset="60%" stop-color="#f5b83d" /><stop offset="100%" stop-color="#b8620f" />
+          </radialGradient>
+        </defs>
+        <circle cx="100" cy="100" r="96" fill="none" stroke="rgba(245,194,107,.55)" stroke-width="1.2" />
+        <circle cx="100" cy="100" r="74" fill="none" stroke="rgba(245,194,107,.35)" stroke-width="1" />
+        <g id="splash-signs"></g>
+        <circle cx="100" cy="100" r="26" fill="url(#sg)" />
+      </svg>
+      <div class="orbit o1"><span class="p p1"></span></div>
+      <div class="orbit o2"><span class="p p2"></span></div>
+      <div class="orbit o3"><span class="p p3"></span></div>
+    </div>
+    <h1 class="brand-ta">கைப்பேசி ஜோதிடர்</h1>
+    <h2 class="brand-en">Kaippesi Jothidar</h2>
+    <p class="tagline">AI ஜோதிடம் · நட்சத்திரம் · ராசி மண்டலம் · ஓரை</p>
+  </section>
+
+  <main id="app" class="app hidden">
+    <header class="topbar">
+      <div class="brand-mini">
+        <img src="/icon.svg" alt="" width="30" height="30" />
+        <div>
+          <div class="bm-ta">கைப்பேசி ஜோதிடர்</div>
+          <div class="bm-en">Kaippesi Jothidar</div>
+        </div>
+      </div>
+      <button id="langBtn" class="chip-btn" aria-label="Change language">தமிழ் / EN</button>
+    </header>
+
+    <div id="views">
+      <!-- Onboarding / profile form -->
+      <section id="view-profile" class="view">
+        <div class="card glass hero-card">
+          <h2 data-i18n="birthTitle"></h2>
+          <p class="muted" data-i18n="birthSub"></p>
+          <form id="birthForm" autocomplete="off">
+            <label><span data-i18n="name"></span>
+              <input name="name" required maxlength="60" placeholder="Suresh" />
+            </label>
+            <div class="row2">
+              <label><span data-i18n="dob"></span><input name="date" type="date" required /></label>
+              <label><span data-i18n="tob"></span><input name="time" type="time" step="1" required /></label>
+            </div>
+            <label class="place-wrap"><span data-i18n="pob"></span>
+              <input name="place" required placeholder="Chennai" />
+              <ul id="placeList" class="suggest hidden"></ul>
+            </label>
+            <div class="row3">
+              <label><span data-i18n="lat"></span><input name="lat" type="number" step="0.0001" required /></label>
+              <label><span data-i18n="lon"></span><input name="lon" type="number" step="0.0001" required /></label>
+              <label><span data-i18n="tz"></span><input name="tz" type="number" step="0.25" value="5.5" required /></label>
+            </div>
+            <button class="btn-gold" type="submit" data-i18n="generate"></button>
+            <p id="formErr" class="err"></p>
+          </form>
+        </div>
+      </section>
+
+      <!-- Live -->
+      <section id="view-live" class="view hidden">
+        <div class="card glass live-head">
+          <div>
+            <div class="greet" id="greet"></div>
+            <div class="muted small" id="liveDate"></div>
+          </div>
+          <div class="clock" id="clock">--:--:--</div>
+        </div>
+        <div class="loc-row">
+          <span id="liveLoc" class="muted small"></span>
+          <button id="geoBtn" class="link-btn" data-i18n="useMyLocation"></button>
+        </div>
+
+        <div class="card glass wheel-card">
+          <div class="card-title"><span data-i18n="mandalam"></span><span class="live-dot">LIVE</span></div>
+          <svg id="wheel" viewBox="-160 -160 320 320" role="img" aria-label="Rasi Mandalam"></svg>
+          <div class="lagna-line" id="lagnaNow"></div>
+        </div>
+
+        <div class="grid2" id="panchangCards"></div>
+
+        <div class="card glass" id="horaCard"></div>
+        <div class="card glass" id="kalamCard"></div>
+        <div class="card glass hidden" id="personalCard"></div>
+
+        <div class="card glass">
+          <div class="card-title"><span data-i18n="gochara"></span><span class="live-dot">LIVE</span></div>
+          <div id="gocharaChart" class="si-chart"></div>
+        </div>
+      </section>
+
+      <!-- Jathagam -->
+      <section id="view-chart" class="view hidden">
+        <div class="card glass">
+          <div class="card-title"><span data-i18n="rasiChart"></span></div>
+          <div id="rasiChart" class="si-chart"></div>
+        </div>
+        <div class="card glass">
+          <div class="card-title"><span data-i18n="navamsaChart"></span></div>
+          <div id="navamsaChart" class="si-chart"></div>
+        </div>
+        <div class="card glass" id="birthSummary"></div>
+        <div class="card glass" id="planetTable"></div>
+        <div class="card glass" id="dasaCard"></div>
+      </section>
+
+      <!-- Prasnam -->
+      <section id="view-ask" class="view hidden">
+        <div class="card glass">
+          <h2 data-i18n="askTitle"></h2>
+          <p class="muted" data-i18n="askSub"></p>
+          <div id="catGrid" class="cat-grid"></div>
+          <textarea id="question" rows="2" maxlength="400"></textarea>
+          <button id="askBtn" class="btn-gold" disabled data-i18n="askBtn"></button>
+        </div>
+        <div id="answer" class="hidden">
+          <div class="card glass verdict-card" id="verdictCard"></div>
+          <div class="card glass">
+            <div class="card-title"><span data-i18n="jothidarSays"></span><span id="aiSource" class="pill"></span></div>
+            <div id="reply" class="reply"></div>
+          </div>
+          <div class="card glass" id="factorCard"></div>
+          <div class="card glass" id="bestCard"></div>
+        </div>
+      </section>
+    </div>
+
+    <nav class="tabbar">
+      <button data-tab="live" class="active"><span class="ti">🌌</span><span data-i18n="tabLive"></span></button>
+      <button data-tab="chart"><span class="ti">🪐</span><span data-i18n="tabChart"></span></button>
+      <button data-tab="ask"><span class="ti">🔮</span><span data-i18n="tabAsk"></span></button>
+      <button data-tab="profile"><span class="ti">👤</span><span data-i18n="tabProfile"></span></button>
+    </nav>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

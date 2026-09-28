@@ -1,0 +1,32 @@
+{
+  "name": "kaippesi-jothidar",
+  "version": "1.0.0",
+  "description": "Kaippesi Jothidar — AI South Indian astrology mobile app",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sureshakthii/Suresha.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sureshakthii/Suresha/issues"
+  },
+  "homepage": "https://github.com/sureshakthii/Suresha#readme",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "astronomy-engine": "^2.1.19",
+    "express": "^5.2.1"
+  },
+  "type": "module",
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}

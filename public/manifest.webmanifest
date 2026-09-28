@@ -1,0 +1,15 @@
+{
+  "name": "Kaippesi Jothidar — கைப்பேசி ஜோதிடர்",
+  "short_name": "Jothidar",
+  "description": "Live South Indian astrology: Jathagam, Nakshatra, Horai and AI Prasnam.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06031a",
+  "theme_color": "#0b0620",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

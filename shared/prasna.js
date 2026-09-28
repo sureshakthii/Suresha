@@ -88,6 +88,55 @@ export const CATEGORIES = [
     goodNak: ['kshipra', 'mridu', 'chara'], badNak: ['ugra'],
     goodDays: [0, 3, 4], badDays: [],
   },
+  // Life events (Subha Muhurtham) — used by the Muhurtham finder rather than instant Prasnam.
+  {
+    id: 'marriage', icon: '💐', en: 'Marriage (Thirumanam)', ta: 'திருமணம்', event: true, auspicious: true,
+    goodHora: ['Jupiter', 'Venus', 'Moon', 'Mercury'], badHora: ['Saturn', 'Mars', 'Sun'],
+    goodNak: ['dhruva', 'mridu', 'kshipra'], badNak: ['ugra', 'tikshna', 'mishra'],
+    goodDays: [1, 3, 4, 5], badDays: [2, 6], goodLagna: [1, 2, 5, 6, 8, 11], avoidMonths: [3, 5, 8],
+  },
+  {
+    id: 'graha_pravesam', icon: '🏠', en: 'House Warming (Graha Pravesam)', ta: 'கிரகப் பிரவேசம்', event: true, auspicious: true,
+    goodHora: ['Jupiter', 'Venus', 'Moon', 'Mercury'], badHora: ['Saturn', 'Mars'],
+    goodNak: ['dhruva', 'mridu'], badNak: ['ugra', 'tikshna'],
+    goodDays: [1, 3, 4, 5], badDays: [2, 6, 0], goodLagna: [1, 4, 7, 10], avoidMonths: [3, 5, 8],
+  },
+  {
+    id: 'naming', icon: '👶', en: 'Baby Naming (Peyar Sootuthal)', ta: 'பெயர் சூட்டுதல்', event: true, auspicious: true,
+    goodHora: ['Jupiter', 'Venus', 'Moon', 'Mercury'], badHora: ['Saturn', 'Mars'],
+    goodNak: ['dhruva', 'mridu', 'kshipra', 'chara'], badNak: ['ugra', 'tikshna'],
+    goodDays: [1, 3, 4, 5], badDays: [2, 6],
+  },
+  {
+    id: 'ear_piercing', icon: '✨', en: 'Ear Piercing (Kaadhu Kuthu)', ta: 'காது குத்துதல்', event: true, auspicious: true,
+    goodHora: ['Jupiter', 'Venus', 'Moon', 'Mercury'], badHora: ['Saturn', 'Mars'],
+    goodNak: ['kshipra', 'mridu', 'chara', 'dhruva'], badNak: ['ugra', 'tikshna'],
+    goodDays: [1, 3, 4, 5], badDays: [2, 6],
+  },
+  {
+    id: 'annaprasanam', icon: '🍚', en: 'First Rice Feeding (Annaprasanam)', ta: 'அன்னப்பிராசனம்', event: true, auspicious: true,
+    goodHora: ['Jupiter', 'Venus', 'Moon', 'Mercury'], badHora: ['Saturn', 'Mars'],
+    goodNak: ['kshipra', 'mridu', 'chara', 'dhruva'], badNak: ['ugra', 'tikshna'],
+    goodDays: [1, 3, 4, 5], badDays: [2, 6],
+  },
+  {
+    id: 'vidyarambam', icon: '📿', en: 'Start of Learning (Vidyarambam)', ta: 'வித்யாரம்பம் / அட்சராப்பியாசம்', event: true, auspicious: true,
+    goodHora: ['Mercury', 'Jupiter', 'Venus'], badHora: ['Saturn', 'Mars'],
+    goodNak: ['kshipra', 'mridu', 'chara'], badNak: ['ugra', 'tikshna'],
+    goodDays: [0, 3, 4, 5], badDays: [2, 6],
+  },
+  {
+    id: 'ruthu_bath', icon: '🌸', en: 'Ruthu — First Bath (Thanneer Oothuthal)', ta: 'ருது — தண்ணீர் ஊற்றுதல்', event: true, auspicious: true, lenient: true,
+    goodHora: ['Venus', 'Moon', 'Jupiter', 'Mercury'], badHora: ['Saturn', 'Mars'],
+    goodNak: ['mridu', 'dhruva', 'kshipra', 'chara'], badNak: ['ugra', 'tikshna'],
+    goodDays: [1, 3, 4, 5], badDays: [2, 6],
+  },
+  {
+    id: 'manjal_neerattu', icon: '🌼', en: 'Manjal Neerattu Vizha', ta: 'மஞ்சள் நீராட்டு விழா', event: true, auspicious: true,
+    goodHora: ['Venus', 'Moon', 'Jupiter', 'Mercury'], badHora: ['Saturn', 'Mars'],
+    goodNak: ['mridu', 'dhruva', 'kshipra'], badNak: ['ugra', 'tikshna'],
+    goodDays: [1, 3, 4, 5], badDays: [2, 6], goodLagna: [1, 2, 5, 6, 8, 11],
+  },
 ];
 
 const BAD_YOGAS = new Set([0, 5, 8, 9, 12, 14, 16, 18, 26]);
@@ -162,6 +211,11 @@ export function scoreSnapshot(snap, category, birth) {
     const house = ((snap.planets[lord].rasi - lagna.rasi + 12) % 12) + 1;
     if ([6, 8, 12].includes(house)) add('lagna_lord', `Lagna lord ${lord} in ${house}th house (dusthana)`, `லக்னாதிபதி ${house}-ல் — பலவீனம்`, -6);
     else if ([1, 4, 5, 7, 9, 10].includes(house)) add('lagna_lord', `Lagna lord ${lord} strong in ${house}th house`, `லக்னாதிபதி ${house}-ல் — பலம்`, 5);
+  }
+
+  if (lagna && cat.goodLagna) {
+    if (cat.goodLagna.includes(lagna.rasi)) add('lagna_sign', `${lagna.rasiName} lagna suits this event`, `${lagna.rasiTa} லக்னம் ஏற்றது`, 6);
+    else add('lagna_sign', `${lagna.rasiName} lagna is not preferred`, `${lagna.rasiTa} லக்னம் உகந்ததல்ல`, -4);
   }
 
   // 9. Personal factors from the birth chart

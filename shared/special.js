@@ -1,0 +1,168 @@
+// Tamil family traditions: Natchathira birthday, Thivasam (annual tithi for ancestors),
+// baby-name first letters from the birth star, and a family Muhurtham finder.
+import { panchang, vedicDay, moonSidereal, sunSidereal, NAKSHATRAS, RASIS } from './astro.js';
+import { scoreSnapshot, getCategory } from './prasna.js';
+import { tamilDate, TAMIL_MONTHS } from './tamilcal.js';
+
+const DAY = 86400000;
+const NAK_SPAN = 360 / 27;
+
+/** Local noon (as a UTC instant) for the local calendar day that contains `d`. */
+function localNoon(d, tz) {
+  const l = new Date(d.getTime() + tz * 3600000);
+  return new Date(Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate(), 12) - tz * 3600000);
+}
+const isoLocal = (d, tz) => new Date(d.getTime() + tz * 3600000).toISOString().slice(0, 10);
+
+/**
+ * Natchathira Pirantha Naal: the day in the person's Tamil birth month when their birth star
+ * rules at sunrise. Returns the next occurrences (up to `count`) from `from`.
+ */
+export function natchathiraBirthdays({ birthStar, birthTamilMonth, from = new Date(), loc, count = 2 }) {
+  const out = [];
+  let d = localNoon(from, loc.tz);
+  for (let i = 0; i < 800 && out.length < count; i++, d = new Date(d.getTime() + DAY)) {
+    const day = vedicDay(d, loc.lat, loc.lon);
+    const sunriseStar = Math.floor(moonSidereal(new Date(day.sunrise.getTime() + 60000)) / NAK_SPAN);
+    if (sunriseStar !== birthStar) continue;
+    const month = Math.floor(sunSidereal(day.sunset) / 30);
+    if (month !== birthTamilMonth) continue;
+    const td = tamilDate(new Date(day.sunset.getTime() - 60000), loc.lat, loc.lon, loc.tz);
+    out.push({ date: isoLocal(d, loc.tz), tamil: td, star: NAKSHATRAS[birthStar] });
+    d = new Date(d.getTime() + 20 * DAY); // skip the rest of this month
+  }
+  return out;
+}
+
+/**
+ * Thivasam / Sraddham: an ancestor's annual rite falls in the Tamil month of passing, on the day
+ * the same tithi prevails in the afternoon (aparahna). `death` is the instant of passing.
+ */
+export function thivasamDates({ death, loc, from = new Date(), count = 2 }) {
+  const dp = panchang(death, loc.lat, loc.lon, loc.tz, { withEnds: false });
+  const tithi = dp.tithi.index;
+  const month = tamilDate(death, loc.lat, loc.lon, loc.tz).month;
+  const out = [];
+  let d = localNoon(from, loc.tz);
+  for (let i = 0; i < 800 && out.length < count; i++, d = new Date(d.getTime() + DAY)) {
+    const day = vedicDay(d, loc.lat, loc.lon);
+    const m = Math.floor(sunSidereal(day.sunset) / 30);
+    if (m !== month) continue;
+    // Aparahna: the 4th fifth of daytime.
+    const aparahna = new Date(day.sunrise.getTime() + (day.sunset - day.sunrise) * 0.7);
+    const p = panchang(aparahna, loc.lat, loc.lon, loc.tz, { withEnds: false });
+    if (p.tithi.index !== tithi) continue;
+    out.push({ date: isoLocal(d, loc.tz), tamil: tamilDate(new Date(day.sunset.getTime() - 60000), loc.lat, loc.lon, loc.tz), weekday: p.weekday });
+    d = new Date(d.getTime() + 20 * DAY);
+  }
+  return {
+    tithi: { index: tithi, name: dp.tithi.name, ta: dp.tithi.ta, paksha: dp.tithi.paksha },
+    month: TAMIL_MONTHS[month],
+    dates: out,
+  };
+}
+
+// Namakshara: first sounds for a baby's name by birth star pada (Avakahada chakra).
+const SYLLABLES = [
+  [['Chu', 'சு'], ['Che', 'சே'], ['Cho', 'சோ'], ['La', 'ல']],
+  [['Li', 'லி'], ['Lu', 'லு'], ['Le', 'லே'], ['Lo', 'லோ']],
+  [['A', 'அ'], ['I', 'இ'], ['U', 'உ'], ['E', 'ஏ']],
+  [['O', 'ஓ'], ['Va', 'வ'], ['Vi', 'வி'], ['Vu', 'வு']],
+  [['Ve', 'வே'], ['Vo', 'வோ'], ['Ka', 'க'], ['Ki', 'கி']],
+  [['Ku', 'கு'], ['Gha', 'க'], ['Nga', 'ங'], ['Chha', 'ச']],
+  [['Ke', 'கே'], ['Ko', 'கோ'], ['Ha', 'ஹ'], ['Hi', 'ஹி']],
+  [['Hu', 'ஹு'], ['He', 'ஹே'], ['Ho', 'ஹோ'], ['Da', 'ட']],
+  [['Di', 'டி'], ['Du', 'டு'], ['De', 'டே'], ['Do', 'டோ']],
+  [['Ma', 'ம'], ['Mi', 'மி'], ['Mu', 'மு'], ['Me', 'மே']],
+  [['Mo', 'மோ'], ['Ta', 'ட'], ['Ti', 'டி'], ['Tu', 'டு']],
+  [['Te', 'டே'], ['To', 'டோ'], ['Pa', 'ப'], ['Pi', 'பி']],
+  [['Pu', 'பு'], ['Sha', 'ஷ'], ['Na', 'ண'], ['Tha', 'ட']],
+  [['Pe', 'பே'], ['Po', 'போ'], ['Ra', 'ர'], ['Ri', 'ரி']],
+  [['Ru', 'ரு'], ['Re', 'ரே'], ['Ro', 'ரோ'], ['Ta', 'த']],
+  [['Ti', 'தி'], ['Tu', 'து'], ['Te', 'தே'], ['To', 'தோ']],
+  [['Na', 'ந'], ['Ni', 'நி'], ['Nu', 'நு'], ['Ne', 'நே']],
+  [['No', 'நோ'], ['Ya', 'ய'], ['Yi', 'யி'], ['Yu', 'யு']],
+  [['Ye', 'யே'], ['Yo', 'யோ'], ['Bha', 'ப'], ['Bhi', 'பி']],
+  [['Bhu', 'பு'], ['Dha', 'த'], ['Pha', 'ப'], ['Dha', 'ட']],
+  [['Be', 'பே'], ['Bo', 'போ'], ['Ja', 'ஜ'], ['Ji', 'ஜி']],
+  [['Khi', 'கி'], ['Khu', 'கு'], ['Khe', 'கே'], ['Kho', 'கோ']],
+  [['Ga', 'க'], ['Gi', 'கி'], ['Gu', 'கு'], ['Ge', 'கே']],
+  [['Go', 'கோ'], ['Sa', 'ஸ'], ['Si', 'ஸி'], ['Su', 'ஸு']],
+  [['Se', 'ஸே'], ['So', 'ஸோ'], ['Da', 'த'], ['Di', 'தி']],
+  [['Du', 'து'], ['Tha', 'த'], ['Jha', 'ஜ'], ['Na', 'ஞ']],
+  [['De', 'தே'], ['Do', 'தோ'], ['Cha', 'ச'], ['Chi', 'சி']],
+];
+
+/** First letters for a name from birth star and pada (1-4). */
+export function nameLetters(star, pada) {
+  const all = SYLLABLES[star].map(([en, ta], i) => ({ pada: i + 1, en, ta }));
+  return { star: NAKSHATRAS[star], pada, primary: all[pada - 1], all };
+}
+
+/** Hard rules for auspicious events: these slots are never offered, whatever the score. */
+function eventAllowed(snap, cat) {
+  if (snap.inRahuKalam || snap.inYamagandam) return false;
+  if (cat.lenient) return true; // time-bound rites (e.g. the first bath after Ruthu) cannot wait for a perfect day
+  if (cat.badDays.includes(snap.weekday.index)) return false;
+  if (cat.badNak.includes(NAKSHATRAS[snap.nakshatra.index].nature)) return false;
+  const t = snap.tithi.index, pt = t % 15;
+  if (t === 29 || [3, 7, 8, 13].includes(pt)) return false; // Amavasai, Chathurthi, Ashtami, Navami, Chathurdasi
+  if (cat.avoidMonths?.includes(snap.planets.Sun.rasi)) return false; // e.g. Aadi, Purattasi, Margazhi
+  if (cat.badHora.includes(snap.currentHora.lord)) return false;
+  return true;
+}
+
+/**
+ * Family Muhurtham finder. Scans `days` ahead in `stepMin` steps during the chosen hours and ranks windows
+ * for an event, requiring every listed person to have good Tara Bala and no Chandrashtamam.
+ * persons: [{ name, janmaNakshatra, janmaRasi }]
+ */
+export function findMuhurtham({ category, loc, persons = [], from = new Date(), days = 30, stepMin = 30, dayOnly = true, top = 8 }) {
+  const cat = typeof category === 'string' ? getCategory(category) : category;
+  const results = [];
+  const end = from.getTime() + days * DAY;
+  for (let t = from.getTime(); t < end; t += stepMin * 60000) {
+    const at = new Date(t);
+    const snap = panchang(at, loc.lat, loc.lon, loc.tz, { withEnds: false });
+    if (dayOnly && (at < snap.sunrise || at >= snap.sunset)) continue;
+    if (cat.event && !eventAllowed(snap, cat)) continue;
+    const base = scoreSnapshot(snap, cat, null);
+    let score = base.score;
+    const personNotes = [];
+    let blocked = false;
+    for (const p of persons) {
+      const tara = ((snap.nakshatra.index - p.janmaNakshatra + 27) % 27) % 9;
+      const pos = ((snap.moonRasi.index - p.janmaRasi + 12) % 12) + 1;
+      if (pos === 8) { blocked = true; personNotes.push({ name: p.name, en: 'Chandrashtamam', ta: 'சந்திராஷ்டமம்' }); }
+      if ([2, 4, 6].includes(tara)) { score -= 10; personNotes.push({ name: p.name, en: 'Weak Tara', ta: 'தாரை பலம் இல்லை' }); }
+      else if (tara !== 0) score += 4;
+      if ([1, 3, 6, 7, 10, 11].includes(pos)) score += 3;
+    }
+    if (blocked) continue;
+    score = Math.max(0, Math.min(100, score));
+    if (score < (cat.lenient ? 40 : 60)) continue;
+    results.push({ at, score, snap, factors: base.factors, personNotes });
+  }
+  // Merge consecutive slots into windows; keep the best window per day.
+  const windows = [];
+  for (const r of results) {
+    const last = windows[windows.length - 1];
+    if (last && r.at - last.end <= stepMin * 60000) { last.end = r.at; if (r.score > last.score) Object.assign(last, { score: r.score, peak: r }); }
+    else windows.push({ start: r.at, end: r.at, score: r.score, peak: r });
+  }
+  const byDay = new Map();
+  for (const w of windows) {
+    w.end = new Date(w.end.getTime() + stepMin * 60000);
+    const key = isoLocal(w.start, loc.tz);
+    if (!byDay.has(key) || byDay.get(key).score < w.score) byDay.set(key, w);
+  }
+  return [...byDay.values()]
+    .sort((a, b) => b.score - a.score || a.start - b.start)
+    .slice(0, top)
+    .map((w) => ({
+      date: isoLocal(w.start, loc.tz), start: w.start, end: w.end, score: w.score,
+      nakshatra: w.peak.snap.nakshatra, tithi: w.peak.snap.tithi, weekday: w.peak.snap.weekday,
+      lagna: w.peak.snap.lagna && { rasi: w.peak.snap.lagna.rasi, name: RASIS[w.peak.snap.lagna.rasi] },
+      hora: w.peak.snap.currentHora.lord, factors: w.peak.factors, personNotes: w.peak.personNotes,
+    }));
+}

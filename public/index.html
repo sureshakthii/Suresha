@@ -50,120 +50,26 @@
     <p class="tagline">AI ஜோதிடம் · நட்சத்திரம் · ராசி மண்டலம் · ஓரை</p>
   </section>
 
-  <main id="app" class="app hidden">
+  <main id="app" class="app" hidden>
     <header class="topbar">
-      <div class="brand-mini">
+      <button class="brand-mini" data-go="home" aria-label="Home">
         <img src="icon.svg" alt="" width="30" height="30" />
         <div>
           <div class="bm-ta">கைப்பேசி ஜோதிடர்</div>
           <div class="bm-en">Kaippesi Jothidar</div>
         </div>
-      </div>
+      </button>
       <button id="langBtn" class="chip-btn" aria-label="Change language">தமிழ் / EN</button>
     </header>
 
-    <div id="views">
-      <!-- Onboarding / profile form -->
-      <section id="view-profile" class="view">
-        <div class="card glass hero-card">
-          <h2 data-i18n="birthTitle"></h2>
-          <p class="muted" data-i18n="birthSub"></p>
-          <form id="birthForm" autocomplete="off">
-            <label><span data-i18n="name"></span>
-              <input name="name" required maxlength="60" placeholder="Suresh" />
-            </label>
-            <div class="row2">
-              <label><span data-i18n="dob"></span><input name="date" type="date" required /></label>
-              <label><span data-i18n="tob"></span><input name="time" type="time" step="1" required /></label>
-            </div>
-            <label class="place-wrap"><span data-i18n="pob"></span>
-              <input name="place" required placeholder="Chennai" />
-              <ul id="placeList" class="suggest hidden"></ul>
-            </label>
-            <div class="row3">
-              <label><span data-i18n="lat"></span><input name="lat" type="number" step="0.0001" required /></label>
-              <label><span data-i18n="lon"></span><input name="lon" type="number" step="0.0001" required /></label>
-              <label><span data-i18n="tz"></span><input name="tz" type="number" step="0.25" value="5.5" required /></label>
-            </div>
-            <button class="btn-gold" type="submit" data-i18n="generate"></button>
-            <p id="formErr" class="err"></p>
-          </form>
-        </div>
-      </section>
+    <div id="views"></div>
 
-      <!-- Live -->
-      <section id="view-live" class="view hidden">
-        <div class="card glass live-head">
-          <div>
-            <div class="greet" id="greet"></div>
-            <div class="muted small" id="liveDate"></div>
-          </div>
-          <div class="clock" id="clock">--:--:--</div>
-        </div>
-        <div class="loc-row">
-          <span id="liveLoc" class="muted small"></span>
-          <button id="geoBtn" class="link-btn" data-i18n="useMyLocation"></button>
-        </div>
-
-        <div class="card glass wheel-card">
-          <div class="card-title"><span data-i18n="mandalam"></span><span class="live-dot">LIVE</span></div>
-          <svg id="wheel" viewBox="-160 -160 320 320" role="img" aria-label="Rasi Mandalam"></svg>
-          <div class="lagna-line" id="lagnaNow"></div>
-        </div>
-
-        <div class="grid2" id="panchangCards"></div>
-
-        <div class="card glass" id="horaCard"></div>
-        <div class="card glass" id="kalamCard"></div>
-        <div class="card glass hidden" id="personalCard"></div>
-
-        <div class="card glass">
-          <div class="card-title"><span data-i18n="gochara"></span><span class="live-dot">LIVE</span></div>
-          <div id="gocharaChart" class="si-chart"></div>
-        </div>
-      </section>
-
-      <!-- Jathagam -->
-      <section id="view-chart" class="view hidden">
-        <div class="card glass">
-          <div class="card-title"><span data-i18n="rasiChart"></span></div>
-          <div id="rasiChart" class="si-chart"></div>
-        </div>
-        <div class="card glass">
-          <div class="card-title"><span data-i18n="navamsaChart"></span></div>
-          <div id="navamsaChart" class="si-chart"></div>
-        </div>
-        <div class="card glass" id="birthSummary"></div>
-        <div class="card glass" id="planetTable"></div>
-        <div class="card glass" id="dasaCard"></div>
-      </section>
-
-      <!-- Prasnam -->
-      <section id="view-ask" class="view hidden">
-        <div class="card glass">
-          <h2 data-i18n="askTitle"></h2>
-          <p class="muted" data-i18n="askSub"></p>
-          <div id="catGrid" class="cat-grid"></div>
-          <textarea id="question" rows="2" maxlength="400"></textarea>
-          <button id="askBtn" class="btn-gold" disabled data-i18n="askBtn"></button>
-        </div>
-        <div id="answer" class="hidden">
-          <div class="card glass verdict-card" id="verdictCard"></div>
-          <div class="card glass">
-            <div class="card-title"><span data-i18n="jothidarSays"></span><span id="aiSource" class="pill"></span></div>
-            <div id="reply" class="reply"></div>
-          </div>
-          <div class="card glass" id="factorCard"></div>
-          <div class="card glass" id="bestCard"></div>
-        </div>
-      </section>
-    </div>
-
-    <nav class="tabbar">
-      <button data-tab="live" class="active"><span class="ti">🌌</span><span data-i18n="tabLive"></span></button>
-      <button data-tab="chart"><span class="ti">🪐</span><span data-i18n="tabChart"></span></button>
-      <button data-tab="ask"><span class="ti">🔮</span><span data-i18n="tabAsk"></span></button>
-      <button data-tab="profile"><span class="ti">👤</span><span data-i18n="tabProfile"></span></button>
+    <nav class="tabbar" aria-label="Main">
+      <button data-tab="home"><span class="ti">🏠</span><span data-i18n-en="Today" data-i18n-ta="இன்று">இன்று</span></button>
+      <button data-tab="chart"><span class="ti">🪐</span><span data-i18n-en="Jathagam" data-i18n-ta="ஜாதகம்">ஜாதகம்</span></button>
+      <button data-tab="chat" class="tab-center"><span class="ti">💬</span><span data-i18n-en="Jothidar" data-i18n-ta="ஜோதிடர்">ஜோதிடர்</span></button>
+      <button data-tab="ask"><span class="ti">🔮</span><span data-i18n-en="Prasnam" data-i18n-ta="பிரசன்னம்">பிரசன்னம்</span></button>
+      <button data-tab="more"><span class="ti">☰</span><span data-i18n-en="More" data-i18n-ta="மேலும்">மேலும்</span></button>
     </nav>
   </main>
 

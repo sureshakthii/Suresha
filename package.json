@@ -24,7 +24,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
     "astronomy-engine": "^2.1.19",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "nodemailer": "^10.0.12"
   },
   "type": "module",
   "devDependencies": {

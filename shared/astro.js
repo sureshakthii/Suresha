@@ -197,7 +197,7 @@ function sunMoonSeparation(date) {
 }
 
 /** Find the instant (after `from`) when fn(date) crosses `target` (fn is increasing mod 360). */
-function findCrossing(fn, target, from, maxHours) {
+export function findCrossing(fn, target, from, maxHours) {
   const step = 3600000;
   let a = from;
   const diff = (d) => norm360(fn(d) - target + 180) - 180;
@@ -218,7 +218,8 @@ function findCrossing(fn, target, from, maxHours) {
   return null;
 }
 
-const moonSidereal = (d) => norm360(A.EclipticGeoMoon(A.MakeTime(d)).lon - lahiriAyanamsa(d));
+export const sunSidereal = (d) => norm360(A.SunPosition(A.MakeTime(d)).elon - lahiriAyanamsa(d));
+export const moonSidereal = (d) => norm360(A.EclipticGeoMoon(A.MakeTime(d)).lon - lahiriAyanamsa(d));
 const yogaSum = (d) => {
   const t = A.MakeTime(d);
   return norm360(A.EclipticGeoMoon(t).lon + A.SunPosition(t).elon - 2 * lahiriAyanamsa(d));
@@ -234,7 +235,17 @@ function riseSet(body, date, lat, lon, dir) {
  * Vedic day boundaries: sunrise today -> sunrise tomorrow, local to lat/lon.
  * `date` may be any instant; we locate the sunrise that precedes it.
  */
+const dayCache = [];
 export function vedicDay(date, lat, lon) {
+  const hit = dayCache.find((d) => d.lat === lat && d.lon === lon && date >= d.sunrise && date < d.nextSunrise);
+  if (hit) return hit;
+  const day = computeVedicDay(date, lat, lon);
+  dayCache.push({ lat, lon, ...day });
+  if (dayCache.length > 64) dayCache.shift();
+  return day;
+}
+
+function computeVedicDay(date, lat, lon) {
   let sunrise = riseSet('Sun', new Date(date.getTime() - 86400000), lat, lon, +1);
   let next = sunrise && riseSet('Sun', new Date(sunrise.getTime() + 60000), lat, lon, +1);
   while (next && next <= date) {

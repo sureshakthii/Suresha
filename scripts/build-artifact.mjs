@@ -8,11 +8,11 @@ const AE = 'https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/esm/astronomy.j
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(path.join(out, 'shared'), { recursive: true });
 
-for (const f of ['astro.js', 'prasna.js', 'narrator.js', 'places.js']) {
+for (const f of fs.readdirSync('shared').filter((x) => x.endsWith('.js'))) {
   const src = fs.readFileSync(path.join('shared', f), 'utf8').replace("from 'astronomy-engine'", `from '${AE}'`);
   fs.writeFileSync(path.join(out, 'shared', f), src);
 }
-fs.copyFileSync('public/app.js', path.join(out, 'app.js'));
+for (const f of fs.readdirSync('public').filter((x) => x.endsWith('.js') && x !== 'sw.js')) fs.copyFileSync(path.join('public', f), path.join(out, f));
 fs.copyFileSync('public/icon.svg', path.join(out, 'icon.svg'));
 
 const html = fs.readFileSync('public/index.html', 'utf8');

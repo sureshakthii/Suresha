@@ -4,7 +4,27 @@ import { fileURLToPath } from 'node:url';
 import { birthChart, panchang } from '../shared/astro.js';
 import { CATEGORIES, evaluatePrasna, getCategory } from '../shared/prasna.js';
 import { searchLocalPlaces, searchOnline } from './places.js';
-import { aiEnabled, buildContext, generateReply } from './ai.js';
+import { aiEnabled, buildContext, generateReply, runTask } from './ai.js';
+import { authRouter, currentUser } from './auth.js';
+import { tamilMonth } from '../shared/tamilcal.js';
+import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
+import { findMuhurtham } from '../shared/special.js';
+import { AI_TASKS } from '../shared/narrator.js';
+
+// Simple per-IP limiter for AI calls (protects the API budget).
+const aiHits = new Map();
+function aiRateLimited(ip, max = Number(process.env.AI_RATE_LIMIT) || 40, windowMs = 10 * 60000) {
+  const now = Date.now();
+  const hits = (aiHits.get(ip) || []).filter((t) => now - t < windowMs);
+  hits.push(now);
+  aiHits.set(ip, hits);
+  return hits.length > max;
+}
+
+function openStream(res) {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+  return (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -42,7 +62,10 @@ function parseBirth(b) {
 
 export function createApp() {
   const app = express();
+  if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
+  app.use('/api/me/data', express.json({ limit: '256kb' })); // saved family profiles can be larger
   app.use(express.json({ limit: '64kb' }));
+  app.use('/api', authRouter());
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, ai: aiEnabled() }));
 
@@ -108,8 +131,7 @@ export function createApp() {
       return res.json({ ...summary, reply: reply.text, source: reply.source });
     }
 
-    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    const send = openStream(res);
     send('evaluation', summary);
     const reply = await generateReply({
       ctx, evaluation, lang,
@@ -117,6 +139,68 @@ export function createApp() {
       onReset: () => send('reset', {}),
     });
     send('done', { source: reply.source });
+    res.end();
+  });
+
+  /** Tamil calendar for a Gregorian month: GET /api/calendar?year=2026&month=1&lat&lon&tz (month 1-12). */
+  app.get('/api/calendar', (req, res) => {
+    const loc = parseLoc(req.query);
+    const year = num(req.query.year, 'year', 1900, 2100);
+    const month = num(req.query.month, 'month', 1, 12);
+    res.json(tamilMonth(year, month - 1, loc.lat, loc.lon, loc.tz));
+  });
+
+  /** Thirumana Porutham. Body: { girl, boy } each either { star, rasi } or a birth object like /api/chart. */
+  app.post('/api/porutham', (req, res) => {
+    const side = (x, who) => {
+      if (x && x.date) {
+        const c = birthChart(parseBirth(x));
+        return { star: c.janmaNakshatra.index, rasi: c.janmaRasi.index, doshams: doshams(c.planets) };
+      }
+      return { star: num(x?.star, `${who}.star`, 0, 26), rasi: num(x?.rasi, `${who}.rasi`, 0, 11) };
+    };
+    const girl = side(req.body?.girl, 'girl');
+    const boy = side(req.body?.boy, 'boy');
+    const result = matchPorutham(girl, boy);
+    if (girl.doshams && boy.doshams) Object.assign(result, { doshams: { girl: girl.doshams, boy: boy.doshams }, samyam: doshaSamyam(girl.doshams, boy.doshams) });
+    res.json(result);
+  });
+
+  /** Muhurtham finder. Body: { category, loc, persons:[{name,janmaNakshatra,janmaRasi}], days? } */
+  app.post('/api/muhurtham', (req, res) => {
+    const { category, persons = [], days = 30 } = req.body || {};
+    if (!getCategory(category)) throw new BadRequest('Unknown category');
+    const loc = parseLoc(req.body.loc || {});
+    if (!Array.isArray(persons) || persons.length > 8) throw new BadRequest('Invalid persons');
+    const ps = persons.map((p, i) => ({ name: String(p.name || `Person ${i + 1}`).slice(0, 40), janmaNakshatra: num(p.janmaNakshatra, 'janmaNakshatra', 0, 26), janmaRasi: num(p.janmaRasi, 'janmaRasi', 0, 11) }));
+    res.json(findMuhurtham({ category, loc, persons: ps, days: num(days, 'days', 1, 90) }));
+  });
+
+  /**
+   * AI tasks: POST /api/ai/chat | /api/ai/porutham | /api/ai/names
+   * Body: { context, messages?:[{role,content}], lang, fallbackText } — streams SSE like /api/ask.
+   */
+  app.post('/api/ai/:task', async (req, res) => {
+    const { task } = req.params;
+    if (!AI_TASKS[task]) throw new BadRequest('Unknown task');
+    if (process.env.AI_REQUIRE_LOGIN === '1' && !currentUser(req)) return res.status(401).json({ error: 'Please sign in to use the AI Jothidar' });
+    if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many questions — please wait a few minutes' });
+    const { context = {}, messages = [], lang = 'en', fallbackText = '' } = req.body || {};
+    if (JSON.stringify(context).length > 20000) throw new BadRequest('Context too large');
+    if (!Array.isArray(messages) || messages.length > 24) throw new BadRequest('Invalid messages');
+    const msgs = messages.map((m) => {
+      if (!['user', 'assistant'].includes(m?.role) || typeof m.content !== 'string' || !m.content.trim()) throw new BadRequest('Invalid message');
+      return { role: m.role, content: m.content.slice(0, 2000) };
+    });
+    if (msgs.length && (msgs[0].role !== 'user' || msgs[msgs.length - 1].role !== 'user')) throw new BadRequest('Conversation must start and end with the person');
+    const args = { task, context, messages: msgs, lang, fallbackText: String(fallbackText).slice(0, 4000) || '🙏' };
+    if (!(req.headers.accept || '').includes('text/event-stream')) {
+      const r = await runTask(args);
+      return res.json({ reply: r.text, source: r.source });
+    }
+    const send = openStream(res);
+    const r = await runTask({ ...args, onText: (t) => send('delta', { text: t }), onReset: () => send('reset', {}) });
+    send('done', { source: r.source });
     res.end();
   });
 
@@ -128,6 +212,7 @@ export function createApp() {
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
+    if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Request too large' });
     if (err instanceof BadRequest || err.type === 'entity.parse.failed') {
       return res.status(400).json({ error: err.message });
     }

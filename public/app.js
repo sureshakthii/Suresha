@@ -1,5 +1,11 @@
-import { panchang, planetPositions, birthChart, buildCharts, RASIS, NAKSHATRAS, PLANETS } from '/shared/astro.js';
-import { CATEGORIES, scoreSnapshot } from '/shared/prasna.js';
+import { planetPositions, panchang, birthChart, buildCharts, RASIS, NAKSHATRAS, PLANETS } from './shared/astro.js';
+import { CATEGORIES, evaluatePrasna } from './shared/prasna.js';
+import { SYSTEM_PROMPT, buildContext, ruleBasedReply } from './shared/narrator.js';
+import { searchLocalPlaces } from './shared/places.js';
+
+// Hosted test build (no backend): everything is computed on the device and the
+// AI Jothidar answers through the viewer's own Claude account when available.
+const STATIC = Boolean(window.KJ_STATIC);
 
 // ---------------------------------------------------------------- i18n
 const I18N = {
@@ -188,8 +194,10 @@ function setupPlaceSearch() {
     if (q.length < 2) { list.classList.add('hidden'); return; }
     timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/places?q=${encodeURIComponent(q)}`);
-        const places = await res.json();
+        let places = searchLocalPlaces(q);
+        if (!STATIC && places.length < 3) {
+          try { places = await (await fetch(`/api/places?q=${encodeURIComponent(q)}`)).json(); } catch { /* keep local */ }
+        }
         list.innerHTML = places.map((p, i) => `<li tabindex="0" data-i="${i}">${esc(p.name)} <small>${esc(p.region)} · UTC${p.tz >= 0 ? '+' : ''}${p.tz}</small></li>`).join('');
         list.classList.toggle('hidden', !places.length);
         $$('li', list).forEach((li) => li.addEventListener('click', () => {
@@ -226,11 +234,13 @@ function setLoc(loc) {
   state.snapAt = 0;
 }
 
+function geoFail() { $('#liveLoc').textContent = t('geoFail'); }
+
 function useMyLocation() {
-  if (!navigator.geolocation) { alert(t('geoFail')); return; }
+  if (!navigator.geolocation) { geoFail(); return; }
   navigator.geolocation.getCurrentPosition(
     (pos) => setLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude, tz: -new Date().getTimezoneOffset() / 60, name: '📍 Current location' }),
-    () => alert(t('geoFail')),
+    geoFail,
     { enableHighAccuracy: false, timeout: 8000 },
   );
 }
@@ -241,6 +251,7 @@ const reviveDates = (o) => JSON.parse(JSON.stringify(o), (k, v) => (typeof v ===
 async function loadChart() {
   const p = state.profile;
   try {
+    if (STATIC) throw new Error('static');
     const res = await fetch('/api/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) });
     if (!res.ok) throw new Error((await res.json()).error);
     state.chart = reviveDates(await res.json());
@@ -484,6 +495,36 @@ function renderAnswer(a) {
   $('#bestCard').innerHTML = `<div class="card-title">🕰️ ${t('bestTimes')}</div>${a.bestTimes.length ? a.bestTimes.map((w) => `<div class="best">🌟 ${fmtDate(w.start, loc.tz)} · <b>${fmtTime(w.start, loc.tz)} – ${fmtTime(w.end, loc.tz)}</b><br><span class="muted small">${t('score')} ${w.best} · ${esc(planetName(w.hora))} ${ta() ? 'ஓரை' : 'Horai'}</span></div>`).join('') : `<p class="muted">${t('noBest')}</p>`}`;
 }
 
+/** Evaluate the Prasnam on the device; narrate with Claude (hosted build) or the rule-based Jothidar. */
+async function askOnDevice(body) {
+  const c = state.chart;
+  const birth = c && { janmaNakshatra: c.janmaNakshatra.index, janmaRasi: c.janmaRasi.index };
+  const evaluation = evaluatePrasna({ at: new Date(), category: body.category, loc: body.loc, birth });
+  const a = { category: body.category, score: evaluation.score, verdict: evaluation.verdict, verdictText: evaluation.verdictText, factors: evaluation.factors, bestTimes: evaluation.bestTimes, snapshot: evaluation.snapshot };
+  state.lastAnswer = a;
+  renderAnswer(a);
+  $('#verdictCard').scrollIntoView({ behavior: 'smooth' });
+  const profile = c && {
+    name: c.name, janmaNakshatraName: c.janmaNakshatra.name, janmaRasiName: c.janmaRasi.name, lagnaName: c.lagna.rasiName,
+    currentDasa: c.dasa.current && `${c.dasa.current.lord} Dasa / ${c.dasa.currentBhukti?.lord} Bhukti`,
+  };
+  const ctx = buildContext({ evaluation, question: body.question, category: body.category, lang: body.lang, profile, loc: body.loc });
+  const sample = STATIC && window.claude ? await window.claude.use('sample').catch(() => null) : null;
+  if (sample) {
+    $('#reply').textContent = t('thinking');
+    try {
+      await sample(`${SYSTEM_PROMPT}\n\nHere is the computed Prasna data (JSON):\n${JSON.stringify(ctx, null, 2)}\n\nAnswer the person's question now in ${ctx.replyLanguage}.`, {
+        cache: false,
+        onText: ({ text }) => { $('#reply').textContent = text; },
+      });
+      $('#aiSource').textContent = '✨ AI';
+      return;
+    } catch { /* not allowed or unavailable: fall through to the rule-based Jothidar */ }
+  }
+  $('#reply').textContent = ruleBasedReply(ctx, evaluation, body.lang);
+  $('#aiSource').textContent = '📜 Rules';
+}
+
 async function ask() {
   if (!state.category || !state.loc) return;
   const btn = $('#askBtn');
@@ -495,6 +536,7 @@ async function ask() {
   $('#factorCard').innerHTML = ''; $('#bestCard').innerHTML = ''; $('#aiSource').textContent = '';
   const body = { category: state.category, question: $('#question').value.trim(), lang: state.lang, loc: state.loc, birth: state.profile };
   try {
+    if (STATIC) throw new Error('static');
     const res = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' }, body: JSON.stringify(body) });
     if (!res.ok || !res.body) throw new Error('network');
     const reader = res.body.getReader();
@@ -516,16 +558,7 @@ async function ask() {
       }
     }
   } catch {
-    // Offline: evaluate on the device (no AI narration).
-    const now = new Date();
-    const snap = panchang(now, state.loc.lat, state.loc.lon, state.loc.tz);
-    const birth = state.chart && { janmaNakshatra: state.chart.janmaNakshatra.index, janmaRasi: state.chart.janmaRasi.index };
-    const r = scoreSnapshot(snap, state.category, birth);
-    const VT = { DO: { en: 'Go ahead — favourable', ta: 'செய்யலாம் — நல்ல நேரம்' }, CAUTION: { en: 'Proceed with caution', ta: 'கவனத்துடன் செய்யவும்' }, AVOID: { en: 'Avoid now — wait for a better time', ta: 'இப்போது தவிர்க்கவும்' } };
-    const a = { category: state.category, ...r, verdictText: VT[r.verdict], bestTimes: [], snapshot: snap };
-    state.lastAnswer = a;
-    renderAnswer(a);
-    $('#reply').textContent = t('offline');
+    await askOnDevice(body);
   } finally {
     $('#reply').classList.remove('typing');
     btn.disabled = false;
@@ -556,7 +589,8 @@ async function boot() {
     show('profile');
   }
   setInterval(() => tick(), 1000);
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+  if (STATIC) $('#geoBtn').classList.add('hidden');
+  if (!STATIC && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 
 boot();

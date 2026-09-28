@@ -1,6 +1,6 @@
 // App-shell cache so the Jathagam and live Panchangam work offline. API calls always go to the network.
-const CACHE = 'kj-v1';
-const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/shared/astro.js', '/shared/prasna.js', '/vendor/astronomy-engine.js', '/icon.svg', '/manifest.webmanifest'];
+const CACHE = 'kj-v2';
+const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/shared/astro.js', '/shared/prasna.js', '/shared/narrator.js', '/shared/places.js', '/vendor/astronomy-engine.js', '/icon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

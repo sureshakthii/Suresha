@@ -73,7 +73,13 @@ export const YOGAS = [
   'Ganda', 'Vriddhi', 'Dhruva', 'Vyaghata', 'Harshana', 'Vajra', 'Siddhi', 'Vyatipata', 'Variyana',
   'Parigha', 'Shiva', 'Siddha', 'Sadhya', 'Shubha', 'Shukla', 'Brahma', 'Indra', 'Vaidhriti',
 ];
+export const YOGAS_TA = [
+  'விஷ்கம்பம்', 'ப்ரீதி', 'ஆயுஷ்மான்', 'சௌபாக்கியம்', 'சோபனம்', 'அதிகண்டம்', 'சுகர்மம்', 'திருதி', 'சூலம்',
+  'கண்டம்', 'விருத்தி', 'துருவம்', 'வியாகாதம்', 'ஹர்ஷணம்', 'வஜ்ரம்', 'சித்தி', 'வியதீபாதம்', 'வரீயான்',
+  'பரிகம்', 'சிவம்', 'சித்தம்', 'சாத்தியம்', 'சுபம்', 'சுப்பிரம்', 'பிராம்யம்', 'ஐந்திரம்', 'வைதிருதி',
+];
 const KARANAS_MOVABLE = ['Bava', 'Balava', 'Kaulava', 'Taitila', 'Garaja', 'Vanija', 'Vishti'];
+const KARANA_TA = { Bava: 'பவம்', Balava: 'பாலவம்', Kaulava: 'கௌலவம்', Taitila: 'தைதுலம்', Garaja: 'கரசை', Vanija: 'வணிசை', Vishti: 'பத்திரை', Kimstughna: 'கிம்ஸ்துக்னம்', Shakuni: 'சகுனி', Chatushpada: 'சதுஷ்பாதம்', Naga: 'நாகவம்' };
 export const WEEKDAYS = [
   { en: 'Sunday', ta: 'ஞாயிறு', lord: 'Sun' },
   { en: 'Monday', ta: 'திங்கள்', lord: 'Moon' },
@@ -336,8 +342,9 @@ export function panchang(date, lat, lon, tzOffset, { withEnds = true } = {}) {
       lord: moon.nakshatraLord, endsAt: nakEnd, progress: (moon.longitude % NAK_SPAN) / NAK_SPAN,
     },
     moonRasi: { index: moon.rasi, name: moon.rasiName, ta: moon.rasiTa, endsAt: rasiEnd },
-    yoga: { index: yogaIdx, name: YOGAS[yogaIdx], endsAt: yogaEnd },
+    yoga: { index: yogaIdx, name: YOGAS[yogaIdx], ta: YOGAS_TA[yogaIdx], endsAt: yogaEnd },
     karana,
+    karanaTa: KARANA_TA[karana],
     lagna: planets.Lagna,
     sunrise: day.sunrise,
     sunset: day.sunset,
@@ -406,7 +413,7 @@ export function birthChart({ name, date, time, lat, lon, tz, place }) {
     janmaNakshatra: snap.nakshatra,
     janmaRasi: snap.moonRasi,
     birthPanchang: {
-      weekday: snap.weekday, tithi: snap.tithi, yoga: snap.yoga, karana: snap.karana,
+      weekday: snap.weekday, tithi: snap.tithi, yoga: snap.yoga, karana: snap.karana, karanaTa: snap.karanaTa,
       sunrise: snap.sunrise, sunset: snap.sunset, horaAtBirth: snap.currentHora.lord,
     },
     dasa: vimshottari(utc, snap.planets.Moon.longitude),

@@ -1,0 +1,103 @@
+# Builds the native wrappers around the deployed web app.
+# Set the repository variable KJ_APP_URL (Settings → Secrets and variables → Actions → Variables),
+# e.g. https://kaippesi.example.com — the apps load that URL.
+name: Mobile apps
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+env:
+  KJ_APP_URL: ${{ vars.KJ_APP_URL }}
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Capacitor 8 compiles with Java 21 (sourceCompatibility VERSION_21); Java 17 is not enough.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npm run mobile:android
+
+      - name: Decode signing key (only when the secrets are set)
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "Release builds will be signed."
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set — the release APK/AAB will be UNSIGNED (cannot be uploaded to Play / AppGallery)."
+          fi
+
+      - name: Build APK + AAB
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: npm ci
+      - run: npm run mobile:ios
+
+      # Compile check for the simulator (no signing needed).
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+
+      # Unsigned device archive. App Store upload needs Apple Developer signing — do that in Xcode on a Mac
+      # (Product → Archive → Distribute App), see docs/MOBILE.md.
+      - name: Archive (unsigned)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" archive
+          cd "$RUNNER_TEMP" && zip -qry App-unsigned.xcarchive.zip App.xcarchive
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-xcarchive
+          path: ${{ runner.temp }}/App-unsigned.xcarchive.zip
+          if-no-files-found: error

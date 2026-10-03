@@ -1,6 +1,7 @@
 // Shared UI core: state, language, formatting, API/AI plumbing, family profiles and navigation.
 import { birthChart, RASIS, NAKSHATRAS, PLANETS } from './shared/astro.js';
 import { buildTaskPrompt } from './shared/narrator.js';
+import { placeTa } from './shared/places.js';
 
 // Hosted test build (no backend): everything is computed on the device and the
 // AI Jothidar answers through the viewer's own Claude account when available.
@@ -38,11 +39,14 @@ export const L = (en, taText) => (ta() ? taText : en);
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const bi = (o) => (o ? (ta() ? o.ta : o.en) : '');
 
-export const GLYPH = { Sun: '☉', Moon: '☽', Mars: '♂', Mercury: '☿', Jupiter: '♃', Venus: '♀', Saturn: '♄', Rahu: '☊', Ketu: '☋', Lagna: 'Asc' };
+export const GLYPH = { Sun: '☉', Moon: '☽', Mars: '♂', Mercury: '☿', Jupiter: '♃', Venus: '♀', Saturn: '♄', Rahu: '☊', Ketu: '☋', get Lagna() { return ta() ? 'ல' : 'Asc'; } };
 export const COLOR = { Sun: '#ffb347', Moon: '#e6e9ff', Mars: '#ff7b5c', Mercury: '#7ee2a8', Jupiter: '#ffe066', Venus: '#ff9ed8', Saturn: '#8fb3ff', Rahu: '#c29bff', Ketu: '#d7a57a', Lagna: '#f5c26b' };
 export const planetName = (k) => (ta() ? PLANETS[k].ta : k);
 export const rasiName = (i) => (ta() ? RASIS[i].ta : RASIS[i].en);
 export const nakName = (i) => (ta() ? NAKSHATRAS[i].ta : NAKSHATRAS[i].en);
+export const placeName = (p) => (ta() ? placeTa(p || '') : p || '');
+export const yogaName = (y) => (ta() ? y.ta || y.name : y.name);
+export const karanaName = (s) => (ta() ? s.karanaTa || s.karana : s.karana);
 
 // ---------------------------------------------------------------- time
 export const localParts = (d, tz) => new Date(new Date(d).getTime() + tz * 3600000);
@@ -52,14 +56,18 @@ export function fmtTime(d, tz, sec = false) {
   const h = x.getUTCHours();
   const m = String(x.getUTCMinutes()).padStart(2, '0');
   const s = String(x.getUTCSeconds()).padStart(2, '0');
-  return `${((h + 11) % 12) + 1}:${m}${sec ? `:${s}` : ''} ${h < 12 ? 'AM' : 'PM'}`;
+  const hm = `${((h + 11) % 12) + 1}:${m}${sec ? `:${s}` : ''}`;
+  if (ta()) return `${h >= 4 && h < 12 ? 'காலை' : h >= 12 && h < 16 ? 'மதியம்' : h >= 16 && h < 19 ? 'மாலை' : 'இரவு'} ${hm}`;
+  return `${hm} ${h < 12 ? 'AM' : 'PM'}`;
 }
 export function fmtDate(d, tz) {
   const x = localParts(d, tz);
   return `${String(x.getUTCDate()).padStart(2, '0')}-${String(x.getUTCMonth() + 1).padStart(2, '0')}-${x.getUTCFullYear()}`;
 }
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-export const fmtIsoDate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return `${d} ${MONTHS_EN[m - 1]} ${y}`; };
+const MONTHS_TA = ['ஜனவரி', 'பிப்ரவரி', 'மார்ச்', 'ஏப்ரல்', 'மே', 'ஜூன்', 'ஜூலை', 'ஆகஸ்ட்', 'செப்டம்பர்', 'அக்டோபர்', 'நவம்பர்', 'டிசம்பர்'];
+export const monthName = (m0) => (ta() ? MONTHS_TA[m0] : MONTHS_EN[m0]);
+export const fmtIsoDate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return `${d} ${monthName(m - 1)} ${y}`; };
 export function countdown(to, now = Date.now()) {
   if (!to) return '—';
   let s = Math.max(0, Math.floor((new Date(to).getTime() - now) / 1000));
@@ -82,6 +90,7 @@ export const RELATIONS = [
   { id: 'son', en: 'Son', ta: 'மகன்' }, { id: 'daughter', en: 'Daughter', ta: 'மகள்' },
   { id: 'father', en: 'Father', ta: 'தந்தை' }, { id: 'mother', en: 'Mother', ta: 'தாய்' },
   { id: 'other', en: 'Other', ta: 'மற்றவர்' },
+  { id: 'organization', en: 'Company / Team', ta: 'நிறுவனம் / குழு' },
 ];
 
 let syncTimer;
@@ -161,7 +170,7 @@ export async function aiTask({ task, context, messages = [], fallbackText, onTex
       done: (d) => { source = d.source; },
     });
   } catch (e) {
-    text = e.status === 429 || e.status === 401 ? `${e.message}\n\n${fallbackText}` : fallbackText;
+    text = [401, 402, 429].includes(e.status) ? `${e.message}\n\n${fallbackText}` : fallbackText;
     onText?.(text);
   }
   return { text, source };
@@ -177,18 +186,102 @@ export function toast(msg, ms = 2600) {
   el._t = setTimeout(() => el.classList.remove('show'), ms);
 }
 
-/** Read text aloud in Tamil or English when the device supports it. */
-export function speak(text) {
-  if (!('speechSynthesis' in window) || !state.settings.voice) return false;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text.replace(/[•🌟🔸✅⚠️⛔🕰️🪔ℹ️]/gu, ''));
-  u.lang = ta() ? 'ta-IN' : 'en-IN';
-  const v = speechSynthesis.getVoices().find((x) => x.lang?.startsWith(ta() ? 'ta' : 'en-IN'));
-  if (v) u.voice = v;
-  u.rate = 0.95;
-  speechSynthesis.speak(u);
-  return true;
+// ---------------------------------------------------------------- voice
+let voicesReady;
+function loadVoices() {
+  if (!('speechSynthesis' in window)) return Promise.resolve([]);
+  voicesReady ||= new Promise((res) => {
+    const have = speechSynthesis.getVoices();
+    if (have.length) { res(have); return; }
+    const done = () => res(speechSynthesis.getVoices());
+    speechSynthesis.addEventListener('voiceschanged', done, { once: true });
+    setTimeout(done, 1500);
+  });
+  return voicesReady;
 }
+const isTamil = (text) => /[\u0B80-\u0BFF]/.test(text);
+
+/** Strip emoji/markup and split into sentence-sized chunks (long utterances get cut off on phones). */
+function speechChunks(text) {
+  const clean = text.replace(/\p{Extended_Pictographic}|\uFE0F|[•▍*#_>]/gu, ' ').replace(/\s+/g, ' ').trim();
+  const parts = clean.split(/(?<=[.!?।|\n])\s+/);
+  const out = [];
+  for (const p of parts) {
+    if (p.length <= 180) { if (p) out.push(p); continue; }
+    for (let i = 0; i < p.length; i += 180) out.push(p.slice(i, i + 180));
+  }
+  return out;
+}
+
+export const voiceState = { speaking: false, hasTamil: null };
+
+/**
+ * Read text aloud with a matching voice. Tamil text is spoken only with a Tamil voice; if the phone has none,
+ * we explain how to install one instead of reading Tamil letters with an English voice.
+ * Returns a promise that resolves when speaking ends (or false if it could not start).
+ */
+export async function speak(text, { rate = 0.92, onEnd } = {}) {
+  if (!('speechSynthesis' in window) || !state.settings.voice) { toast(L('Read-aloud is switched off or not available on this device', 'வாசித்துக்காட்டும் வசதி இந்தச் சாதனத்தில் இல்லை அல்லது நிறுத்தப்பட்டுள்ளது')); return false; }
+  const voices = await loadVoices();
+  const tamil = isTamil(text);
+  const voice = tamil
+    ? voices.find((v) => /^ta(-|_|$)/i.test(v.lang)) || null
+    : voices.find((v) => /en[-_]IN/i.test(v.lang)) || voices.find((v) => /^en/i.test(v.lang)) || null;
+  voiceState.hasTamil = voices.some((v) => /^ta/i.test(v.lang));
+  if (tamil && !voice) {
+    toast(L('Install the Tamil voice: Settings → Google Text-to-speech → Install voice data → Tamil', 'தமிழ் குரலை நிறுவவும்: Settings → Google Text-to-speech → Install voice data → Tamil'), 6000);
+    return false;
+  }
+  speechSynthesis.cancel();
+  const chunks = speechChunks(text);
+  voiceState.speaking = true;
+  return new Promise((resolve) => {
+    chunks.forEach((c, i) => {
+      const u = new SpeechSynthesisUtterance(c);
+      u.lang = tamil ? 'ta-IN' : 'en-IN';
+      if (voice) u.voice = voice;
+      u.rate = rate;
+      if (i === chunks.length - 1) u.onend = () => { voiceState.speaking = false; onEnd?.(); resolve(true); };
+      u.onerror = () => { voiceState.speaking = false; resolve(false); };
+      speechSynthesis.speak(u);
+    });
+  });
+}
+export function stopSpeaking() { if ('speechSynthesis' in window) speechSynthesis.cancel(); voiceState.speaking = false; }
+
+/** Tamil-first speech recognition (Chrome / Android / iOS Safari). Resolves the final transcript. */
+export function listen({ onPartial } = {}) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return Promise.reject(new Error('unsupported'));
+  return new Promise((resolve, reject) => {
+    const rec = new SR();
+    rec.lang = ta() ? 'ta-IN' : 'en-IN';
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    rec.continuous = false;
+    let text = '';
+    rec.onresult = (e) => { text = [...e.results].map((x) => x[0].transcript).join(' '); onPartial?.(text); };
+    rec.onerror = (e) => reject(new Error(e.error || 'error'));
+    rec.onend = () => resolve(text.trim());
+    try { rec.start(); } catch (e) { reject(e); }
+  });
+}
+export const micMessage = (code) => ({
+  'not-allowed': L('Allow microphone access for this site in your browser settings.', 'உலாவி அமைப்புகளில் இந்தத் தளத்திற்கு மைக்ரோஃபோன் அனுமதி தரவும்.'),
+  'service-not-allowed': L('Allow microphone access for this site in your browser settings.', 'உலாவி அமைப்புகளில் இந்தத் தளத்திற்கு மைக்ரோஃபோன் அனுமதி தரவும்.'),
+  'no-speech': L('I did not hear anything — please speak after the beep.', 'எதுவும் கேட்கவில்லை — மீண்டும் பேசவும்.'),
+  network: L('Voice typing needs an internet connection.', 'குரல் தட்டச்சுக்கு இணைய இணைப்பு தேவை.'),
+  unsupported: L('Voice input is not supported in this browser. Please use Chrome.', 'இந்த உலாவியில் குரல் உள்ளீடு இல்லை. Chrome பயன்படுத்தவும்.'),
+}[code] || L('Could not use the microphone', 'மைக்ரோஃபோனைப் பயன்படுத்த முடியவில்லை'));
+
+/** Copyright footer shown on the main pages. */
+export const copyright = () => `<footer class="copy">© 2026 ${L('Kaippesi Jothidar. All rights reserved.', 'கைப்பேசி ஜோதிடர். அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.')}</footer>`;
+
+/** Name to show for a family member: their Tamil name in Tamil mode when given. */
+export const displayName = (m) => (m ? (ta() && m.nameTa ? m.nameTa : m.name) : '');
+
+/** Small card shown where a feature needs the installed app (server), e.g. on the hosted test page. */
+export const needsServerCard = (what) => `<div class="card glass coming"><b>📲 ${L('Available in the installed app', 'நிறுவப்பட்ட செயலியில் கிடைக்கும்')}</b><p class="small">${what}</p></div>`;
 
 /** Star/pada <select> options (pada gives the rasi). */
 export function starOptions(selected) {
@@ -219,6 +312,7 @@ export function go(view, params = {}) {
   const tab = screens[view].tab || TAB_OF[view] || (screens[view].parent ? TAB_OF[screens[view].parent] : null);
   $$('.tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   $('#app').classList.toggle('no-tabs', !!screens[view].fullscreen);
+  document.dispatchEvent(new CustomEvent('kj:screen', { detail: view }));
   if (prev !== view) scrollTo({ top: 0 });
   screens[view].render(sec, params);
 }

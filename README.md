@@ -123,3 +123,68 @@ Users sign in with a one-time code (OTP) sent by **SMS** or **email**, or with *
 | GET | `/api/auth/me` | `{ user }` or 401 |
 | POST | `/api/auth/logout` | `{ ok: true }` |
 | GET / PUT | `/api/me/data` | the user's JSON blob: `{ data, updatedAt }` / body `{ data }` |
+
+## Marketplace
+
+Pooja store, priest (Iyer / Purohit / Vadhyar) directory and service bookings — `server/market.js`, tables created on first use. The catalogue in `server/data/products.json` is **sample data** (`"sample": true`); replace it with real stock and prices. Prices and totals are always computed on the server. Online payment uses Razorpay when `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` are set; otherwise orders wait in `awaiting_payment_setup`. No priests are seeded: people register themselves and appear publicly only after an admin verifies them (phone numbers are never shown publicly).
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/store/products?category=` | `{ sample, currency, categories, products }` |
+| POST | `/api/store/orders` | sign-in · `{ items:[{id,qty}], address:{name,phone,line1,city,pincode,state} }` → `{ order, payment }` |
+| POST | `/api/store/orders/:id/verify` | `{ razorpay_order_id, razorpay_payment_id, razorpay_signature }` → order `paid` |
+| GET | `/api/store/orders` | the user's orders |
+| GET | `/api/services` | fixed list of priest services |
+| POST | `/api/priests/register` | sign-in · `{ name, phone, city, languages, services, experience_years, about }` → `pending` |
+| GET | `/api/priests?service=&city=` | verified priests only |
+| GET | `/api/priests/me`, `/api/priests/me/requests` | the signed-in priest's profile / assigned requests |
+| POST / GET | `/api/requests` | sign-in · `{ type:"service"\|"annadhanam"\|"temple_booking", service?, priestId?, templeId?, date, time?, city, people?, meals?, notes?, contactPhone }` |
+| GET / POST | `/api/admin/priests[/:id/status]`, `/api/admin/orders[/:id/status]`, `/api/admin/requests[/:id/status]` | header `x-admin-token: $ADMIN_TOKEN` (503 if unset) |
+
+## Weather & reminders
+
+**Weather** (`server/weather.js`): forecast from [Open-Meteo](https://open-meteo.com) (no key) plus the latest METAR observation from the nearest airport within 150 km (NOAA Aviation Weather; stations in `server/data/stations.json`). Results are cached per 0.05° cell for 10 minutes; each upstream call times out after 8 s. A failed METAR gives `station: null`; a failed forecast returns 502.
+
+**Morning alarm & trip reminders** (`server/push.js`): Web Push via `web-push`. A once-a-minute scheduler (started with the server) sends a daily "காலை வணக்கம்" notification at the chosen local time with the Tamil date, nakshatra, Rahu Kalam and festivals, and a reminder 60 minutes before each saved parigaram trip. Set `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in production (otherwise a pair is generated into `data/vapid.json`). Subscriptions the push service reports as gone (404/410) are deleted.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/weather?lat=&lon=` | `{ station:{icao,name,distanceKm,observed}\|null, current, hourly[24], daily[7], travel:{level:"good"\|"caution"\|"avoid",en,ta,reasons}, source, fetchedAt }` |
+| GET | `/api/push/key` | `{ publicKey }` for `pushManager.subscribe` |
+| POST | `/api/push/subscribe` | `{ subscription, prefs:{ morningTime:"HH:MM"\|null, tz, lat, lon, place, lang:"ta"\|"en", name, trips:[{id,date,time,title,place}] (max 20) } }` — upsert by endpoint |
+| POST | `/api/push/unsubscribe` | `{ endpoint }` |
+| POST | `/api/push/test` | `{ endpoint }` — sends a test notification now |
+
+## Subscriptions
+
+`server/billing.js` — plans, payments and entitlements (tables `subscriptions` and `ai_usage`, created on first use). Plans: **Free** (panchangam, charts, calendar, porutham table, 5 Jothidar answers a day), **Premium** ₹199 / $4.99 a month or ₹1,999 / $49 a year (unlimited chat, life-timing predictions, full analysis, porutham explanation, priority seva booking) and **Family** ₹399 / $9.99 a month or ₹3,999 / $99 a year (Premium for up to 8 family profiles). INR is paid through Razorpay (`RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`), USD through Stripe Checkout (`STRIPE_SECRET_KEY`, webhook secret `STRIPE_WEBHOOK_SECRET`). Without a gateway, checkout returns `payment_setup_pending`. Buying while a plan is active extends it from the current expiry. The free AI quota (`AI_FREE_DAILY`, default 5 a day per user or per IP when signed out, India time) is enforced only when `BILLING_ENFORCE=1`: once it is used up, `/api/ai/:task` returns 402 `{ error, upgrade: true }`. Only successful answers count.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/billing/plans?currency=INR\|USD` | `{ currency, plans:[{ id, name:{en,ta}, interval, price:{INR,USD}, amount, currency, features }] }` |
+| GET | `/api/billing/me` | `{ plan, status, expiresAt, entitlements:{ unlimitedAi, predictions, familyProfiles }, aiUsedToday, aiFreeDaily }` (works signed out) |
+| POST | `/api/billing/checkout` | sign-in · `{ plan, currency }` → Razorpay `{ subscriptionId, gateway:"razorpay", keyId, razorpayOrderId, amount, currency }`, Stripe `{ subscriptionId, gateway:"stripe", url }`, or `{ subscriptionId, gateway:null, status:"payment_setup_pending" }` |
+| POST | `/api/billing/verify` | sign-in · `{ subscriptionId, razorpay_order_id, razorpay_payment_id, razorpay_signature }` → `{ subscription }` |
+| POST | `/api/billing/stripe/webhook` | Stripe `checkout.session.completed` (raw body, `Stripe-Signature` checked, 5-minute tolerance) |
+| POST | `/api/admin/billing/grant` | admin · `{ userId, plan, days }` complimentary access |
+| GET | `/api/admin/billing/subscriptions` | admin · all subscriptions |
+
+## Growth & admin
+
+`server/growth.js` — gift / trial codes, privacy-friendly usage analytics, feedback & testimonials, referrals and an admin overview (tables `gift_codes`, `gift_redemptions`, `events`, `feedback`, `referral_codes`, `referral_claims`, created on first use). Complimentary access is a normal row in `subscriptions` (gateway `gift`, `trial` or `referral`, amount 0), so it **locks automatically** at `expires_at`; `/api/billing/me` then reports `locked: true`. A gift never shortens a later expiry; referral days stack on top of the current expiry. `TRIAL_HOURS` (unset = off) gives every new signed-in user a one-time Premium trial; `REFERRAL_DAYS` (default 7) sets the referral reward. Analytics store only an app-generated `deviceId`, never IPs or personal data. `/api/billing/me` also returns `trialEndsAt` (gift/trial only), `locked` and `enforced` (`BILLING_ENFORCE=1`).
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/api/admin/gift-codes` | admin · `{ plan, hours?:1–8760 (24), maxUses?:1–1000 (1), note?, expiresAt? }` → 201 `{ code:"KJ-7F3K-9QPA", giftCode }` |
+| GET | `/api/admin/gift-codes` | admin · `{ giftCodes:[{ code, plan, hours, maxUses, uses, note, createdAt, expiresAt }] }` |
+| POST | `/api/billing/redeem` | sign-in · `{ code }` → `{ subscription, expiresAt }`; 404 unknown, 409 already redeemed by you, 410 expired / used up |
+| POST | `/api/events` | `{ deviceId (8–64 [A-Za-z0-9_-]), events:[{ type, screen?, feature?, platform?:"web"\|"pwa"\|"android"\|"ios"\|"huawei", appVersion? }] (max 50) }` → `{ ok:true }`; types `first_open, app_open, install, screen_view, signup, login, feature, purchase, share, referral_open`; 300 calls / 10 min per IP |
+| GET | `/api/admin/stats?days=30` | admin · `{ totals:{ devices, installs, users, activeToday, active7, active30, payingUsers, revenueByCurrency:{INR,USD}, orders, requests, feedbackCount, avgRating }, byPlatform, daily:[{ date, opens, newDevices, installs, signups }], topScreens, topFeatures }` (days in India time) |
+| POST | `/api/feedback` | `{ deviceId, rating:1–5, comment? (≤1000), screen? }` → `{ ok:true }`; 10 / hour per device |
+| GET | `/api/testimonials` | up to 20 approved `{ rating, comment, name, createdAt }` (first name, or "அன்பர்") |
+| GET / POST | `/api/admin/feedback?status=new\|approved\|hidden`, `/api/admin/feedback/:id` | admin · update `{ status?, reply? }` |
+| GET | `/api/referral` | sign-in · `{ code, link:"${PUBLIC_URL}/?ref=CODE", referred, rewardDaysEarned }` |
+| POST | `/api/referral/claim` | sign-in · `{ code }` → `{ ok, days, subscription, expiresAt }`; accounts < 7 days old, one claim per user, not your own (400), referrer rewarded for at most 12 claims; 404 unknown, 409 already claimed, 403 account too old |
+| GET | `/api/admin/overview` | admin · `{ stats, latestFeedback (5), pendingPriests, openRequests, ordersAwaitingPayment }` |
+
+Marketplace requests also accept `type:"package"` with `{ packageId (lowercase id ≤60, e.g. navagraha, arupadai, rameswaram), people?, date, city, contactPhone, notes? }`; the response carries `packageId`.

@@ -9,7 +9,12 @@ import { nameLetters } from './shared/special.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtDate, countdown,
   activeMember, chartOf, registerScreen, go, STATIC, sse, toast, speak, saveFamily,
+  displayName, copyright,
+  yogaName, karanaName,
+  placeName,
 } from './core.js';
+import { weatherCardHtml, fillHomeWeather, relationsList, relationRow } from './screens-world.js';
+import { trialBanner, ratePrompt } from './growth.js';
 
 const TARA = [['Janma', 'ஜன்ம', 'warn'], ['Sampat', 'சம்பத்', 'good'], ['Vipat', 'விபத்', 'bad'], ['Kshema', 'க்ஷேம', 'good'], ['Pratyak', 'பிரத்யக்', 'bad'], ['Sadhana', 'சாதக', 'good'], ['Naidhana', 'நைதன', 'bad'], ['Mitra', 'மித்ர', 'good'], ['Parama Mitra', 'பரம மித்ர', 'good']];
 const goodBad = (k) => (k === 'good' ? L('Favourable', 'சாதகம்') : k === 'bad' ? L('Careful', 'கவனம்') : L('Neutral', 'சமம்'));
@@ -26,18 +31,28 @@ export function dayOutlook(chart, snap) {
 
 // ================================================================ HOME
 const TILES = [
-  ['porutham', '💞', 'Marriage Match', 'திருமணப் பொருத்தம்'],
-  ['muhurtham', '🗓️', 'Muhurtham Finder', 'முகூர்த்தம் தேடல்'],
-  ['calendar', '📅', 'Tamil Calendar', 'தமிழ் காலண்டர்'],
-  ['chat', '💬', 'Talk to Jothidar', 'ஜோதிடருடன் பேசுங்கள்'],
-  ['parigaram', '🪔', 'Parigaram', 'பரிகாரம்'],
+  ['life', '🔭', 'Life Questions — when?', 'வாழ்க்கைக் கேள்விகள் — எப்போது?'],
+  ['chat', '💬', 'Ask Jothidar', 'ஜோதிடரிடம் கேளுங்கள்'],
   ['ask', '🔮', 'Do or Don\'t?', 'செய்யலாமா?'],
+  ['porutham', '💞', 'Marriage Match', 'திருமணப் பொருத்தம்'],
+  ['muhurtham', '🗓️', 'Muhurtham', 'முகூர்த்தம்'],
+  ['calendar', '📅', 'Tamil Calendar', 'தமிழ் காலண்டர்'],
+  ['analysis', '📜', 'Full Analysis', 'முழு ஜாதக ஆய்வு'],
+  ['relations', '👨‍👩‍👧', 'Family Relations', 'குடும்ப உறவு'],
+  ['parigaram', '🪔', 'Parigaram', 'பரிகாரம்'],
+  ['temples', '🛕', 'Temples Near Me', 'அருகில் கோவில்கள்'],
+  ['mantras', '🕉️', 'Mantras', 'மந்திரங்கள்'],
+  ['weather', '⛅', 'Weather & Travel', 'வானிலை & பயணம்'],
+  ['reminders', '⏰', 'Alarm & Trips', 'அலாரம் & பயணம்'],
+  ['seva', '🔥', 'Seva & Priests', 'சேவை & புரோகிதர்'],
+  ['packages', '🧳', 'Yatra Packages', 'யாத்திரை பேக்கேஜ்'],
+  ['store', '🛍️', 'Pooja Store', 'பூஜைக் கடை'],
   ['names', '👶', 'Baby Names', 'குழந்தை பெயர்'],
-  ['thivasam', '🙏', 'Thivasam / Tharpanam', 'திவசம் / தர்ப்பணம்'],
+  ['thivasam', '🙏', 'Thivasam', 'திவசம் / தர்ப்பணம்'],
   ['starbday', '🎂', 'Star Birthday', 'நட்சத்திரப் பிறந்தநாள்'],
   ['ruthu', '🌸', 'Ruthu / Manjal Neerattu', 'ருது / மஞ்சள் நீராட்டு'],
-  ['temples', '🛕', 'Navagraha Temples', 'நவகிரக கோவில்கள்'],
   ['live', '🌌', 'Live Sky', 'நேரலை வானம்'],
+  ['about', '🌿', 'Why Kaippesi', 'ஏன் கைப்பேசி'],
 ];
 
 let today = null; // { key, day } cache of tamilDay for the current local date
@@ -62,8 +77,8 @@ function renderHome(sec) {
       <div class="hero-orn" aria-hidden="true"></div>
       <div class="hero-top">
         <div>
-          <div class="greet">🙏 ${L('Vanakkam', 'வணக்கம்')}${m ? `, ${esc(m.name)}` : ''}</div>
-          <div class="muted small" id="homeLoc">📍 ${esc(loc.name || '')}</div>
+          <div class="greet">🙏 ${L('Vanakkam', 'வணக்கம்')}${m ? `, ${esc(displayName(m))}` : ''}</div>
+          <div class="muted small" id="homeLoc">📍 ${esc(placeName(loc.name))}</div>
         </div>
         <div class="clock" id="clock">--:--:--</div>
       </div>
@@ -79,10 +94,11 @@ function renderHome(sec) {
       ${td.muhurthaDay ? `<div class="fest-row"><span class="fest muhurtham">💐 ${L('Subha Muhurtha day', 'சுப முகூர்த்த நாள்')}</span></div>` : ''}
     </div>
 
+    ${trialBanner()}${ratePrompt()}
     <div class="chips">
       <div class="chip-card"><span class="mini-label">${L('Star', 'நட்சத்திரம்')}</span><b>${esc(nakName(snap.nakshatra.index))}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.nakshatra.endsAt, loc.tz)}</span></div>
       <div class="chip-card"><span class="mini-label">${L('Tithi', 'திதி')}</span><b>${esc(ta() ? snap.tithi.ta : snap.tithi.name)}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.tithi.endsAt, loc.tz)}</span></div>
-      <div class="chip-card"><span class="mini-label">${L('Yoga', 'யோகம்')}</span><b>${esc(snap.yoga.name)}</b><span class="mini-sub">${esc(snap.karana)}</span></div>
+      <div class="chip-card"><span class="mini-label">${L('Yoga', 'யோகம்')}</span><b>${esc(yogaName(snap.yoga))}</b><span class="mini-sub">${esc(karanaName(snap))}</span></div>
       <div class="chip-card"><span class="mini-label">${L('Sun', 'சூரியன்')}</span><b>☀ ${fmtTime(td.sunrise, loc.tz)}</b><span class="mini-sub">🌇 ${fmtTime(td.sunset, loc.tz)}</span></div>
     </div>
 
@@ -98,7 +114,9 @@ function renderHome(sec) {
       <div style="text-align:right"><div class="mini-label">${L('ends in', 'முடிய')}</div><div class="countdown" data-end="${new Date(snap.currentHora.end).getTime()}">${countdown(snap.currentHora.end)}</div></div>
     </div>
 
+    ${weatherCardHtml()}
     ${familyCard(snap)}
+    ${relationsCard()}
     ${parigaramCard(snap)}
 
     <div class="section-title">${L('Everything for your family', 'உங்கள் குடும்பத்திற்கு அனைத்தும்')}</div>
@@ -114,7 +132,10 @@ function renderHome(sec) {
         <li>${L('Free parigarams first: prayer, lamp, charity and kindness.', 'இலவச பரிகாரங்கள் முதலில்: வழிபாடு, தீபம், தானம், அன்பு.')}</li>
         <li>${L('Your family\'s birth details stay private.', 'உங்கள் குடும்பத்தின் பிறப்பு விவரங்கள் தனிப்பட்டவை.')}</li>
       </ul>
-    </div>`;
+    </div>
+    <div class="brand-foot"><img src="logo.svg" alt="" width="64" height="64"><div><b>கைப்பேசி ஜோதிடர்</b>${ta() ? '' : '<span>Kaippesi Jothidar</span>'}</div></div>
+    ${copyright()}`;
+  fillHomeWeather();
   $('#shareToday').addEventListener('click', () => import('./screens-tools.js').then((mod) => mod.shareToday(td, snap)));
   $$('.fam-row', sec).forEach((r) => r.addEventListener('click', () => { state.activeId = r.dataset.id; saveFamily(); renderHome(sec); }));
   tickHome();
@@ -139,17 +160,23 @@ function familyCard(snap) {
     const o = dayOutlook(c, snap);
     const label = o.chandrashtama ? L('Chandrashtamam — be careful', 'சந்திராஷ்டமம் — கவனம்') : o.overall === 'good' ? L('Good day', 'நல்ல நாள்') : o.overall === 'bad' ? L('Go slow', 'நிதானம் தேவை') : L('Average day', 'சுமாரான நாள்');
     return `<button class="fam-row${m.id === state.activeId ? ' active' : ''}" data-id="${esc(m.id)}">
-      <span class="avatar">${esc(m.name.slice(0, 1).toUpperCase())}</span>
-      <span class="fam-name">${esc(m.name)}<small>${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}</small></span>
+      <span class="avatar">${esc(displayName(m).slice(0, 1).toUpperCase())}</span>
+      <span class="fam-name">${esc(displayName(m))}<small>${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}</small></span>
       <span class="tag ${o.overall}">${label}</span></button>`;
   }).join('');
   return `<div class="card glass"><div class="card-title"><span>👨‍👩‍👧 ${L('Family today', 'இன்று குடும்பத்தினருக்கு')}</span><button class="link-btn" data-go="family">${L('Manage', 'நிர்வகி')}</button></div>${rows}</div>`;
 }
 
+function relationsCard() {
+  const list = relationsList(3);
+  if (!list) return '';
+  return `<div class="card glass" data-go="relations"><div class="card-title"><span>💞 ${L('Family relations today', 'இன்று குடும்ப உறவு')}</span><span class="link-btn">${L('All', 'அனைத்தும்')} ›</span></div>${list.map((r) => relationRow(r)).join('')}</div>`;
+}
+
 function parigaramCard(snap) {
   const m = activeMember();
   const items = dailyParigaram({ weekday: snap.weekday.index, chart: m && chartOf(m), snapshot: snap }).slice(0, 2);
-  return `<div class="card glass" data-go="parigaram"><div class="card-title"><span>🪔 ${L('Today\'s parigaram', 'இன்றைய பரிகாரம்')}${m ? ` · ${esc(m.name)}` : ''}</span><span class="link-btn">${L('All', 'அனைத்தும்')} ›</span></div>
+  return `<div class="card glass" data-go="parigaram"><div class="card-title"><span>🪔 ${L('Today\'s parigaram', 'இன்றைய பரிகாரம்')}${m ? ` · ${esc(displayName(m))}` : ''}</span><span class="link-btn">${L('All', 'அனைத்தும்')} ›</span></div>
     ${items.map((i) => `<div class="pari-row"><span class="pg" style="color:${COLOR[i.planet]}">${GLYPH[i.planet]}</span><div><b>${esc(bi(i.reason))}</b><p>${esc(bi(i.free))}</p></div></div>`).join('')}</div>`;
 }
 
@@ -226,7 +253,7 @@ function buildWheel() {
   svg.innerHTML = `<defs><radialGradient id="core"><stop offset="0" stop-color="#ffe7a3"/><stop offset=".6" stop-color="#f5b83d"/><stop offset="1" stop-color="#b8620f" stop-opacity="0"/></radialGradient></defs>
     <g id="zring">${ring}</g>
     <line x1="-${R1 + 6}" y1="0" x2="${R1 + 6}" y2="0" stroke="rgba(255,255,255,.18)" stroke-dasharray="3 4"/>
-    <text x="-${R1 + 2}" y="-6" fill="#f5c26b" font-size="9">ASC</text>
+    <text x="-${R1 + 2}" y="-6" fill="#f5c26b" font-size="9">${L('ASC', 'லக்')}</text>
     <circle r="16" fill="url(#core)"/><g id="zplanets"></g>`;
   wheelBuilt = true;
 }
@@ -268,7 +295,7 @@ function renderLive(sec) {
   const [q, ql] = horaQuality(h.lord);
   sec.innerHTML = `${subHeaderLocal(L('Live Sky', 'நேரலை வானம்'), L('Synchronised every second with the real sky', 'ஒவ்வொரு நொடியும் வானத்துடன் ஒத்திசைவு'))}
     <div class="card glass wheel-card">
-      <div class="card-title"><span>${L('Rasi Mandalam', 'ராசி மண்டலம்')}</span><span class="live-dot">LIVE</span></div>
+      <div class="card-title"><span>${L('Rasi Mandalam', 'ராசி மண்டலம்')}</span><span class="live-dot">${L('LIVE', 'நேரலை')}</span></div>
       <svg id="wheel" viewBox="-160 -160 320 320" role="img" aria-label="Rasi Mandalam"></svg>
       <div class="lagna-line" id="lagnaNow"></div>
     </div>
@@ -276,7 +303,7 @@ function renderLive(sec) {
       ${[['Star', 'நட்சத்திரம்', `${nakName(s.nakshatra.index)} · ${L('Pada', 'பாதம்')} ${s.nakshatra.pada}`, s.nakshatra.endsAt, 'cdNak'],
     ['Tithi', 'திதி', `${ta() ? s.tithi.ta : s.tithi.name} · ${ta() ? (s.tithi.paksha === 'Shukla' ? 'வளர்பிறை' : 'தேய்பிறை') : s.tithi.paksha}`, s.tithi.endsAt, 'cdTithi'],
     ['Moon Rasi', 'சந்திர ராசி', rasiName(s.moonRasi.index), s.moonRasi.endsAt, 'cdRasi'],
-    ['Yoga', 'யோகம்', `${s.yoga.name} · ${s.karana}`, s.yoga.endsAt, 'cdYoga'],
+    ['Yoga', 'யோகம்', `${yogaName(s.yoga)} · ${karanaName(s)}`, s.yoga.endsAt, 'cdYoga'],
   ].map(([en, tx, v, end, id]) => `<div class="card glass"><div class="mini-label">${L(en, tx)}</div><div class="mini-value">${esc(v)}</div>
         <div class="mini-sub">${L('ends in', 'முடிய')} <span data-end="${end ? new Date(end).getTime() : ''}">${countdown(end, now)}</span></div>
         <div class="mini-sub">${fmtTime(end, loc.tz)}</div>${id === 'cdNak' ? '<div class="bar"><i id="cdNakBar"></i></div>' : ''}</div>`).join('')}
@@ -293,7 +320,7 @@ function renderLive(sec) {
     return `<div class="hora-item ${cls}"><b style="color:${COLOR[x.lord]}">${GLYPH[x.lord]} ${esc(ta() ? PLANETS[x.lord].short : x.lord.slice(0, 3))}</b>${fmtTime(x.start, loc.tz)}</div>`;
   }).join('')}</div>
     </div>
-    <div class="card glass"><div class="card-title"><span>${L('Gochara (transit) chart', 'கோசார கட்டம்')}</span><span class="live-dot">LIVE</span></div><div id="gocharaChart" class="si-chart"></div></div>`;
+    <div class="card glass"><div class="card-title"><span>${L('Gochara (transit) chart', 'கோசார கட்டம்')}</span><span class="live-dot">${L('LIVE', 'நேரலை')}</span></div><div id="gocharaChart" class="si-chart"></div></div>`;
   setTimeout(() => $('.hora-item.now')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }), 50);
   tickLive();
 }
@@ -322,13 +349,13 @@ registerScreen('live', {
 // ================================================================ JATHAGAM
 function memberSwitcher(current) {
   if (state.family.length < 2) return '';
-  return `<div class="member-switch">${state.family.map((m) => `<button class="mchip${m.id === current ? ' sel' : ''}" data-mid="${esc(m.id)}">${esc(m.name)}</button>`).join('')}</div>`;
+  return `<div class="member-switch">${state.family.map((m) => `<button class="mchip${m.id === current ? ' sel' : ''}" data-mid="${esc(m.id)}">${esc(displayName(m))}</button>`).join('')}</div>`;
 }
 
 function renderChart(sec) {
   const m = activeMember();
   const c = chartOf(m);
-  const sub = `${esc(c.name)}<br>${esc(c.date)} · ${esc(c.time.slice(0, 5))}<br>${esc(c.place || '')}`;
+  const sub = `${esc(displayName(m))}<br>${esc(c.date)} · ${esc(c.time.slice(0, 5))}<br>${esc(placeName(c.place))}`;
   const bp = c.birthPanchang;
   const strength = grahaStrength(c.planets);
   const d = doshams(c.planets);
@@ -337,6 +364,7 @@ function renderChart(sec) {
   const order = ['Lagna', 'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
   sec.innerHTML = `${memberSwitcher(m.id)}
     <div class="card glass"><div class="card-title"><span>${L('Rasi chart', 'ராசி கட்டம்')}</span><button class="link-btn" data-go="chat" data-param='{"topic":"chart"}'>💬 ${L('Ask about my chart', 'என் ஜாதகம் பற்றிக் கேள்')}</button></div><div id="rasiChart" class="si-chart"></div></div>
+    <button class="btn-gold" data-go="analysis">📜 ${L('Full Jathaga analysis — houses, yogas, Sani, Guru', 'முழு ஜாதக ஆய்வு — பாவங்கள், யோகங்கள், சனி, குரு')}</button>
     <div class="card glass"><div class="card-title">${L('Navamsa chart', 'நவாம்ச கட்டம்')}</div><div id="navamsaChart" class="si-chart"></div></div>
     <div class="card glass"><div class="card-title">${L('Birth details', 'பிறப்பு விவரம்')}</div>
       <dl class="kv">
@@ -345,7 +373,7 @@ function renderChart(sec) {
         <dt>${L('Lagnam', 'லக்னம்')}</dt><dd>${esc(rasiName(c.lagna.rasi))} ${esc(c.lagna.dms)}</dd>
         <dt>${L('Weekday', 'கிழமை')}</dt><dd>${esc(bi(bp.weekday))}</dd>
         <dt>${L('Tithi', 'திதி')}</dt><dd>${esc(ta() ? bp.tithi.ta : `${bp.tithi.paksha} ${bp.tithi.name}`)}</dd>
-        <dt>${L('Yoga / Karanam', 'யோகம் / கரணம்')}</dt><dd>${esc(bp.yoga.name)} / ${esc(bp.karana)}</dd>
+        <dt>${L('Yoga / Karanam', 'யோகம் / கரணம்')}</dt><dd>${esc(yogaName(bp.yoga))} / ${esc(karanaName(bp))}</dd>
         <dt>${L('Name letters', 'பெயர் எழுத்து')}</dt><dd>${esc(nl.primary.ta)} (${esc(nl.primary.en)})</dd>
         <dt>${L('Ayanamsa', 'அயனாம்சம்')}</dt><dd>${c.ayanamsa.toFixed(4)}° ${L('Lahiri', 'லாஹிரி')}</dd>
       </dl></div>
@@ -387,12 +415,15 @@ registerScreen('chart', { render: renderChart, needsMember: true });
 // ================================================================ PRASNAM
 let prasnaCategory = null;
 let lastAnswer = null;
+let askForId = null;
+const askMember = () => state.family.find((m) => m.id === askForId) || activeMember();
 
 function renderAsk(sec) {
   const cats = CATEGORIES.filter((c) => !c.event);
   sec.innerHTML = `<div class="card glass">
       <h2>${L('Ask the Jothidar — Do or Don\'t?', 'ஜோதிடரிடம் கேளுங்கள் — செய்யலாமா?')}</h2>
       <p class="muted">${L('Choose what you are about to do. The Prasnam is cast for this exact second.', 'செய்யப்போகும் காரியத்தைத் தேர்வு செய்யுங்கள். இந்த நொடிக்கான பிரசன்னம் கணிக்கப்படும்.')}</p>
+      ${state.family.length > 1 ? `<label>${L('Asking for', 'யாருக்காக')}<select id="askFor">${state.family.map((m) => `<option value="${esc(m.id)}"${m.id === askMember()?.id ? ' selected' : ''}>${esc(displayName(m))}${m.relation === 'organization' ? ` (${L('company', 'நிறுவனம்')})` : ''}</option>`).join('')}</select></label>` : ''}
       <div class="cat-grid">${cats.map((c) => `<button class="cat${prasnaCategory === c.id ? ' sel' : ''}" data-id="${c.id}"><span class="ci">${c.icon}</span>${esc(bi(c))}</button>`).join('')}</div>
       <label class="sr-only" for="question">${L('Your question', 'உங்கள் கேள்வி')}</label>
       <textarea id="question" rows="2" maxlength="400" placeholder="${esc(L('Your question (optional) — e.g. Can I sign the flat agreement today?', 'உங்கள் கேள்வி (விருப்பம்) — உ.தா. இன்று ஒப்பந்தம் கையெழுத்திடலாமா?'))}"></textarea>
@@ -410,6 +441,7 @@ function renderAsk(sec) {
     $('#askBtn').disabled = false;
   }));
   $('#askBtn').addEventListener('click', ask);
+  $('#askFor')?.addEventListener('change', (e) => { askForId = e.target.value; });
   $('#speakReply').addEventListener('click', () => { if (!speak($('#reply').textContent)) toast(L('Read-aloud is not available on this device', 'இந்தச் சாதனத்தில் வாசித்துக்காட்டும் வசதி இல்லை')); });
   if (lastAnswer) { renderAnswer(lastAnswer); $('#reply').textContent = lastAnswer.reply || ''; $('#aiSource').textContent = lastAnswer.source || ''; }
 }
@@ -452,7 +484,7 @@ async function askOnDevice(body, m) {
   if (!STATIC) { $('#reply').textContent = fallback; a.reply = fallback; a.source = '📜 Rules'; $('#aiSource').textContent = a.source; return; }
   $('#reply').textContent = L('Thinking…', 'யோசிக்கிறேன்…');
   const r = await aiTask({ task: 'chat', context: ctx, messages: [{ role: 'user', content: ctx.question }], fallbackText: fallback, onText: (tx) => { $('#reply').textContent = tx; } });
-  a.reply = r.text; a.source = r.source === 'ai' ? '✨ AI' : '📜 Rules';
+  a.reply = r.text; a.source = r.source === 'ai' ? '✨ ' + L('Detailed', 'விரிவான பதில்') : '📜 ' + L('Quick', 'சுருக்கம்');
   $('#aiSource').textContent = a.source;
 }
 
@@ -464,7 +496,7 @@ async function ask() {
   $('#reply').textContent = '';
   $('#reply').classList.add('typing');
   $('#factorCard').innerHTML = ''; $('#bestCard').innerHTML = ''; $('#aiSource').textContent = '';
-  const m = activeMember();
+  const m = askMember();
   const body = { category: prasnaCategory, question: $('#question').value.trim(), lang: state.lang, loc: state.loc, birth: m ? { name: m.name, date: m.date, time: m.time, lat: m.lat, lon: m.lon, tz: m.tz, place: m.place } : undefined };
   await new Promise((r) => setTimeout(r, 30));
   try {
@@ -474,7 +506,7 @@ async function ask() {
       evaluation: (d) => { lastAnswer = d; renderAnswer(d); $('#verdictCard').scrollIntoView({ behavior: 'smooth' }); },
       delta: (d) => { reply += d.text; $('#reply').textContent = reply; },
       reset: () => { reply = ''; $('#reply').textContent = ''; },
-      done: (d) => { lastAnswer.reply = reply; lastAnswer.source = d.source === 'ai' ? '✨ AI' : '📜 Rules'; $('#aiSource').textContent = lastAnswer.source; },
+      done: (d) => { lastAnswer.reply = reply; lastAnswer.source = d.source === 'ai' ? '✨ ' + L('Detailed', 'விரிவான பதில்') : '📜 ' + L('Quick', 'சுருக்கம்'); $('#aiSource').textContent = lastAnswer.source; },
     });
   } catch {
     await askOnDevice(body, m);

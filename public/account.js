@@ -2,7 +2,8 @@
 import { searchLocalPlaces } from './shared/places.js';
 import {
   state, $, $$, L, ta, esc, bi, api, STATIC, store, go, registerScreen, subHeader, saveFamily, saveSettings, setLoc,
-  toast, RELATIONS, chartOf, nakName, rasiName,
+  toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright,
+  placeName,
 } from './core.js';
 
 // ================================================================ SESSION
@@ -69,12 +70,13 @@ function renderLogin(sec) {
         <p class="err" id="loginErr"></p></form>`;
   }
   sec.innerHTML = `<div class="login-wrap">
-      <img src="icon.svg" alt="" width="84" height="84" class="login-logo">
+      <img src="logo.svg" alt="" width="96" height="96" class="login-logo">
       <h1 class="brand-ta small">கைப்பேசி ஜோதிடர்</h1>
-      <p class="brand-en small">Kaippesi Jothidar</p>
+      ${ta() ? '' : '<p class="brand-en small">Kaippesi Jothidar</p>'}
       <p class="muted center">${L('Sign in to keep your family\'s charts safe and available on every phone.', 'உங்கள் குடும்ப ஜாதகங்களைப் பாதுகாப்பாக எல்லா கைப்பேசியிலும் பெற உள்நுழையவும்.')}</p>
       <div class="card glass login-card">${body}</div>
       <button class="link-btn center-block" id="skipLogin">${L('Continue without signing in', 'உள்நுழையாமல் தொடரவும்')} ›</button>
+      ${copyright()}
       <p class="muted small center">${L('By continuing you agree to use astrology as guidance, not as a substitute for medical, legal or financial advice.', 'ஜோதிடம் வழிகாட்டுதல் மட்டுமே; மருத்துவ, சட்ட, நிதி ஆலோசனைக்கு மாற்றல்ல என்பதை ஏற்கிறீர்கள்.')}</p>
     </div>`;
   $$('[data-ch]', sec).forEach((b) => b.addEventListener('click', () => { login.channel = b.dataset.ch; login.step = 'enter'; renderLogin(sec); $('#loginTo')?.focus(); }));
@@ -197,7 +199,9 @@ function placeSearch(input, list, onPick) {
 
 function memberForm(m, first) {
   return `<form id="memberForm" autocomplete="off">
-    <label>${L('Name', 'பெயர்')}<input name="name" required maxlength="60" value="${esc(m.name || '')}"></label>
+    <div class="row2"><label>${L('Name', 'பெயர்')}<input name="name" required maxlength="60" value="${esc(m.name || '')}"></label>
+      <label>${L('Name in Tamil (optional)', 'தமிழில் பெயர் (விருப்பம்)')}<input name="nameTa" maxlength="60" lang="ta" placeholder="சுரேஷ்" value="${esc(m.nameTa || '')}"></label></div>
+    <p class="muted small">${L('For a company or team, choose "Company / Team" and enter its founding (incorporation) date, time and place.', 'நிறுவனம் / குழுவிற்கு "நிறுவனம் / குழு" தேர்வு செய்து, தொடங்கிய தேதி, நேரம், இடம் உள்ளிடவும்.')}</p>
     <div class="row2">
       <label>${L('Relation', 'உறவு')}<select name="relation">${RELATIONS.map((r) => `<option value="${r.id}"${(m.relation || (first ? 'self' : 'other')) === r.id ? ' selected' : ''}>${esc(bi(r))}</option>`).join('')}</select></label>
       <label>${L('Gender', 'பாலினம்')}<select name="gender">${[['male', 'Male', 'ஆண்'], ['female', 'Female', 'பெண்']].map(([id, en, tx]) => `<option value="${id}"${m.gender === id ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label>
@@ -237,9 +241,9 @@ function renderFamily(sec, params = {}) {
   }
   sec.innerHTML = `${subHeader(L('Family', 'குடும்பம்'), L('Everyone\'s charts in one place', 'அனைவரின் ஜாதகமும் ஒரே இடத்தில்'), 'more')}
     ${state.family.map((m) => { const c = chartOf(m); return `<div class="card glass fam-card${m.id === state.activeId ? ' active' : ''}">
-      <span class="avatar">${esc(m.name.slice(0, 1).toUpperCase())}</span>
-      <div style="flex:1"><b>${esc(m.name)}</b> <span class="pill">${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))}</span>
-        <div class="muted small">${esc(m.date)} · ${esc(m.time.slice(0, 5))} · ${esc(m.place)}</div>
+      <span class="avatar">${esc(displayName(m).slice(0, 1).toUpperCase())}</span>
+      <div style="flex:1"><b>${esc(displayName(m))}</b> <span class="pill">${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))}</span>
+        <div class="muted small">${esc(m.date)} · ${esc(m.time.slice(0, 5))} · ${esc(placeName(m.place))}</div>
         <div class="small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))} · ${L('Lagnam', 'லக்னம்')} ${esc(rasiName(c.lagna.rasi))}</div></div>
       <div class="fam-actions">${m.id === state.activeId ? `<span class="tag good">${L('Active', 'தேர்வு')}</span>` : `<button class="chip-btn" data-use="${esc(m.id)}">${L('Use', 'தேர்வு')}</button>`}
         <button class="link-btn" data-edit="${esc(m.id)}">${L('Edit', 'திருத்து')}</button></div></div>`; }).join('')}
@@ -254,7 +258,7 @@ function saveMember(f) {
   const time = f.elements.time.value.length === 5 ? `${f.elements.time.value}:00` : f.elements.time.value;
   const m = {
     id: editing.id || Math.random().toString(36).slice(2, 10),
-    name: f.elements.name.value.trim(), relation: f.elements.relation.value, gender: f.elements.gender.value,
+    name: f.elements.name.value.trim(), nameTa: f.elements.nameTa.value.trim() || undefined, relation: f.elements.relation.value, gender: f.elements.gender.value,
     date: f.elements.date.value, time, place: f.elements.place.value.trim(),
     lat: Number(f.elements.lat.value), lon: Number(f.elements.lon.value), tz: Number(f.elements.tz.value),
   };
@@ -276,24 +280,31 @@ function renderMore(sec) {
   const u = state.user;
   sec.innerHTML = `<div class="card glass account-card">
       <span class="avatar big">${esc((u?.name || '🙏').slice(0, 1).toUpperCase())}</span>
-      <div style="flex:1">${u ? `<b>${esc(u.name || L('Signed in', 'உள்நுழைந்துள்ளீர்கள்'))}</b><div class="muted small">${esc(u.phone || u.email || (u.hasFacebook ? 'Facebook' : ''))}${u.demo ? ' · demo' : ''}</div>`
+      <div style="flex:1">${u ? `<b>${esc(displayName(state.family.find((m) => m.relation === 'self')) || u.name || L('Signed in', 'உள்நுழைந்துள்ளீர்கள்'))}</b><div class="muted small">${esc(u.phone || u.email || (u.hasFacebook ? 'Facebook' : ''))}${u.demo ? ' · demo' : ''}</div>`
     : `<b>${L('Not signed in', 'உள்நுழையவில்லை')}</b><div class="muted small">${L('Sign in to back up your family', 'குடும்ப விவரங்களைப் பாதுகாக்க உள்நுழையவும்')}</div>`}</div>
       ${u ? `<button class="chip-btn" id="signOut">${L('Sign out', 'வெளியேறு')}</button>` : `<button class="chip-btn" data-go="login">${L('Sign in', 'உள்நுழை')}</button>`}</div>
+    <button class="premium-cta" data-go="plans">👑 ${L('Kaippesi Premium — for your whole family', 'கைப்பேசி பிரீமியம் — முழு குடும்பத்திற்கும்')} ›</button>
     <div class="menu">
+      <button data-go="life">🔭 ${L('Life questions — when will it happen?', 'வாழ்க்கைக் கேள்விகள் — எப்போது?')}</button>
       <button data-go="family">👨‍👩‍👧 ${L('Family members', 'குடும்ப உறுப்பினர்கள்')}</button>
       <button data-go="calendar">📅 ${L('Tamil calendar', 'தமிழ் நாட்காட்டி')}</button>
       <button data-go="muhurtham">🗓️ ${L('Muhurtham finder', 'முகூர்த்தம் தேடல்')}</button>
       <button data-go="porutham">💞 ${L('Marriage matching', 'திருமணப் பொருத்தம்')}</button>
       <button data-go="parigaram">🪔 ${L('Parigaram', 'பரிகாரம்')}</button>
       <button data-go="temples">🛕 ${L('Navagraha temples', 'நவகிரக கோவில்கள்')}</button>
+      <button data-go="packages">🧳 ${L('Yatra packages', 'யாத்திரை பேக்கேஜ்கள்')}</button>
+      <button data-go="invite">🎁 ${L('Invite family & get free days', 'அழைத்து இலவச நாட்கள் பெறுங்கள்')}</button>
+      <button data-go="feedback">⭐ ${L('Rate & comment', 'மதிப்பீடு & கருத்து')}</button>
+      <button data-go="legal">📄 ${L('Privacy, terms & refunds', 'தனியுரிமை, விதிமுறைகள், பணத்திருப்பம்')}</button>
       <button data-go="about">🌿 ${L('Why Kaippesi Jothidar', 'ஏன் கைப்பேசி ஜோதிடர்')}</button>
     </div>
+    <button class="link-btn center-block" data-go="admin">🔐 ${L('Owner dashboard', 'உரிமையாளர் டாஷ்போர்டு')}</button>
     <div class="card glass settings">
       <div class="card-title">${L('Settings', 'அமைப்புகள்')}</div>
       <div class="set-row"><span>${L('Language', 'மொழி')}</span><div class="seg"><button data-lang="ta" class="${ta() ? 'sel' : ''}">தமிழ்</button><button data-lang="en" class="${ta() ? '' : 'sel'}">English</button></div></div>
       <label class="set-row"><span>${L('Large text (for elders)', 'பெரிய எழுத்து (பெரியோருக்கு)')}</span><input type="checkbox" id="setLarge"${state.settings.large ? ' checked' : ''}></label>
       <label class="set-row"><span>${L('Read answers aloud', 'பதில்களை வாசித்துக்காட்டு')}</span><input type="checkbox" id="setVoice"${state.settings.voice ? ' checked' : ''}></label>
-      <div class="set-row col"><span>${L('Location for today\'s timings', 'இன்றைய நேரங்களுக்கான இடம்')}: <b>${esc(state.loc?.name || '—')}</b></span>
+      <div class="set-row col"><span>${L('Location for today\'s timings', 'இன்றைய நேரங்களுக்கான இடம்')}: <b>${esc(placeName(state.loc?.name) || '—')}</b></span>
         <label class="place-wrap"><input id="locSearch" placeholder="${esc(L('Search a city…', 'நகரத்தைத் தேடுக…'))}"><ul id="locList" class="suggest" hidden></ul></label>
         ${STATIC ? '' : `<button class="link-btn" id="geoBtn">📍 ${L('Use my current location', 'என் தற்போதைய இருப்பிடம்')}</button>`}</div>
     </div>`;
@@ -317,11 +328,15 @@ function renderAbout(sec) {
     ['🔍', 'See the calculation', 'கணக்கைப் பாருங்கள்', 'Every answer lists the real factors — Horai, Tara Bala, Rahu Kalam, Prasna Lagna — with points. Nothing is hidden.', 'ஒவ்வொரு பதிலிலும் ஓரை, தாரா பலம், ராகு காலம், பிரசன்ன லக்னம் போன்ற உண்மையான காரணிகள் மதிப்புடன் காட்டப்படும்.'],
     ['🔭', 'Precise to the second', 'நொடி துல்லியம்', 'Planet positions from a professional astronomy engine with the Lahiri ayanamsa, for the exact place and second.', 'தொழில்முறை வானியல் கணிப்பு, லாஹிரி அயனாம்சம் — சரியான இடம், நொடிக்கு.'],
     ['👨‍👩‍👧', 'Made for families', 'குடும்பத்திற்காக', 'All your family\'s charts together: who should be careful today, muhurthams that suit everyone, star birthdays and ancestors\' thivasam.', 'குடும்பத்தினர் அனைவரின் ஜாதகமும் ஒன்றாக: இன்று யார் கவனமாக இருக்க வேண்டும், அனைவருக்கும் ஏற்ற முகூர்த்தம், நட்சத்திரப் பிறந்தநாள், முன்னோர் திவசம்.'],
-    ['💬', 'A Jothidar who listens', 'கேட்கும் ஜோதிடர்', 'Talk in Tamil or English, by voice or text. The AI answers from your own chart and today\'s sky — never generic horoscope text.', 'தமிழ் அல்லது ஆங்கிலத்தில், குரல் அல்லது எழுத்தில் பேசுங்கள். AI உங்கள் ஜாதகம், இன்றைய வானம் அடிப்படையில் பதில் அளிக்கும்.'],
+    ['💬', 'A Jothidar who listens', 'கேட்கும் ஜோதிடர்', 'Talk in Tamil or English, by voice or text. Answers come from your own chart and today\'s sky — never generic horoscope text.', 'தமிழ் அல்லது ஆங்கிலத்தில், குரல் அல்லது எழுத்தில் பேசுங்கள். உங்கள் ஜாதகம், இன்றைய வானம் அடிப்படையில் பதில் கிடைக்கும்.'],
     ['🪔', 'Free parigaram first', 'இலவச பரிகாரம் முதலில்', 'Prayer, a lamp, charity, feeding animals, respecting elders — remedies anyone can do, every day.', 'வழிபாடு, தீபம், தானம், உயிர்களுக்கு உணவு, பெரியோரை மதித்தல் — யாரும் தினமும் செய்யக்கூடியவை.'],
     ['🔒', 'Private by design', 'தனியுரிமை', 'Birth details stay on your phone unless you sign in to back them up. We never sell your data.', 'உள்நுழைந்து பாதுகாக்கும் வரை பிறப்பு விவரங்கள் உங்கள் கைப்பேசியிலேயே இருக்கும். உங்கள் தரவை விற்பதில்லை.'],
   ];
   sec.innerHTML = `${subHeader(L('Why Kaippesi Jothidar', 'ஏன் கைப்பேசி ஜோதிடர்'), L('Astrology for peace, health and prosperity — for every family', 'அமைதி, ஆரோக்கியம், செல்வத்திற்கான ஜோதிடம் — ஒவ்வொரு குடும்பத்திற்கும்'), 'more')}
-    ${P.map(([i, en, tx, den, dta]) => `<div class="card glass about-row"><span class="ti-icon">${i}</span><div><b>${L(en, tx)}</b><p>${L(den, dta)}</p></div></div>`).join('')}`;
+    ${P.map(([i, en, tx, den, dta]) => `<div class="card glass about-row"><span class="ti-icon">${i}</span><div><b>${L(en, tx)}</b><p>${L(den, dta)}</p></div></div>`).join('')}
+    <div id="aboutTesti"></div>
+    <div class="brand-foot"><img src="logo.svg" alt="" width="64" height="64"><div><b>கைப்பேசி ஜோதிடர்</b>${ta() ? '' : '<span>Kaippesi Jothidar</span>'}</div></div>
+    ${copyright()}`;
+  if (!STATIC) import('./growth.js').then((g) => g.loadTestimonials('#aboutTesti'));
 }
 registerScreen('about', { render: renderAbout, parent: 'more' });

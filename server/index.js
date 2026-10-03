@@ -6,6 +6,11 @@ import { CATEGORIES, evaluatePrasna, getCategory } from '../shared/prasna.js';
 import { searchLocalPlaces, searchOnline } from './places.js';
 import { aiEnabled, buildContext, generateReply, runTask } from './ai.js';
 import { authRouter, currentUser } from './auth.js';
+import { weatherRouter } from './weather.js';
+import { pushRouter, startPushScheduler } from './push.js';
+import { marketRouter } from './market.js';
+import { billingEnforced, billingRouter, checkAiQuota, recordAiUsage } from './billing.js';
+import { growthRouter } from './growth.js';
 import { tamilMonth } from '../shared/tamilcal.js';
 import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
 import { findMuhurtham } from '../shared/special.js';
@@ -63,9 +68,15 @@ function parseBirth(b) {
 export function createApp() {
   const app = express();
   if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
+  app.use('/api/billing/stripe/webhook', express.raw({ type: '*/*', limit: '256kb' })); // Stripe signs the raw bytes
   app.use('/api/me/data', express.json({ limit: '256kb' })); // saved family profiles can be larger
   app.use(express.json({ limit: '64kb' }));
   app.use('/api', authRouter());
+  app.use('/api', weatherRouter());
+  app.use('/api', pushRouter());
+  app.use('/api', marketRouter());
+  app.use('/api', billingRouter());
+  app.use('/api', growthRouter());
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, ai: aiEnabled() }));
 
@@ -185,6 +196,8 @@ export function createApp() {
     if (!AI_TASKS[task]) throw new BadRequest('Unknown task');
     if (process.env.AI_REQUIRE_LOGIN === '1' && !currentUser(req)) return res.status(401).json({ error: 'Please sign in to use the AI Jothidar' });
     if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many questions — please wait a few minutes' });
+    const metered = billingEnforced();
+    if (metered && !checkAiQuota(req).allowed) return res.status(402).json({ error: 'Free daily limit reached — upgrade to Premium for unlimited answers', upgrade: true });
     const { context = {}, messages = [], lang = 'en', fallbackText = '' } = req.body || {};
     if (JSON.stringify(context).length > 20000) throw new BadRequest('Context too large');
     if (!Array.isArray(messages) || messages.length > 24) throw new BadRequest('Invalid messages');
@@ -196,10 +209,12 @@ export function createApp() {
     const args = { task, context, messages: msgs, lang, fallbackText: String(fallbackText).slice(0, 4000) || '🙏' };
     if (!(req.headers.accept || '').includes('text/event-stream')) {
       const r = await runTask(args);
+      if (metered) recordAiUsage(req);
       return res.json({ reply: r.text, source: r.source });
     }
     const send = openStream(res);
     const r = await runTask({ ...args, onText: (t) => send('delta', { text: t }), onReset: () => send('reset', {}) });
+    if (metered) recordAiUsage(req);
     send('done', { source: r.source });
     res.end();
   });
@@ -226,5 +241,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT) || 3000;
   createApp().listen(port, '0.0.0.0', () => {
     console.log(`🪐 Kaippesi Jothidar running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);
+    startPushScheduler();
   });
 }

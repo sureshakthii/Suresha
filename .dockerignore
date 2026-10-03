@@ -1,0 +1,23 @@
+# Only server/, shared/, public/ and package*.json are needed in the image.
+.git
+.github
+node_modules
+npm-debug.log
+*.log
+.env
+.env.*
+!.env.example
+data
+dist
+test
+docs
+scripts
+android
+ios
+mobile
+capacitor.config.json
+*.jks
+*.keystore
+Dockerfile
+.dockerignore
+render.yaml

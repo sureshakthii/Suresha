@@ -1,0 +1,43 @@
+{
+  "appId": "app.kaippesi.jothidar",
+  "appName": "கைப்பேசி ஜோதிடர்",
+  "webDir": "mobile/www",
+  "server": {
+    "url": "https://kaippesi.example.com",
+    "cleartext": false,
+    "errorPath": "index.html",
+    "allowNavigation": [
+      "kaippesi.example.com",
+      "checkout.razorpay.com",
+      "api.razorpay.com",
+      "checkout.stripe.com"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "never"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "launchAutoHide": true,
+      "backgroundColor": "#0b0620",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0b0620",
+      "overlaysWebView": false
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  }
+}

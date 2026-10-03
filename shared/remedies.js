@@ -6,7 +6,7 @@ export const NAVAGRAHA = {
   Sun: {
     deity: { en: 'Lord Surya / Lord Shiva', ta: 'சூரிய பகவான் / சிவன்' }, day: 0, color: { en: 'Red / saffron', ta: 'சிவப்பு / காவி' },
     grain: { en: 'Wheat', ta: 'கோதுமை' }, gem: { en: 'Ruby', ta: 'மாணிக்கம்' },
-    mantra: 'ஓம் சூர்யாய நமஹ (Om Suryaya Namaha) · Aditya Hrudayam',
+    mantra: { en: 'Om Suryaya Namaha · Aditya Hrudayam', ta: 'ஓம் சூர்யாய நமஹ · ஆதித்ய ஹிருதயம்' },
     temple: { en: 'Suriyanar Kovil (near Kumbakonam)', ta: 'சூரியனார் கோவில் (கும்பகோணம் அருகே)' },
     free: { en: 'Offer water to the rising Sun (arghyam) and do Surya Namaskaram; respect your father and elders.', ta: 'உதய சூரியனுக்கு அர்க்யம் கொடுத்து சூரிய நமஸ்காரம் செய்யவும்; தந்தை, பெரியோரை மதிக்கவும்.' },
     charity: { en: 'Donate wheat or jaggery on Sunday.', ta: 'ஞாயிறு அன்று கோதுமை அல்லது வெல்லம் தானம் செய்யவும்.' },
@@ -15,7 +15,7 @@ export const NAVAGRAHA = {
   Moon: {
     deity: { en: 'Goddess Parvathi / Ambal', ta: 'அம்பாள் / பார்வதி' }, day: 1, color: { en: 'White', ta: 'வெண்மை' },
     grain: { en: 'Raw rice', ta: 'பச்சரிசி' }, gem: { en: 'Pearl', ta: 'முத்து' },
-    mantra: 'ஓம் சந்திராய நமஹ (Om Chandraya Namaha)',
+    mantra: { en: 'Om Chandraya Namaha', ta: 'ஓம் சந்திராய நமஹ' },
     temple: { en: 'Thingalur Kailasanathar Temple', ta: 'திங்களூர் கைலாசநாதர் கோவில்' },
     free: { en: 'Keep the mind calm with meditation; offer milk to Shiva on Monday; care for your mother.', ta: 'தியானம் செய்து மனதை அமைதியாக வைக்கவும்; திங்கள் சிவனுக்கு பால் அபிஷேகம்; தாயைப் பேணவும்.' },
     charity: { en: 'Donate rice or milk on Monday.', ta: 'திங்கள் அன்று அரிசி அல்லது பால் தானம்.' },
@@ -24,7 +24,7 @@ export const NAVAGRAHA = {
   Mars: {
     deity: { en: 'Lord Murugan', ta: 'முருகப் பெருமான்' }, day: 2, color: { en: 'Red', ta: 'சிவப்பு' },
     grain: { en: 'Toor dal (thuvarai)', ta: 'துவரை' }, gem: { en: 'Red coral', ta: 'பவளம்' },
-    mantra: 'ஓம் சரவணபவ (Om Saravanabhava) · Kanda Sashti Kavasam',
+    mantra: { en: 'Om Saravanabhava · Kanda Sashti Kavasam', ta: 'ஓம் சரவணபவ · கந்த சஷ்டி கவசம்' },
     temple: { en: 'Vaitheeswaran Kovil', ta: 'வைத்தீஸ்வரன் கோவில்' },
     free: { en: 'Recite Kanda Sashti Kavasam on Tuesday; control anger; help siblings.', ta: 'செவ்வாய் அன்று கந்த சஷ்டி கவசம் பாராயணம்; கோபத்தைக் கட்டுப்படுத்தவும்; உடன்பிறந்தோருக்கு உதவவும்.' },
     charity: { en: 'Donate toor dal or red cloth on Tuesday.', ta: 'செவ்வாய் அன்று துவரை அல்லது சிவப்பு துணி தானம்.' },
@@ -33,7 +33,7 @@ export const NAVAGRAHA = {
   Mercury: {
     deity: { en: 'Lord Vishnu / Perumal', ta: 'பெருமாள் / விஷ்ணு' }, day: 3, color: { en: 'Green', ta: 'பச்சை' },
     grain: { en: 'Green gram (pachai payaru)', ta: 'பச்சைப் பயறு' }, gem: { en: 'Emerald', ta: 'மரகதம்' },
-    mantra: 'ஓம் புதாய நமஹ (Om Budhaya Namaha) · Vishnu Sahasranamam',
+    mantra: { en: 'Om Budhaya Namaha · Vishnu Sahasranamam', ta: 'ஓம் புதாய நமஹ · விஷ்ணு சகஸ்ரநாமம்' },
     temple: { en: 'Thiruvenkadu Swetharanyeswarar Temple', ta: 'திருவெண்காடு ஸ்வேதாரண்யேஸ்வரர் கோவில்' },
     free: { en: 'Read or chant Vishnu Sahasranamam on Wednesday; learn something new; speak truthfully.', ta: 'புதன் அன்று விஷ்ணு சகஸ்ரநாமம்; புதிதாக ஏதேனும் கற்கவும்; உண்மையே பேசவும்.' },
     charity: { en: 'Donate green gram or books to students.', ta: 'பச்சைப் பயறு அல்லது மாணவர்களுக்கு புத்தகம் தானம்.' },
@@ -42,7 +42,7 @@ export const NAVAGRAHA = {
   Jupiter: {
     deity: { en: 'Lord Dakshinamurthy', ta: 'தட்சிணாமூர்த்தி' }, day: 4, color: { en: 'Yellow', ta: 'மஞ்சள்' },
     grain: { en: 'Chickpea (kondai kadalai)', ta: 'கொண்டைக் கடலை' }, gem: { en: 'Yellow sapphire', ta: 'புஷ்பராகம்' },
-    mantra: 'ஓம் குருவே நமஹ (Om Guruve Namaha)',
+    mantra: { en: 'Om Guruve Namaha', ta: 'ஓம் குருவே நமஹ' },
     temple: { en: 'Alangudi Abathsahayeswarar Temple', ta: 'ஆலங்குடி ஆபத்சகாயேஸ்வரர் கோவில்' },
     free: { en: 'Light a ghee lamp for Dakshinamurthy on Thursday; respect teachers; share knowledge.', ta: 'வியாழன் தட்சிணாமூர்த்திக்கு நெய் தீபம்; ஆசிரியர்களை மதிக்கவும்; அறிவைப் பகிரவும்.' },
     charity: { en: 'Donate chickpeas or yellow cloth on Thursday.', ta: 'வியாழன் அன்று கொண்டைக் கடலை அல்லது மஞ்சள் துணி தானம்.' },
@@ -51,7 +51,7 @@ export const NAVAGRAHA = {
   Venus: {
     deity: { en: 'Goddess Mahalakshmi', ta: 'மகாலட்சுமி' }, day: 5, color: { en: 'White / pastel', ta: 'வெள்ளை / இளநிறம்' },
     grain: { en: 'Field beans (mochai)', ta: 'மொச்சை' }, gem: { en: 'Diamond', ta: 'வைரம்' },
-    mantra: 'ஓம் மகாலட்சுமியை நமஹ (Om Mahalakshmyai Namaha)',
+    mantra: { en: 'Om Mahalakshmyai Namaha', ta: 'ஓம் மகாலட்சுமியை நமஹ' },
     temple: { en: 'Kanjanur Agneeswarar Temple', ta: 'கஞ்சனூர் அக்னீஸ்வரர் கோவில்' },
     free: { en: 'Light a lamp for Mahalakshmi on Friday evening; keep home clean and fragrant; respect women.', ta: 'வெள்ளி மாலை மகாலட்சுமிக்கு விளக்கேற்றவும்; வீட்டை சுத்தமாக வைக்கவும்; பெண்களை மதிக்கவும்.' },
     charity: { en: 'Donate white sweets or clothes on Friday.', ta: 'வெள்ளி அன்று இனிப்பு அல்லது வெண்ணிற ஆடை தானம்.' },
@@ -60,7 +60,7 @@ export const NAVAGRAHA = {
   Saturn: {
     deity: { en: 'Lord Saneeswarar / Lord Anjaneya', ta: 'சனீஸ்வரர் / ஆஞ்சநேயர்' }, day: 6, color: { en: 'Black / dark blue', ta: 'கருப்பு / கருநீலம்' },
     grain: { en: 'Black sesame (ellu)', ta: 'எள்' }, gem: { en: 'Blue sapphire', ta: 'நீலம்' },
-    mantra: 'ஓம் சனைச்சராய நமஹ (Om Shanaischaraya Namaha) · Hanuman Chalisa',
+    mantra: { en: 'Om Shanaischaraya Namaha · Hanuman Chalisa', ta: 'ஓம் சனைச்சராய நமஹ · அனுமன் சாலீசா' },
     temple: { en: 'Thirunallar Dharbaranyeswarar Temple', ta: 'திருநள்ளாறு தர்பாரண்யேஸ்வரர் கோவில்' },
     free: { en: 'Light a sesame-oil (nallennai) lamp on Saturday; feed crows; serve the elderly and workers.', ta: 'சனி அன்று நல்லெண்ணெய் தீபம்; காகத்திற்கு அன்னமிடவும்; முதியோர், உழைப்பாளர்களுக்கு உதவவும்.' },
     charity: { en: 'Donate black sesame, oil or food on Saturday.', ta: 'சனி அன்று எள், எண்ணெய் அல்லது அன்னதானம்.' },
@@ -69,7 +69,7 @@ export const NAVAGRAHA = {
   Rahu: {
     deity: { en: 'Goddess Durga', ta: 'துர்கை அம்மன்' }, day: null, color: { en: 'Smoky / dark', ta: 'புகை நிறம்' },
     grain: { en: 'Black gram (ulundhu)', ta: 'உளுந்து' }, gem: { en: 'Hessonite (Gomedhagam)', ta: 'கோமேதகம்' },
-    mantra: 'ஓம் ராகவே நமஹ (Om Rahave Namaha)',
+    mantra: { en: 'Om Rahave Namaha', ta: 'ஓம் ராகவே நமஹ' },
     temple: { en: 'Thirunageswaram Naganathar Temple', ta: 'திருநாகேஸ்வரம் நாகநாதர் கோவில்' },
     free: { en: 'Light a lamp for Durga during Rahu Kalam on Tuesday or Friday; avoid shortcuts and addictions.', ta: 'செவ்வாய்/வெள்ளி ராகு காலத்தில் துர்கைக்கு விளக்கேற்றவும்; குறுக்கு வழிகள், போதைகளைத் தவிர்க்கவும்.' },
     charity: { en: 'Donate black gram.', ta: 'உளுந்து தானம்.' },
@@ -78,7 +78,7 @@ export const NAVAGRAHA = {
   Ketu: {
     deity: { en: 'Lord Vinayagar', ta: 'விநாயகர்' }, day: null, color: { en: 'Multi-colour', ta: 'பல வண்ணம்' },
     grain: { en: 'Horse gram (kollu)', ta: 'கொள்ளு' }, gem: { en: "Cat's eye (Vaiduryam)", ta: 'வைடூரியம்' },
-    mantra: 'ஓம் கேதவே நமஹ (Om Ketave Namaha) · Vinayagar Agaval',
+    mantra: { en: 'Om Ketave Namaha · Vinayagar Agaval', ta: 'ஓம் கேதவே நமஹ · விநாயகர் அகவல்' },
     temple: { en: 'Keezhaperumpallam Naganathar Temple', ta: 'கீழப்பெரும்பள்ளம் நாகநாதர் கோவில்' },
     free: { en: 'Pray to Vinayagar before any work; practise meditation and spiritual reading.', ta: 'எந்த வேலைக்கும் முன் விநாயகரை வணங்கவும்; தியானம், ஆன்மீக வாசிப்பு.' },
     charity: { en: 'Donate horse gram or feed dogs.', ta: 'கொள்ளு தானம் அல்லது நாய்களுக்கு உணவு.' },

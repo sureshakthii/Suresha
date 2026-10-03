@@ -1,6 +1,6 @@
 // Tamil family traditions: Natchathira birthday, Thivasam (annual tithi for ancestors),
 // baby-name first letters from the birth star, and a family Muhurtham finder.
-import { panchang, vedicDay, moonSidereal, sunSidereal, NAKSHATRAS, RASIS } from './astro.js';
+import { panchang, vedicDay, moonSidereal, sunSidereal, findCrossing, NAKSHATRAS, RASIS } from './astro.js';
 import { scoreSnapshot, getCategory } from './prasna.js';
 import { tamilDate, TAMIL_MONTHS } from './tamilcal.js';
 
@@ -165,4 +165,30 @@ export function findMuhurtham({ category, loc, persons = [], from = new Date(), 
       lagna: w.peak.snap.lagna && { rasi: w.peak.snap.lagna.rasi, name: RASIS[w.peak.snap.lagna.rasi] },
       hora: w.peak.snap.currentHora.lord, factors: w.peak.factors, personNotes: w.peak.personNotes,
     }));
+}
+
+/**
+ * Milestone celebrations: Shashtiabdapoorthi (60 years complete), Bheemaratha Shanti (70) and
+ * Sathabhishekam (after 1000 full moons, about 80 years 8 months). Each is held on the birth star
+ * day of the Tamil birth month — we return that date plus the exact 1000th full moon for Sathabhishekam.
+ */
+export function milestones(chart, loc, from = new Date()) {
+  const birth = chart.utc;
+  const star = chart.janmaNakshatra.index;
+  const month = chart.planets.Sun.rasi;
+  const sep = (d) => (moonSidereal(d) - sunSidereal(d) + 360) % 360;
+  const yearsAfter = (y) => new Date(birth.getTime() + y * 365.2425 * DAY);
+  const starDay = (after) => natchathiraBirthdays({ birthStar: star, birthTamilMonth: month, loc, from: new Date(after.getTime() - 20 * DAY), count: 1 })[0] || null;
+  const out = [];
+  const add = (id, en, ta, years, anchor, extra = {}) => {
+    const day = starDay(anchor);
+    out.push({ id, name: { en, ta }, years, anchor, day, past: day ? Date.parse(day.date) < from.getTime() - DAY : anchor < from, ...extra });
+  };
+  add('shashti', 'Shashtiabdapoorthi (60th)', 'சஷ்டியப்தபூர்த்தி (60-ம் ஆண்டு)', 60, yearsAfter(60));
+  add('bheemaratha', 'Bheemaratha Shanti (70th)', 'பீமரத சாந்தி (70-ம் ஆண்டு)', 70, yearsAfter(70));
+  // 1000th full moon after birth.
+  const approx = new Date(birth.getTime() + 999.5 * 29.530588 * DAY);
+  const fullMoon = findCrossing(sep, 180, new Date(approx.getTime() - 20 * DAY), 40 * 24);
+  add('sathabhishekam', 'Sathabhishekam (1000 full moons)', 'சதாபிஷேகம் (1000 பௌர்ணமி)', 80, fullMoon || yearsAfter(80.7), { thousandthFullMoon: fullMoon });
+  return out;
 }

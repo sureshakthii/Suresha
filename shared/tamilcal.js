@@ -162,7 +162,7 @@ export function tamilDay(dateLocalNoon, lat, lon, tz) {
     tamil: td,
     weekday: p.weekday,
     sunrise: day.sunrise, sunset: day.sunset,
-    tithi: p.tithi, nakshatra: p.nakshatra, yoga: p.yoga, karana: p.karana, moonRasi: p.moonRasi,
+    tithi: p.tithi, nakshatra: p.nakshatra, yoga: p.yoga, karana: p.karana, karanaTa: p.karanaTa, moonRasi: p.moonRasi,
     rahuKalam: p.rahuKalam, yamagandam: p.yamagandam, guligai: p.guligai,
     gowri,
     nallaNeram: gowri.filter((g) => g.good && g.part === 'day'),

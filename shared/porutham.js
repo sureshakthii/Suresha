@@ -1,6 +1,8 @@
 // Thirumana Porutham — traditional Tamil 10-porutham marriage matching, plus
 // Chevvai (Mars) dosham, Rahu-Ketu (Sarpa) dosham and dosha samyam checks.
-import { NAKSHATRAS, RASIS } from './astro.js';
+import { NAKSHATRAS, RASIS, PLANETS } from './astro.js';
+
+const PLANET_TA = Object.fromEntries(Object.entries(PLANETS).map(([k, v]) => [k, v.ta]));
 
 // Gana: 0 Deva, 1 Manushya, 2 Rakshasa (by nakshatra index)
 const GANA = [0, 1, 2, 1, 0, 1, 0, 0, 2, 2, 1, 1, 0, 2, 0, 2, 0, 2, 2, 1, 1, 0, 2, 2, 1, 1, 0];
@@ -58,7 +60,7 @@ export function matchPorutham(girl, boy) {
   // 1. Dina
   let dina = DINA_GOOD.has(c) ? GOOD : BAD;
   if (gs === bs) dina = SAME_STAR_OK.has(gs) ? MID : BAD;
-  push('dina', 'Dina Porutham', 'தினப் பொருத்தம்', dina, `Count ${c} from bride's star`, 'high');
+  push('dina', 'Dina Porutham', 'தினப் பொருத்தம்', dina, { en: `Count ${c} from bride's star`, ta: `பெண் நட்சத்திரத்திலிருந்து ${c}` }, 'high');
 
   // 2. Gana
   const gg = GANA[gs], bg = GANA[bs];
@@ -66,41 +68,41 @@ export function matchPorutham(girl, boy) {
   if (gg === bg) gana = GOOD;
   else if (gg !== 2 && bg !== 2) gana = MID;
   else gana = BAD;
-  push('gana', 'Gana Porutham', 'கணப் பொருத்தம்', gana, `${GANA_NAMES[gg].en} – ${GANA_NAMES[bg].en}`, 'high');
+  push('gana', 'Gana Porutham', 'கணப் பொருத்தம்', gana, { en: `${GANA_NAMES[gg].en} – ${GANA_NAMES[bg].en}`, ta: `${GANA_NAMES[gg].ta} – ${GANA_NAMES[bg].ta}` }, 'high');
 
   // 3. Mahendra
-  push('mahendra', 'Mahendra Porutham', 'மகேந்திரப் பொருத்தம்', MAHENDRA_GOOD.has(c) ? GOOD : BAD, `Count ${c}`);
+  push('mahendra', 'Mahendra Porutham', 'மகேந்திரப் பொருத்தம்', MAHENDRA_GOOD.has(c) ? GOOD : BAD, { en: `Count ${c}`, ta: `எண்ணிக்கை ${c}` });
 
   // 4. Stree Deergham
-  push('stree', 'Stree Deergham', 'ஸ்திரீ தீர்க்கம்', c > 13 ? GOOD : c > 7 ? MID : BAD, `Count ${c}`);
+  push('stree', 'Stree Deergham', 'ஸ்திரீ தீர்க்கம்', c > 13 ? GOOD : c > 7 ? MID : BAD, { en: `Count ${c}`, ta: `எண்ணிக்கை ${c}` });
 
   // 5. Yoni
   const gy = YONI[gs], by = YONI[bs];
   const enemy = YONI_ENEMY.some(([a, b]) => (a === gy && b === by) || (a === by && b === gy));
-  push('yoni', 'Yoni Porutham', 'யோனிப் பொருத்தம்', gy === by ? GOOD : enemy ? BAD : MID, `${gy} – ${by}`, 'high');
+  push('yoni', 'Yoni Porutham', 'யோனிப் பொருத்தம்', gy === by ? GOOD : enemy ? BAD : MID, { en: `${gy} – ${by}`, ta: `${YONI_TA[gy]} – ${YONI_TA[by]}` }, 'high');
 
   // 6. Rasi
   const rc = count(girl.rasi, boy.rasi, 12);
   const rasi = [2, 6, 8, 12].includes(rc) ? BAD : [5, 9].includes(rc) ? MID : GOOD;
-  push('rasi', 'Rasi Porutham', 'ராசிப் பொருத்தம்', rasi, `Groom's rasi is ${rc} from bride's`, 'high');
+  push('rasi', 'Rasi Porutham', 'ராசிப் பொருத்தம்', rasi, { en: `Groom's rasi is ${rc} from bride's`, ta: `பெண் ராசியிலிருந்து மாப்பிள்ளை ராசி ${rc}` }, 'high');
 
   // 7. Rasi Athipathi
   const gl = RASIS[girl.rasi].lord, bl = RASIS[boy.rasi].lord;
   const r1 = relation(gl, bl), r2 = relation(bl, gl);
   const lord = gl === bl || (r1 === 1 && r2 === 1) ? GOOD : r1 === -1 || r2 === -1 ? BAD : MID;
-  push('athipathi', 'Rasi Athipathi Porutham', 'ராசி அதிபதிப் பொருத்தம்', lord, `${gl} – ${bl}`);
+  push('athipathi', 'Rasi Athipathi Porutham', 'ராசி அதிபதிப் பொருத்தம்', lord, { en: `${gl} – ${bl}`, ta: `${PLANET_TA[gl]} – ${PLANET_TA[bl]}` });
 
   // 8. Vasya
   const vasya = VASYA[girl.rasi].includes(boy.rasi) || VASYA[boy.rasi].includes(girl.rasi);
-  push('vasya', 'Vasya Porutham', 'வசியப் பொருத்தம்', vasya ? GOOD : BAD, `${RASIS[girl.rasi].en} – ${RASIS[boy.rasi].en}`);
+  push('vasya', 'Vasya Porutham', 'வசியப் பொருத்தம்', vasya ? GOOD : BAD, { en: `${RASIS[girl.rasi].en} – ${RASIS[boy.rasi].en}`, ta: `${RASIS[girl.rasi].ta} – ${RASIS[boy.rasi].ta}` });
 
   // 9. Rajju (most important)
   const gr = RAJJU_CYCLE[gs % 9], br = RAJJU_CYCLE[bs % 9];
-  push('rajju', 'Rajju Porutham', 'ரஜ்ஜுப் பொருத்தம்', gr === br ? BAD : GOOD, `${RAJJU_NAMES[gr].en} – ${RAJJU_NAMES[br].en}`, 'critical');
+  push('rajju', 'Rajju Porutham', 'ரஜ்ஜுப் பொருத்தம்', gr === br ? BAD : GOOD, { en: `${RAJJU_NAMES[gr].en} – ${RAJJU_NAMES[br].en}`, ta: `${RAJJU_NAMES[gr].ta} – ${RAJJU_NAMES[br].ta}` }, 'critical');
 
   // 10. Vedhai
   const vedha = VEDHA.some(([a, b]) => (a === gs && b === bs) || (a === bs && b === gs));
-  push('vedhai', 'Vedhai Porutham', 'வேதைப் பொருத்தம்', vedha ? BAD : GOOD, vedha ? 'Stars obstruct each other' : 'No vedha', 'critical');
+  push('vedhai', 'Vedhai Porutham', 'வேதைப் பொருத்தம்', vedha ? BAD : GOOD, vedha ? { en: 'Stars obstruct each other', ta: 'நட்சத்திரங்கள் ஒன்றுக்கொன்று வேதை' } : { en: 'No vedha', ta: 'வேதை இல்லை' }, 'critical');
 
   const score = rows.reduce((s, r) => s + (r.status === GOOD ? 1 : r.status === MID ? 0.5 : 0), 0);
   const criticalFail = rows.some((r) => r.importance === 'critical' && r.status === BAD);

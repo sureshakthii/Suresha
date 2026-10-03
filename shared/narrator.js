@@ -8,7 +8,8 @@ The app has already computed an exact, live Panchangam and Prasna evaluation (Ho
 
 Rules:
 - Your answer must agree with the computed verdict. Do not invent planetary positions; use only the data given.
-- Start with one clear line: the verdict (e.g. "✅ Yes — go ahead", "⚠️ Proceed with care", "⛔ Not now").
+- Start with one clear line: the verdict (e.g. "✅ Yes — go ahead", "⚠️ Go ahead with care", "⏳ A better time is coming").
+- Always be positive and encouraging. Never say "bad" or frighten; frame difficulties as "wait for a better time" and always end with hope and a concrete good time.
 - Then 3–5 short bullet points giving the key astrological reasons in plain words.
 - If the verdict is not DO, name the best upcoming time window from the data (local time) so the person knows when to act.
 - Offer one simple traditional remedy (parihara) such as lighting a ghee lamp, a short prayer to the relevant deity, or starting after a Ganesha prayer.
@@ -69,9 +70,9 @@ export function ruleBasedReply(ctx, evaluation, lang) {
   const head = {
     DO: ta ? '✅ ஆம் — தாராளமாக செய்யலாம்.' : '✅ Yes — this is a favourable time. Go ahead.',
     CAUTION: ta ? '⚠️ கவனத்துடன் செய்யலாம்.' : '⚠️ Mixed signals — proceed with care.',
-    AVOID: ta ? '⛔ இப்போது வேண்டாம் — சிறந்த நேரத்திற்கு காத்திருக்கவும்.' : '⛔ Not now — better to wait.',
+    AVOID: ta ? '⏳ சிறந்த நேரம் விரைவில் வருகிறது — அப்போது தொடங்கினால் வெற்றி நிச்சயம்.' : '⏳ A better time is coming soon — start then and success comes easier.',
   }[evaluation.verdict];
-  const top = [...evaluation.factors].sort((a, b) => Math.abs(b.points) - Math.abs(a.points)).slice(0, 4);
+  const top = [...evaluation.factors].sort((a, b) => (b.points > 0) - (a.points > 0) || Math.abs(b.points) - Math.abs(a.points)).slice(0, 4);
   const lines = top.map((f) => `${f.points >= 0 ? '🌟' : '🔸'} ${ta ? f.labelTa : f.label}`);
   const out = [head, ...lines];
   if (evaluation.verdict !== 'DO' && ctx.bestUpcomingWindows.length) {

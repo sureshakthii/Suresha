@@ -1,8 +1,10 @@
 // App-shell cache so the Jathagam and live Panchangam work offline. API calls always go to the network.
-const CACHE = 'kj-v3';
-const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/account.js',
+const CACHE = 'kj-v5';
+const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/screens-world.js',
+  '/screens-life.js', '/screens-plans.js', '/growth.js', '/legal.js', '/account.js',
   '/shared/astro.js', '/shared/prasna.js', '/shared/narrator.js', '/shared/places.js', '/shared/tamilcal.js', '/shared/porutham.js',
-  '/shared/remedies.js', '/shared/special.js', '/vendor/astronomy-engine.js', '/icon.svg', '/manifest.webmanifest'];
+  '/shared/remedies.js', '/shared/special.js', '/shared/analysis.js', '/shared/relations.js', '/shared/temples.js', '/shared/mantras.js',
+  '/shared/predict.js', '/shared/packages.js', '/vendor/astronomy-engine.js', '/icon.svg', '/logo.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -21,4 +23,29 @@ self.addEventListener('fetch', (e) => {
       .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return res; })
       .catch(() => caches.match(e.request)),
   );
+});
+
+// Web Push: morning alarm and parigaram trip reminders. Payload: { title, body, url, tag }.
+self.addEventListener('push', (e) => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch { data = { body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(data.title || 'கைப்பேசி ஜோதிடர்', {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: [200, 100, 200],
+    tag: data.tag,
+    renotify: Boolean(data.tag),
+    data: { url: data.url || '/' },
+  }));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const target = new URL((e.notification.data && e.notification.data.url) || '/', self.location.origin).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    const same = list.find((c) => c.url === target) || list.find((c) => new URL(c.url).origin === self.location.origin);
+    if (same) return same.focus().then((c) => (c && c.url !== target && 'navigate' in c ? c.navigate(target) : c));
+    return self.clients.openWindow(target);
+  }));
 });

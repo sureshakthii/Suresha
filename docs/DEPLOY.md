@@ -1,0 +1,127 @@
+# Deploying the server
+
+The server (`server/index.js`) serves the API and the web app from a single place. It runs anywhere that
+can run a Docker container. This guide uses **Render** because it needs no server administration. The
+same `Dockerfile` also works on Railway, Fly.io, DigitalOcean, AWS, Google Cloud Run (but see the data
+note below) or your own VPS.
+
+What the container does:
+
+- Runs Node 22 as a **non-root** user and listens on port **3000**.
+- Stores everything that must survive a restart in **`/data`**: the SQLite database
+  (`DB_PATH=/data/kaippesi.db`) and, if you do not set VAPID keys, the generated `vapid.json`.
+  **`/data` must be a persistent disk or volume.** Without one, every deploy erases all accounts.
+- Exposes `GET /api/health` for health checks.
+
+## Option 1: Render (recommended)
+
+1. Push this repository to GitHub.
+2. Sign in at [render.com](https://render.com) → **New → Blueprint** → choose the repository. Render
+   reads `render.yaml`, which sets up:
+   - a **Web Service** built from the `Dockerfile` (Starter plan, Singapore region, closest to India);
+   - a **1 GB persistent disk** mounted at `/data`;
+   - fixed settings `NODE_ENV=production`, `TRUST_PROXY=1`, `PORT=3000` and `DB_PATH=/data/kaippesi.db`;
+   - prompts for each secret (see the table below). Leave the optional ones empty for now.
+3. Click **Apply**. The first build takes a few minutes. Then open
+   `https://<service>.onrender.com/api/health`. It should show `{"ok":true,...}`.
+4. Set `PUBLIC_URL` to the address users will use, for example `https://kaippesi.example.com`, and redeploy.
+
+> Persistent disks need a paid instance (Starter or above). On the free plan, data is lost on every deploy.
+
+### Your own domain and HTTPS
+
+1. In Render: open the service → **Settings → Custom Domains** → add `kaippesi.example.com`
+   (and `www.` if you want it).
+2. At your domain registrar (GoDaddy, Namecheap, BigRock, Cloudflare…), add the DNS record that Render
+   shows:
+   - for a subdomain such as `app.example.com` or `www`: a **CNAME** pointing to `<service>.onrender.com`;
+   - for the bare domain `example.com`: an **A** record pointing to Render's IP, or ALIAS/ANAME/CNAME
+     flattening if your DNS provider supports it.
+3. Render issues a free **HTTPS certificate** automatically, usually within minutes. If you use Cloudflare,
+   set the record to "DNS only" (grey cloud) until the certificate is issued.
+4. Update `PUBLIC_URL`, the Facebook redirect URI, the Stripe webhook URL and `KJ_APP_URL` (mobile apps)
+   to the new domain.
+
+## Option 2: Any Docker host (VPS)
+
+```bash
+docker build -t kaippesi .
+docker volume create kaippesi-data
+docker run -d --name kaippesi --restart unless-stopped \
+  -p 3000:3000 -v kaippesi-data:/data --env-file .env \
+  -e TRUST_PROXY=1 kaippesi
+```
+
+Put a reverse proxy with HTTPS in front of it. [Caddy](https://caddyserver.com) is the simplest, because
+it gets certificates automatically:
+
+```
+kaippesi.example.com {
+  reverse_proxy localhost:3000
+}
+```
+
+Copy `.env.example` to `.env` and fill it in. Never commit `.env`.
+
+**Serverless platforms** (Cloud Run, Lambda) do not keep a local disk. Use them only with a mounted
+volume, because SQLite needs `/data`.
+
+**If `/data` is not writable:** the container runs as the `node` user (uid 1000). A Docker named volume
+inherits the right owner automatically. A host folder (`-v /srv/kaippesi:/data`) needs
+`sudo chown -R 1000:1000 /srv/kaippesi` first.
+
+## Environment variables
+
+| Variable | Needed? | What it is |
+|---|---|---|
+| `NODE_ENV` | **yes** | `production` (already set in the image and `render.yaml`) |
+| `AUTH_SECRET` | **yes** | Long random string for OTP hashing. The server will not start in production without it. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `PUBLIC_URL` | **yes** | `https://kaippesi.example.com`. Used for Secure cookies and Facebook/Stripe callbacks. |
+| `TRUST_PROXY` | **yes** behind Render/Caddy/nginx | `1`, so rate limits see the real client IP |
+| `DB_PATH` | set | `/data/kaippesi.db` (already set in the image) |
+| `PORT` | optional | Default `3000` |
+| `ANTHROPIC_API_KEY` | recommended | Claude API key for the AI Jothidar. Without it, rule-based replies are used. |
+| `AI_MODEL`, `AI_EFFORT`, `AI_FALLBACKS` | optional | AI tuning (see `.env.example`) |
+| `AI_REQUIRE_LOGIN`, `AI_RATE_LIMIT`, `AI_FREE_DAILY`, `BILLING_ENFORCE` | optional | Protect your AI budget / enforce the free quota |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | one SMS provider | SMS OTP through Twilio |
+| `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | one SMS provider | SMS OTP through MSG91 (India, DLT template) |
+| `SMTP_URL`, `MAIL_FROM` | for email OTP | e.g. `smtps://user:pass@smtp.gmail.com:465` |
+| `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` | optional | Facebook login. Redirect URI: `${PUBLIC_URL}/api/auth/facebook/callback` |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | for INR payments | Razorpay keys (store orders, INR subscriptions) |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | for USD payments | Stripe Checkout. Webhook: `${PUBLIC_URL}/api/billing/stripe/webhook` (event `checkout.session.completed`) |
+| `ADMIN_TOKEN` | recommended | Secret for the admin endpoints (`x-admin-token` header) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | recommended | Web Push keys. Generate once with `npx web-push generate-vapid-keys`. **Changing them breaks every existing push subscription.** |
+| `ANNADHANAM_RATE`, `TRIAL_HOURS`, `REFERRAL_DAYS` | optional | Business settings (see `.env.example`) |
+
+On Render, set these under the service's **Environment** tab. A change triggers a redeploy.
+
+## Backups of `/data`
+
+Everything important is in one SQLite file: `/data/kaippesi.db` (plus `-wal`/`-shm` files while the server
+is running).
+
+- **Render:** disks get automatic daily snapshots that you can restore from the dashboard (**Disks →
+  Snapshots**). For an off-site copy, open the **Shell** tab and run:
+  ```bash
+  node -e "const {DatabaseSync}=require('node:sqlite');new DatabaseSync('/data/kaippesi.db').exec(\"VACUUM INTO '/data/backup.db'\")"
+  ```
+  Then download `backup.db` (for example with `render ssh`/`scp`, or by uploading it to your cloud storage).
+- **Docker host:** make a consistent copy while the server runs, then copy it off the machine:
+  ```bash
+  docker exec kaippesi node -e "const {DatabaseSync}=require('node:sqlite');new DatabaseSync('/data/kaippesi.db').exec(\"VACUUM INTO '/data/backup-$(date +%F).db'\")"
+  docker cp kaippesi:/data/backup-$(date +%F).db ./backups/
+  ```
+  Run it daily from cron and keep several days of copies somewhere else (S3, Google Drive, another server).
+- **Restore:** stop the service, replace `/data/kaippesi.db` with the backup (delete any `-wal`/`-shm`
+  files), and start it again.
+- Also store your environment variables (especially `AUTH_SECRET` and the VAPID keys) in a password
+  manager.
+
+## Updating
+
+- **Render:** every push to the main branch redeploys automatically (`autoDeploy: true`). The data on
+  `/data` is kept.
+- **Docker host:** `git pull && docker build -t kaippesi . && docker rm -f kaippesi`, then run the same
+  `docker run …` command again.
+
+The mobile apps load the live site, so they update at the same moment. See [MOBILE.md](MOBILE.md).

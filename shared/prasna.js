@@ -88,6 +88,48 @@ export const CATEGORIES = [
     goodNak: ['kshipra', 'mridu', 'chara'], badNak: ['ugra'],
     goodDays: [0, 3, 4], badDays: [],
   },
+  {
+    id: 'launch', icon: '🚀', en: 'Launch (product / rocket / website / shop)', ta: 'வெளியீடு (தயாரிப்பு / ராக்கெட் / கடை திறப்பு)',
+    goodHora: ['Sun', 'Jupiter', 'Mercury', 'Venus'], badHora: ['Saturn'],
+    goodNak: ['kshipra', 'chara', 'dhruva'], badNak: ['ugra'],
+    goodDays: [0, 3, 4, 5], badDays: [6], goodLagna: [0, 2, 3, 6, 9],
+  },
+  {
+    id: 'tech_partner', icon: '🤖', en: 'New Technology / Third-party Contract', ta: 'புதிய தொழில்நுட்ப / மூன்றாம் தரப்பு ஒப்பந்தம்',
+    goodHora: ['Mercury', 'Jupiter', 'Venus', 'Moon'], badHora: ['Saturn', 'Mars'],
+    goodNak: ['dhruva', 'mridu', 'kshipra'], badNak: ['ugra', 'tikshna'],
+    goodDays: [3, 4, 5], badDays: [2, 6],
+  },
+  {
+    id: 'job_change', icon: '🧭', en: 'Job Change / Resignation', ta: 'வேலை மாற்றம் / ராஜினாமா',
+    goodHora: ['Sun', 'Jupiter', 'Mercury'], badHora: ['Saturn', 'Mars'],
+    goodNak: ['chara', 'kshipra', 'mridu'], badNak: ['ugra'],
+    goodDays: [0, 3, 4], badDays: [2, 6],
+  },
+  {
+    id: 'visa', icon: '🛂', en: 'Visa / Foreign Travel / Abroad Study', ta: 'விசா / வெளிநாட்டுப் பயணம் / படிப்பு',
+    goodHora: ['Moon', 'Jupiter', 'Mercury', 'Venus'], badHora: ['Saturn'],
+    goodNak: ['chara', 'kshipra', 'mridu'], badNak: ['ugra'],
+    goodDays: [1, 3, 4, 5], badDays: [2],
+  },
+  {
+    id: 'bhoomi_pooja', icon: '🏗️', en: 'Construction Start (Bhoomi Pooja)', ta: 'கட்டுமானத் தொடக்கம் (பூமி பூஜை)',
+    goodHora: ['Jupiter', 'Venus', 'Mars', 'Mercury'], badHora: ['Saturn'],
+    goodNak: ['dhruva', 'mridu'], badNak: ['ugra', 'tikshna'],
+    goodDays: [1, 3, 4, 5], badDays: [6, 0], goodLagna: [1, 4, 7, 10],
+  },
+  {
+    id: 'lend_money', icon: '🤝', en: 'Lending / Borrowing Money', ta: 'கடன் கொடுத்தல் / வாங்குதல்',
+    goodHora: ['Jupiter', 'Venus', 'Mercury'], badHora: ['Saturn', 'Mars'],
+    goodNak: ['chara', 'kshipra'], badNak: ['ugra', 'tikshna', 'dhruva'],
+    goodDays: [3, 4], badDays: [2, 6],
+  },
+  {
+    id: 'competition', icon: '🏆', en: 'Competition / Election / Sports', ta: 'போட்டி / தேர்தல் / விளையாட்டு',
+    goodHora: ['Sun', 'Mars', 'Jupiter'], badHora: ['Saturn'],
+    goodNak: ['tikshna', 'kshipra', 'ugra'], badNak: [],
+    goodDays: [0, 2, 4], badDays: [6],
+  },
   // Life events (Subha Muhurtham) — used by the Muhurtham finder rather than instant Prasnam.
   {
     id: 'marriage', icon: '💐', en: 'Marriage (Thirumanam)', ta: 'திருமணம்', event: true, auspicious: true,
@@ -130,6 +172,12 @@ export const CATEGORIES = [
     goodHora: ['Venus', 'Moon', 'Jupiter', 'Mercury'], badHora: ['Saturn', 'Mars'],
     goodNak: ['mridu', 'dhruva', 'kshipra', 'chara'], badNak: ['ugra', 'tikshna'],
     goodDays: [1, 3, 4, 5], badDays: [2, 6],
+  },
+  {
+    id: 'delivery', icon: '🤱', en: 'Planned Delivery (C-section) Muhurtham', ta: 'பிரசவ முகூர்த்தம் (திட்டமிட்ட அறுவை)', event: true, auspicious: true, lenient: true,
+    goodHora: ['Jupiter', 'Venus', 'Moon', 'Mercury', 'Sun'], badHora: ['Saturn'],
+    goodNak: ['dhruva', 'mridu', 'kshipra', 'chara'], badNak: ['ugra', 'tikshna'],
+    goodDays: [0, 1, 3, 4, 5], badDays: [], goodLagna: [1, 3, 4, 8, 11],
   },
   {
     id: 'manjal_neerattu', icon: '🌼', en: 'Manjal Neerattu Vizha', ta: 'மஞ்சள் நீராட்டு விழா', event: true, auspicious: true,
@@ -192,7 +240,7 @@ export function scoreSnapshot(snap, category, birth) {
   else add('paksha', 'Waning Moon (Theipirai)', 'தேய்பிறை', -3);
 
   // 6. Yoga
-  if (BAD_YOGAS.has(snap.yoga.index)) add('yoga', `${snap.yoga.name} yoga is unfavourable`, `${snap.yoga.name} யோகம் — பாதகம்`, -5);
+  if (BAD_YOGAS.has(snap.yoga.index)) add('yoga', `${snap.yoga.name} yoga is unfavourable`, `${snap.yoga.ta} யோகம் — பாதகம்`, -5);
 
   // 7. Weekday
   const wd = snap.weekday.index;
@@ -240,7 +288,7 @@ export function scoreSnapshot(snap, category, birth) {
 export const VERDICT_TEXT = {
   DO: { en: 'Go ahead — favourable', ta: 'செய்யலாம் — நல்ல நேரம்' },
   CAUTION: { en: 'Proceed with caution', ta: 'கவனத்துடன் செய்யவும்' },
-  AVOID: { en: 'Avoid now — wait for a better time', ta: 'இப்போது தவிர்க்கவும்' },
+  AVOID: { en: 'A better time is coming — wait a little', ta: 'சிறந்த நேரம் வருகிறது — சற்று காத்திருங்கள்' },
 };
 
 /** Scan ahead to find the best windows for this category in the next `hours`. */

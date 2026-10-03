@@ -2,7 +2,12 @@
 import { state, $, $$, L, ta, STATIC, store, go, currentScreen, saveSettings, setLoc, activeMember, toast } from './core.js';
 import { refreshSnap } from './screens-main.js';
 import './screens-tools.js';
+import './screens-world.js';
+import './screens-life.js';
+import './screens-plans.js';
+import './legal.js';
 import { loadSession } from './account.js';
+import { startAnalytics, loadBilling } from './growth.js';
 
 function startSky() {
   const c = $('#sky');
@@ -68,7 +73,8 @@ async function boot() {
   startSky();
   applyLang();
   saveSettings();
-  await Promise.all([splash(), loadSession()]);
+  startAnalytics();
+  await Promise.all([splash(), loadSession().then(loadBilling)]);
   if (!state.loc) {
     const m = activeMember();
     setLoc(m ? { lat: m.lat, lon: m.lon, tz: m.tz, name: m.place } : { lat: 13.0827, lon: 80.2707, tz: 5.5, name: 'Chennai' });
@@ -80,6 +86,7 @@ async function boot() {
   document.addEventListener('kj:lang', () => { applyLang(); go(state.view, state.params); });
   $$('.tabbar button').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
 
+  if (location.hash === '#billing-success') toast(L('Payment received — Premium is active 🙏', 'கட்டணம் பெறப்பட்டது — பிரீமியம் செயலில் 🙏'));
   if (location.hash === '#welcome') toast(L('Signed in with Facebook', 'Facebook மூலம் உள்நுழைந்தீர்கள்'));
   if (location.hash === '#login-failed') toast(L('Facebook sign-in failed. Please try again.', 'Facebook உள்நுழைவு தோல்வி. மீண்டும் முயற்சிக்கவும்.'));
   if (location.hash) history.replaceState(null, '', location.pathname);

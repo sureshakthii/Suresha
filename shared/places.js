@@ -84,3 +84,36 @@ export function searchLocalPlaces(q, limit = 8) {
   return [...starts, ...contains].slice(0, limit);
 }
 
+
+// Tamil names for display in Tamil mode.
+export const PLACE_TA = {
+  Chennai: 'சென்னை', Madurai: 'மதுரை', Coimbatore: 'கோயம்புத்தூர்', Tiruchirappalli: 'திருச்சிராப்பள்ளி', Salem: 'சேலம்', Tirunelveli: 'திருநெல்வேலி',
+  Thanjavur: 'தஞ்சாவூர்', Kumbakonam: 'கும்பகோணம்', Erode: 'ஈரோடு', Vellore: 'வேலூர்', Tiruppur: 'திருப்பூர்', Thoothukudi: 'தூத்துக்குடி',
+  Nagercoil: 'நாகர்கோவில்', Kanchipuram: 'காஞ்சிபுரம்', Dindigul: 'திண்டுக்கல்', Karaikudi: 'காரைக்குடி', Pudukkottai: 'புதுக்கோட்டை',
+  Nagapattinam: 'நாகப்பட்டினம்', Cuddalore: 'கடலூர்', Villupuram: 'விழுப்புரம்', Tiruvannamalai: 'திருவண்ணாமலை', Rameswaram: 'ராமேஸ்வரம்',
+  Ooty: 'ஊட்டி', Hosur: 'ஓசூர்', Karur: 'கரூர்', Namakkal: 'நாமக்கல்', Sivakasi: 'சிவகாசி', Puducherry: 'புதுச்சேரி', Bengaluru: 'பெங்களூரு',
+  Mysuru: 'மைசூரு', Mangaluru: 'மங்களூரு', Hubballi: 'ஹுப்பள்ளி', Hyderabad: 'ஹைதராபாத்', Vijayawada: 'விஜயவாடா', Visakhapatnam: 'விசாகப்பட்டினம்',
+  Tirupati: 'திருப்பதி', Nellore: 'நெல்லூர்', Thiruvananthapuram: 'திருவனந்தபுரம்', Kochi: 'கொச்சி', Kozhikode: 'கோழிக்கோடு', Thrissur: 'திருச்சூர்',
+  Palakkad: 'பாலக்காடு', Mumbai: 'மும்பை', Pune: 'புனே', Delhi: 'டெல்லி', Kolkata: 'கொல்கத்தா', Ahmedabad: 'அகமதாபாத்', Jaipur: 'ஜெய்ப்பூர்',
+  Lucknow: 'லக்னோ', Varanasi: 'வாரணாசி', Bhubaneswar: 'புவனேஸ்வர்', Patna: 'பாட்னா', 'Goa (Panaji)': 'கோவா (பனாஜி)', Colombo: 'கொழும்பு',
+  Jaffna: 'யாழ்ப்பாணம்', Singapore: 'சிங்கப்பூர்', 'Kuala Lumpur': 'கோலாலம்பூர்', Dubai: 'துபாய்', 'Abu Dhabi': 'அபுதாபி', Doha: 'தோஹா',
+  Muscat: 'மஸ்கட்', Riyadh: 'ரியாத்', London: 'லண்டன்', 'New York': 'நியூயார்க்', 'San Francisco': 'சான் பிரான்சிஸ்கோ', Dallas: 'டல்லாஸ்',
+  Toronto: 'டொரன்டோ', Sydney: 'சிட்னி', Melbourne: 'மெல்போர்ன்', Paris: 'பாரிஸ்', Berlin: 'பெர்லின்',
+  // Temple towns
+  Srirangam: 'ஸ்ரீரங்கம்', Chidambaram: 'சிதம்பரம்', Thiruvanaikaval: 'திருவானைக்காவல்', Srikalahasti: 'ஸ்ரீகாளஹஸ்தி', Tiruchendur: 'திருச்செந்தூர்',
+  Palani: 'பழனி', Swamimalai: 'சுவாமிமலை', Thiruthani: 'திருத்தணி', 'Alagar Kovil': 'அழகர் கோவில்', Mylapore: 'மயிலாப்பூர்', Triplicane: 'திருவல்லிக்கேணி',
+  Vadapalani: 'வடபழனி', Samayapuram: 'சமயபுரம்', Srivilliputhur: 'ஸ்ரீவில்லிபுத்தூர்', Kanyakumari: 'கன்னியாகுமரி', Suchindram: 'சுசீந்திரம்',
+  Thiruvarur: 'திருவாரூர்', Thirukadaiyur: 'திருக்கடையூர்', Sankarankovil: 'சங்கரன்கோவில்', Perur: 'பேரூர்', Tirumala: 'திருமலை', Guruvayur: 'குருவாயூர்',
+  Sabarimala: 'சபரிமலை', Thiruvaiyaru: 'திருவையாறு', 'Vaitheeswaran Kovil': 'வைத்தீஸ்வரன் கோவில்', Thiruvenkadu: 'திருவெண்காடு', Alangudi: 'ஆலங்குடி',
+  Needamangalam: 'நீடாமங்கலம்', Kanjanur: 'கஞ்சனூர்', Thirunallar: 'திருநள்ளாறு', Karaikal: 'காரைக்கால்', Thirunageswaram: 'திருநாகேஸ்வரம்',
+  Poompuhar: 'பூம்புகார்', Kerala: 'கேரளா', 'Andhra Pradesh': 'ஆந்திரப் பிரதேசம்', Near: 'அருகில்', near: 'அருகில்', 'Tamil Nadu': 'தமிழ்நாடு',
+  Karnataka: 'கர்நாடகா', Telangana: 'தெலங்கானா', Maharashtra: 'மகாராஷ்டிரா', 'Sri Lanka': 'இலங்கை', 'United Kingdom': 'ஐக்கிய இராச்சியம்', USA: 'அமெரிக்கா',
+  Canada: 'கனடா', Australia: 'ஆஸ்திரேலியா', Malaysia: 'மலேசியா', UAE: 'ஐக்கிய அரபு அமீரகம்', Qatar: 'கத்தார்', Oman: 'ஓமன்', 'Saudi Arabia': 'சவுதி அரேபியா',
+  France: 'பிரான்ஸ்', Germany: 'ஜெர்மனி',
+};
+/** Translate a place / town string word-group by word-group (e.g. "Srirangam, Tiruchirappalli"). */
+export function placeTa(text) {
+  if (!text) return text;
+  if (PLACE_TA[text]) return PLACE_TA[text];
+  return text.split(/(,\s*|\s*\(|\)\s*)/).map((part) => PLACE_TA[part.trim()] ?? (/^near\s+/i.test(part) ? `${PLACE_TA[part.replace(/^near\s+/i, '').trim()] || part.replace(/^near\s+/i, '')} அருகில்` : part)).join('').replace(/\(\s*/g, '(');
+}

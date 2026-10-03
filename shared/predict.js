@@ -54,7 +54,7 @@ const DEITY_OF = {
 };
 
 /** Which houses each planet signifies: houses it owns, occupies, and those of its nakshatra lord. */
-function significations(chart) {
+export function significations(chart) {
   const P = chart.planets;
   const L = P.Lagna.rasi;
   const own = {}, occ = {};
@@ -70,7 +70,7 @@ function significations(chart) {
   return sig;
 }
 
-function planetScore(sig, k, q) {
+export function planetScore(sig, k, q) {
   const s = sig[k];
   let score = 0;
   const hit = (arr, w, neg) => { for (const h of arr) { if (q.houses.includes(h)) score += w; if (q.negate.includes(h)) score -= neg; } };

@@ -177,7 +177,7 @@ registerScreen('login', { render: renderLogin, fullscreen: true });
 // ================================================================ FAMILY
 let editing = null;
 
-function placeSearch(input, list, onPick) {
+export function placeSearch(input, list, onPick) {
   let timer;
   input.addEventListener('input', () => {
     clearTimeout(timer);
@@ -286,6 +286,8 @@ function renderMore(sec) {
     <button class="premium-cta" data-go="plans">👑 ${L('Kaippesi Premium — for your whole family', 'கைப்பேசி பிரீமியம் — முழு குடும்பத்திற்கும்')} ›</button>
     <div class="menu">
       <button data-go="life">🔭 ${L('Life questions — when will it happen?', 'வாழ்க்கைக் கேள்விகள் — எப்போது?')}</button>
+      <button data-go="couple">💑 ${L('Married life analysis', 'திருமண வாழ்க்கை ஆய்வு')}</button>
+      <button data-go="partners">🤝 ${L('Business partner match', 'வணிகக் கூட்டாளி பொருத்தம்')}</button>
       <button data-go="family">👨‍👩‍👧 ${L('Family members', 'குடும்ப உறுப்பினர்கள்')}</button>
       <button data-go="calendar">📅 ${L('Tamil calendar', 'தமிழ் நாட்காட்டி')}</button>
       <button data-go="muhurtham">🗓️ ${L('Muhurtham finder', 'முகூர்த்தம் தேடல்')}</button>

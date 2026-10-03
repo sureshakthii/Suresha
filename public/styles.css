@@ -604,3 +604,22 @@ details.legal summary { color: var(--text); font-size: 15px; }
 details.legal h4 { margin: 14px 0 4px; color: var(--gold2); font-size: 14px; }
 details.legal p { margin: 0; font-size: 13.5px; line-height: 1.7; }
 .tag.block { white-space: normal; }
+/* Couple & partners */
+.person-block .card-title { font-size: 16px; }
+.check-row { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; }
+.check-row input { width: 20px; height: 20px; margin: 0; accent-color: var(--gold); }
+.big-score { font-family: 'Cinzel', serif; font-size: 56px; font-weight: 700; color: var(--gold2); line-height: 1; margin: 8px 0; }
+.big-score small { font-size: 16px; color: var(--muted); }
+.big-cta { margin-bottom: 14px; }
+details.area-row { border-bottom: 1px solid rgba(255,255,255,.06); padding: 6px 0; }
+details.area-row summary { display: grid; grid-template-columns: minmax(0, 1.2fr) 1fr 32px; gap: 10px; align-items: center; color: var(--text); font-size: 13px; list-style: none; margin: 0; }
+details.area-row summary b { text-align: right; color: var(--gold2); }
+.tl { display: grid; gap: 6px; margin-bottom: 14px; }
+details.tl-year { padding: 10px 12px; border-radius: 14px; background: var(--glass); border: 1px solid var(--glass-b); border-left-width: 4px; }
+details.tl-year.good { border-left-color: var(--good); }
+details.tl-year.steady { border-left-color: var(--warn); }
+details.tl-year.care { border-left-color: var(--bad); }
+details.tl-year summary { display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: center; list-style: none; color: var(--text); margin: 0; }
+details.tl-year > div { margin-top: 6px; }
+.tl-bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+.tl-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--gold), var(--saffron)); }

@@ -6,6 +6,7 @@ import './screens-world.js';
 import './screens-life.js';
 import './screens-plans.js';
 import './legal.js';
+import './screens-couple.js';
 import { loadSession } from './account.js';
 import { startAnalytics, loadBilling } from './growth.js';
 

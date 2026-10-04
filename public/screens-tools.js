@@ -535,9 +535,10 @@ function chatContext(question) {
 function renderAnswerHtml(ans) {
   const secs = ans.sections.filter((sx) => sx.key !== 'question' && sx.lines?.length);
   const top = secs.filter((sx) => sx.key === 'answer');
-  const rest = secs.filter((sx) => sx.key !== 'answer');
+  const rest = secs.filter((sx) => sx.key !== 'answer' && sx.key !== 'prayer');
+  const prayer = secs.filter((sx) => sx.key === 'prayer');
   const sec = (sx) => `<div class="ans-sec ans-${sx.key}"><div class="ans-h">${esc(sx.title)}</div><ul>${sx.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
-  return `${top.map(sec).join('')}${rest.length ? `<div class="ans-why">${esc(L('Why — planets, Dasa & transits', 'காரணம் — கிரகங்கள், தசை & கோசாரம்'))}</div>${rest.map(sec).join('')}` : ''}`;
+  return `${top.map(sec).join('')}${rest.length ? `<div class="ans-why">${esc(L('Why — planets, Dasa & transits', 'காரணம் — கிரகங்கள், தசை & கோசாரம்'))}</div>${rest.map(sec).join('')}` : ''}${prayer.map(sec).join('')}`;
 }
 
 function renderChat(sec, params = {}) {

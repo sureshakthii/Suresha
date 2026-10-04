@@ -12,10 +12,10 @@ import { isLocked, lockCard } from './growth.js';
 
 const iso = (d) => new Date(d.getTime() + (state.loc?.tz ?? 5.5) * 3600000).toISOString().slice(0, 10);
 const monthYear = (d) => new Date(d).toLocaleDateString(ta() ? 'ta-IN' : 'en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' });
-const forms = {}; // per-slot entered data, kept while the app is open
+export const forms = {}; // per-slot entered data, kept while the app is open
 
 /** Person input: pick a family member or enter full birth details. */
-function personBlock(slot, title, { gender, nth = 0 } = {}) {
+export function personBlock(slot, title, { gender, nth = 0 } = {}) {
   const pool = state.family.filter((m) => m.relation !== 'organization');
   const f = forms[slot] ||= { mode: pool.length ? 'family' : 'new', memberId: (gender ? pool.find((m) => m.gender === gender) || pool[0] : pool[nth] || pool[0])?.id || null, gender: gender || 'male' };
   return `<div class="card glass person-block" data-slot="${slot}"><div class="card-title">${title}</div>
@@ -32,7 +32,7 @@ function personBlock(slot, title, { gender, nth = 0 } = {}) {
   </div>`;
 }
 
-function wirePersonBlocks(sec, rerender) {
+export function wirePersonBlocks(sec, rerender) {
   $$('.person-block', sec).forEach((blk) => {
     const slot = blk.dataset.slot;
     const f = forms[slot];

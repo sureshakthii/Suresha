@@ -40,7 +40,7 @@ export const PLANET_DEITY = {
   Mercury: T('Lord Vishnu (Perumal)', 'பெருமாள் (விஷ்ணு)'), Jupiter: T('Lord Dakshinamurthy', 'தட்சிணாமூர்த்தி'), Venus: T('Goddess Mahalakshmi', 'மகாலட்சுமி'),
   Saturn: T('Lord Venkatachalapathi / Sri Anjaneyar', 'வெங்கடாசலபதி / ஸ்ரீ ஆஞ்சநேயர்'), Rahu: T('Goddess Durga', 'துர்கை அம்மன்'), Ketu: T('Lord Vinayagar', 'விநாயகர்'),
 };
-const DEITY_MANTRA = {
+export const DEITY_MANTRA = {
   Sun: 'ஓம் நமசிவாய', Moon: 'ஓம் சக்தி பராசக்தி', Mars: 'ஓம் சரவணபவ', Mercury: 'ஓம் நமோ நாராயணாய', Jupiter: 'ஓம் குருவே நமஹ',
   Venus: 'ஓம் ஸ்ரீ மகாலட்சுமியை நமஹ', Saturn: 'ஓம் நமோ வெங்கடேசாய', Rahu: 'ஓம் துர்காயை நமஹ', Ketu: 'ஓம் கம் கணபதயே நமஹ',
 };

@@ -52,7 +52,7 @@ test('different questions get different, question-specific answers (no more repe
 test('answers follow the six-part structure and quote only engine facts', () => {
   const a = ask('How is my career this year?');
   assert.equal(a.lang, 'en');
-  assert.deepEqual(a.sections.map((s) => s.key), ['question', 'answer', 'factors', 'interpretation', 'uncertainty', 'practice', 'next']);
+  assert.deepEqual(a.sections.map((s) => s.key), ['question', 'answer', 'factors', 'interpretation', 'uncertainty', 'practice', 'next', 'prayer']);
   const dasa = facts.dasa;
   assert.ok(a.text.includes(dasa.start) && a.text.includes(dasa.end), 'dasa dates come from the engine');
   const ai = factsForAI(facts);
@@ -179,4 +179,31 @@ test('journey: reviewed temple facts show as verified with source and date; old 
     if (k) assert.equal(k.hours.status, 'stale');
     assert.equal(verifiedField('madurai_meenakshi', 'accessibility'), null, 'unreviewed fields stay unverified');
   } finally { delete VERIFIED.madurai_meenakshi; delete VERIFIED.koodal_azhagar; }
+});
+
+test('daily review: chandrashtamam, tara and chandra balam, do/don\'t, god of the day and closing prayer', async () => {
+  const { dailyReview, closingPrayer, nextChandrashtamam } = await import('../shared/daily.js');
+  const { panchang } = await import('../shared/astro.js');
+  const chart = birthChart(suresh);
+  const now = new Date('2026-10-04T06:00:00Z');
+  const r = dailyReview(chart, panchang(now, suresh.lat, suresh.lon, suresh.tz), now);
+  assert.ok(r.personal && r.label.ta && r.dos.length && r.donts.length && r.deity.god.ta);
+  assert.ok(r.why.length >= 2);
+  const pr = closingPrayer(chart, now);
+  assert.deepEqual(pr.deities, ['Sun', 'Mercury']);
+  assert.match(pr.lines[0].ta, /போற்றி/);
+  const ch = nextChandrashtamam(chart.janmaRasi.index, now);
+  assert.ok(ch.end > ch.start && (ch.end - ch.start) / 3600000 > 40 && (ch.end - ch.start) / 3600000 < 66);
+  // Answers close with the prayer for the person's Dasa and Bhukti deities
+  assert.match(ask('How is my career this year?').text, /Sivane Potri/);
+});
+
+test('love match: five meters, vibe 0-100, shares no private data', async () => {
+  const { loveMatch } = await import('../shared/love.js');
+  const a = birthChart(suresh);
+  const b = birthChart({ ...suresh, name: 'K', date: '1992-04-11', time: '12:00:00' });
+  const r = loveMatch(a, b, { genderA: 'male', genderB: 'female', names: ['S', 'K'] });
+  assert.equal(r.meters.length, 5);
+  assert.ok(r.vibe >= 0 && r.vibe <= 100 && r.tier.ta);
+  for (const m of r.meters) assert.ok(m.score >= 0 && m.score <= 100 && m.why.ta, m.id);
 });

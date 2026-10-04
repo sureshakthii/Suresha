@@ -20,6 +20,7 @@ import { todayColorCard } from './screens-guide.js';
 import { reminderCard } from './remind.js';
 import { iconChip } from './icons.js';
 import { healthGuide } from './shared/health.js';
+import { dailyReview } from './shared/daily.js';
 
 const TARA = [['Janma', 'ஜன்ம', 'warn'], ['Sampat', 'சம்பத்', 'good'], ['Vipat', 'விபத்', 'bad'], ['Kshema', 'க்ஷேம', 'good'], ['Pratyak', 'பிரத்யக்', 'bad'], ['Sadhana', 'சாதக', 'good'], ['Naidhana', 'நைதன', 'bad'], ['Mitra', 'மித்ர', 'good'], ['Parama Mitra', 'பரம மித்ர', 'good']];
 const goodBad = (k) => (k === 'good' ? L('Favourable', 'சாதகம்') : k === 'bad' ? L('Careful', 'கவனம்') : L('Neutral', 'சமம்'));
@@ -53,6 +54,51 @@ function todayInfo(loc) {
     today = { key, day: tamilDay(noon, loc.lat, loc.lon, loc.tz) };
   }
   return today.day;
+}
+
+// Today: personal day review from gochara — Chandrashtamam, Tara / Chandra balam, do's & don'ts, today's god, prayer.
+function dailyCard(m, snap, loc) {
+  const person = m && m.relation !== 'organization' ? m : null;
+  let r;
+  try { r = dailyReview(person ? chartOf(person) : null, snap, new Date()); } catch { return ''; }
+  const god = `<div class="dc-god"><span class="mini-label">🛕 ${L('God of the day', 'இன்றைய தெய்வம்')}</span><b>${esc(bi(r.deity.god))}</b><span class="dc-mantra">${esc(bi(r.deity.mantra))}</span><span class="small muted">${esc(bi(r.deity.act))}</span></div>`;
+  if (!r.personal) return `<section class="card glass daily-card">${god}</section>`;
+  const range = (w) => `${fmtDate(w.start, loc.tz)} ${fmtTime(w.start, loc.tz)} – ${fmtDate(w.end, loc.tz)} ${fmtTime(w.end, loc.tz)}`;
+  const ch = r.nextChandrashtamam;
+  const chLine = r.chandrashtamam
+    ? `<div class="dc-alert">⚠️ <b>${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}</b>${ch ? ` · ${L('till', 'வரை')} ${esc(fmtDate(ch.end, loc.tz))} ${esc(fmtTime(ch.end, loc.tz))}` : ''}<br><span class="small">${L('Stay patient; postpone big decisions, signatures and new starts.', 'பொறுமை காக்கவும்; பெரிய முடிவு, கையெழுத்து, புதிய தொடக்கத்தை ஒத்திவையுங்கள்.')}</span></div>`
+    : ch ? `<div class="dc-next">🌙 ${L('Next Chandrashtamam', 'அடுத்த சந்திராஷ்டமம்')}: <b>${esc(range(ch))}</b></div>` : '';
+  const fam = state.family.filter((x) => x.id !== person.id && x.relation !== 'organization').filter((x) => { try { return ((snap.moonRasi.index - chartOf(x).janmaRasi.index + 12) % 12) === 7; } catch { return false; } });
+  const lvCls = { great: 'good', good: 'good', steady: 'warn', care: 'bad' }[r.level];
+  return `<section class="card glass daily-card" aria-labelledby="dcTitle">
+    <div class="card-title"><span id="dcTitle">🌅 ${L('Today for you', 'இன்று உங்களுக்கு')} · ${esc(displayName(person))}</span><span class="tag ${lvCls}">${esc(bi(r.label))}</span></div>
+    ${chLine}
+    <ul class="dc-why">${r.why.map((w) => `<li>${esc(bi(w))}</li>`).join('')}</ul>
+    <div class="dc-cols"><div class="dc-do"><h4>✅ ${L('Do', 'செய்யலாம்')}</h4><ul>${r.dos.map((x) => `<li>${esc(bi(x))}</li>`).join('')}</ul></div>
+      <div class="dc-dont"><h4>🚫 ${L('Avoid', 'தவிர்க்கவும்')}</h4><ul>${r.donts.map((x) => `<li>${esc(bi(x))}</li>`).join('')}${snap.rahuKalam ? `<li class="small muted">${L('Rahu Kalam', 'ராகு காலம்')}: ${esc(fmtTime(snap.rahuKalam.start, loc.tz))} – ${esc(fmtTime(snap.rahuKalam.end, loc.tz))}</li>` : ''}</ul></div></div>
+    ${god}
+    ${r.dasaDeity ? `<p class="small">🪔 ${L('Your Dasa deity', 'உங்கள் தசா தெய்வம்')}: <b>${esc(bi(r.dasaDeity.name))}</b> · ${L('Birth-star deity', 'நட்சத்திரத் தெய்வம்')}: <b>${esc(bi(r.starDeity))}</b></p>` : ''}
+    ${fam.length ? `<p class="small dc-fam">🌙 ${L('Chandrashtamam today in the family', 'இன்று குடும்பத்தில் சந்திராஷ்டமம்')}: <b>${fam.map((x) => esc(displayName(x))).join(', ')}</b> — ${L('be gentle with them today', 'இன்று அவர்களிடம் மென்மையாக இருங்கள்')}</p>` : ''}
+    ${r.prayer ? `<div class="dc-prayer">🙏 ${r.prayer.lines.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}
+    <button class="chip-btn" id="dcShare" type="button">📤 ${L('Share my day', 'என் நாளைப் பகிர்')}</button>
+  </section>`;
+}
+
+function shareDaily(m, snap, loc) {
+  const r = dailyReview(chartOf(m), snap, new Date());
+  const text = [
+    `🌅 ${L('Today for', 'இன்று')} ${displayName(m)} — ${bi(r.label)}`,
+    r.chandrashtamam ? `⚠️ ${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}` : '',
+    ...r.why.map((w) => `• ${bi(w)}`),
+    `✅ ${r.dos.map((x) => bi(x)).join('; ')}`,
+    `🚫 ${r.donts.map((x) => bi(x)).join('; ')}`,
+    `🛕 ${L('God of the day', 'இன்றைய தெய்வம்')}: ${bi(r.deity.god)} — ${bi(r.deity.mantra)}`,
+    r.prayer ? `🙏 ${r.prayer.lines.map((x) => bi(x)).join(' · ')}` : '',
+    '',
+    `${L('From', 'வழங்குவது')} ${L('Thunai', 'துணை')} — ${L('Your companion on life’s path', 'உங்கள் வாழ்வின் வழித்துணை')}`,
+  ].filter((x) => x !== '').join('\n');
+  if (navigator.share) { navigator.share({ text }).catch(() => {}); return; }
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
 }
 
 // Today: Health & Planets summary for the active member (dasa-bhukti + gochara level, one eat / avoid tip).
@@ -89,7 +135,9 @@ function renderHome(sec) {
       <div class="guide-sugs">${GUIDE_SUGGESTIONS.map(([en, tx]) => `<button class="sg" type="button">${esc(L(en, tx))}</button>`).join('')}</div>
       <p class="small muted">🎙️ ${L('Type or speak — Tamil, English or Tanglish. You can check the words before sending.', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எழுதலாம் அல்லது பேசலாம். அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
     </section>
+    ${dailyCard(m, snap, loc)}
     ${healthTodayCard(m)}
+    <button class="card glass cta-card love-cta" data-go="lovematch"><b>💘 ${L('Love Match', 'காதல் பொருத்தம்')}</b><span class="small">${L('Emotional sync, chemistry and the star match — check your love vibe and share it', 'உணர்வு, ஈர்ப்பு, நட்சத்திரப் பொருத்தம் — உங்கள் காதல் அதிர்வைப் பார்த்துப் பகிருங்கள்')}</span></button>
 
     <div class="hero">
       <div class="hero-top">
@@ -138,6 +186,7 @@ function renderHome(sec) {
     ${ratePrompt()}
     ${copyright()}`;
   fillHomeWeather(td);
+  $('#dcShare')?.addEventListener('click', () => shareDaily(m, snap, loc));
   $('#shareToday').addEventListener('click', () => import('./screens-tools.js').then((mod) => mod.shareToday(td, snap)));
   $$('.fam-row', sec).forEach((r) => r.addEventListener('click', () => { state.activeId = r.dataset.id; saveFamily(); renderHome(sec); }));
   const ask = (q) => { q = (q || '').trim(); if (q) go('chat', { q }); };

@@ -337,7 +337,7 @@ export const HUB_OF = {
   // My Chart (and Advanced)
   analysis: 'chart', vargas: 'chart', roadmap: 'chart', life: 'chart', health: 'chart', guide: 'chart', peyarchi: 'chart', numerology: 'chart', parigaram: 'chart', mantras: 'chart', birthtime: 'chart', why: 'chart',
   // Family
-  family: 'familyhub', relations: 'familyhub', porutham: 'familyhub', couple: 'familyhub', gunamilan: 'familyhub', partners: 'familyhub',
+  family: 'familyhub', relations: 'familyhub', porutham: 'familyhub', couple: 'familyhub', lovematch: 'familyhub', gunamilan: 'familyhub', partners: 'familyhub',
   muhurtham: 'familyhub', thivasam: 'familyhub', starbday: 'familyhub', names: 'familyhub', ruthu: 'familyhub', familyplan: 'familyhub', share: 'familyhub',
   // Ask
   ask: 'chat',

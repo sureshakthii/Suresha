@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Thunai">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a1f3d"/><stop offset="1" stop-color="#3d0d1f"/></linearGradient>
-    <radialGradient id="glow" cx="50%" cy="44%" r="38%"><stop offset="0" stop-color="#ffd9a0" stop-opacity=".55"/><stop offset="1" stop-color="#ffd9a0" stop-opacity="0"/></radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c2305a"/><stop offset="1" stop-color="#7a1636"/></linearGradient>
+    <radialGradient id="glow" cx="50%" cy="44%" r="38%"><stop offset="0" stop-color="#ffe7b8" stop-opacity=".85"/><stop offset="1" stop-color="#ffd9a0" stop-opacity="0"/></radialGradient>
     <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4d6"/><stop offset=".5" stop-color="#ffc34d"/><stop offset="1" stop-color="#f0702a"/></linearGradient>
     <linearGradient id="lamp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7d58c"/><stop offset="1" stop-color="#c98a2a"/></linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
   <circle cx="256" cy="228" r="190" fill="url(#glow)"/>
   <!-- temple arch -->
-  <path d="M120 404V250c0-75 61-136 136-136s136 61 136 136v154" fill="none" stroke="#f0c27a" stroke-width="14" stroke-linecap="round" opacity=".9"/>
+  <path d="M120 404V250c0-75 61-136 136-136s136 61 136 136v154" fill="none" stroke="#ffd98a" stroke-width="16" stroke-linecap="round" opacity=".9"/>
   <path d="M152 404V256c0-57 47-104 104-104s104 47 104 104v148" fill="none" stroke="#f0c27a" stroke-width="5" opacity=".45"/>
   <!-- flame -->
-  <path d="M256 168c26 34 40 58 40 82a40 40 0 0 1-80 0c0-24 14-48 40-82z" fill="url(#flame)"/>
+  <path d="M256 150c32 40 50 70 50 98a50 50 0 0 1-100 0c0-28 18-58 50-98z" fill="url(#flame)"/>
   <path d="M256 214c10 13 15 23 15 32a15 15 0 0 1-30 0c0-9 5-19 15-32z" fill="#fff8e6"/>
   <!-- diya -->
   <path d="M168 300h176c-6 44-42 74-88 74s-82-30-88-74z" fill="url(#lamp)"/>

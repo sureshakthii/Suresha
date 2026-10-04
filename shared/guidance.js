@@ -13,6 +13,7 @@ import { transitStatus, BHAVAS } from './analysis.js';
 import { luckyNumbers } from './personal.js';
 import { predictEvent } from './predict.js';
 import { healthGuide } from './health.js';
+import { closingPrayer } from './daily.js';
 
 export { RULES_VERSION } from './version.js';
 
@@ -102,6 +103,7 @@ export function chartFacts(chart, rel, now = new Date()) {
   let transit = null;
   try { transit = transitStatus(chart, now); } catch { /* transit needs the ephemeris; skip if unavailable */ }
   return {
+    now,
     chart,
     rel,
     reference: useLagna ? 'lagna' : 'moon',
@@ -148,6 +150,7 @@ const SECTION_TITLES = {
   next: T('Practical next step', 'நடைமுறை அடுத்த படி'),
   facts: T('Factual information', 'உண்மைத் தகவல்'),
   support: T('Support', 'உதவி'),
+  prayer: T('Prayer for you', 'உங்களுக்கான பிரார்த்தனை'),
 };
 
 const strengthWord = (g, lang) => (lang === 'ta'
@@ -547,7 +550,12 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
 
   // Straight answer first (fallback: the first support/interpretation line), then all planet details, fully visible.
   if (!S.answer?.length) { const src = ['support', 'interpretation', 'next'].find((k) => S[k]?.length); if (src) S.answer = [S[src].shift()]; }
-  const order = ['question', 'answer', 'support', 'factors', 'interpretation', 'uncertainty', 'facts', 'practice', 'next'];
+  // Close with the deities of the person's running Dasa and Bhukti lords (not after a crisis or a medical alarm).
+  if (f?.chart && !['crisis', 'death', 'pain'].includes(intent)) {
+    const pr = closingPrayer(f.chart, f.now ? new Date(f.now) : new Date());
+    if (pr) add('prayer', `🙏 ${pr.lines.map((x) => tr(x)).join(' · ')}`);
+  }
+  const order = ['question', 'answer', 'support', 'factors', 'interpretation', 'uncertainty', 'facts', 'practice', 'next', 'prayer'];
   const sections = order.filter((k) => S[k]?.length).map((k) => ({ key: k, title: tr(SECTION_TITLES[k]), lines: S[k] }));
   const text = sections.map((s) => `${s.title}:\n${s.lines.map((l) => `• ${l}`).join('\n')}`).join('\n\n');
   return { intent, lang, sections, actions, clarify, text };

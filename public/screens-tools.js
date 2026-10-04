@@ -549,7 +549,7 @@ function renderChat(sec, params = {}) {
     <div id="chatLog" class="chat-log" aria-live="polite">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask anything — in Tamil, English or Tanglish. Answers come in English (change language with the தமிழ் button).', 'வணக்கம்! தமிழ், ஆங்கிலம், தங்கிலீஷ் — எப்படியும் கேளுங்கள். பதில் தமிழில் வரும்.')}</div>`}</div>
     <div class="suggest-row">${SUGGEST.map(([en, tx]) => `<button class="sg">${esc(L(en, tx))}</button>`).join('')}</div>
     <form id="chatForm" class="chat-form"><button type="button" id="micBtn" class="mic" aria-label="${L('Speak', 'பேசுங்கள்')}">🎙️</button>
-      <label class="sr-only" for="chatInput">${L('Message', 'செய்தி')}</label><input id="chatInput" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai…', 'துணையிடம் கேளுங்கள்…'))}">
+      <label class="sr-only" for="chatInput">${L('Message', 'செய்தி')}</label><textarea id="chatInput" class="grow-in" rows="1" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai…', 'கேள்வியை இங்கே எழுதுங்கள்…'))}"></textarea>
       <button class="send" aria-label="${L('Send', 'அனுப்பு')}">➤</button></form>
     ${supportCard()}
     <p class="small muted center">${L('Voice: your phone converts speech to text (it may use its own online service). The text appears in the box for you to check.', 'குரல்: உங்கள் கைப்பேசி பேச்சை எழுத்தாக மாற்றும் (அதன் இணைய சேவையைப் பயன்படுத்தலாம்). சரிபார்க்க பெட்டியில் உரை தோன்றும்.')}</p>`;
@@ -595,7 +595,7 @@ async function send(text) {
   text = String(text || '').trim();
   if (!text || chat.busy) return;
   chat.busy = true;
-  $('#chatInput').value = '';
+  $('#chatInput').value = ''; $('#chatInput').dispatchEvent(new Event('input', { bubbles: true }));
   chat.messages.push({ role: 'user', content: text });
   const ub = addBubble('user', text);
   requestAnimationFrame(() => ub.scrollIntoView({ behavior: 'smooth', block: 'start' }));

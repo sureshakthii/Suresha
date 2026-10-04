@@ -58,7 +58,7 @@ function renderJourney(sec, params = {}) {
     <div class="card glass">
       <label for="tripText">${L('Describe your trip (optional — type or speak)', 'உங்கள் பயணத்தை விவரிக்கவும் (விருப்பம் — எழுதவும் / பேசவும்)')}</label>
       <div class="chat-form"><button type="button" id="tripMic" class="mic" aria-label="${L('Speak', 'பேசுங்கள்')}">🎙️</button>
-        <input id="tripText" placeholder="${esc(L('e.g. 4 days next month from Madurai, 3 people, budget 15000', 'எ.கா. அடுத்த மாதம் மதுரையிலிருந்து 4 நாள், 3 பேர், பட்ஜெட் 15000'))}">
+        <textarea id="tripText" class="grow-in" rows="2" data-enter="tripParse" placeholder="${esc(L('e.g. 4 days from Madurai, 3 people, ₹15000', 'எ.கா. மதுரையிலிருந்து 4 நாள், 3 பேர், ₹15000'))}"></textarea>
         <button type="button" class="send" id="tripParse" aria-label="${L('Fill the form', 'படிவத்தில் நிரப்பு')}">➤</button></div>
       <p class="small muted">${L('We fill the form below from your words. Please check every highlighted value — especially dates, names and places.', 'உங்கள் சொற்களிலிருந்து கீழே உள்ள படிவம் நிரப்பப்படும். ஒளிரும் ஒவ்வொரு மதிப்பையும் — குறிப்பாக தேதி, பெயர், இடம் — சரிபாருங்கள்.')}</p>
     </div>

@@ -13,6 +13,8 @@ const people = () => state.family.filter((m) => m.relation !== 'organization');
 const mY = (d) => `${monthName(new Date(d).getUTCMonth())} ${new Date(d).getUTCFullYear()}`;
 const lvTag = (lv) => `<span class="tag ${lv === 'good' ? 'good' : lv === 'steady' ? 'warn' : 'bad'}">${lv === 'good' ? L('Good', 'நன்று') : lv === 'steady' ? L('Steady', 'நிலை') : L('Care', 'கவனம்')}</span>`;
 const DOSHA_BAR = { vata: 'average', pitta: 'weak', kapha: 'strong' };
+const MON_SHORT = [['Jan','ஜன'],['Feb','பிப்'],['Mar','மார்'],['Apr','ஏப்'],['May','மே'],['Jun','ஜூன்'],['Jul','ஜூலை'],['Aug','ஆக'],['Sep','செப்'],['Oct','அக்'],['Nov','நவ'],['Dec','டிச']];
+const monShort = (i) => L(...MON_SHORT[i]);
 const DOSHA_ICON = { vata: '🌬️', pitta: '🔥', kapha: '💧' };
 
 /** First day of next month, 9 AM in the user's local time zone. */
@@ -106,7 +108,7 @@ function drawHealth(m) {
 
     ${locked ? lockCard(L('The 12-month health strip, the full food guide and your fasting day are part of Premium.', '12 மாத ஆரோக்கியப் பட்டை, முழு உணவு வழிகாட்டி, உங்கள் விரத நாள் பிரீமியத்தில் உள்ளன.')) : `
     <div class="section-title">📅 ${L('Next 12 months', 'அடுத்த 12 மாதங்கள்')}</div>
-    <div class="rm-years hl-months">${h.months.map((x) => { const [y, mo] = x.month.split('-').map(Number); return `<div class="rm-year ${x.level}" title="${esc(bi(x.note))}"><b>${esc(monthName(mo - 1))}</b><span class="muted small">${y}</span><div class="rm-meter"><i style="height:${Math.max(15, Math.min(100, Math.round(55 + x.score * 15)))}%"></i></div><span class="small">${x.marsCaution ? '⚠️' : x.level === 'good' ? '🌿' : x.level === 'care' ? '🤍' : '•'}</span></div>`; }).join('')}</div>
+    <div class="rm-years hl-months">${h.months.map((x) => { const [y, mo] = x.month.split('-').map(Number); return `<div class="rm-year ${x.level}" title="${esc(bi(x.note))}"><b>${esc(monShort(mo - 1))}</b><span class="muted small">${y}</span><div class="rm-meter"><i style="height:${Math.max(15, Math.min(100, Math.round(55 + x.score * 15)))}%"></i></div><span class="small">${x.marsCaution ? '⚠️' : x.level === 'good' ? '🌿' : x.level === 'care' ? '🤍' : '•'}</span></div>`; }).join('')}</div>
     <div class="card glass">${h.months.filter((x) => x.level !== 'steady').slice(0, 6).map((x) => { const [y, mo] = x.month.split('-').map(Number); return `<div class="factor"><span><b>${esc(monthName(mo - 1))} ${y}</b> · ${esc(bi(x.note))}</span>${lvTag(x.level)}</div>`; }).join('') || `<p class="small">${L('A steady year — keep your routine.', 'நிலையான ஆண்டு — வழக்கத்தைத் தொடருங்கள்.')}</p>`}
       <p class="muted small">🌿 ${L('Good', 'நன்று')} · • ${L('Steady', 'நிலை')} · 🤍 ${L('Care', 'கவனம்')} · ⚠️ ${L('Injury / fever caution', 'காயம் / காய்ச்சல் கவனம்')}</p></div>`}
 

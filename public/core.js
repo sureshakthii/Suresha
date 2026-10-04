@@ -376,9 +376,38 @@ export function go(view, params = {}) {
 }
 
 /** Standard header for sub-screens with a back button. */
+// Keep --top-h equal to the real header height so pinned screen titles sit exactly below it.
+if (typeof document !== 'undefined' && typeof ResizeObserver !== 'undefined') {
+  const fitTop = () => { const t = document.querySelector('.topbar'); if (t) document.documentElement.style.setProperty('--top-h', `${Math.round(t.getBoundingClientRect().height)}px`); };
+  const ro = new ResizeObserver(fitTop);
+  const hook = () => { const t = document.querySelector('.topbar'); if (t) { ro.observe(t); fitTop(); } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hook); else hook();
+}
+
+// Question boxes are textareas so the full hint is always readable; they grow with the text,
+// and Enter sends (Shift+Enter adds a new line).
+if (typeof document !== 'undefined') {
+  // An empty box is sized to its hint text, so the hint is never cut off on narrow phones.
+  const grow = (t) => {
+    const empty = !t.value; if (empty) t.value = t.placeholder || '';
+    t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight + 2, 160)}px`;
+    if (empty) t.value = '';
+  };
+  const growAll = () => document.querySelectorAll('textarea.grow-in').forEach((t) => { if (!t.dataset.grown) { t.dataset.grown = '1'; grow(t); } });
+  new MutationObserver(() => requestAnimationFrame(growAll)).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener('resize', () => document.querySelectorAll('textarea.grow-in').forEach(grow));
+  document.addEventListener('input', (e) => { if (e.target.matches?.('textarea.grow-in')) grow(e.target); });
+  document.addEventListener('keydown', (e) => {
+    const t = e.target;
+    if (!t.matches?.('textarea.grow-in') || e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+    e.preventDefault();
+    if (t.dataset.enter) document.getElementById(t.dataset.enter)?.click(); else t.form?.requestSubmit();
+  });
+}
+
 export function subHeader(title, sub = '', back = HUB_OF[state.view] || screens[state.view]?.parent || 'home') {
   return `<div class="sub-head"><button class="back-btn" data-back="${back}" aria-label="${L('Back', 'பின்செல்')}">‹</button>
-    <div><h2>${title}</h2>${sub ? `<p class="muted small">${sub}</p>` : ''}</div></div>`;
+    <div><h2>${title}</h2></div></div>${sub ? `<p class="muted small sub-desc">${sub}</p>` : ''}`;
 }
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-back]');

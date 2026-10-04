@@ -83,7 +83,7 @@ function renderHome(sec) {
       <form id="guideForm" class="chat-form guide-form">
         <button type="button" id="guideMic" class="mic" aria-label="${L('Speak your question', 'உங்கள் கேள்வியைப் பேசுங்கள்')}">🎙️</button>
         <label class="sr-only" for="guideInput">${L('Your question', 'உங்கள் கேள்வி')}</label>
-        <input id="guideInput" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask your question…', 'உங்கள் கேள்வியைக் கேளுங்கள்…'))}">
+        <textarea id="guideInput" class="grow-in" rows="2" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai your question…', 'உங்கள் கேள்வியைத் துணையிடம் கேளுங்கள்…'))}"></textarea>
         <button class="send" aria-label="${L('Ask', 'கேள்')}">➤</button>
       </form>
       <div class="guide-sugs">${GUIDE_SUGGESTIONS.map(([en, tx]) => `<button class="sg" type="button">${esc(L(en, tx))}</button>`).join('')}</div>

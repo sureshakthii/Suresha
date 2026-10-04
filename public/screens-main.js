@@ -163,7 +163,7 @@ function renderHome(sec) {
         <li>${L('Your family\'s birth details stay private.', 'உங்கள் குடும்பத்தின் பிறப்பு விவரங்கள் தனிப்பட்டவை.')}</li>
       </ul>
     </div>
-    <div class="brand-foot"><img src="logo.svg" alt="" width="64" height="64"><div><b>கைப்பேசி ஜோதிடர்</b>${ta() ? '' : '<span>Kaippesi Jothidar</span>'}</div></div>
+    <div class="brand-foot"><img src="logo.svg" alt="" width="64" height="64"><div><b>கைப்பேசி ஜோதிடர்</b><span class="slogan-sm">${L('Your guide for life', 'உங்கள் வாழ்க்கையின் வழிகாட்டி')}</span>${ta() ? '' : '<span>Kaippesi Jothidar</span>'}</div></div>
     ${copyright()}`;
   fillHomeWeather();
   $('#shareToday').addEventListener('click', () => import('./screens-tools.js').then((mod) => mod.shareToday(td, snap)));

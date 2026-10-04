@@ -849,3 +849,8 @@ img, svg, video, canvas { max-width: 100%; }
   .td-day { font-size: 50px; min-width: 64px; }
   .quick-row { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
+/* Brand slogan — "உங்கள் வாழ்க்கையின் வழிகாட்டி" */
+.slogan { margin: 4px 0 10px; font-family: 'Noto Sans Tamil', sans-serif; font-weight: 700; font-size: clamp(15px, 4.2vw, 19px); letter-spacing: .3px;
+  background: linear-gradient(90deg, #ffe7a3, #ffb347, #ffe7a3); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.bm-tag { font-family: 'Noto Sans Tamil', 'Poppins', sans-serif !important; letter-spacing: .2px !important; font-size: 11px !important; color: var(--gold) !important; font-weight: 600; }
+.slogan-sm { display: block; font-size: 13px; color: var(--gold); font-weight: 600; }

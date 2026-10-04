@@ -1,3 +1,4 @@
+import { BRAND } from '../shared/brand.js';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -240,7 +241,7 @@ export function createApp() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT) || 3000;
   createApp().listen(port, '0.0.0.0', () => {
-    console.log(`🪐 Kaippesi Jothidar running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);
+    console.log(`🪔 ${BRAND.name} running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);
     startPushScheduler();
   });
 }

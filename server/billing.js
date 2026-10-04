@@ -1,3 +1,4 @@
+import { BRAND } from '../shared/brand.js';
 import crypto from 'node:crypto';
 import express from 'express';
 import { getDb } from './db.js';
@@ -202,7 +203,7 @@ async function createStripeSession({ subId, plan, amountCents, publicUrl }) {
     mode: 'payment',
     'line_items[0][price_data][currency]': 'usd',
     'line_items[0][price_data][unit_amount]': String(amountCents),
-    'line_items[0][price_data][product_data][name]': `Kaippesi Jothidar ${plan.name.en}`,
+    'line_items[0][price_data][product_data][name]': `${BRAND.name} ${plan.name.en}`,
     'line_items[0][quantity]': '1',
     success_url: `${publicUrl}/#billing-success`,
     cancel_url: `${publicUrl}/#billing-cancel`,

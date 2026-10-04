@@ -8,8 +8,7 @@ import { isLocked, lockCard } from './growth.js';
 
 const EXTRA = [
   { id: 'compass', icon: '🧭', en: 'Which study & career suits me? (talent compass)', ta: 'எந்தப் படிப்பு, தொழில் பொருந்தும்? (திறமை வழிகாட்டி)' },
-  { id: 'kula', icon: '🛕', en: 'Our Kula Deivam & worship', ta: 'குலதெய்வ வழிபாடு' },
-  { id: 'habits', icon: '🛡️', en: 'Guard against bad habits (drinking etc.)', ta: 'தீய பழக்கங்களிலிருந்து பாதுகாப்பு' },
+  { id: 'kula', icon: '🛕', en: 'Kula Deivam — how to find out', ta: 'குலதெய்வம் — அறியும் வழி' },
 ];
 const ui = { memberId: null, q: null };
 const iso = (d) => new Date(d.getTime() + state.loc.tz * 3600000).toISOString().slice(0, 10);
@@ -21,7 +20,7 @@ function renderLife(sec, params = {}) {
   if (params.memberId) ui.memberId = params.memberId;
   const people = state.family.filter((m) => m.relation !== 'organization');
   const m = people.find((x) => x.id === ui.memberId) || activeMember();
-  sec.innerHTML = `${subHeader(L('Life Questions', 'வாழ்க்கைக் கேள்விகள்'), L('When will it happen? — answered from the Jathagam by Dasa, Bhukti and Guru–Sani transit', 'எப்போது நடக்கும்? — தசை, புக்தி, குரு–சனி கோசாரப்படி'))}
+  sec.innerHTML = `${subHeader(L('Life Questions', 'வாழ்க்கைக் கேள்விகள்'), L('Traditional timing indicators from dasa, bhukti and Guru–Sani transits — not guarantees', 'தசை, புக்தி, குரு–சனி கோசார அடிப்படையிலான பாரம்பரியக் கால அறிகுறிகள் — உத்தரவாதம் அல்ல'))}
     ${people.length > 1 ? `<label>${L('For', 'யாருக்கு')}<select id="lifeFor">${people.map((x) => `<option value="${esc(x.id)}"${x.id === m.id ? ' selected' : ''}>${esc(displayName(x))}</option>`).join('')}</select></label>` : ''}
     <div class="q-grid">${[...QUESTIONS, ...EXTRA].map((q) => `<button class="q-card${ui.q === q.id ? ' sel' : ''}" data-q="${q.id}"><span class="ti-icon">${q.icon}</span><span>${esc(bi(q))}</span></button>`).join('')}</div>
     <div id="lifeOut"></div>`;
@@ -50,9 +49,11 @@ function renderPrediction(c, m) {
   const best = r.windows[0];
   const headline = !r.windows.length
     ? L('No strong period in the next 15 years by this method — effort and parigaram will open the way; please also consult your family astrologer.', 'இந்த முறைப்படி அடுத்த 15 ஆண்டுகளில் வலுவான காலம் தெரியவில்லை — முயற்சியும் பரிகாரமும் வழி திறக்கும்; குடும்ப ஜோதிடரையும் அணுகவும்.')
-    : L(`Most likely from ${monthYear(r.earliest?.peakFrom || best.peakFrom)} — during ${planetName((r.earliest || best).md)} Dasa, ${planetName((r.earliest || best).ad)} Bhukti.`,
-      `பெரும்பாலும் ${monthYear(r.earliest?.peakFrom || best.peakFrom)} முதல் — ${planetName((r.earliest || best).md)} தசை, ${planetName((r.earliest || best).ad)} புக்தியில்.`);
-  $('#lifeOut').innerHTML = `
+    : L(`Tradition sees ${monthYear(r.earliest?.peakFrom || best.peakFrom)} onwards as a supportive period — ${planetName((r.earliest || best).md)} Dasa, ${planetName((r.earliest || best).ad)} Bhukti.`,
+      `பாரம்பரியப்படி ${monthYear(r.earliest?.peakFrom || best.peakFrom)} முதல் சாதகமான காலம் — ${planetName((r.earliest || best).md)} தசை, ${planetName((r.earliest || best).ad)} புக்தி.`);
+  const caution = ['child', 'pr', 'visa', 'court', 'marriage', 'partner'].includes(ui.q)
+    ? `<div class="note-box" role="note">${L('No horoscope can guarantee a marriage, a pregnancy, a visa or a court result. Use these periods as one input; for children please consult a doctor, for visas the official embassy site, for cases your lawyer.', 'திருமணம், கர்ப்பம், விசா, நீதிமன்ற முடிவு — எதற்கும் ஜாதகம் உத்தரவாதம் தர முடியாது. இந்தக் காலங்களை ஒரு உள்ளீடாக மட்டும் கொள்ளுங்கள்; குழந்தைக்கு மருத்துவர், விசாவுக்கு அதிகாரப்பூர்வ தூதரகத் தளம், வழக்குக்கு வழக்கறிஞர்.')}</div>` : '';
+  $('#lifeOut').innerHTML = `${caution}
     <div class="card glass verdict-card life-head"><div class="ti-icon">${q.icon}</div><div class="mini-label">${esc(displayName(m))} · ${esc(bi(q))}</div>
       <div class="life-answer">${esc(headline)}</div>
       <span class="tag ${r.promise.level === 'strong' ? 'good' : r.promise.level === 'good' ? 'good' : 'warn'}">${L('Promise in chart', 'ஜாதக வாக்குறுதி')}: ${r.promise.level === 'strong' ? L('Strong', 'வலுவானது') : r.promise.level === 'good' ? L('Good', 'நன்று') : L('Comes with effort', 'முயற்சியால் கிடைக்கும்')}</span></div>
@@ -67,7 +68,7 @@ function renderPrediction(c, m) {
     <div class="card glass"><div class="card-title">🔍 ${L('What the chart shows', 'ஜாதகம் காட்டுவது')}</div>${r.promise.notes.map((n) => `<div class="small">• ${esc(bi(n))}</div>`).join('')}</div>
     <div class="card glass"><div class="card-title">🪔 ${L('Parigaram', 'பரிகாரம்')}</div><p>${esc(bi(r.remedy))}</p>
       ${r.karakaRemedies.map((k) => `<p class="small"><span style="color:${COLOR[k.planet]}">${GLYPH[k.planet]}</span> ${esc(planetName(k.planet))}: ${esc(bi(k.free))}</p>`).join('')}</div>
-    <button class="btn-gold" id="lifeExplain">📜 ${L('Detailed explanation by Kaippesi Jothidar', 'கைப்பேசி ஜோதிடரின் விரிவான விளக்கம்')}</button>
+    <button class="btn-gold" id="lifeExplain">📜 ${L('Detailed explanation', 'விரிவான விளக்கம்')}</button>
     <div class="card glass" id="lifeAi" hidden><div class="card-title"><span>📜 ${L('Explanation', 'விளக்கம்')}</span><button class="link-btn" id="lifeSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="lifeText"></div></div>
     <p class="muted small center">${L('Astrology shows favourable timing; effort, family support and the right professional advice make it happen.', 'ஜோதிடம் சாதகமான நேரத்தைக் காட்டும்; முயற்சி, குடும்ப ஆதரவு, சரியான நிபுணர் ஆலோசனையே அதை நிறைவேற்றும்.')}</p>`;
   $('#lifeExplain').addEventListener('click', async () => {
@@ -92,7 +93,8 @@ function renderPrediction(c, m) {
 function renderKula(c, m) {
   const k = kulaDeivam(c);
   $('#lifeOut').innerHTML = `<div class="card glass verdict-card life-head"><div class="ti-icon">🛕</div><div class="mini-label">${esc(displayName(m))}</div>
-      <div class="life-answer">${L('The 9th house points to', '9-ம் பாவம் காட்டும் தெய்வம்')}: ${esc(bi(k.deity))}</div></div>
+      <div class="life-answer">${L('Your Kula Deivam is a family tradition — ask your elders', 'குலதெய்வம் ஒரு குடும்ப மரபு — பெரியோரிடம் கேளுங்கள்')}</div>
+      <p class="small muted">${L('A chart cannot establish a Kula Deivam conclusively. Tradition links your 9th house with this deity form, which some families use only as a hint', 'ஜாதகம் குலதெய்வத்தை உறுதியாக நிர்ணயிக்க முடியாது. உங்கள் 9-ம் பாவத்தைப் பாரம்பரியம் இந்தத் தெய்வ வடிவுடன் இணைக்கிறது; சில குடும்பங்கள் இதைக் குறிப்பாக மட்டும் பயன்படுத்தும்')}: ${esc(bi(k.deity))}</p></div>
     <div class="card glass"><p>${esc(bi(k.guidance))}</p><p class="small muted">${L('9th house', '9-ம் பாவம்')}: ${esc(bi(k.ninthSign))} · ${L('lord', 'அதிபதி')} ${esc(planetName(k.lord))}${k.occupants.length ? ` · ${L('planets', 'கிரகங்கள்')}: ${k.occupants.map((o) => esc(planetName(o))).join(', ')}` : ''}</p></div>
     ${k.periods.length ? `<div class="card glass"><div class="card-title">🙏 ${L('Especially good periods for a Kula Deivam visit', 'குலதெய்வ தரிசனத்திற்கு சிறப்பான காலங்கள்')}</div>${k.periods.map((p) => `<div class="factor"><span>${GLYPH[p.ad]} ${esc(planetName(p.md))} / ${esc(planetName(p.ad))}</span><b class="zero">${monthYear(p.start)} – ${monthYear(p.end)}</b></div>`).join('')}</div>` : ''}`;
 }

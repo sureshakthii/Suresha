@@ -272,7 +272,7 @@ function downloadIcs(x) {
   const d = x.date.replace(/-/g, '');
   const next = new Date(Date.parse(x.date) + 86400000).toISOString().slice(0, 10).replace(/-/g, '');
   const title = `${x.ta} / ${x.en}`.replace(/[,;\\]/g, ' ');
-  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Kaippesi Jothidar//Vratham//TA', 'BEGIN:VEVENT',
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Thunai//Vratham//TA', 'BEGIN:VEVENT',
     `UID:${d}-${x.type}-${Math.random().toString(36).slice(2)}@kaippesi`,
     `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
     `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${next}`, `SUMMARY:${title}`,

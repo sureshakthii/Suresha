@@ -77,7 +77,7 @@ const coupleUi = { wedding: null };
 function renderCouple(sec) {
   coupleUi.wedding ||= iso(new Date());
   const rerender = () => renderCouple(sec);
-  sec.innerHTML = `${subHeader(L('Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்'), L('Not only 10 poruthams — birth date, time and place of both: ayul balam, papa samyam, dasa sandhi, lagna, 7th/8th/5th/2nd houses, mana porutham and the years after the wedding', '10 பொருத்தம் மட்டுமல்ல — இருவரின் பிறந்த தேதி, நேரம், இடம்: ஆயுள் பலம், பாப சாம்யம், தசா சந்தி, லக்னம், 7/8/5/2 பாவங்கள், மனப் பொருத்தம், திருமணத்திற்குப் பின் ஆண்டுகள்'), 'home')}
+  sec.innerHTML = `${subHeader(L('Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்'), L('Not only 10 poruthams — birth date, time and place of both: papa samyam, dasa sandhi, lagna, 7th/8th/5th/2nd houses, mana porutham and the years after the wedding', '10 பொருத்தம் மட்டுமல்ல — இருவரின் பிறந்த தேதி, நேரம், இடம்: பாப சாம்யம், தசா சந்தி, லக்னம், 7/8/5/2 பாவங்கள், மனப் பொருத்தம், திருமணத்திற்குப் பின் ஆண்டுகள்'), 'home')}
     ${personBlock('bride', `👰 ${L('Bride', 'மணப்பெண்')}`, { gender: 'female' })}
     ${personBlock('groom', `🤵 ${L('Groom', 'மணமகன்')}`, { gender: 'male' })}
     <div class="card glass"><label>${L('Wedding date (done or planned)', 'திருமண தேதி (நடந்தது அல்லது திட்டமிட்டது)')}<input type="date" id="wedDate" value="${esc(coupleUi.wedding)}"></label>
@@ -106,14 +106,12 @@ function showCouple(bride, groom) {
     <div class="card glass verdict-card"><div class="muted small">${esc(bi(names[0]))} (${esc(nakName(bride.chart.janmaNakshatra.index))}) · ${esc(bi(names[1]))} (${esc(nakName(groom.chart.janmaNakshatra.index))})</div>
       <div class="big-score">${r.total}<small>/100</small></div><div class="verdict-big ${r.verdict === 'excellent' || r.verdict === 'good' ? 'DO' : r.verdict === 'effort' ? 'CAUTION' : 'AVOID'}">${esc(verdictText)}</div>
       <div class="muted small">${L('10 poruthams', '10 பொருத்தங்கள்')}: ${r.porutham.score}/10 · ${L('Mana porutham', 'மனப் பொருத்தம்')}: ${r.mana.overall}/100 · ${L('Deep checks', 'ஆழ்ந்த ஆய்வு')}: ${r.deep.score}/100</div></div>
+    <div class="note-box" role="note">${L('This is a traditional interpretation to support a family conversation — not a verdict on anyone’s worth or suitability, and no guarantee of a happy or unhappy marriage. Health is never judged from a chart: a pre-marriage medical check-up is the reliable way.', 'இது குடும்ப உரையாடலுக்கு உதவும் பாரம்பரிய விளக்கம் மட்டுமே — யாருடைய மதிப்பையோ தகுதியையோ தீர்மானிப்பதல்ல; மகிழ்ச்சியான அல்லது மகிழ்ச்சியற்ற திருமணத்திற்கு உத்தரவாதமும் அல்ல. உடல்நலம் ஜாதகத்திலிருந்து மதிப்பிடப்படாது; திருமணத்திற்கு முன் மருத்துவப் பரிசோதனையே நம்பகமானது.')}</div>
     <details class="card glass"><summary><b>📋 ${L('10 Poruthams', '10 பொருத்தங்கள்')} — ${esc(bi(VERDICTS[r.porutham.verdict]))}</b></summary>
       ${r.porutham.rows.map((x) => `<div class="factor"><span>${icon(x.status)} ${esc(ta() ? x.ta : x.en)}<br><small class="muted">${esc(bi(x.detail))}</small></span></div>`).join('')}
       ${r.samyam.map((n) => `<div class="factor"><span>${esc(bi(n))}</span><b class="${n.ok ? 'pos' : 'neg'}">${n.ok ? '✓' : '!'}</b></div>`).join('')}</details>
     <div class="card glass"><div class="card-title">🛡️ ${L('Beyond the 10 poruthams', '10 பொருத்தத்திற்கும் மேலான ஆய்வு')} <span class="pill">${r.deep.passed}/${r.deep.checks.length}</span></div>
       ${r.deep.checks.map((c) => `<div class="deep-row"><span>${c.ok ? '✅' : '🟡'} <b>${esc(bi(c.name))}</b><br><small class="muted">${esc(bi(c.note))}</small></span></div>`).join('')}
-      <div class="mini-label" style="margin-top:10px">🌿 ${L('Ayul Balam (long-life strength)', 'ஆயுள் பலம்')}</div>
-      <div class="ayul-pair">${[[names[0], r.deep.ayul.bride], [names[1], r.deep.ayul.groom]].map(([n, a]) => `<div><b>${esc(bi(n))}</b><div><span class="tag ${a.level === 'strong' ? 'good' : a.level === 'medium' ? 'warn' : 'bad'}">${a.level === 'strong' ? L('Strong', 'வலுவானது') : a.level === 'medium' ? L('Medium', 'நடுத்தரம்') : L('Needs care', 'கவனம் தேவை')}</span></div><p class="small">${esc(bi(a.text))}</p></div>`).join('')}</div>
-      <p class="muted small">${L('Ayul is shown only as strength — never as years. Please also do a pre-marriage health check-up together.', 'ஆயுள் பலமாக மட்டுமே காட்டப்படும் — ஆண்டுகளாக அல்ல. திருமணத்திற்கு முன் இருவரும் மருத்துவப் பரிசோதனையும் செய்துகொள்ளுங்கள்.')}</p></div>
     ${locked ? lockCard(L('Mana porutham, children and wealth timing and the 25-year married-life timeline are part of Premium.', 'மனப் பொருத்தம், குழந்தை & செல்வ காலம், 25 ஆண்டு திருமண வாழ்க்கைக் காலவரிசை பிரீமியத்தில் உள்ளன.')) : `
     <div class="card glass"><div class="card-title">💗 ${L('Mana Porutham — mind & life compatibility', 'மனப் பொருத்தம் — மனமும் வாழ்க்கையும்')}</div>${areaRows(r.mana.areas)}
       ${r.mana.karmic ? `<p class="small">✨ ${L('Rahu/Ketu link your charts — a strong karmic bond; keep honesty and shared prayer at the centre.', 'ராகு/கேது உங்கள் ஜாதகங்களை இணைக்கிறது — வலுவான கர்ம பந்தம்; நேர்மையும் சேர்ந்த வழிபாடும் மையமாக இருக்கட்டும்.')}</p>` : ''}</div>
@@ -128,7 +126,7 @@ function showCouple(bride, groom) {
     ${r.strengths.length || r.challenges.length ? `<div class="card glass">${r.strengths.length ? `<p>💪 <b>${L('Strengths', 'பலங்கள்')}:</b> ${r.strengths.map((x) => esc(bi(x))).join(', ')}</p>` : ''}${r.challenges.length ? `<p>🌱 <b>${L('Grow together in', 'சேர்ந்து வளர வேண்டியவை')}:</b> ${r.challenges.map((x) => esc(bi(x))).join(', ')}</p>` : ''}</div>` : ''}
     <div class="section-title">📅 ${L('Year by year from the wedding', 'திருமணத்திலிருந்து ஆண்டுவாரியாக')}</div>${timelineHtml(r.timeline, names)}
     <div class="card glass"><div class="card-title">🪔 ${L('Parigaram for the couple', 'தம்பதியருக்கான பரிகாரம்')}</div>${r.remedies.map((x) => `<p class="small">• ${esc(bi(x))}</p>`).join('')}</div>
-    <button class="btn-gold" id="coupleRead">📜 ${L('Detailed reading by Kaippesi Jothidar', 'கைப்பேசி ஜோதிடரின் விரிவான பலன்')}</button>
+    <button class="btn-gold" id="coupleRead">📜 ${L('Detailed explanation', 'விரிவான விளக்கம்')}</button>
     <div class="card glass" id="coupleAi" hidden><div class="card-title"><span>📜 ${L('Reading', 'பலன்')}</span><button class="link-btn" id="coupleSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="coupleText"></div></div>`}
     <p class="muted small center">${L('Marriage is made by love, respect and effort; astrology shows the seasons so you can prepare together.', 'திருமணம் அன்பு, மரியாதை, முயற்சியால் நிலைக்கிறது; ஜோதிடம் பருவங்களைக் காட்டி சேர்ந்து தயாராக உதவுகிறது.')}</p>`;
   $('#coupleRead')?.addEventListener('click', async () => {
@@ -139,7 +137,7 @@ function showCouple(bride, groom) {
       bride: { name: names[0].en, star: bride.chart.janmaNakshatra.name, rasi: bride.chart.janmaRasi.name, lagna: bride.chart.lagna.rasiName },
       groom: { name: names[1].en, star: groom.chart.janmaNakshatra.name, rasi: groom.chart.janmaRasi.name, lagna: groom.chart.lagna.rasiName },
       weddingDate: coupleUi.wedding, porutham: `${r.porutham.score}/10`, manaPorutham: r.mana.areas.map((x) => `${x.name.en}: ${x.score}`),
-      doshaSamyam: r.samyam.map((n) => n.en), deepChecks: r.deep.checks.map((c) => `${c.name.en}: ${c.ok ? 'ok' : 'care'} — ${c.note.en}`), ayul: { bride: r.deep.ayul.bride.level, groom: r.deep.ayul.groom.level }, childrenWindows: r.children.map((w) => `${iso(w.from)}..${iso(w.to)}`),
+      doshaSamyam: r.samyam.map((n) => n.en), deepChecks: r.deep.checks.map((c) => `${c.name.en}: ${c.ok ? 'ok' : 'care'} — ${c.note.en}`), childrenWindows: r.children.map((w) => `${iso(w.from)}..${iso(w.to)}`),
       goodYears: r.goodYears.map((x) => x.year), careYears: r.careYears.map((x) => ({ year: x.year, why: x.themes.filter((th) => th.kind === 'care').map((th) => th.en) })),
     };
     await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: 'Give a warm, honest married-life reading for this couple from the wedding day: how their bond grows, children, wealth and home, the years that need extra care and exactly how to handle them, and simple parigarams. Be positive and practical; never frighten. About 300 words.' }],

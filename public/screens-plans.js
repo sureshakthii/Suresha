@@ -1,5 +1,5 @@
 // Subscription plans: Free, Premium and Family — INR in India, USD abroad.
-import { state, $, $$, L, esc, bi, api, STATIC, registerScreen, subHeader, go, toast, fmtIsoDate } from './core.js';
+import { state, $, $$, L, esc, bi, api, STATIC, registerScreen, subHeader, go, toast, fmtIsoDate, BRAND } from './core.js';
 import { redeemBox, wireRedeem, trialBanner } from './growth.js';
 
 const inIndia = () => Math.abs((state.loc?.tz ?? 5.5) - 5.5) < 0.01;
@@ -15,7 +15,7 @@ async function loadPlans(currency) {
 
 async function renderPlans(sec, params = {}) {
   const currency = params.currency || (inIndia() ? 'INR' : 'USD');
-  sec.innerHTML = `${subHeader(L('Kaippesi Premium', 'கைப்பேசி பிரீமியம்'), L('Unlimited answers, life-timing predictions and full readings for your whole family', 'வரம்பற்ற பதில்கள், வாழ்க்கை நேரக் கணிப்பு, முழு குடும்பத்திற்கும் விரிவான பலன்'), 'more')}
+  sec.innerHTML = `${subHeader(L(BRAND.premiumEn, BRAND.premiumTa), L('Unlimited answers, life-timing predictions and full readings for your whole family', 'வரம்பற்ற பதில்கள், வாழ்க்கை நேரக் கணிப்பு, முழு குடும்பத்திற்கும் விரிவான பலன்'), 'more')}
     <div class="seg"><button data-cur="INR" class="${currency === 'INR' ? 'sel' : ''}">₹ ${L('India', 'இந்தியா')}</button><button data-cur="USD" class="${currency === 'USD' ? 'sel' : ''}">$ ${L('Abroad', 'வெளிநாடு')}</button></div>
     ${trialBanner()}${params.redeem ? redeemBox() : ''}<div id="myPlan"></div><div id="planList"><div class="loader"><i></i><i></i><i></i></div></div>`;
   $$('[data-cur]', sec).forEach((b) => b.addEventListener('click', () => renderPlans(sec, { ...params, currency: b.dataset.cur })));
@@ -50,7 +50,7 @@ async function buy(plan, currency) {
     if (r.gateway === 'razorpay') {
       await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://checkout.razorpay.com/v1/checkout.js'; s.onload = res; s.onerror = rej; document.head.append(s); });
       new window.Razorpay({
-        key: r.keyId, amount: r.amount, currency: r.currency, order_id: r.razorpayOrderId, name: 'கைப்பேசி ஜோதிடர்', description: plan, theme: { color: '#f5b83d' },
+        key: r.keyId, amount: r.amount, currency: r.currency, order_id: r.razorpayOrderId, name: BRAND.nameTa, description: plan, theme: { color: '#f5b83d' },
         handler: async (resp) => {
           try { await api('/api/billing/verify', { method: 'POST', body: { subscriptionId: r.subscriptionId, ...resp } }); toast(L('Welcome to Premium 🙏', 'பிரீமியத்திற்கு நல்வரவு 🙏')); go('plans'); } catch (e) { toast(e.message); }
         },

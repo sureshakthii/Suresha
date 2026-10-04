@@ -11,7 +11,7 @@ import { PACKAGES, PACKAGE_INCLUDES, packageRoute } from './shared/packages.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtIsoDate, api, store,
   activeMember, chartOf, registerScreen, go, subHeader, aiTask, toast, speak, stopSpeaking, STATIC, needsServerCard, displayName,
-  placeName,
+  placeName, BRAND
 } from './core.js';
 import { refreshSnap } from './screens-main.js';
 import { fetchForecast, weatherAdvice } from './shared/weather.js';
@@ -314,7 +314,7 @@ async function payWithRazorpay({ order, payment }) {
   return new Promise((resolve) => {
     const rzp = new window.Razorpay({
       key: payment.keyId, amount: payment.amount, currency: payment.currency, order_id: payment.razorpayOrderId,
-      name: 'கைப்பேசி ஜோதிடர்', description: `Order ${order.id.slice(0, 8)}`,
+      name: BRAND.nameTa, description: `Order ${order.id.slice(0, 8)}`,
       theme: { color: '#f5b83d' },
       handler: async (resp) => {
         try { await api(`/api/store/orders/${order.id}/verify`, { method: 'POST', body: resp }); toast(L('Payment successful 🙏', 'கட்டணம் வெற்றி 🙏')); } catch (e) { toast(e.message); }
@@ -445,7 +445,7 @@ const reloadReminders = () => { reminders.trips = store.get('kj_reminders', remi
 function icsFor(events) {
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Kaippesi Jothidar//TA', 'CALSCALE:GREGORIAN'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Thunai//TA', 'CALSCALE:GREGORIAN'];
   for (const ev of events) {
     lines.push('BEGIN:VEVENT', `UID:${ev.uid}@kaippesi`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(ev.start)}`, `DTEND:${stamp(new Date(ev.start.getTime() + (ev.minutes || 30) * 60000))}`,
       `SUMMARY:${ev.title.replace(/[,;]/g, ' ')}`, ev.rrule ? `RRULE:${ev.rrule}` : '', ev.location ? `LOCATION:${ev.location.replace(/[,;]/g, ' ')}` : '',
@@ -528,7 +528,7 @@ function renderReminders(sec, params = {}) {
   $('#pushTest')?.addEventListener('click', () => api('/api/push/test', { method: 'POST', body: { endpoint: reminders.pushEndpoint } }).then(() => toast(L('Test sent', 'சோதனை அனுப்பப்பட்டது'))).catch((e) => toast(e.message)));
   $('#icsDaily').addEventListener('click', () => {
     const start = localToUtc(new Date(Date.now() + 86400000 + state.loc.tz * 3600000).toISOString().slice(0, 10), reminders.morningTime || '05:30');
-    saveIcs('kaippesi-morning.ics', icsFor([{ uid: 'morning', title: L('Kaippesi Jothidar — check today\'s panchangam', 'கைப்பேசி ஜோதிடர் — இன்றைய பஞ்சாங்கம் பார்க்கவும்'), start, rrule: 'FREQ=DAILY', minutes: 10 }]));
+    saveIcs('thunai-morning.ics', icsFor([{ uid: 'morning', title: L('Thunai — check today\'s panchangam', 'துணை — இன்றைய பஞ்சாங்கம் பார்க்கவும்'), start, rrule: 'FREQ=DAILY', minutes: 10 }]));
   });
   $('#tripForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -580,7 +580,7 @@ function renderAnalysis(sec) {
     const lvl = (s) => (s >= 66 ? 'strong' : s >= 48 ? 'average' : 'weak');
     $('#anBody').innerHTML = `
       <div class="card glass"><div class="card-title">🌟 ${L('Life areas', 'வாழ்க்கைத் துறைகள்')}</div>
-        ${a.areas.map((x) => `<div class="gb-row static"><span class="gb-name">${esc(L(x.en, x.ta))}</span>${bar(x.score, lvl(x.score))}<span class="tag ${x.level === 'strong' ? 'good' : x.level === 'steady' ? 'warn' : 'bad'}">${x.level === 'strong' ? L('Strong', 'பலம்') : x.level === 'steady' ? L('Steady', 'நிலையானது') : L('Needs care', 'கவனம் தேவை')}</span></div>`).join('')}</div>
+        ${a.areas.filter((x) => x.id !== 'health').map((x) => `<div class="gb-row static"><span class="gb-name">${esc(L(x.en, x.ta))}</span>${bar(x.score, lvl(x.score))}<span class="tag ${x.level === 'strong' ? 'good' : x.level === 'steady' ? 'warn' : 'bad'}">${x.level === 'strong' ? L('Strong', 'பலம்') : x.level === 'steady' ? L('Steady', 'நிலையானது') : L('Needs care', 'கவனம் தேவை')}</span></div>`).join('')}</div>
       <div class="card glass"><div class="card-title">✨ ${L('Yogas in your chart', 'உங்கள் ஜாதக யோகங்கள்')}</div>
         ${a.yogas.length ? a.yogas.map((y) => `<div class="pari-row"><span class="pg">${y.kind === 'good' ? '🌟' : '🌙'}</span><div><b>${esc(bi(y.name))}</b><p>${esc(bi(y.desc))}</p></div></div>`).join('') : `<p class="small">${L('Your strength comes from steady planetary balance rather than a single yoga.', 'ஒரு யோகத்தை விட கிரகங்களின் சமநிலையே உங்கள் பலம்.')}</p>`}</div>
       <div class="card glass"><div class="card-title">🪐 ${L('Current transits (Gochara)', 'தற்போதைய கோசாரம்')}</div>
@@ -593,7 +593,7 @@ function renderAnalysis(sec) {
           ${b.occupants.length ? `<p>${L('Planets here', 'இங்குள்ள கிரகங்கள்')}: ${b.occupants.map((o) => `${GLYPH[o]} ${esc(planetName(o))}`).join(', ')}</p>` : ''}
           ${b.aspects.length ? `<p>${L('Aspected by', 'பார்வை')}: ${b.aspects.map((o) => esc(planetName(o))).join(', ')}</p>` : ''}
           ${b.notes.map((n) => `<p>• ${esc(bi(n))}</p>`).join('')}</div></details>`).join('')}</div>
-      <button class="btn-gold" id="anRead">📜 ${L('Detailed reading by Kaippesi Jothidar', 'கைப்பேசி ஜோதிடரின் விரிவான பலன்')}</button>
+      <button class="btn-gold" id="anRead">📜 ${L('Detailed explanation', 'விரிவான விளக்கம்')}</button>
       <div class="card glass" id="anAi" hidden><div class="card-title"><span>📜 ${L('Your reading', 'உங்கள் பலன்')}</span><button class="link-btn" id="anSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="anText"></div></div>`;
     $('#anRead').addEventListener('click', async () => {
       $('#anAi').hidden = false;

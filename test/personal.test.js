@@ -48,7 +48,10 @@ test('ayul balam is a strength level, never years', () => {
 test('deep marriage checks feed the complete porutham', () => {
   const wedding = new Date('2026-11-20T06:00:00Z');
   const d = deepMarriageChecks(bride, groom, wedding);
-  assert.ok(d.checks.length >= 9);
+  assert.ok(d.checks.length >= 8);
+  // Longevity is never part of matching (THUNAI brief: no lifespan assessments).
+  assert.ok(!d.checks.some((c) => c.id === 'ayul'));
+  assert.equal(d.ayul, undefined);
   assert.ok(d.score >= 0 && d.score <= 100);
   const r = marriageReport(bride, groom, { weddingDate: wedding });
   assert.ok(r.deep && r.deep.checks.length === d.checks.length);

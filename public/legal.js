@@ -18,12 +18,12 @@ const SECTIONS = [
   {
     id: 'terms', icon: '📜', en: 'Terms of use', ta: 'பயன்பாட்டு விதிமுறைகள்',
     body: [
-      ['The service', 'சேவை', 'Kaippesi Jothidar provides Vedic astrology calculations, panchangam, predictions, a pooja store, priest and pilgrimage bookings, and subscriptions.', 'கைப்பேசி ஜோதிடர் வேத ஜோதிடக் கணிப்புகள், பஞ்சாங்கம், பலன்கள், பூஜைப் பொருள் கடை, புரோகிதர் மற்றும் யாத்திரை முன்பதிவு, சந்தா சேவைகளை வழங்குகிறது.'],
+      ['The service', 'சேவை', 'Thunai provides Vedic astrology calculations, panchangam, predictions, a pooja store, priest and pilgrimage bookings, and subscriptions.', 'துணை வேத ஜோதிடக் கணிப்புகள், பஞ்சாங்கம், பலன்கள், பூஜைப் பொருள் கடை, புரோகிதர் மற்றும் யாத்திரை முன்பதிவு, சந்தா சேவைகளை வழங்குகிறது.'],
       ['Accounts', 'கணக்கு', 'Keep your sign-in secure. One family plan covers up to 8 family profiles under one account.', 'உங்கள் உள்நுழைவைப் பாதுகாப்பாக வைத்திருங்கள். ஒரு குடும்பத் திட்டம் ஒரு கணக்கில் 8 குடும்ப உறுப்பினர்கள் வரை.'],
       ['Subscriptions & trials', 'சந்தா & சோதனை', 'Paid plans run for the period purchased. Free trials and gift codes end automatically at the stated time; premium features then lock until you subscribe.', 'கட்டணத் திட்டங்கள் வாங்கிய காலம் வரை இயங்கும். இலவசச் சோதனையும் பரிசுக் குறியீடும் குறிப்பிட்ட நேரத்தில் தானாக முடியும்; பின் சந்தா செய்யும் வரை பிரீமியம் வசதிகள் பூட்டப்படும்.'],
       ['Bookings & partners', 'முன்பதிவு & கூட்டாளர்கள்', 'Priests, temples, hotels and travel are provided by independent partners; we coordinate and support you. Official temple e-services remain with HR&CE.', 'புரோகிதர், கோவில், தங்குமிடம், பயணம் சுயாதீனக் கூட்டாளர்களால் வழங்கப்படுகின்றன; நாங்கள் ஒருங்கிணைத்து உதவுகிறோம். அதிகாரப்பூர்வ கோவில் இ-சேவைகள் இந்து சமய அறநிலையத் துறையிடமே.'],
       ['Fair use', 'நியாயமான பயன்பாடு', 'Do not misuse the service, other people\'s data, or the community. We may suspend accounts that do.', 'சேவையையோ, பிறரின் தரவையோ தவறாகப் பயன்படுத்த வேண்டாம். அப்படிச் செய்யும் கணக்குகளை நிறுத்தி வைக்கலாம்.'],
-      ['Copyright', 'பதிப்புரிமை', 'The Kaippesi Jothidar name, logo, design and content are protected. © 2026 Kaippesi Jothidar. All rights reserved.', 'கைப்பேசி ஜோதிடர் பெயர், சின்னம், வடிவமைப்பு, உள்ளடக்கம் பாதுகாக்கப்பட்டவை. © 2026 கைப்பேசி ஜோதிடர். அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.'],
+      ['Copyright', 'பதிப்புரிமை', 'The Thunai name, logo, design and content are protected. © 2026 Thunai. All rights reserved.', 'துணை பெயர், சின்னம், வடிவமைப்பு, உள்ளடக்கம் பாதுகாக்கப்பட்டவை. © 2026 துணை. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.'],
     ],
   },
   {

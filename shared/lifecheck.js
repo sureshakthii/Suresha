@@ -107,7 +107,7 @@ const HOUSE_CHECKS = [
   { house: 7, en: 'Married life (7th house)', ta: 'மண வாழ்க்கை (7-ம் பாவம்)', karaka: 'Venus' },
   { house: 2, en: 'Family & speech (2nd)', ta: 'குடும்பம், வாக்கு (2-ம்)', karaka: 'Jupiter' },
   { house: 5, en: 'Children (5th)', ta: 'புத்திர பாக்கியம் (5-ம்)', karaka: 'Jupiter' },
-  { house: 8, en: 'Mangalyam & long life (8th)', ta: 'மாங்கல்யம், ஆயுள் (8-ம்)', karaka: 'Saturn' },
+  { house: 8, en: 'Mangalyam (8th, traditional marital bond)', ta: 'மாங்கல்யம் (8-ம், பாரம்பரிய மண பந்தம்)', karaka: 'Saturn' },
   { house: 11, en: 'Income & gains (11th)', ta: 'வருமானம், லாபம் (11-ம்)', karaka: 'Jupiter' },
 ];
 
@@ -127,20 +127,13 @@ export function marriageHouses(chart) {
 
 /** All deep checks for a couple. */
 export function deepMarriageChecks(bride, groom, weddingDate = new Date()) {
-  const ayul = { bride: ayulBalam(bride), groom: ayulBalam(groom) };
+  // Longevity (ayul) is deliberately NOT part of matching: Thunai never assesses lifespan.
   const papa = { bride: papaPoints(bride), groom: papaPoints(groom) };
   const papaOk = papa.groom.total >= papa.bride.total - 0.5;
   const sandhi = dasaSandhi(bride, groom, weddingDate);
   const lagna = lagnaPorutham(bride, groom);
   const houses = { bride: marriageHouses(bride), groom: marriageHouses(groom) };
   const checks = [
-    {
-      id: 'ayul', name: T('Ayul Balam (long-life strength) of both', 'இருவரின் ஆயுள் பலம்'),
-      ok: ayul.bride.level !== 'care' && ayul.groom.level !== 'care',
-      note: ayul.bride.level === 'care' || ayul.groom.level === 'care'
-        ? T('One chart needs health care — check the full horoscope with your family astrologer and do Mrityunjaya prayer together.', 'ஒரு ஜாதகத்தில் ஆரோக்கியக் கவனம் தேவை — குடும்ப ஜோதிடரிடம் முழு ஜாதகம் பார்த்து, சேர்ந்து மிருத்யுஞ்ஜய வழிபாடு செய்யுங்கள்.')
-        : T('Both charts show good vitality.', 'இரு ஜாதகங்களிலும் நல்ல உயிர்ச்சக்தி.'),
-    },
     {
       id: 'papa', name: T('Papa Samyam (balance of malefics)', 'பாப சாம்யம்'),
       ok: papaOk,
@@ -171,11 +164,10 @@ export function deepMarriageChecks(bride, groom, weddingDate = new Date()) {
   ];
   const passed = checks.filter((c) => c.ok).length;
   const score = Math.round(
-    (ayul.bride.score + ayul.groom.score) / 2 * 0.25
-    + lagna.score * 0.15
-    + (papaOk ? 80 : 45) * 0.15
-    + (sandhi.ok ? 80 : 55) * 0.1
-    + HOUSE_CHECKS.reduce((s, _, i) => s + (houses.bride[i].score + houses.groom[i].score) / 2, 0) / HOUSE_CHECKS.length * 0.35,
+    lagna.score * 0.2
+    + (papaOk ? 80 : 45) * 0.2
+    + (sandhi.ok ? 80 : 55) * 0.15
+    + HOUSE_CHECKS.reduce((s, _, i) => s + (houses.bride[i].score + houses.groom[i].score) / 2, 0) / HOUSE_CHECKS.length * 0.45,
   );
-  return { ayul, papa, papaOk, sandhi, lagna, houses, checks, passed, score };
+  return { papa, papaOk, sandhi, lagna, houses, checks, passed, score };
 }

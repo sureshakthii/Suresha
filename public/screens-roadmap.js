@@ -1,6 +1,8 @@
 // Life Road Map screen (வாழ்க்கை வரைபடம்) — each person's personal plan for the next 10 years,
 // plus a print / save-as-PDF report (ஜாதகப் புத்தகம்) that families can keep or share.
-import { lifeRoadmap, ROAD_AREAS } from './shared/roadmap.js';
+import { lifeRoadmap, ROAD_AREAS as ALL_AREAS } from './shared/roadmap.js';
+// Health is not scored from the chart (THUNAI brief: wellness stays separate from horoscope interpretation).
+const ROAD_AREAS = ALL_AREAS.filter((a) => a.id !== 'health');
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, monthName, activeMember, chartOf, registerScreen, subHeader,
   speak, displayName, aiTask, saveFamily,

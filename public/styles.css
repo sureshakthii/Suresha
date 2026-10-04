@@ -1055,3 +1055,12 @@ fieldset.certainty legend { font-weight: 600; font-size: 14px; padding: 0 4px; }
 .tabbar button span:last-child { white-space: nowrap; font-size: 12px; }
 [data-theme="light"] .ans-h { color: #7a2a12; }
 .trip-details > summary { cursor: pointer; margin: 8px 0; line-height: 1.5; }
+
+/* Text with bar, everywhere: the label is always readable in full (own line), then the bar and the value in words. */
+.gb-row, .gb-row.static { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; font-size: 15px; }
+.gb-row > .gb-name { grid-column: 1 / -1; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.4; }
+.gb-row > .gb-bar, .gb-row > .bar { grid-column: 1; height: 10px; margin: 0; }
+.gb-row > :nth-child(3) { grid-column: 2; justify-self: end; margin: 0; }
+.bh-a { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.4; }
+details.bhava summary { font-size: 15px; grid-template-columns: 26px minmax(0, 1fr) 84px; }
+body.large .gb-row, body.large details.bhava summary { font-size: 18px; }

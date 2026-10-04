@@ -1,3 +1,4 @@
+import { BRAND } from '../shared/brand.js';
 import crypto from 'node:crypto';
 import express from 'express';
 import nodemailer from 'nodemailer';
@@ -54,7 +55,7 @@ function providers() {
   };
 }
 
-const otpText = (code) => `உங்கள் கைப்பேசி ஜோதிடர் OTP: ${code} (5 நிமிடங்கள் செல்லும்)\nYour Kaippesi Jothidar OTP: ${code} (valid for 5 minutes)`;
+const otpText = (code) => `உங்கள் ${BRAND.nameTa} OTP: ${code} (5 நிமிடங்கள் செல்லும்)\nYour ${BRAND.name} OTP: ${code} (valid for 5 minutes)`;
 
 async function sendSms(to, code) {
   if (smsProvider() === 'twilio') {
@@ -86,7 +87,7 @@ async function sendEmail(to, code) {
   mailer ||= nodemailer.createTransport(env('SMTP_URL'));
   await mailer.sendMail({
     from: env('MAIL_FROM'), to,
-    subject: `கைப்பேசி ஜோதிடர் OTP: ${code}`,
+    subject: `${BRAND.nameTa} · ${BRAND.name} OTP: ${code}`,
     text: otpText(code),
   });
 }

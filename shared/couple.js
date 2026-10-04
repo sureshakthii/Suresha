@@ -85,11 +85,7 @@ export function manaPorutham(a, b) {
     const s = (ba[4].score + bb[4].score) / 2 * 0.6 + (sa.Jupiter + sb.Jupiter) / 2 * 0.4;
     area('children', 'Children', 'குழந்தை பாக்கியம்', s, [T(`5th houses ${ba[4].score} & ${bb[4].score}; Jupiter ${sa.Jupiter} & ${sb.Jupiter}`, `5-ம் பாவம் ${ba[4].score}, ${bb[4].score}; குரு ${sa.Jupiter}, ${sb.Jupiter}`)]);
   }
-  // Health & longevity together: Lagna and 8th.
-  {
-    const s = (ba[0].score + bb[0].score) / 2 * 0.6 + (ba[7].score + bb[7].score) / 2 * 0.4;
-    area('health', 'Health & long life together', 'ஆரோக்கியம் & நீண்ட வாழ்வு', s, [T('Based on Lagna and 8th house strength of both', 'இருவரின் லக்ன, 8-ம் பாவ பலம் அடிப்படையில்')]);
-  }
+  // Health / longevity is intentionally not scored: Thunai never judges health or lifespan from charts.
   // Karmic intensity: Rahu/Ketu on the other's Moon or Venus.
   const karmic = ['Rahu', 'Ketu'].some((n) => A[n].rasi === B.Moon.rasi || A[n].rasi === B.Venus.rasi || B[n].rasi === A.Moon.rasi || B[n].rasi === A.Venus.rasi);
   const overall = clamp(areas.reduce((s, x) => s + x.score, 0) / areas.length);
@@ -177,8 +173,7 @@ export function marriageReport(bride, groom, { weddingDate = new Date(), years =
   const deep = deepMarriageChecks(bride, groom, weddingDate);
   // Not only the 10 poruthams: mana porutham and the deep checks (ayul, papa samyam, dasa sandhi, lagna, bhavas) weigh more.
   const total = Math.round(porutham.score * 10 * 0.3 + mana.overall * 0.35 + deep.score * 0.35);
-  const ayulCare = deep.ayul.bride.level === 'care' || deep.ayul.groom.level === 'care';
-  const verdict = (porutham.criticalFail && mana.overall < 60) || (ayulCare && deep.passed < 6) ? 'consult' : total >= 68 ? 'excellent' : total >= 55 ? 'good' : 'effort';
+  const verdict = (porutham.criticalFail && mana.overall < 60) ? 'consult' : total >= 68 ? 'excellent' : total >= 55 ? 'good' : 'effort';
   const strengths = mana.areas.filter((x) => x.score >= 66).map((x) => x.name);
   const challenges = mana.areas.filter((x) => x.score < 50).map((x) => x.name);
   const remedies = [
@@ -187,7 +182,6 @@ export function marriageReport(bride, groom, { weddingDate = new Date(), years =
     ...(careYears.length ? [T('In care years: daily 10 minutes of talking without phones, and joint decisions only after a night\'s sleep.', 'கவனக் காலங்களில்: தினமும் 10 நிமிடம் கைப்பேசி இல்லாமல் பேசுங்கள்; பெரிய முடிவுகளை ஒரு இரவு கழித்து எடுங்கள்.')] : []),
     ...(!dB.chevvai.present !== !dG.chevvai.present ? [T('For Chevvai dosham: worship Lord Murugan on Tuesdays together.', 'செவ்வாய் தோஷத்திற்கு: செவ்வாய்தோறும் சேர்ந்து முருகன் வழிபாடு.')] : []),
   ];
-  if (ayulCare) remedies.push(T('For ayul balam: chant the Maha Mrityunjaya mantra together on Mondays and visit Thirukadaiyur Abirami Amman.', 'ஆயுள் பலத்திற்கு: திங்கள்தோறும் சேர்ந்து மகா மிருத்யுஞ்ஜய மந்திரம் சொல்லி, திருக்கடையூர் அபிராமி அம்மனை தரிசியுங்கள்.'));
   if (!deep.papaOk) remedies.push(T('For papa samyam: Navagraha pooja together before the wedding.', 'பாப சாம்யத்திற்கு: திருமணத்திற்கு முன் சேர்ந்து நவகிரக பூஜை.'));
   return { porutham, doshams: { bride: dB, groom: dG }, samyam, mana, deep, total, verdict, strengths, challenges, timeline: rows, children, home, careYears, goodYears, remedies, childFallback: childA.windows[0] || childB.windows[0] || null };
 }

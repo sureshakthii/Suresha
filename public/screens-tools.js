@@ -15,7 +15,7 @@ import {
   listen, micMessage,
   yogaName, karanaName,
   placeName,
-  displayName, assistantName,
+  displayName, assistantName, BRAND
 } from './core.js';
 import { dayOutlook, gauge, animateGauges, refreshSnap, reliabilityOf, setupVoiceInput } from './screens-main.js';
 import { chartFacts, composeAnswer, factsForAI, classify, answerLang } from './shared/guidance.js';
@@ -612,8 +612,8 @@ export async function shareToday(td, snap) {
   x.lineWidth = 1.5; x.strokeRect(52, 52, W - 104, H - 104);
   const font = (w, s) => `${w} ${s}px "Noto Sans Tamil", "Poppins", sans-serif`;
   x.textAlign = 'center';
-  x.fillStyle = '#ffdf9e'; x.font = font(800, 58); x.fillText('கைப்பேசி ஜோதிடர்', W / 2, 150);
-  x.fillStyle = '#b7a9d6'; x.font = font(400, 30); x.fillText('Kaippesi Jothidar · Daily Panchangam', W / 2, 198);
+  x.fillStyle = '#ffdf9e'; x.font = font(800, 58); x.fillText(BRAND.nameTa, W / 2, 150);
+  x.fillStyle = '#b7a9d6'; x.font = font(400, 30); x.fillText(`${BRAND.nameUpper} · Daily Panchangam`, W / 2, 198);
   x.fillStyle = '#ffffff'; x.font = font(800, 150); x.fillText(String(td.tamil.day), W / 2, 380);
   x.fillStyle = '#ffdf9e'; x.font = font(800, 64); x.fillText(`${td.tamil.monthTa} · ${td.tamil.monthEn}`, W / 2, 460);
   x.fillStyle = '#e8dcff'; x.font = font(600, 36); x.fillText(`${td.tamil.year.ta} வருடம் · ${td.weekday.ta} · ${td.date.split('-').reverse().join('-')}`, W / 2, 520);
@@ -641,7 +641,7 @@ export async function shareToday(td, snap) {
   }
   x.textAlign = 'center'; x.fillStyle = '#b7a9d6'; x.font = font(400, 26);
   x.fillText(`📍 ${loc.name || ''} · kaippesi jothidar`, W / 2, H - 80);
-  const text = `🙏 ${td.tamil.monthTa} ${td.tamil.day} · ${td.weekday.ta}\nநட்சத்திரம்: ${NAKSHATRAS[snap.nakshatra.index].ta} · திதி: ${snap.tithi.ta}\nராகு காலம்: ${fmtTime(td.rahuKalam.start, loc.tz)}–${fmtTime(td.rahuKalam.end, loc.tz)}\n— கைப்பேசி ஜோதிடர்`;
+  const text = `🙏 ${td.tamil.monthTa} ${td.tamil.day} · ${td.weekday.ta}\nநட்சத்திரம்: ${NAKSHATRAS[snap.nakshatra.index].ta} · திதி: ${snap.tithi.ta}\nராகு காலம்: ${fmtTime(td.rahuKalam.start, loc.tz)}–${fmtTime(td.rahuKalam.end, loc.tz)}\n— துணை`;
   const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
   const file = new File([blob], `kaippesi-${td.date}.png`, { type: 'image/png' });
   if (navigator.canShare?.({ files: [file] })) {

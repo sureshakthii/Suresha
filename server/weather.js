@@ -25,7 +25,7 @@ export const clearWeatherCache = () => cache.clear();
 
 
 async function getJson(url) {
-  const r = await fetchImpl(url, { signal: AbortSignal.timeout(TIMEOUT), headers: { Accept: 'application/json', 'User-Agent': 'KaippesiJothidar/1.0' } });
+  const r = await fetchImpl(url, { signal: AbortSignal.timeout(TIMEOUT), headers: { Accept: 'application/json', 'User-Agent': 'ThunaiApp/1.0' } });
   if (!r.ok) throw new Error(`${new URL(url).host} ${r.status}`);
   return r.json();
 }

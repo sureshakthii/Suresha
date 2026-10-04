@@ -5,7 +5,7 @@ import { tamilDay } from './shared/tamilcal.js';
 import { personalGuide, DAY_COLOR } from './shared/personal.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtDate, activeMember, chartOf,
-  registerScreen, subHeader, speak, stopSpeaking, toast, displayName, placeName, yogaName, saveSettings, copyright,
+  registerScreen, subHeader, speak, stopSpeaking, toast, displayName, placeName, yogaName, saveSettings, copyright, BRAND
 } from './core.js';
 import { dayOutlook } from './screens-main.js';
 import { isLocked, lockCard } from './growth.js';
@@ -17,7 +17,7 @@ const dayName = (i) => (ta() ? WEEK_TA[i] : WEEK_EN[i]);
 const people = () => state.family.filter((m) => m.relation !== 'organization');
 const swatch = (c, big = false) => `<span class="swatch${big ? ' big' : ''}" style="background:${c.hex}" aria-hidden="true"></span>`;
 
-/** "Guru Vakku" — today's personal word from Kaippesi Jothidar for the active member: outlook, colour, number. Used on home. */
+/** "Guru Vakku" — today's personal word from Thunai for the active member: outlook, colour, number. Used on home. */
 export function todayColorCard() {
   const m = activeMember();
   if (!m || m.relation === 'organization') return '';
@@ -226,7 +226,7 @@ function renderPanchangam(sec) {
   $('#panBig').addEventListener('click', () => { state.settings.large = !state.settings.large; saveSettings(); renderPanchangam(sec); });
   $('#panSpeak').addEventListener('click', () => speak(ta() ? spokenTa : spokenEn));
   $('#panShare').addEventListener('click', async () => {
-    const text = `🙏 ${L('Kaippesi Jothidar — Panchangam', 'கைப்பேசி ஜோதிடர் — பஞ்சாங்கம்')}\n${ta() ? spokenTa : spokenEn}`;
+    const text = `🙏 ${L('Thunai — Panchangam', 'துணை — பஞ்சாங்கம்')}\n${ta() ? spokenTa : spokenEn}`;
     try { if (navigator.share) { await navigator.share({ text }); return; } } catch { return; }
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
   });
@@ -246,7 +246,7 @@ function vibeCard(m, snap) {
   const word = o.overall === 'good' ? L('🔥 Main-character day', '🔥 இன்று உங்கள் நாள்') : o.overall === 'warn' ? L('😌 Chill & steady', '😌 நிதானமான நாள்') : L('🧘 Low-key, self-care day', '🧘 அமைதியா இருங்க, ஓய்வு நாள்');
   const now = Date.now();
   const power = (snap.horai || []).find((h) => new Date(h.end).getTime() > now && ['Jupiter', 'Venus', g.lagnaLord].includes(h.lord));
-  const text = `${word} · ${L('Energy', 'ஆற்றல்')} ${energy}% · ${L('Colour', 'நிறம்')}: ${bi(g.today)} · ${L('Lucky no.', 'அதிர்ஷ்ட எண்')} ${g.numbers.birth}${power ? ` · ${L('Power hour', 'சக்தி நேரம்')} ${fmtTime(power.start, state.loc.tz)}` : ''} — ${L('Kaippesi Jothidar', 'கைப்பேசி ஜோதிடர்')}`;
+  const text = `${word} · ${L('Energy', 'ஆற்றல்')} ${energy}% · ${L('Colour', 'நிறம்')}: ${bi(g.today)} · ${L('Lucky no.', 'அதிர்ஷ்ட எண்')} ${g.numbers.birth}${power ? ` · ${L('Power hour', 'சக்தி நேரம்')} ${fmtTime(power.start, state.loc.tz)}` : ''} — ${L(BRAND.name, BRAND.nameTa)}`;
   return `<div class="card vibe" style="--vc:${g.today.hex}"><div class="vibe-top"><span class="mini-label">✨ ${L('Today\'s vibe', 'இன்றைய வைப்')} · ${esc(displayName(m))}</span><button class="link-btn vibe-share" data-text="${esc(text)}" aria-label="${esc(L('Share', 'பகிர்'))}">📤</button></div>
     <div class="vibe-word">${word}</div>
     <div class="vibe-bar"><i style="width:${energy}%"></i></div><div class="muted small">${L('Energy', 'ஆற்றல்')} ${energy}%</div>

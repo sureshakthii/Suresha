@@ -1,4 +1,4 @@
-// Kaippesi Jothidar — Prasna (horary) + Muhurtha scoring for "Do or Don't" questions.
+// Thunai — Prasna (horary) + Muhurtha scoring for "Do or Don't" questions.
 // Rules follow common Tamil panchangam practice: Horai, Rahu Kalam / Yamagandam / Guligai,
 // Tara Bala, Chandra Bala / Chandrashtamam, Nakshatra nature, Tithi, Yoga, weekday and Prasna Lagna.
 import { panchang, RASIS, NAKSHATRAS } from './astro.js';

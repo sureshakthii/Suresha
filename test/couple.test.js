@@ -7,9 +7,10 @@ const bride = birthChart({ name: 'Meena', date: '1997-11-05', time: '07:45', lat
 const groom = birthChart({ name: 'Arun', date: '1994-02-18', time: '22:10', lat: 13.08, lon: 80.27, tz: 5.5 });
 const wedding = new Date('2026-11-20T06:00:00Z');
 
-test('mana porutham covers seven areas with bounded scores', () => {
+test('mana porutham covers six areas (no health/longevity score) with bounded scores', () => {
   const m = manaPorutham(bride, groom);
-  assert.equal(m.areas.length, 7);
+  assert.equal(m.areas.length, 6);
+  assert.ok(!m.areas.some((a) => a.id === 'health'));
   for (const a of m.areas) assert.ok(a.score >= 10 && a.score <= 98, a.id);
   // Symmetry: swapping the two people gives the same overall picture (within rounding).
   assert.ok(Math.abs(manaPorutham(groom, bride).overall - m.overall) <= 3);

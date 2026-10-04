@@ -91,7 +91,7 @@ export function wireRedeem(onDone) {
 // ---------------------------------------------------------------- ratings & comments
 export function ratePrompt() {
   if (STATIC || store.get('kj_rated', false) || store.get('kj_opens', 0) < 4) return '';
-  return `<div class="card glass rate-card" data-go="feedback">⭐ ${L('Enjoying Kaippesi Jothidar? Rate us and share your comments', 'கைப்பேசி ஜோதிடர் பிடித்திருக்கிறதா? மதிப்பிட்டு கருத்து தெரிவியுங்கள்')} ›</div>`;
+  return `<div class="card glass rate-card" data-go="feedback">⭐ ${L('Enjoying Thunai? Rate us and share your comments', 'துணை பிடித்திருக்கிறதா? மதிப்பிட்டு கருத்து தெரிவியுங்கள்')} ›</div>`;
 }
 function renderFeedback(sec) {
   let rating = 0;
@@ -125,10 +125,10 @@ registerScreen('feedback', { render: renderFeedback, parent: 'more' });
 
 // ---------------------------------------------------------------- referral
 function renderInvite(sec) {
-  sec.innerHTML = `${subHeader(L('Invite & get free days', 'அழைத்து இலவச நாட்கள் பெறுங்கள்'), L('Share Kaippesi Jothidar with family and friends — you both get free Premium days', 'கைப்பேசி ஜோதிடரை குடும்பம், நண்பர்களுடன் பகிருங்கள் — இருவருக்கும் இலவச பிரீமியம் நாட்கள்'), 'more')}<div id="invBody"></div>`;
+  sec.innerHTML = `${subHeader(L('Invite & get free days', 'அழைத்து இலவச நாட்கள் பெறுங்கள்'), L('Share Thunai with family and friends — you both get free Premium days', 'துணையைக் குடும்பம், நண்பர்களுடன் பகிருங்கள் — இருவருக்கும் இலவச பிரீமியம் நாட்கள்'), 'more')}<div id="invBody"></div>`;
   if (STATIC || !state.user) { $('#invBody').innerHTML = `<div class="card glass cta-card" data-go="login">${L('Sign in to get your invite link', 'அழைப்பு இணைப்பைப் பெற உள்நுழையவும்')} ›</div>`; return; }
   api('/api/referral').then((r) => {
-    const text = `${L('I use Kaippesi Jothidar for daily panchangam and family horoscopes. Join with my link:', 'தினசரி பஞ்சாங்கம், குடும்ப ஜாதகத்திற்கு நான் கைப்பேசி ஜோதிடர் பயன்படுத்துகிறேன். என் இணைப்பில் சேருங்கள்:')} ${r.link}`;
+    const text = `${L('I use Thunai for daily panchangam and family horoscopes. Join with my link:', 'தினசரி பஞ்சாங்கம், குடும்ப ஜாதகத்திற்கு நான் துணை பயன்படுத்துகிறேன். என் இணைப்பில் சேருங்கள்:')} ${r.link}`;
     $('#invBody').innerHTML = `<div class="card glass center"><div class="mini-label">${L('Your code', 'உங்கள் குறியீடு')}</div><div class="invite-code">${esc(r.code)}</div>
       <p class="small">${L('Friends joined', 'சேர்ந்தவர்கள்')}: ${r.referred} · ${L('Free days earned', 'பெற்ற இலவச நாட்கள்')}: ${r.rewardDaysEarned}</p>
       <div class="btn-row" style="justify-content:center"><a class="btn-gold small-btn" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">WhatsApp</a><button class="chip-btn" id="invShare">📤 ${L('Share', 'பகிர்')}</button><button class="chip-btn" id="invCopy">📋 ${L('Copy', 'நகலெடு')}</button></div></div>`;
@@ -181,7 +181,7 @@ async function renderAdmin(sec) {
         const f = e.target;
         try {
           const r = await adminApi('/api/admin/gift-codes', { method: 'POST', body: { plan: f.elements.plan.value, hours: Number(f.elements.hours.value), maxUses: Number(f.elements.maxUses.value), note: f.elements.note.value.trim() || undefined } });
-          const msg = `🎁 ${L('Your free Kaippesi Jothidar Premium code', 'உங்கள் இலவச கைப்பேசி ஜோதிடர் பிரீமியம் குறியீடு')}: ${r.code} — ${location.origin}`;
+          const msg = `🎁 ${L('Your free Thunai Premium code', 'உங்கள் இலவச துணை பிரீமியம் குறியீடு')}: ${r.code} — ${location.origin}`;
           $('#giftOut').innerHTML = `<div class="invite-code">${esc(r.code)}</div><a class="btn-gold small-btn" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">WhatsApp</a>`;
         } catch (err) { $('#giftOut').innerHTML = `<p class="err">${esc(err.message)}</p>`; }
       });

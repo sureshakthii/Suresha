@@ -869,3 +869,8 @@ img, svg, video, canvas { max-width: 100%; }
 .wx-stats > div { display: flex; flex-direction: column; align-items: center; padding: 8px 4px; border-radius: 12px; background: rgba(var(--ink-rgb), .05); text-align: center; }
 .wx-stats b { font-size: 18px; font-variant-numeric: tabular-nums; }
 .wx-stats small { font-size: 11.5px; color: var(--muted); }
+.wx-advice { margin-top: 8px; }
+.wx-tip { padding: 9px 10px; border-radius: 12px; margin-top: 6px; font-size: 14px; line-height: 1.45; background: rgba(var(--ink-rgb), .05); border-left: 3px solid var(--gold); }
+.wx-tip.heat { border-left-color: #ea580c; } .wx-tip.rain { border-left-color: #2563eb; } .wx-tip.humid { border-left-color: #0891b2; }
+.wx-tip.good, .wx-tip.best { border-left-color: var(--good); }
+.wx-tip .remind-btn { margin-left: 4px; }

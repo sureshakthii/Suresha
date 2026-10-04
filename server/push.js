@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import { getWeather } from './weather.js';
+import { weatherAdvice } from '../shared/weather.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
@@ -179,6 +181,21 @@ export function morningMessage(prefs, localDate) {
   };
 }
 
+/** Morning message plus today's weather advice ("heat rises from 11 AM — go early"), when the forecast is reachable. */
+export async function morningWithWeather(prefs, localDate) {
+  const msg = morningMessage(prefs, localDate);
+  try {
+    const w = await getWeather(prefs.lat, prefs.lon);
+    const [y, m, d] = localDate.split('-').map(Number);
+    const day = tamilDay(new Date(Date.UTC(y, m - 1, d, 12) - prefs.tz * 3600000), prefs.lat, prefs.lon, prefs.tz);
+    const a = weatherAdvice(w, { tz: prefs.tz, good: day.gowri.filter((g) => g.good && g.part === 'day'), avoid: [day.rahuKalam, day.yamagandam] });
+    const ta = prefs.lang !== 'en';
+    const extra = [`${Math.round(w.current.tempC)}°C · 💧${w.current.humidity ?? '—'}%`, a.tips[0] && (ta ? a.tips[0].ta : a.tips[0].en), a.bestOut && (ta ? a.bestOut.ta : a.bestOut.en)].filter(Boolean);
+    msg.body = `${msg.body}\n🌤️ ${extra.join(' · ')}`;
+  } catch { /* weather is optional */ }
+  return msg;
+}
+
 export function tripMessage(prefs, trip) {
   const ta = prefs.lang !== 'en';
   const at = fmtHM(trip.time);
@@ -230,7 +247,7 @@ export async function runPushTick(now = Date.now(), send = pushSender) {
       const [h, m] = prefs.morningTime.split(':').map(Number);
       const diff = local.minutes - (h * 60 + m);
       if (diff >= 0 && diff < MORNING_WINDOW_MIN) {
-        due.push({ build: () => morningMessage(prefs, local.date), mark: () => { last.morning = local.date; } });
+        due.push({ build: () => morningWithWeather(prefs, local.date), mark: () => { last.morning = local.date; } });
       }
     }
     const live = new Set();
@@ -253,7 +270,7 @@ export async function runPushTick(now = Date.now(), send = pushSender) {
     let gone = false;
     for (const item of due) {
       try {
-        await send(sub, item.build());
+        await send(sub, await item.build());
         item.mark();
         sent++;
       } catch (err) {

@@ -14,7 +14,9 @@ import {
   placeName,
 } from './core.js';
 import { refreshSnap } from './screens-main.js';
-import { fetchForecast } from './shared/weather.js';
+import { fetchForecast, weatherAdvice } from './shared/weather.js';
+import { tamilDay } from './shared/tamilcal.js';
+import { remindBtn } from './remind.js';
 import { upcomingReminders, deleteReminder } from './remind.js';
 
 const loader = (msg = '') => `<div class="loader"><i></i><i></i><i></i></div>${msg ? `<p class="muted center">${msg}</p>` : ''}`;
@@ -40,7 +42,20 @@ const travelTag = (lvl) => (lvl === 'good' ? 'good' : lvl === 'caution' ? 'warn'
 export function weatherCardHtml() {
   return `<div class="card glass weather-mini" data-go="weather" id="homeWeather">${loader()}</div>`;
 }
-export async function fillHomeWeather() {
+/** Today's advice from the forecast + panchangam (nalla neram to prefer, rahu kalam / yamagandam to avoid). */
+function adviceFor(w, lat, lon, td) {
+  const tz = state.loc.tz;
+  let day = td;
+  if (!day) {
+    const [d, mo, y] = new Date(Date.now() + tz * 3600000).toISOString().slice(0, 10).split('-').reverse().map(Number);
+    day = tamilDay(new Date(Date.UTC(y, mo - 1, d, 12) - tz * 3600000), lat, lon, tz);
+  }
+  return weatherAdvice(w, { tz, good: day.gowri.filter((g) => g.good && g.part === 'day'), avoid: [day.rahuKalam, day.yamagandam] });
+}
+const adviceHtml = (a, { max = 9 } = {}) => `${a.tips.slice(0, max).map((t) => `<div class="wx-tip ${t.kind}">${{ heat: '🔥', rain: '🌧️', humid: '💦', wind: '💨', good: '🌿' }[t.kind]} ${esc(bi(t))}${t.at ? ` ${remindBtn({ title: bi(t), at: new Date(t.at.getTime() - 3600000) })}` : ''}</div>`).join('')}
+  ${a.bestOut ? `<div class="wx-tip best">🚶 <b>${esc(bi(a.bestOut))}</b> ${remindBtn({ title: bi(a.bestOut), at: a.bestOut.start })}</div>` : ''}`;
+
+export async function fillHomeWeather(td) {
   const el = $('#homeWeather');
   if (!el) return;
   try {
@@ -59,7 +74,8 @@ export async function fillHomeWeather() {
         <div><span>☔</span><b>${today.rainChance ?? 0}%</b><small>${L('Rain today', 'இன்று மழை')}</small></div>
         <div><span>💨</span><b>${Math.round(w.current.windKph ?? 0)}</b><small>${L('Wind km/h', 'காற்று கி.மீ/மணி')}</small></div>
       </div>
-      <span class="tag block ${travelTag(w.travel.level)}">${w.travel.level === 'good' ? '🚗' : w.travel.level === 'caution' ? '☂️' : '⛈️'} ${esc(bi(w.travel))}</span>`;
+      <span class="tag block ${travelTag(w.travel.level)}">${w.travel.level === 'good' ? '🚗' : w.travel.level === 'caution' ? '☂️' : '⛈️'} ${esc(bi(w.travel))}</span>
+      <div class="wx-advice">${adviceHtml(adviceFor(w, state.loc.lat, state.loc.lon, td), { max: 2 })}</div>`;
   } catch {
     el.innerHTML = `<div class="wx-top"><div class="w-icon">🌡️</div><div class="mini-sub">${STATIC ? L('Live temperature, humidity and rain appear in the installed app (this preview cannot reach the internet).', 'நேரலை வெப்பநிலை, ஈரப்பதம், மழை நிறுவப்பட்ட செயலியில் தெரியும் (இந்த முன்னோட்டத்தால் இணையத்தை அணுக முடியாது).') : L('Weather is unavailable right now', 'வானிலை தற்போது கிடைக்கவில்லை')}</div></div>`;
   }
@@ -76,6 +92,7 @@ async function renderWeather(sec, params = {}) {
     $('#wBody').innerHTML = `
       <div class="card glass travel-banner ${travelTag(w.travel.level)}"><b>${w.travel.level === 'good' ? '🚗' : w.travel.level === 'caution' ? '☂️' : '⛈️'} ${esc(bi(w.travel))}</b>
         ${w.travel.reasons.map((r) => `<p class="small">• ${esc(bi(r))}</p>`).join('')}</div>
+      <div class="card glass"><div class="card-title">🧭 ${L('Today\'s weather advice', 'இன்றைய வானிலை ஆலோசனை')}</div>${adviceHtml(adviceFor(w, lat, lon))}</div>
       <div class="card glass w-now"><div class="w-big">${wIcon(w.current.weatherCode)}</div>
         <div><div class="w-temp">${Math.round(w.current.tempC)}°C</div><div>${esc(bi(w.current.description))}</div>
         <div class="muted small">${L('Feels like', 'உணரும் வெப்பம்')} ${Math.round(w.current.feelsLikeC)}°C · 💧 ${w.current.humidity}% · 💨 ${Math.round(w.current.windKph)} km/h</div></div></div>

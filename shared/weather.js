@@ -89,7 +89,7 @@ export function mapForecast(f) {
     sunrise: d.sunrise?.[i] ?? null,
     sunset: d.sunset?.[i] ?? null,
   }));
-  return { current, hourly, daily };
+  return { current, hourly, daily, utcOffsetSec: f.utc_offset_seconds ?? null };
 }
 
 // ---- Travel advice ----
@@ -131,4 +131,61 @@ export async function fetchForecast(lat, lon, fetchFn = fetch) {
   if (!r.ok) throw new Error(`forecast ${r.status}`);
   const f = mapForecast(await r.json());
   return { ...f, station: null, travel: travelAdvice(f.current, f.daily[0]), source: { station: 'Open-Meteo', forecast: 'open-meteo.com' } };
+}
+
+// ---------------------------------------------------------------- Smart advice ("go early, come back before the heat")
+const T = (en, ta) => ({ en, ta });
+const hm = (d, tz) => { const x = new Date(d.getTime() + tz * 3600000); const h = x.getUTCHours(); const m = String(x.getUTCMinutes()).padStart(2, '0'); return { h, m, en: `${((h + 11) % 12) + 1}:${m} ${h < 12 ? 'AM' : 'PM'}`, ta: `${h >= 4 && h < 12 ? 'காலை' : h >= 12 && h < 16 ? 'மதியம்' : h >= 16 && h < 19 ? 'மாலை' : 'இரவு'} ${((h + 11) % 12) + 1}:${m}` }; };
+
+/**
+ * Practical advice for today from the hourly forecast, merged with the panchangam.
+ * w: forecast (mapForecast / getWeather shape); tz: hours offset of the place;
+ * opts.good: [{start,end}] auspicious windows (nalla neram); opts.avoid: [{start,end}] (rahu kalam, yamagandam).
+ * Returns { tips: [{kind:'heat'|'rain'|'humid'|'wind'|'good', en, ta, at?}], bestOut: {start,end,en,ta}|null }.
+ */
+export function weatherAdvice(w, { tz = 5.5, good = [], avoid = [], now = new Date() } = {}) {
+  const off = w.utcOffsetSec != null ? w.utcOffsetSec / 3600 : tz;
+  const hours = (w.hourly || []).map((h) => {
+    const [d, t] = String(h.time).split('T');
+    const [y, mo, da] = d.split('-').map(Number); const [hh, mi] = (t || '0:0').split(':').map(Number);
+    return { ...h, at: new Date(Date.UTC(y, mo - 1, da, hh, mi || 0) - off * 3600000) };
+  }).filter((h) => h.at.getTime() >= now.getTime() - 3600000 && h.at.getTime() <= now.getTime() + 18 * 3600000);
+  const tips = [];
+  if (!hours.length) return { tips, bestOut: null };
+  const feels = w.current?.feelsLikeC ?? w.current?.tempC;
+  // Heat: first daylight hour that reaches 35°C (or already hot now).
+  const hot = hours.find((h) => (h.tempC ?? 0) >= 35);
+  const peak = hours.reduce((a, b) => ((b.tempC ?? -99) > (a.tempC ?? -99) ? b : a), hours[0]);
+  if (hot) {
+    const t = hm(hot.at, tz);
+    tips.push({ kind: 'heat', at: hot.at, ...T(`Heat rises to ${Math.round(peak.tempC)}°C from ${t.en} — go out early and come back before then. Carry water.`,
+      `${t.ta} முதல் வெயில் ${Math.round(peak.tempC)}° வரை உயரும் — முன்னதாகச் சென்று அதற்குள் திரும்புங்கள். தண்ணீர் எடுத்துச் செல்லுங்கள்.`) });
+  } else if ((feels ?? 0) >= 38) {
+    tips.push({ kind: 'heat', ...T(`It feels like ${Math.round(feels)}°C — stay in the shade, drink buttermilk or water often.`, `உணரும் வெப்பம் ${Math.round(feels)}° — நிழலில் இருங்கள், மோர் / தண்ணீர் அடிக்கடி குடியுங்கள்.`) });
+  }
+  // Rain: first hour with ≥ 50% chance.
+  const wet = hours.find((h) => (h.rainChance ?? 0) >= 50);
+  if (wet) {
+    const t = hm(wet.at, tz);
+    tips.push({ kind: 'rain', at: wet.at, ...T(`Rain likely around ${t.en} (${wet.rainChance}%) — finish outdoor work and temple visits before that; keep an umbrella.`,
+      `${t.ta} அளவில் மழை வாய்ப்பு (${wet.rainChance}%) — வெளி வேலை, கோவில் தரிசனத்தை அதற்கு முன் முடியுங்கள்; குடை எடுத்துச் செல்லுங்கள்.`) });
+  }
+  if ((w.current?.humidity ?? 0) >= 80 && (w.current?.tempC ?? 0) >= 28) tips.push({ kind: 'humid', ...T('Very humid — light cotton clothes and extra water, especially for elders and children.', 'ஈரப்பதம் அதிகம் — மெல்லிய பருத்தி உடை, கூடுதல் தண்ணீர்; பெரியோர், குழந்தைகளுக்கு கவனம்.') });
+  if ((w.current?.windKph ?? 0) >= 35) tips.push({ kind: 'wind', ...T('Strong wind — careful on two-wheelers and near the sea.', 'பலத்த காற்று — இருசக்கர வாகனம், கடற்கரையில் கவனம்.') });
+
+  // Best time to go out: a daylight hour that is not too hot, not rainy, not in rahu kalam / yamagandam, preferring nalla neram.
+  const inAny = (t, list) => list.some((r) => t >= new Date(r.start).getTime() && t < new Date(r.end).getTime());
+  const cands = hours.filter((h) => h.at.getTime() >= now.getTime() - 30 * 60000).filter((h) => { const x = hm(h.at, tz).h; return x >= 5 && x <= 19; })
+    .filter((h) => (h.tempC ?? 0) < 35 && (h.rainChance ?? 0) < 40 && !inAny(h.at.getTime() + 30 * 60000, avoid))
+    .map((h) => ({ h, score: (inAny(h.at.getTime() + 30 * 60000, good) ? 3 : 0) - (h.rainChance ?? 0) / 25 - Math.max(0, (h.tempC ?? 0) - 30) / 2 }));
+  const best = cands.sort((a, b) => b.score - a.score || a.h.at - b.h.at)[0];
+  let bestOut = null;
+  if (best) {
+    const start = best.h.at, end = new Date(start.getTime() + 3600000);
+    const s = hm(start, tz), e = hm(end, tz);
+    const nalla = inAny(start.getTime() + 30 * 60000, good);
+    bestOut = { start, end, nalla, ...T(`Best time to go out today: ${s.en} – ${e.en}${nalla ? ' (nalla neram)' : ''}`, `இன்று வெளியே செல்ல சிறந்த நேரம்: ${s.ta} – ${e.ta}${nalla ? ' (நல்ல நேரம்)' : ''}`) };
+  }
+  if (!tips.length) tips.push({ kind: 'good', ...T('Pleasant weather today — a good day for temple visits and travel.', 'இன்று இதமான வானிலை — கோவில் தரிசனம், பயணத்திற்கு நல்ல நாள்.') });
+  return { tips, bestOut };
 }

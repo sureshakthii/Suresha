@@ -38,7 +38,6 @@ const QUICK = [
   ['panchangam', '📖', 'Panchangam', 'பஞ்சாங்கம்'],
   ['roadmap', '🛤️', 'Life Road Map', 'வாழ்க்கை வரைபடம்'],
   ['health', '🌿', 'Health Guide', 'ஆரோக்கிய வழிகாட்டி'],
-  ['guide', '🧭', 'My Guide', 'என் வழிகாட்டி'],
   ['seva', '🛕', 'Seva', 'சேவைகள்'],
   ['priests', '🧑‍🦳', 'Priests', 'புரோகிதர்கள்'],
   ['store', '🛍️', 'Store', 'கடை'],
@@ -104,6 +103,7 @@ function renderHome(sec) {
   sec.innerHTML = `
     <div class="hero">
       <div class="hero-orn" aria-hidden="true"></div>
+      <div class="hero-slogan">✨ ${L('Your guide for life', 'உங்கள் வாழ்க்கையின் வழிகாட்டி')}</div>
       <div class="hero-top">
         <div>
           <div class="greet">🙏 ${L('Vanakkam', 'வணக்கம்')}${m ? `, ${esc(displayName(m))}` : ''}</div>

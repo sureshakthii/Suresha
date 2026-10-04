@@ -101,7 +101,7 @@ export function colorForDay(chart, weekday) {
     weekday, ...pick, dayColor: day, clash,
     note: clash
       ? T(`Today's lord ${day.planet} does not suit your lagna lord ${lagnaLord} — wear ${pick.en} (or keep ${day.en} as a small accent).`,
-        `இன்றைய அதிபதி ${PLANETS[day.planet].ta} உங்கள் லக்னாதிபதி ${PLANETS[lagnaLord].ta}க்கு ஒத்துவராது — ${pick.ta} அணியுங்கள் (${day.ta} சிறிய அளவில் இருக்கலாம்).`)
+        `இன்றைய அதிபதி ${PLANETS[day.planet].ta}, உங்கள் லக்னாதிபதிக்கு (${PLANETS[lagnaLord].ta}) ஒத்துவராது — ${pick.ta} அணியுங்கள் (${day.ta} சிறிய அளவில் இருக்கலாம்).`)
       : T(`${day.en} — the colour of ${day.planet}, friendly to your chart.`, `${day.ta} — ${PLANETS[day.planet].ta} நிறம், உங்கள் ஜாதகத்திற்கு ஏற்றது.`),
   };
 }

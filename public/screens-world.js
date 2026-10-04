@@ -2,6 +2,7 @@
 // gomatha pooja, temple archanai), reminders (morning alarm, parigaram trips), family relations, full analysis.
 import { NAKSHATRAS } from './shared/astro.js';
 import { TEMPLES, TEMPLE_TAGS, templesNear, templeLinks } from './shared/temples.js';
+import { templeInfo } from './shared/temple-info.js';
 import { MANTRAS, MANTRA_TAGS } from './shared/mantras.js';
 import { NAVAGRAHA, grahaStrength } from './shared/remedies.js';
 import { familyRelations } from './shared/relations.js';
@@ -83,6 +84,27 @@ async function renderWeather(sec, params = {}) {
 }
 registerScreen('weather', { render: renderWeather, parent: 'home', needsLoc: true });
 
+// ================================================================ TEMPLE DETAILS (sirappu, power, thala varalaru, how to reach)
+/** Expandable details for one temple: highlights, what to pray for, legend and the way by air, rail and road. */
+export function templeDetailHtml(t, { open = false } = {}) {
+  const i = templeInfo(t.id);
+  if (!i) return '';
+  const q = encodeURIComponent(`${t.name.en}, ${t.town}`);
+  return `<details class="temple-more"${open ? ' open' : ''}><summary>📜 ${L('Sirappu, power & thala varalaru', 'சிறப்பு, சக்தி & தல வரலாறு')}</summary>
+    <p class="small">🌟 <b>${L('Sirappu', 'சிறப்பு')}:</b> ${esc(bi(i.sirappu))}</p>
+    <p class="small">🙏 <b>${L('Pray here for', 'இங்கு வேண்டுவது')}:</b> ${esc(bi(i.power))}</p>
+    <p class="small">📖 <b>${L('Thala varalaru', 'தல வரலாறு')}:</b> ${esc(bi(i.varalaru))}</p>
+    ${i.festival ? `<p class="small">🎉 <b>${L('Festival', 'திருவிழா')}:</b> ${esc(bi(i.festival))}</p>` : ''}
+    ${i.timings ? `<p class="small">🕰️ <b>${L('Nadai thirappu (approx.)', 'நடை திறப்பு (தோராயம்)')}:</b> ${esc(bi(i.timings))}</p>` : ''}
+    <p class="small">✈️ ${esc(bi(i.airport))}</p><p class="small">🚆 ${esc(bi(i.rail))}</p>
+    <div class="btn-row">
+      <a class="chip-btn" href="https://www.google.com/travel/flights?q=${encodeURIComponent(`flights to ${i.airport.en.split(' (')[0].split(' ~')[0]}`)}" target="_blank" rel="noopener">✈️ ${L('Flights', 'விமானம்')}</a>
+      <a class="chip-btn" href="https://www.irctc.co.in/" target="_blank" rel="noopener">🚆 ${L('Train', 'ரயில்')}</a>
+      <a class="chip-btn" href="https://www.google.com/maps/search/hotels+near+${q}" target="_blank" rel="noopener">🏨 ${L('Stay', 'தங்குமிடம்')}</a>
+      <a class="chip-btn" href="https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lon}" target="_blank" rel="noopener">🗺️ ${L('Road', 'சாலை')}</a>
+    </div></details>`;
+}
+
 // ================================================================ TEMPLES (nearby)
 const templeUi = { tag: 'all', query: '' };
 function renderTemples(sec) {
@@ -108,6 +130,7 @@ function renderTemples(sec) {
           <p class="muted small">${esc(bi(t.deity))} · ${esc(placeName(t.town))}</p>
           <p class="small dist">📏 ${t.km < 1 ? '<1' : `~${Math.round(t.roadKm)}`} km ${L('by road', 'சாலை வழி')} · 🚗 ~${t.driveHours < 1 ? `${Math.round(t.driveHours * 60)} ${L('min', 'நிமி')}` : `${t.driveHours.toFixed(1)} ${L('hr', 'மணி')}`}</p>
           <p class="small">${esc(bi(t.note))}</p>
+          ${templeDetailHtml(t)}
           <div class="btn-row">
             <a class="chip-btn" href="${links.directions}" target="_blank" rel="noopener">🗺️ ${L('Directions', 'வழி')}</a>
             <a class="chip-btn" href="${links.hotels}" target="_blank" rel="noopener">🏨 ${L('Hotels', 'தங்குமிடம்')}</a>
@@ -220,7 +243,8 @@ async function renderStore(sec, params = {}) {
       <div class="p-row"><span class="price">${inr(p.price)}</span><span class="muted small">${esc(unitName(p.unit))}</span></div>
       <div class="qty"><button data-dec="${p.id}" aria-label="Remove one">−</button><span>${cart[p.id] || 0}</span><button data-inc="${p.id}" aria-label="Add one">+</button></div></div>`).join('')}</div>
     ${count ? `<div class="cart-bar"><span>🛒 ${count} · <b>${inr(total)}</b></span><button class="btn-gold small-btn" id="checkout">${L('Checkout', 'வாங்கு')}</button></div>` : ''}
-    <div id="checkoutBox"></div>`;
+    <div id="checkoutBox"></div>
+    <div class="btn-row"><button class="chip-btn" data-go="seva">🛕 ${L('Temple seva', 'கோவில் சேவைகள்')}</button><button class="chip-btn" data-go="priests">🧑‍🦳 ${L('Priests', 'புரோகிதர்கள்')}</button></div>`;
   $$('[data-cat]', sec).forEach((b) => b.addEventListener('click', () => renderStore(sec, { category: b.dataset.cat })));
   $$('[data-inc]', sec).forEach((b) => b.addEventListener('click', () => { cart[b.dataset.inc] = Math.min(20, (cart[b.dataset.inc] || 0) + 1); saveCart(); renderStore(sec, { category: cat }); }));
   $$('[data-dec]', sec).forEach((b) => b.addEventListener('click', () => { const id = b.dataset.dec; if (cart[id]) cart[id] -= 1; if (!cart[id]) delete cart[id]; saveCart(); renderStore(sec, { category: cat }); }));
@@ -275,28 +299,44 @@ async function payWithRazorpay({ order, payment }) {
 }
 registerScreen('store', { render: renderStore, parent: 'home' });
 
-// ================================================================ SEVA (priests, homam, gomatha pooja, annadhanam, archanai)
+// ================================================================ SEVA (temple & charity services) and PRIESTS (புரோகிதர்கள்) — separate screens
 const SEVA_QUICK = [
+  ['temple_booking', '🛕', 'Temple Archanai & Special Darshan', 'கோவில் அர்ச்சனை & சிறப்பு தரிசனம்'],
   ['annadhanam', '🍛', 'Annadhanam', 'அன்னதானம்'],
-  ['kubera_pooja', '💰', 'Kubera Lakshmi Pooja', 'குபேர லட்சுமி பூஜை'],
   ['gomatha_pooja', '🐄', 'Gomatha Pooja', 'கோமாதா பூஜை'],
-  ['graha_pravesam', '🏠', 'Graha Pravesam', 'கிரகப் பிரவேசம்'],
+  ['kubera_pooja', '💰', 'Kubera Lakshmi Pooja', 'குபேர லட்சுமி பூஜை'],
+  ['parigaram_pooja', '🪔', 'Parigaram Pooja at temple', 'கோவிலில் பரிகார பூஜை'],
+  ['kumbabhishekam', '🏛️', 'Kumbabhishekam Seva', 'கும்பாபிஷேக சேவை'],
+];
+const PRIEST_QUICK = [
   ['homam', '🔥', 'Homam', 'ஹோமம்'],
+  ['ayush_homam', '🌿', 'Ayush Homam', 'ஆயுஷ் ஹோமம்'],
+  ['graha_pravesam', '🏠', 'Graha Pravesam', 'கிரகப் பிரவேசம்'],
   ['vasthu_shanti', '📐', 'Vasthu Shanti', 'வாஸ்து சாந்தி'],
   ['navagraha_shanti', '🪐', 'Navagraha Shanti', 'நவகிரக சாந்தி'],
-  ['temple_booking', '🛕', 'Temple Archanai', 'கோவில் அர்ச்சனை'],
-  ['sraddham', '🙏', 'Thivasam / Tharpanam', 'திவசம் / தர்ப்பணம்'],
+  ['satyanarayana_pooja', '🌼', 'Satyanarayana Pooja', 'சத்யநாராயண பூஜை'],
+  ['marriage', '💐', 'Wedding', 'திருமணம்'],
+  ['seemantham', '🤰', 'Seemantham', 'சீமந்தம்'],
+  ['namakaranam', '👶', 'Naming Ceremony', 'நாமகரணம்'],
+  ['sraddham', '🙏', 'Thivasam', 'திவசம்'],
+  ['tharpanam', '💧', 'Tharpanam', 'தர்ப்பணம்'],
 ];
 
-async function renderSeva(sec, params = {}) {
+async function renderSeva(sec, params = {}, mode = 'seva') {
+  const priests = mode === 'priests';
+  const list = priests ? PRIEST_QUICK : SEVA_QUICK;
   const pick = params.type === 'temple_booking' ? 'temple_booking' : params.service || null;
-  sec.innerHTML = `${subHeader(L('Seva & Priests', 'சேவை & புரோகிதர்கள்'), L('Book an Iyer for homam, vasthu, gomatha pooja, graha pravesam and more', 'ஹோமம், வாஸ்து, கோமாதா பூஜை, கிரகப் பிரவேசம் — புரோகிதரை முன்பதிவு செய்யுங்கள்'))}
-    <div class="tiles">${SEVA_QUICK.map(([id, icon, en, tx]) => `<button class="tile${pick === id ? ' sel-tile' : ''}" data-seva="${id}"><span class="ti-icon">${icon}</span><span>${esc(L(en, tx))}</span></button>`).join('')}</div>
+  const rerender = (p) => renderSeva(sec, p, mode);
+  sec.innerHTML = `${priests
+    ? subHeader(L('Priests', 'புரோகிதர்கள்'), L('Verified Iyers / Vadhyars at your home — homam, graha pravesam, wedding, thivasam and more', 'சரிபார்க்கப்பட்ட ஐயர் / வாத்தியார் உங்கள் இல்லத்திற்கு — ஹோமம், கிரகப் பிரவேசம், திருமணம், திவசம்'))
+    : subHeader(L('Seva', 'சேவைகள்'), L('Temple archanai, annadhanam, gomatha and kubera pooja — done for you by trusted partners', 'கோவில் அர்ச்சனை, அன்னதானம், கோமாதா, குபேர பூஜை — நம்பகமான கூட்டாளிகள் மூலம்'))}
+    <div class="tiles">${list.map(([id, icon, en, tx]) => `<button class="tile${pick === id ? ' sel-tile' : ''}" data-seva="${id}"><span class="ti-icon">${icon}</span><span>${esc(L(en, tx))}</span></button>`).join('')}</div>
+    <div class="btn-row">${priests ? `<button class="chip-btn" data-go="seva">🛕 ${L('Temple seva', 'கோவில் சேவைகள்')}</button>` : `<button class="chip-btn" data-go="priests">🧑‍🦳 ${L('Book a priest', 'புரோகிதர் முன்பதிவு')}</button>`}<button class="chip-btn" data-go="packages">🧳 ${L('Yatra packages', 'யாத்திரை')}</button><button class="chip-btn" data-go="muhurtham">🗓️ ${L('Good date', 'நல்ல நாள்')}</button></div>
     <div id="sevaForm"></div><div id="myReq"></div>
-    ${STATIC ? '' : `<div class="card glass"><div class="card-title">🧑‍🦳 ${L('Are you a priest (Iyer / Vadhyar)?', 'நீங்கள் புரோகிதரா (ஐயர் / வாத்தியார்)?')}</div><p class="small">${L('Register to receive bookings. Profiles are verified before they appear.', 'முன்பதிவுகளைப் பெற பதிவு செய்யுங்கள். சரிபார்த்த பின்பே சுயவிவரம் காட்டப்படும்.')}</p><button class="chip-btn" id="regPriest">${L('Register as a priest', 'புரோகிதராகப் பதிவு')}</button><div id="priestForm"></div></div>`}`;
-  $$('[data-seva]', sec).forEach((b) => b.addEventListener('click', () => renderSeva(sec, b.dataset.seva === 'temple_booking' ? { type: 'temple_booking' } : { service: b.dataset.seva })));
+    ${STATIC || !priests ? '' : `<div class="card glass"><div class="card-title">🧑‍🦳 ${L('Are you a priest (Iyer / Vadhyar)?', 'நீங்கள் புரோகிதரா (ஐயர் / வாத்தியார்)?')}</div><p class="small">${L('Register to receive bookings. Profiles are verified before they appear.', 'முன்பதிவுகளைப் பெற பதிவு செய்யுங்கள். சரிபார்த்த பின்பே சுயவிவரம் காட்டப்படும்.')}</p><button class="chip-btn" id="regPriest">${L('Register as a priest', 'புரோகிதராகப் பதிவு')}</button><div id="priestForm"></div></div>`}`;
+  $$('[data-seva]', sec).forEach((b) => b.addEventListener('click', () => rerender(b.dataset.seva === 'temple_booking' ? { type: 'temple_booking' } : { service: b.dataset.seva })));
   if (STATIC) { $('#sevaForm').innerHTML = needsServerCard(L('Bookings, priest connect and Annadhanam requests are handled by the app\'s server.', 'முன்பதிவு, புரோகிதர் இணைப்பு, அன்னதானக் கோரிக்கைகள் செயலியின் சேவையகம் மூலம் கையாளப்படும்.')); return; }
-  $('#regPriest').addEventListener('click', () => priestForm());
+  $('#regPriest')?.addEventListener('click', () => priestForm());
   if (pick) sevaRequestForm(pick, params);
   if (state.user) {
     try {
@@ -361,7 +401,8 @@ async function priestForm() {
     } catch (err) { $('#pErr').textContent = err.message; }
   });
 }
-registerScreen('seva', { render: renderSeva, parent: 'home', needsLoc: true });
+registerScreen('seva', { render: (sec, p) => renderSeva(sec, p, 'seva'), parent: 'home', needsLoc: true });
+registerScreen('priests', { render: (sec, p) => renderSeva(sec, p, 'priests'), parent: 'home', needsLoc: true });
 
 // ================================================================ REMINDERS (morning alarm + parigaram trips)
 const reminders = store.get('kj_reminders', { morningTime: '05:30', trips: [], pushEndpoint: null });
@@ -546,6 +587,8 @@ function renderPackages(sec, params = {}) {
     return `<details class="card glass pkg"${open === p.id ? ' open' : ''}><summary><span class="ti-icon">${p.icon}</span><div><b>${esc(bi(p.name))}</b><div class="muted small">${p.days} ${L('days', 'நாட்கள்')} · ~${Math.round(r.km)} km ${L('from', 'தொலைவு')} ${esc(placeName(loc.name))}</div></div></summary>
       <p class="small">🎯 ${esc(bi(p.for))}</p>
       ${r.days.map((d, i) => `<div class="pkg-day"><b>${L('Day', 'நாள்')} ${i + 1}</b> · ${d.map((t) => esc(bi(t.name))).join(' → ')}</div>`).join('')}
+      <div class="mini-label">🛕 ${L('Every temple — highlights, legend and how to reach', 'ஒவ்வொரு கோவிலும் — சிறப்பு, தல வரலாறு, செல்லும் வழி')}</div>
+      ${r.days.flat().map((t) => `<div class="pkg-temple">${t.planet ? `<span style="color:${COLOR[t.planet]}">${GLYPH[t.planet]}</span> ` : '🛕 '}<b>${esc(bi(t.name))}</b> <span class="muted small">· ${esc(bi(t.deity))} · ${esc(placeName(t.town))}</span>${templeDetailHtml(t)}</div>`).join('')}
       ${(ta() ? p.extra.ta : p.extra.en).map((x) => `<div class="small">✨ ${esc(x)}</div>`).join('')}
       <div class="btn-row">
         <a class="chip-btn" href="${r.mapsUrl}" target="_blank" rel="noopener">🗺️ ${L('Route', 'பாதை')}</a>

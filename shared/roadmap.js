@@ -71,7 +71,7 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
       const scores = {};
       for (const a of ROAD_AREAS) {
         const raw = planetScore(sig, md.lord, a) * 0.4 + planetScore(sig, ad.lord, a) * 0.6;
-        scores[a.id] = clamp(52 + 5.5 * Math.max(-4, Math.min(5, raw)) + g.adj[a.id]);
+        scores[a.id] = clamp(46 + 5 * Math.max(-4, Math.min(5, raw)) + g.adj[a.id]);
       }
       const overall = Math.round(Object.values(scores).reduce((x, y) => x + y, 0) / ROAD_AREAS.length);
       const ranked = [...ROAD_AREAS].sort((x, y) => scores[y.id] - scores[x.id]);

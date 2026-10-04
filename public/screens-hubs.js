@@ -25,7 +25,7 @@ export const FEATURES = [
   { id: 'peyarchi', hub: 'chart', en: 'Guru / Sani / Rahu-Ketu transits', ta: 'குரு / சனி / ராகு-கேது பெயர்ச்சி', level: 'simple' },
   { id: 'roadmap', hub: 'chart', en: 'Life periods road map', ta: 'வாழ்க்கைக் கால வரைபடம்', level: 'advanced' },
   { id: 'life', hub: 'chart', en: 'Life questions — traditional timing', ta: 'வாழ்க்கைக் கேள்விகள் — பாரம்பரிய காலம்', level: 'advanced' },
-  { id: 'health', hub: 'chart', en: 'Wellness habits (general)', ta: 'நல்வாழ்வுப் பழக்கங்கள் (பொது)', level: 'advanced' },
+  { id: 'health', hub: 'chart', en: 'Health & Planets — eat / avoid', ta: 'ஆரோக்கியம் & கிரகங்கள் — உணவு வழிகாட்டி', level: 'simple' },
   { id: 'guide', hub: 'chart', en: 'My guide — colour, number, Siddhar', ta: 'என் வழிகாட்டி — நிறம், எண், சித்தர்', level: 'advanced' },
   { id: 'vargas', hub: 'chart', en: 'Divisional charts & Ashtakavarga', ta: 'வர்க்கச் சக்கரங்கள் & அஷ்டகவர்க்கம்', level: 'advanced' },
   { id: 'numerology', hub: 'chart', en: 'Name & number numerology', ta: 'பெயர் & எண் கணிதம்', level: 'advanced' },

@@ -411,10 +411,10 @@ function renderChart(sec) {
     <div class="card glass"><div class="card-title"><span>${L('Rasi chart', 'ராசி கட்டம்')}</span><button class="link-btn" data-go="chat" data-param='{"topic":"chart"}'>💬 ${L('Ask about my chart', 'என் ஜாதகம் பற்றிக் கேள்')}</button></div><div id="rasiChart" class="si-chart"></div>
       ${rel.lagna ? '' : `<p class="small muted">${L('Lagnam (ல) is not marked because the birth time is not precise enough.', 'பிறந்த நேரம் போதுமான துல்லியமில்லாததால் லக்னம் (ல) குறிக்கப்படவில்லை.')}</p>`}</div>
     <button class="btn-gold" data-go="analysis">📜 ${L('Full chart reading', 'முழு ஜாதக ஆய்வு')}</button>
-    <div class="btn-row"><button class="chip-btn" data-go="parigaram">🪔 ${L('Simple practices', 'எளிய வழிபாடு')}</button><button class="chip-btn" data-go="peyarchi">🪐 ${L('Transits', 'பெயர்ச்சி')}</button><button class="chip-btn" data-go="why">❓ ${L('Why this result?', 'இந்த முடிவு ஏன்?')}</button><button class="chip-btn" data-print="1">🖨️ ${L('Print / PDF', 'அச்சிடு / PDF')}</button></div>
+    <div class="btn-row"><button class="chip-btn" data-go="parigaram">🪔 ${L('Simple practices', 'எளிய வழிபாடு')}</button><button class="chip-btn" data-go="peyarchi">🪐 ${L('Transits', 'பெயர்ச்சி')}</button><button class="chip-btn" data-go="health">🌿 ${L('Health & Planets', 'ஆரோக்கியம் & கிரகங்கள்')}</button><button class="chip-btn" data-go="why">❓ ${L('Why this result?', 'இந்த முடிவு ஏன்?')}</button><button class="chip-btn" data-print="1">🖨️ ${L('Print / PDF', 'அச்சிடு / PDF')}</button></div>
     <details class="card glass advanced"${detailed() ? ' open' : ''}><summary class="card-title">🔬 ${L('Advanced', 'மேம்பட்டவை')}</summary>
       <div class="menu">
-        ${[['roadmap', 'Life periods road map', 'வாழ்க்கைக் கால வரைபடம்'], ['vargas', 'Divisional charts & Ashtakavarga', 'வர்க்கச் சக்கரங்கள் & அஷ்டகவர்க்கம்'], ['life', 'Life questions — traditional timing', 'வாழ்க்கைக் கேள்விகள் — பாரம்பரிய காலம்'], ['guide', 'My guide — colour, number, Siddhar', 'என் வழிகாட்டி — நிறம், எண், சித்தர்'], ['numerology', 'Name & number numerology', 'பெயர் & எண் கணிதம்'], ['health', 'Wellness habits (general)', 'நல்வாழ்வுப் பழக்கங்கள் (பொது)'], ['live', 'Live sky', 'நேரலை வானம்']].map(([id, en, tx]) => `<button data-go="${id}">${iconChip(id, { size: 20, cls: 'mi-icon' })}<span>${L(en, tx)}${id === 'vargas' && !rel.vargas ? ` <span class="badge unv">${L('needs exact time', 'துல்லிய நேரம் தேவை')}</span>` : ''}</span></button>`).join('')}
+        ${[['roadmap', 'Life periods road map', 'வாழ்க்கைக் கால வரைபடம்'], ['vargas', 'Divisional charts & Ashtakavarga', 'வர்க்கச் சக்கரங்கள் & அஷ்டகவர்க்கம்'], ['life', 'Life questions — traditional timing', 'வாழ்க்கைக் கேள்விகள் — பாரம்பரிய காலம்'], ['guide', 'My guide — colour, number, Siddhar', 'என் வழிகாட்டி — நிறம், எண், சித்தர்'], ['numerology', 'Name & number numerology', 'பெயர் & எண் கணிதம்'], ['live', 'Live sky', 'நேரலை வானம்']].map(([id, en, tx]) => `<button data-go="${id}">${iconChip(id, { size: 20, cls: 'mi-icon' })}<span>${L(en, tx)}${id === 'vargas' && !rel.vargas ? ` <span class="badge unv">${L('needs exact time', 'துல்லிய நேரம் தேவை')}</span>` : ''}</span></button>`).join('')}
       </div></details>
     ${rel.navamsa ? `<div class="card glass"><div class="card-title">${L('Navamsa chart', 'நவாம்ச கட்டம்')}</div><div id="navamsaChart" class="si-chart"></div></div>` : ''}
     <div class="card glass"><div class="card-title">${L('Birth details', 'பிறப்பு விவரம்')}</div>
@@ -535,10 +535,10 @@ async function askOnDevice(body, m) {
   const ctx = buildContext({ evaluation, question: body.question, category: body.category, lang: body.lang, profile, loc: body.loc });
   const { aiTask } = await import('./core.js');
   const fallback = ruleBasedReply(ctx, evaluation, body.lang);
-  if (!STATIC) { $('#reply').textContent = fallback; a.reply = fallback; a.source = '📐 ' + L('Built-in rules (no AI)', 'உள்ளமைந்த விதிகள் (AI இல்லை)'); $('#aiSource').textContent = a.source; return; }
+  if (!STATIC) { $('#reply').textContent = fallback; a.reply = fallback; a.source = ''; $('#aiSource').textContent = a.source; return; }
   $('#reply').textContent = L('Thinking…', 'யோசிக்கிறேன்…');
   const r = await aiTask({ task: 'chat', context: ctx, messages: [{ role: 'user', content: ctx.question }], fallbackText: fallback, onText: (tx) => { $('#reply').textContent = tx; } });
-  a.reply = r.text; a.source = r.source === 'ai' ? '🤖 ' + L('AI-generated', 'AI உருவாக்கியது') : '📐 ' + L('Built-in rules (no AI)', 'உள்ளமைந்த விதிகள் (AI இல்லை)');
+  a.reply = r.text; a.source = '';
   $('#aiSource').textContent = a.source;
 }
 
@@ -560,7 +560,7 @@ async function ask() {
       evaluation: (d) => { lastAnswer = d; renderAnswer(d); $('#verdictCard').scrollIntoView({ behavior: 'smooth' }); },
       delta: (d) => { reply += d.text; $('#reply').textContent = reply; },
       reset: () => { reply = ''; $('#reply').textContent = ''; },
-      done: (d) => { lastAnswer.reply = reply; lastAnswer.source = d.source === 'ai' ? '🤖 ' + L('AI-generated', 'AI உருவாக்கியது') : '📐 ' + L('Built-in rules (no AI)', 'உள்ளமைந்த விதிகள் (AI இல்லை)'); $('#aiSource').textContent = lastAnswer.source; },
+      done: (d) => { lastAnswer.reply = reply; lastAnswer.source = ''; $('#aiSource').textContent = lastAnswer.source; },
     });
   } catch {
     await askOnDevice(body, m);

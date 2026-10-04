@@ -52,7 +52,7 @@ test('different questions get different, question-specific answers (no more repe
 test('answers follow the six-part structure and quote only engine facts', () => {
   const a = ask('How is my career this year?');
   assert.equal(a.lang, 'en');
-  assert.deepEqual(a.sections.map((s) => s.key), ['question', 'factors', 'interpretation', 'uncertainty', 'practice', 'next']);
+  assert.deepEqual(a.sections.map((s) => s.key), ['question', 'answer', 'factors', 'interpretation', 'uncertainty', 'practice', 'next']);
   const dasa = facts.dasa;
   assert.ok(a.text.includes(dasa.start) && a.text.includes(dasa.end), 'dasa dates come from the engine');
   const ai = factsForAI(facts);
@@ -99,7 +99,7 @@ test('safety: pain is clarified, crisis gets helplines, death is never predicted
   assert.match(death.text, /does not predict death/);
   assert.ok(!/\b(19|20)\d{2}\b/.test(death.text), 'no dates in a death answer');
   const health = ask('Will I get diabetes?');
-  assert.match(health.text, /do not diagnose/);
+  assert.match(health.text, /not a diagnosis/);
   assert.match(ask('Will I get married next year?').text, /not a guarantee/);
   for (const q of ['Will my visa be approved?', 'Will I win my court case?']) {
     assert.match(ask(q).text, /No horoscope can guarantee/, q);

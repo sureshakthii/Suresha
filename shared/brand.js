@@ -20,6 +20,7 @@ export const BRAND = Object.freeze({
   familyEn: 'Thunai Family',
   familyTa: 'துணை குடும்பம்',
   year: 2026,
+  developer: 'AG Technology Solutions',
   supportEmail: 'support@example.com', // placeholder until a domain is confirmed
 });
 

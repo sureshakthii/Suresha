@@ -37,7 +37,7 @@ async function runAi(id, task, context, fallbackText, messages) {
   out.classList.add('typing');
   const r = await aiTask({ task, context, messages, fallbackText, onText: (tx) => { out.textContent = tx; } });
   out.classList.remove('typing');
-  $(`#${id}-src`).textContent = r.source === 'ai' ? '🤖 ' + L('AI-generated', 'AI உருவாக்கியது') : '📐 ' + L('Built-in rules (no AI)', 'உள்ளமைந்த விதிகள் (AI இல்லை)');
+  $(`#${id}-src`).textContent = '';
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 document.addEventListener('click', (e) => {
@@ -496,7 +496,7 @@ function todayFacts() {
  */
 function lifeOf(m) {
   if (!m) return {};
-  const life = { memberId: m.id, maritalStatus: m.maritalStatus, marriedYear: m.marriedYear, children: m.children, firstChildYear: m.firstChildYear };
+  const life = { memberId: m.id, gender: m.gender, maritalStatus: m.maritalStatus, marriedYear: m.marriedYear, children: m.children, firstChildYear: m.firstChildYear };
   if (m.relation === 'self') {
     if (!life.maritalStatus && state.family.some((x) => x.relation === 'spouse')) life.maritalStatus = 'married';
     const kids = state.family.filter((x) => ['son', 'daughter'].includes(x.relation));
@@ -530,8 +530,14 @@ function chatContext(question) {
   };
 }
 
+// The straight answer comes first (highlighted); every planet / dasa / transit reason stays visible
+// below it so the user — or an astrologer checking the app — can see exactly why.
 function renderAnswerHtml(ans) {
-  return ans.sections.map((sx) => `<div class="ans-sec ans-${sx.key}"><div class="ans-h">${esc(sx.title)}</div><ul>${sx.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`).join('');
+  const secs = ans.sections.filter((sx) => sx.key !== 'question' && sx.lines?.length);
+  const top = secs.filter((sx) => sx.key === 'answer');
+  const rest = secs.filter((sx) => sx.key !== 'answer');
+  const sec = (sx) => `<div class="ans-sec ans-${sx.key}"><div class="ans-h">${esc(sx.title)}</div><ul>${sx.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+  return `${top.map(sec).join('')}${rest.length ? `<div class="ans-why">${esc(L('Why — planets, Dasa & transits', 'காரணம் — கிரகங்கள், தசை & கோசாரம்'))}</div>${rest.map(sec).join('')}` : ''}`;
 }
 
 function renderChat(sec, params = {}) {
@@ -566,8 +572,7 @@ function addBubble(role, text, meta = {}) {
   if (meta.answer) body.innerHTML = renderAnswerHtml(meta.answer); else body.textContent = text;
   const foot = document.createElement('div');
   foot.className = 'ans-foot';
-  const badge = meta.source === 'ai' ? `<span class="badge ai">🤖 ${L('AI-generated answer', 'AI உருவாக்கிய பதில்')}</span>`
-    : meta.source === 'rules' ? `<span class="badge rules">📐 ${L('Built-in guidance (no AI)', 'உள்ளமைந்த வழிகாட்டல் (AI இல்லை)')}</span>` : '';
+  const badge = '';
   foot.innerHTML = `${badge}<button class="link-btn say-bubble" aria-label="${L('Read aloud', 'வாசித்துக்காட்டு')}">🔊</button>`;
   foot.querySelector('.say-bubble').addEventListener('click', () => speak(body.textContent));
   b.append(body, foot);

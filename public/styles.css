@@ -1229,3 +1229,12 @@ body.large .guide-q { font-size: 23px !important; }
 details, details > div, .bhava { min-width: 0; max-width: 100%; }
 /* Safety net: nothing may make the whole page scroll sideways (clip keeps sticky headers working). */
 #app { overflow-x: clip; }
+.dev-credit { display: inline-block; margin-top: 4px; font-weight: 600; letter-spacing: .3px; color: var(--brand); } [data-theme="dark"] .dev-credit { color: var(--gold2); }
+
+/* Straight answer first, planet reasons visible below */
+.ans-sec.ans-answer { background: rgba(var(--gold-rgb), .12); border-left: 4px solid var(--gold2, #c9962b); border-radius: 12px; padding: 10px 12px; margin: 2px 0 12px; }
+.ans-answer ul { list-style: none; padding-left: 0; }
+.ans-answer li { font-weight: 500; font-size: var(--fs-base); line-height: 1.6; color: var(--text); }
+.ans-why { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; margin: 4px 0 6px; }
+.bubble.ai:has(.ans-body .ans-sec) { padding-right: 12px; max-width: 100%; }
+.bubble.ai:has(.ans-body .ans-sec) .say-bubble { position: static; margin-left: auto; }

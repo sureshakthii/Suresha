@@ -30,10 +30,10 @@ const FREE_FEATURES = [
   f('Tamil calendar', 'தமிழ் நாட்காட்டி'),
   f('Porutham table', 'திருமணப் பொருத்த அட்டவணை'),
   f('Built-in explainable guidance, unlimited', 'உள்ளமைந்த விளக்க வழிகாட்டல், வரம்பின்றி'),
-  f('A few AI-written answers per day (when AI is enabled)', 'நாளொன்றுக்குச் சில AI பதில்கள் (AI இயக்கத்தில் இருந்தால்)'),
+  f('A few detailed answers per day', 'நாளொன்றுக்குச் சில விரிவான பதில்கள்'),
 ];
 const PREMIUM_FEATURES = [
-  f(`Up to ${aiAllowance('premium')} AI-written answers per month (built-in guidance is always unlimited)`, `மாதம் ${aiAllowance('premium')} AI பதில்கள் வரை (உள்ளமைந்த வழிகாட்டல் எப்போதும் வரம்பின்றி)`),
+  f(`Up to ${aiAllowance('premium')} detailed personal answers per month (everyday guidance is unlimited)`, `மாதம் ${aiAllowance('premium')} விரிவான தனிப்பட்ட பதில்கள் வரை (அன்றாட வழிகாட்டல் வரம்பின்றி)`),
   f('Saved journey plans and printable reports', 'சேமித்த பயணத் திட்டங்கள், அச்சிடக்கூடிய அறிக்கைகள்'),
   f('Life-timing predictions', 'வாழ்க்கை நிகழ்வுகளுக்கான கால கணிப்புகள்'),
   f('Full analysis reading', 'முழுமையான ஜாதக ஆய்வுப் பலன்'),
@@ -44,7 +44,7 @@ const PREMIUM_FEATURES = [
 ];
 const FAMILY_FEATURES = [
   f('Everything in Premium', 'பிரீமியத்தின் அனைத்து வசதிகளும்'),
-  f(`Up to ${aiAllowance('family')} AI-written answers per month, shared by the family`, `குடும்பத்திற்குப் பகிர்ந்து மாதம் ${aiAllowance('family')} AI பதில்கள் வரை`),
+  f(`Up to ${aiAllowance('family')} detailed personal answers per month, shared by the family`, `குடும்பத்திற்குப் பகிர்ந்து மாதம் ${aiAllowance('family')} விரிவான பதில்கள் வரை`),
   f('Shared event and journey planning with private profiles', 'தனிப்பட்ட சுயவிவரங்களுடன் பகிர்ந்த நிகழ்வு, பயணத் திட்டமிடல்'),
   f('Up to 8 family profiles under one account', 'ஒரே கணக்கில் 8 குடும்ப உறுப்பினர்கள் வரை'),
   f('Gift it to parents abroad or in India — one plan for the whole family', 'வெளிநாட்டிலோ இந்தியாவிலோ உள்ள பெற்றோருக்குப் பரிசளியுங்கள் — முழுக் குடும்பத்திற்கும் ஒரே திட்டம்'),

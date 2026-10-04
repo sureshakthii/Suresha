@@ -12,6 +12,7 @@ import { grahaStrength, NAVAGRAHA } from './remedies.js';
 import { transitStatus, BHAVAS } from './analysis.js';
 import { luckyNumbers } from './personal.js';
 import { predictEvent } from './predict.js';
+import { healthGuide } from './health.js';
 
 export { RULES_VERSION } from './version.js';
 
@@ -139,6 +140,7 @@ export function factsForAI(f) {
 // ---------------------------------------------------------------- answer building
 const SECTION_TITLES = {
   question: T('Your question', 'உங்கள் கேள்வி'),
+  answer: T('Answer', 'பதில்'),
   factors: T('Relevant chart factors', 'தொடர்புடைய ஜாதகக் காரணிகள்'),
   interpretation: T('Traditional interpretation', 'பாரம்பரிய விளக்கம்'),
   uncertainty: T('Uncertainty & conflicting factors', 'உறுதியின்மை & முரண்படும் காரணிகள்'),
@@ -277,20 +279,42 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
     }
     case 'pain': {
       clarify = { options: [T('Physical pain', 'உடல் வலி'), T('Emotional distress / worry', 'மன வேதனை / கவலை'), T('Something else (a situation or relationship)', 'வேறு ஏதோ (சூழ்நிலை / உறவு)')] };
-      add('question', L('When you say “pain”, what do you mean? Choose one so I can help in the right way:', '“வலி” என்று சொல்லும்போது எதைக் குறிக்கிறீர்கள்? சரியாக உதவ ஒன்றைத் தேர்வு செய்யுங்கள்:'));
+      if (/chest|breath|faint|stroke|heart|நெஞ்சு|மூச்சு|மயக்க|இதய|nenju|moochu/i.test(question)) add('answer', L('Chest pain, breathlessness or fainting can be an emergency — call 112 now or go to the nearest hospital. Please do not wait for any horoscope answer.', 'நெஞ்சு வலி, மூச்சுத் திணறல், மயக்கம் அவசர நிலையாக இருக்கலாம் — உடனே 112 அழையுங்கள் அல்லது அருகிலுள்ள மருத்துவமனைக்குச் செல்லுங்கள். ஜாதகப் பதிலுக்காகக் காத்திருக்க வேண்டாம்.'));
+      add('next', L('When you say “pain”, what do you mean? Choose one so I can help in the right way:', '“வலி” என்று சொல்லும்போது எதைக் குறிக்கிறீர்கள்? சரியாக உதவ ஒன்றைத் தேர்வு செய்யுங்கள்:'));
       add('support', L('If the pain is physical and severe, sudden, or with chest pain or breathlessness, please seek medical care now (emergency: 112).', 'உடல் வலி கடுமையாக, திடீரென, அல்லது நெஞ்சு வலி / மூச்சுத் திணறலுடன் இருந்தால் உடனே மருத்துவ உதவி பெறுங்கள் (அவசரம்: 112).'));
       break;
     }
     case 'health': {
-      add('interpretation', L('I do not diagnose illness or predict disease from a horoscope, and astrology cannot set a medical check-up schedule.', 'ஜாதகத்திலிருந்து நோயைக் கண்டறிவதோ கணிப்பதோ இல்லை; மருத்துவப் பரிசோதனை அட்டவணையையும் ஜோதிடம் தீர்மானிக்க முடியாது.'));
-      add('next', L('Please speak to a doctor about the symptoms — that is the reliable path. If it is urgent, call 112.', 'அறிகுறிகள் பற்றி மருத்துவரிடம் பேசுங்கள் — அதுவே நம்பகமான வழி. அவசரம் என்றால் 112.'),
-        L('General wellness (not from your chart): regular sleep, water, a short daily walk, and keeping prescribed medicines on time.', 'பொது நலவாழ்வு (ஜாதகத்திலிருந்து அல்ல): சீரான உறக்கம், தண்ணீர், தினசரி சிறு நடை, பரிந்துரைத்த மருந்துகளை நேரத்தில் எடுத்தல்.'));
-      add('practice', L('Optional, for peace of mind: a prayer at Vaitheeswaran Kovil or at home to Dhanvantari — as comfort, never instead of treatment.', 'விருப்பம், மன அமைதிக்கு: வைத்தீஸ்வரன் கோவில் அல்லது வீட்டில் தன்வந்திரி வழிபாடு — ஆறுதலாக மட்டும், சிகிச்சைக்கு மாற்றாக அல்ல.'));
+      // Traditional planetary health guidance (dasa, bhukti, gochara and peyarchi), kept separate from medical advice.
+      const acute = /fever|pain|cancer|bleed|chest|breath|faint|accident|surgery|operation|hospital|காய்ச்சல்|வலி|ரத்த|நெஞ்சு|மூச்சு|மயக்க|விபத்து|அறுவை|ஆஸ்பத்திரி|kaichal|vali/i.test(question);
+      if (acute) add('answer', L('For a symptom like this, please see a doctor first — that comes before any horoscope reading. If it is urgent, call 112. Below is only the traditional planetary health outlook, for your peace of mind.', 'இத்தகைய அறிகுறிக்கு முதலில் மருத்துவரைப் பாருங்கள் — எந்த ஜாதகப் பலனையும் விட அதுவே முதன்மை. அவசரம் என்றால் 112. கீழே மன அமைதிக்காக பாரம்பரிய கிரக ஆரோக்கியப் பார்வை மட்டும்.'));
+      if (!f) { needChart(); break; }
+      const hg = healthGuide(f.chart, { gender: life.gender });
+      const p = hg.period;
+      const lvlEn = { good: 'a supportive period for health', steady: 'a steady period — keep your routine', care: 'a period to take extra care of your health' }[p.level];
+      const lvlTa = { good: 'ஆரோக்கியத்திற்கு ஆதரவான காலம்', steady: 'நிலையான காலம் — வழக்கத்தைத் தொடருங்கள்', care: 'ஆரோக்கியத்தில் கூடுதல் கவனம் தேவையான காலம்' }[p.level];
+      if (!acute) add('answer', L(`By your dasa, bhukti and current transits, this is ${lvlEn}. Protect: ${hg.bodyAreas.slice(0, 2).map((x) => x.en).join('; ')}.`, `உங்கள் தசை, புக்தி, கோசாரப்படி இது ${lvlTa}. கவனிக்க: ${hg.bodyAreas.slice(0, 2).map((x) => x.ta).join('; ')}.`),
+        L(`Eat more: ${hg.diet.eat.slice(0, 3).map((x) => x.en.split(' — ')[0].toLowerCase()).join(', ')}. Reduce: ${hg.diet.avoid.slice(0, 2).map((x) => x.en.split(' — ')[0].toLowerCase()).join(', ')}.`, `அதிகம் உண்ண: ${hg.diet.eat.slice(0, 3).map((x) => x.ta.split(' — ')[0]).join(', ')}. குறைக்க: ${hg.diet.avoid.slice(0, 2).map((x) => x.ta.split(' — ')[0]).join(', ')}.`));
+      add('factors', dasaLine(f, lang), ...p.dasaNotes.slice(0, 3).map((n) => tr(n)), ...p.gochara.slice(0, 3).map((n) => `${lang === 'ta' ? 'கோசாரம்' : 'Transit'}: ${tr(n)}`),
+        L(`Body constitution (traditional): ${hg.constitution.name.en}`, `உடல்வாகு (பாரம்பரியம்): ${hg.constitution.name.ta}`));
+      add('interpretation', ...hg.bodyAreas.slice(0, 3).map((x) => `${x.icon || '•'} ${tr(x)} — ${x.reasons.slice(0, 1).map((r) => tr(r)).join('')} ${x.tip ? `· ${tr(x.tip)}` : ''}`));
+      const care = hg.months.filter((m) => m.level !== 'steady').slice(0, 3);
+      if (care.length) add('interpretation', L(`Coming months to note: ${care.map((m) => `${my(`${m.month}-15`, 'en')} (${m.level === 'good' ? 'good' : 'take care'})`).join(', ')}.`, `கவனிக்க வேண்டிய மாதங்கள்: ${care.map((m) => `${my(`${m.month}-15`, 'ta')} (${m.level === 'good' ? 'நன்று' : 'கவனம்'})`).join(', ')}.`));
+      add('facts', L(`Eat: ${hg.diet.eat.slice(0, 5).map((x) => x.en).join('; ')}`, `உண்ண: ${hg.diet.eat.slice(0, 5).map((x) => x.ta).join('; ')}`),
+        L(`Avoid / reduce: ${hg.diet.avoid.slice(0, 4).map((x) => x.en).join('; ')}`, `தவிர்க்க / குறைக்க: ${hg.diet.avoid.slice(0, 4).map((x) => x.ta).join('; ')}`),
+        L(`Fasting day: ${hg.diet.fasting.day.en}`, `விரத நாள்: ${hg.diet.fasting.day.ta}`));
+      add('uncertainty', L('This is traditional astrological and Siddha/Ayurveda-style guidance about tendencies — not a diagnosis and not a prediction of illness. Your doctor’s advice always comes first; keep regular check-ups.', 'இது பாரம்பரிய ஜோதிட, சித்த/ஆயுர்வேத வழியிலான போக்குகள் பற்றிய வழிகாட்டல் — நோய் கண்டறிதலோ நோய் கணிப்போ அல்ல. மருத்துவர் ஆலோசனையே எப்போதும் முதன்மை; வழக்கமான பரிசோதனைகளைத் தொடருங்கள்.'));
+      add('practice', ...hg.remedies.planets.slice(0, 2).map((r) => `${pName(r.planet, lang)}: ${tr(r.free)}`));
+      add('next', L('Open Health & Planets for the full 12-month care map, foods and yoga.', 'முழு 12 மாத கவன வரைபடம், உணவு, யோகாவுக்கு "ஆரோக்கியம் & கிரகங்கள்" திறங்கள்.'));
+      actions.push({ go: 'health', label: L('Health & Planets', 'ஆரோக்கியம் & கிரகங்கள்') });
       break;
     }
     case 'emotional': {
       add('support', L(`I hear you${name ? `, ${name}` : ''}. Feeling worried is understandable, and it is good that you are looking at it calmly.`, `புரிகிறது${name ? `, ${name}` : ''}. கவலைப்படுவது இயல்பு; அமைதியாக இதைப் பார்க்க முயல்வது நல்லது.`));
       if (f) {
+        const pressure = f.transit?.status.some((x) => ['ezharai', 'ashtama'].includes(x.id));
+        const support = f.transit?.status.some((x) => x.id === 'guru_balam');
+        add('answer', L(`${pressure ? 'Saturn is putting some pressure on your Moon sign now, which can feel heavy — it builds strength and it passes.' : 'There is no heavy planetary pressure on you right now.'}${support ? ' Jupiter is supporting you (Guru Balam), so help and good advice will come.' : ''}${f.dasa ? ` Your ${f.dasa.lord} dasa asks for ${DASA_NATURE[f.dasa.lord].en.split(';')[1]?.trim() || 'patience'}.` : ''}`, `${pressure ? 'இப்போது சனி உங்கள் சந்திர ராசி மீது அழுத்தம் தருகிறது; சற்றுக் கனமாக இருக்கலாம் — இது வலிமை தரும், கடந்து போகும்.' : 'இப்போது உங்கள் மீது கனமான கிரக அழுத்தம் இல்லை.'}${support ? ' குரு பலம் உள்ளது; உதவியும் நல்ல ஆலோசனையும் கிடைக்கும்.' : ''}${f.dasa ? ` ${pName(f.dasa.lord, 'ta')} தசை: ${DASA_NATURE[f.dasa.lord].ta.split(';')[1]?.trim() || 'பொறுமை தேவை'}.` : ''}`));
         add('factors', dasaLine(f, lang), transitLines(f, lang, ['ezharai', 'ashtama', 'ardhashtama', 'sani_good', 'guru_balam', 'guru_weak']), f.dasa ? planetLine(f, f.dasa.lord, lang) : null, planetLine(f, 'Moon', lang));
         if (f.dasa) add('interpretation', L(`Traditionally, ${f.dasa.lord} mahadasa is ${DASA_NATURE[f.dasa.lord].en}.`, `பாரம்பரியப்படி ${pName(f.dasa.lord, 'ta')} மகா தசை — ${DASA_NATURE[f.dasa.lord].ta}.`));
         if (f.transit?.status.some((s) => ['ezharai', 'ashtama'].includes(s.id))) add('interpretation', L('Saturn’s transit over your Moon sign is traditionally read as a time of pressure that builds maturity — not as a misfortune.', 'சந்திர ராசி மீதான சனியின் சஞ்சாரம் முதிர்ச்சியை வளர்க்கும் அழுத்தமான காலமாகவே பாரம்பரியம் பார்க்கிறது — துரதிர்ஷ்டமாக அல்ல.'));
@@ -304,6 +328,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       if (!f) { needChart(); break; }
       add('factors', dasaLine(f, lang), f.dasa && planetLine(f, f.dasa.lord, lang), f.bhukti && f.bhukti.lord !== f.dasa?.lord && planetLine(f, f.bhukti.lord, lang));
       if (f.dasa) {
+        add('answer', L(`You are now in ${f.dasa.lord} mahadasa (until ${my(f.dasa.end, 'en')})${f.bhukti ? ` with ${f.bhukti.lord} bhukti until ${my(f.bhukti.end, 'en')}` : ''}. In simple words: ${DASA_NATURE[f.dasa.lord].en.split(';')[0]}${f.bhukti ? `, and for now ${DASA_NATURE[f.bhukti.lord].en.split(';')[0].replace(/^an? /, '').replace(/^period of /, '')}` : ''}.`, `நீங்கள் இப்போது ${pName(f.dasa.lord, 'ta')} மகா தசையில் (${my(f.dasa.end, 'ta')} வரை)${f.bhukti ? `, ${pName(f.bhukti.lord, 'ta')} புக்தியில் (${my(f.bhukti.end, 'ta')} வரை)` : ''} இருக்கிறீர்கள். எளிமையாகச் சொன்னால்: ${DASA_NATURE[f.dasa.lord].ta.split(';')[0]}.`));
         add('interpretation', L(`${f.dasa.lord} mahadasa: ${DASA_NATURE[f.dasa.lord].en}.`, `${pName(f.dasa.lord, 'ta')} மகா தசை: ${DASA_NATURE[f.dasa.lord].ta}.`));
         if (f.bhukti) add('interpretation', L(`Within it, the ${f.bhukti.lord} bhukti adds the flavour of ${DASA_NATURE[f.bhukti.lord].en.split(';')[0]}.`, `அதற்குள் ${pName(f.bhukti.lord, 'ta')} புக்தி — ${DASA_NATURE[f.bhukti.lord].ta.split(';')[0]}.`));
         const g = f.strength[f.dasa.lord];
@@ -320,6 +345,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
     }
     case 'weak': {
       if (!f) { needChart(); break; }
+      add('answer', L(`The planets needing care in your chart are ${f.weakest.map((g) => g.planet).join(' and ')}. A simple free practice: ${freePractice(f.weakest[0].planet, 'en')}`, `உங்கள் ஜாதகத்தில் கவனம் தேவையான கிரகங்கள்: ${f.weakest.map((g) => pName(g.planet, 'ta')).join(', ')}. எளிய இலவச வழிபாடு: ${freePractice(f.weakest[0].planet, 'ta')}`));
       add('factors', ...f.weakest.map((g) => planetLine(f, g.planet, lang)));
       add('interpretation', ...f.weakest.map((g) => L(`${g.planet} traditionally governs ${NAVAGRAHA[g.planet].governs.en.toLowerCase()}. A weaker ${g.planet} suggests giving these areas a little more care — not that something bad will happen.`, `${pName(g.planet, 'ta')} பாரம்பரியப்படி ${NAVAGRAHA[g.planet].governs.ta} ஆகியவற்றைக் குறிக்கும். பலம் குறைந்தால் இவற்றில் சற்றுக் கூடுதல் கவனம் — தீங்கு நடக்கும் என்பதல்ல.`)));
       add('uncertainty', L('“Strength” here is a traditional point score (sign, house, combustion, retrogression), not a measured probability. Different schools weigh these differently.', 'இங்கு “பலம்” என்பது பாரம்பரியப் புள்ளி மதிப்பு (ராசி, பாவம், அஸ்தங்கம், வக்கிரம்); அளவிடப்பட்ட நிகழ்தகவு அல்ல. ஒவ்வொரு மரபும் வேறுபடலாம்.'), ref());
@@ -335,6 +361,8 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
         add('factors', L(`${f.reference === 'lagna' ? 'Lagna' : 'Moon-sign'} lord: ${lagnaLord} (${f.strength[lagnaLord].level}); Moon-sign lord: ${moonLord}.`, `${f.reference === 'lagna' ? 'லக்ன' : 'சந்திர ராசி'} அதிபதி: ${pName(lagnaLord, 'ta')} (${strengthWord(f.strength[lagnaLord], 'ta')}); ராசி அதிபதி: ${pName(moonLord, 'ta')}.`),
           houseLine(f, 4, lang), dasaLine(f, lang));
         const colours = [...new Set([lagnaLord, moonLord])].map((k) => `${pName(k, lang)} — ${tr(NAVAGRAHA[k].color)}`);
+        const ln0 = f.birthDate ? luckyNumbers(f.birthDate) : null;
+        add('answer', L(`Best colours for you: ${[...new Set([lagnaLord, moonLord])].map((k) => NAVAGRAHA[k].color.en).join(' or ')}.${ln0 ? ` Choose a registration number whose digits add up to ${ln0.lucky.join(', ')}.` : ''} Pick the delivery day with the vehicle muhurtham.`, `உங்களுக்கு ஏற்ற நிறம்: ${[...new Set([lagnaLord, moonLord])].map((k) => NAVAGRAHA[k].color.ta).join(' அல்லது ')}.${ln0 ? ` பதிவு எண்ணின் கூட்டுத்தொகை ${ln0.lucky.join(', ')} வருமாறு தேர்வு செய்யுங்கள்.` : ''} டெலிவரி நாளை வாகன முகூர்த்தம் மூலம் தேர்வு செய்யுங்கள்.`));
         add('interpretation', L(`Colour: tradition links colours with your chart’s ruling planets: ${colours.join('; ')}. Any colour you like is fine — this is a preference, not a rule.`, `நிறம்: உங்கள் ஜாதக அதிபதிகளுடன் பாரம்பரியம் இணைக்கும் நிறங்கள்: ${colours.join('; ')}. உங்களுக்குப் பிடித்த எந்த நிறமும் சரியே — இது விருப்பம், விதி அல்ல.`));
       } else needChart();
       if (f?.birthDate) {
@@ -352,6 +380,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       if (f) {
         add('factors', dasaLine(f, lang), ...f.weakest.slice(0, 1).map((g) => planetLine(f, g.planet, lang)));
         const lords = [...new Set([f.dasa?.lord, f.weakest[0]?.planet].filter(Boolean))];
+        add('answer', L(`Temples that suit your chart now: ${lords.map((k) => `${NAVAGRAHA[k].temple.en} (for ${k})`).join(' and ')}. Plan the visit with My Spiritual Journey for dates, route and cost.`, `இப்போது உங்கள் ஜாதகத்திற்கு ஏற்ற கோவில்கள்: ${lords.map((k) => `${NAVAGRAHA[k].temple.ta} (${pName(k, 'ta')})`).join(', ')}. தேதி, வழி, செலவுக்கு "என் ஆன்மீகப் பயணம்" மூலம் திட்டமிடுங்கள்.`));
         add('interpretation', ...lords.map((k) => L(`Tradition associates ${k} with ${NAVAGRAHA[k].deity.en}; its Navagraha sthalam is ${NAVAGRAHA[k].temple.en}.`, `${pName(k, 'ta')} — ${NAVAGRAHA[k].deity.ta} வழிபாட்டுடன் பாரம்பரியமாக இணைக்கப்படுகிறது; நவகிரகத் தலம்: ${NAVAGRAHA[k].temple.ta}.`)));
       } else needChart();
       add('uncertainty', L('Worship associations differ between families and traditions; your Kula Deivam and family custom come first.', 'வழிபாட்டு மரபுகள் குடும்பத்திற்குக் குடும்பம் வேறுபடும்; உங்கள் குலதெய்வமும் குடும்ப வழக்கமும் முதன்மை.'));
@@ -361,6 +390,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       break;
     }
     case 'dates': {
+      add('answer', L('Tap “Find dates for the family” below — Thunai checks every family member’s star and lists the good dates and times that suit everyone.', 'கீழே “குடும்பத்திற்கு நாள் தேடு” அழுத்துங்கள் — ஒவ்வொரு குடும்ப உறுப்பினரின் நட்சத்திரத்தையும் பார்த்து, அனைவருக்கும் ஏற்ற நல்ல நாள், நேரங்களைத் துணை பட்டியலிடும்.'));
       add('interpretation', L('Tradition chooses dates using the panchangam (tithi, star, weekday), avoids Rahu Kalam, Yamagandam, Ashtami, Navami and Amavasai, and checks each family member’s Tara Bala and Chandrashtamam.', 'பஞ்சாங்கம் (திதி, நட்சத்திரம், கிழமை) அடிப்படையில் நாள் தேர்வு; ராகு காலம், எமகண்டம், அஷ்டமி, நவமி, அமாவாசை தவிர்ப்பு; ஒவ்வொரு குடும்ப உறுப்பினரின் தாரா பலம், சந்திராஷ்டமம் சரிபார்ப்பு — இதுவே மரபு.'));
       if (f?.transit) add('factors', transitLines(f, lang, ['guru_balam', 'guru_weak']));
       add('uncertainty', L('Different family astrologers may prefer slightly different rules (for example about Aadi, Purattasi or Margazhi months). Confirm the final date with your family priest.', 'குடும்ப ஜோதிடர்கள் சிறிது வேறுபட்ட விதிகளை விரும்பலாம் (எ.கா. ஆடி, புரட்டாசி, மார்கழி). இறுதி நாளைக் குடும்பப் புரோகிதரிடம் உறுதி செய்யுங்கள்.'));
@@ -370,6 +400,9 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       break;
     }
     case 'goodtime': {
+      if (today) add('answer', today.goodTimes?.length
+        ? L(`Best time today: ${today.goodTimes[0]}. Avoid Rahu Kalam ${today.rahuKalam}.`, `இன்று சிறந்த நேரம்: ${today.goodTimes[0]}. ராகு காலம் ${today.rahuKalam} தவிர்க்கவும்.`)
+        : L(`No more good time today; start tomorrow morning. Avoid Rahu Kalam ${today.rahuKalam}.`, `இன்று இனி நல்ல நேரம் இல்லை; நாளை காலை தொடங்குங்கள். ராகு காலம் ${today.rahuKalam} தவிர்க்கவும்.`));
       if (today) {
         add('factors', L(`Rahu Kalam today: ${today.rahuKalam}. Yamagandam: ${today.yamagandam}.`, `இன்று ராகு காலம்: ${today.rahuKalam}. எமகண்டம்: ${today.yamagandam}.`),
           today.goodTimes?.length ? L(`Gowri nalla neram still ahead today: ${today.goodTimes.join(', ')}.`, `இன்று இன்னும் வரவிருக்கும் கௌரி நல்ல நேரம்: ${today.goodTimes.join(', ')}.`) : L('No more Gowri nalla neram today — tomorrow morning is the next.', 'இன்று இனி கௌரி நல்ல நேரம் இல்லை — நாளை காலை அடுத்தது.'),
@@ -400,6 +433,10 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
         add('interpretation', isMarriage
           ? L('Your profile says you are already married, so instead of predicting a marriage, here is how your chart matches your life.', 'உங்கள் சுயவிவரப்படி உங்களுக்குத் திருமணம் ஆகிவிட்டது; எனவே மீண்டும் கணிக்காமல், உங்கள் ஜாதகம் உங்கள் வாழ்க்கையுடன் எப்படிப் பொருந்துகிறது என்று பார்க்கிறோம்.')
           : L(`Your profile shows ${life.children} child${Number(life.children) > 1 ? 'ren' : ''}, so here is how your chart matches that, rather than a new prediction.`, `உங்கள் சுயவிவரப்படி உங்களுக்கு ${life.children} குழந்தை${Number(life.children) > 1 ? 'கள்' : ''} உள்ளனர்; எனவே புதிய கணிப்பு அல்ல, ஜாதகப் பொருத்தத்தைப் பார்க்கிறோம்.`));
+        add('answer', chk.match?.hit
+          ? L(`Yes — your ${isMarriage ? 'marriage' : 'first child'} in ${chk.match.year} matches the period your chart marks as supportive (${periodText(chk.match.hit, 'en')}).`, `ஆம் — ${chk.match.year}-ல் உங்கள் ${isMarriage ? 'திருமணம்' : 'முதல் குழந்தை'}, உங்கள் ஜாதகம் சாதகமாகக் காட்டும் காலத்துடன் (${periodText(chk.match.hit, 'ta')}) பொருந்துகிறது.`)
+          : chk.match ? L(`Your ${isMarriage ? 'marriage' : 'first child'} in ${chk.match.year} is close to, but not inside, the strongest period by this method${chk.match.nearest ? ` (${periodText(chk.match.nearest, 'en')})` : ''}.`, `${chk.match.year}-ல் நடந்த உங்கள் ${isMarriage ? 'திருமணம்' : 'முதல் குழந்தைப் பிறப்பு'}, ஜாதகம் காட்டும் வலுவான காலத்திற்கு மிக அருகில் உள்ளது${chk.match.nearest ? ` (${periodText(chk.match.nearest, 'ta')})` : ''}.`)
+            : L(`You are already ${isMarriage ? 'married' : 'a parent'}. Add the year in your profile and Thunai will show how your chart matches it.`, `உங்களுக்கு ஏற்கனவே ${isMarriage ? 'திருமணம் ஆகிவிட்டது' : 'குழந்தை உள்ளது'}. சுயவிவரத்தில் ஆண்டைச் சேர்த்தால் ஜாதகப் பொருத்தத்தைத் துணை காட்டும்.`));
         if (chk.match?.hit) add('interpretation', L(`✅ The year ${chk.match.year} falls within ${periodText(chk.match.hit, lang)} — a period your chart marks as supportive. Your chart and your life event agree, which also suggests your birth time is close to right.`, `✅ ${chk.match.year} ஆம் ஆண்டு, உங்கள் ஜாதகம் சாதகமாகக் காட்டும் ${periodText(chk.match.hit, lang)} காலத்திற்குள் வருகிறது. ஜாதகமும் வாழ்க்கை நிகழ்வும் ஒத்துப்போகின்றன; பிறந்த நேரமும் சரியாக இருப்பதைக் காட்டுகிறது.`));
         else if (chk.match) add('interpretation', L(`The year ${chk.match.year} is not inside the strongest periods by this method${chk.match.nearest ? `; the nearest is ${periodText(chk.match.nearest, lang)}` : ''}. Life events also depend on family decisions and other chart factors; tradition uses such differences to re-check the birth time.`, `இந்த முறைப்படி ${chk.match.year} ஆம் ஆண்டு வலுவான காலங்களுக்குள் இல்லை${chk.match.nearest ? `; அருகிலுள்ளது ${periodText(chk.match.nearest, lang)}` : ''}. வாழ்க்கை நிகழ்வுகள் குடும்ப முடிவுகள், பிற ஜாதகக் காரணிகளையும் சார்ந்தவை; இத்தகைய வேறுபாட்டைக் கொண்டு பிறந்த நேரத்தை மீண்டும் சரிபார்ப்பது மரபு.`));
         else {
@@ -417,6 +454,9 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
         }
       } else {
         const fut = chk.future;
+        add('answer', fut.length
+          ? L(`The next supportive period for ${isMarriage ? 'marriage' : 'children'} in your chart is ${periodText(fut[0], 'en')}${fut[1] ? `; the one after is ${periodText(fut[1], 'en')}` : ''}.`, `உங்கள் ஜாதகப்படி ${isMarriage ? 'திருமணத்திற்கு' : 'குழந்தை பாக்கியத்திற்கு'} அடுத்த சாதகமான காலம்: ${periodText(fut[0], 'ta')}${fut[1] ? `; அதன் பின்: ${periodText(fut[1], 'ta')}` : ''}.`)
+          : L('No strongly marked period in the next 12 years by this method — effort and the right meeting matter most.', 'இந்த முறைப்படி அடுத்த 12 ஆண்டுகளில் வலுவான காலம் இல்லை — முயற்சியும் சரியான சந்திப்புமே முக்கியம்.'));
         if (fut.length) add('interpretation', L(`Periods your chart marks as supportive in the coming years: ${fut.map((w) => periodText(w, lang)).join('; ')}.`, `வரும் ஆண்டுகளில் உங்கள் ஜாதகம் சாதகமாகக் காட்டும் காலங்கள்: ${fut.map((w) => periodText(w, lang)).join('; ')}.`));
         else add('interpretation', L('No strongly marked period appears in the next 12 years by this method. Effort and the right meeting matter more than any period.', 'இந்த முறைப்படி அடுத்த 12 ஆண்டுகளில் வலுவாகக் குறிக்கப்பட்ட காலம் இல்லை. எந்தக் காலத்தையும் விட முயற்சியும் சரியான சந்திப்பும் முக்கியம்.'));
         if (fut[0]?.reasons?.length) add('factors', ...fut[0].reasons.slice(0, 2).map((r) => (lang === 'ta' ? r.ta : r.en)));
@@ -458,6 +498,10 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
           transitLines(f, lang, intent === 'marriage' || intent === 'pregnancy' ? ['guru_balam', 'guru_weak'] : ['ezharai', 'ashtama', 'sani_good', 'guru_balam', 'guru_weak']));
         const main = f.houseInfo(AREA.houses[0]);
         const lordG = f.strength[main.lord];
+        const linkedNow = f.dasa && (f.ruled(f.dasa.lord).some((h) => AREA.houses.includes(h)) || AREA.houses.includes(f.planetHouse(f.dasa.lord)));
+        const verdictEn = lordG.level === 'strong' ? 'well supported' : lordG.level === 'weak' ? 'slow but steady with patience' : 'good with steady effort';
+        const verdictTa = lordG.level === 'strong' ? 'நல்ல ஆதரவுடன் உள்ளது' : lordG.level === 'weak' ? 'பொறுமையுடன் மெதுவாக முன்னேறும்' : 'தொடர் முயற்சியால் நன்றாக இருக்கும்';
+        add('answer', L(`Your ${AREA.en} is ${verdictEn}.${linkedNow ? ` Your current ${f.dasa.lord} dasa activates this area, so ${my(new Date(), 'en').split(' ')[1]}–${my(f.dasa.end, 'en').split(' ')[1]} is an active time for it.` : ' Your current dasa is focused on other areas, so progress here comes through steady effort.'}`, `உங்கள் ${AREA.ta} ${verdictTa}.${linkedNow ? ` நடப்பு ${pName(f.dasa.lord, 'ta')} தசை இந்தப் பகுதியைச் செயல்படுத்துகிறது; எனவே ${my(f.dasa.end, 'ta').split(' ')[1]} வரை இது செயலூக்கமான காலம்.` : ' நடப்பு தசை பிற பகுதிகளில் கவனம் செலுத்துகிறது; இங்கு தொடர் முயற்சியால் முன்னேற்றம் வரும்.'}`));
         add('interpretation', lordG.level === 'strong'
           ? L(`The ${ordEn(AREA.houses[0])} house lord ${main.lord} is strong — tradition reads this as good support for ${AREA.en}.`, `${AREA.houses[0]}-ம் வீட்டு அதிபதி ${pName(main.lord, 'ta')} பலமாக உள்ளார் — ${AREA.ta} ஆகியவற்றுக்கு நல்ல ஆதரவு என மரபு கூறுகிறது.`)
           : lordG.level === 'weak'
@@ -490,6 +534,8 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       }
       // Chart overview or an open question.
       const best = Object.values(f.strength).filter((g) => !['Rahu', 'Ketu'].includes(g.planet)).sort((a, b) => b.score - a.score)[0];
+      if (intent !== 'general') add('answer', L(`Your strongest planet is ${best.planet} (${NAVAGRAHA[best.planet].governs.en.toLowerCase()}); ${f.weakest[0].planet} needs care.${f.dasa ? ` Now running: ${f.dasa.lord} dasa until ${my(f.dasa.end, 'en')}.` : ''}`, `உங்கள் பலமான கிரகம் ${pName(best.planet, 'ta')} (${NAVAGRAHA[best.planet].governs.ta}); ${pName(f.weakest[0].planet, 'ta')} கவனம் தேவை.${f.dasa ? ` இப்போது ${pName(f.dasa.lord, 'ta')} தசை (${my(f.dasa.end, 'ta')} வரை).` : ''}`));
+      else add('answer', L('Please ask about one topic — for example work, marriage, money, health, a temple or a good date — and you will get a direct answer with the planet details.', 'ஒரு தலைப்பைப் பற்றிக் கேளுங்கள் — உதாரணமாக வேலை, திருமணம், பணம், ஆரோக்கியம், கோவில், நல்ல நாள் — கிரக விவரங்களுடன் நேரடிப் பதில் கிடைக்கும்.'));
       add('factors', dasaLine(f, lang), planetLine(f, best.planet, lang), ...f.weakest.slice(0, 1).map((g) => planetLine(f, g.planet, lang)), transitLines(f, lang));
       add('interpretation', L(`Strongest planet: ${best.planet}, traditionally supporting ${NAVAGRAHA[best.planet].governs.en.toLowerCase()}. Needs care: ${f.weakest[0].planet} (${NAVAGRAHA[f.weakest[0].planet].governs.en.toLowerCase()}).`, `பலமான கிரகம்: ${pName(best.planet, 'ta')} — ${NAVAGRAHA[best.planet].governs.ta} ஆகியவற்றுக்கு ஆதரவு. கவனம் தேவை: ${pName(f.weakest[0].planet, 'ta')} (${NAVAGRAHA[f.weakest[0].planet].governs.ta}).`),
         f.dasa && L(`Current theme (${f.dasa.lord} dasa): ${DASA_NATURE[f.dasa.lord].en}.`, `நடப்புக் கருப்பொருள் (${pName(f.dasa.lord, 'ta')} தசை): ${DASA_NATURE[f.dasa.lord].ta}.`));
@@ -499,7 +545,9 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
     }
   }
 
-  const order = ['question', 'support', 'factors', 'interpretation', 'uncertainty', 'facts', 'practice', 'next'];
+  // Straight answer first (fallback: the first support/interpretation line), then all planet details, fully visible.
+  if (!S.answer?.length) { const src = ['support', 'interpretation', 'next'].find((k) => S[k]?.length); if (src) S.answer = [S[src].shift()]; }
+  const order = ['question', 'answer', 'support', 'factors', 'interpretation', 'uncertainty', 'facts', 'practice', 'next'];
   const sections = order.filter((k) => S[k]?.length).map((k) => ({ key: k, title: tr(SECTION_TITLES[k]), lines: S[k] }));
   const text = sections.map((s) => `${s.title}:\n${s.lines.map((l) => `• ${l}`).join('\n')}`).join('\n\n');
   return { intent, lang, sections, actions, clarify, text };

@@ -16,7 +16,7 @@ async function loadPlans(currency) {
 
 async function renderPlans(sec, params = {}) {
   const currency = params.currency || (inIndia() ? 'INR' : 'USD');
-  sec.innerHTML = `${subHeader(L(BRAND.premiumEn, BRAND.premiumTa), L('Free calendar and guidance for everyone; Premium adds detailed explanations, saved plans, reports and a monthly AI allowance', 'நாட்காட்டியும் அடிப்படை வழிகாட்டலும் அனைவருக்கும் இலவசம்; பிரீமியத்தில் விரிவான விளக்கம், சேமித்த திட்டங்கள், அறிக்கைகள், மாதாந்திர AI பதில்கள்'), 'more')}
+  sec.innerHTML = `${subHeader(L(BRAND.premiumEn, BRAND.premiumTa), L('Free calendar and guidance for everyone; Premium adds detailed explanations, saved plans and reports', 'நாட்காட்டியும் அடிப்படை வழிகாட்டலும் அனைவருக்கும் இலவசம்; பிரீமியத்தில் விரிவான விளக்கம், சேமித்த திட்டங்கள், அறிக்கைகள்'), 'more')}
     <div class="seg"><button data-cur="INR" class="${currency === 'INR' ? 'sel' : ''}">₹ ${L('India', 'இந்தியா')}</button><button data-cur="USD" class="${currency === 'USD' ? 'sel' : ''}">$ ${L('Abroad', 'வெளிநாடு')}</button></div>
     ${trialBanner()}${params.redeem ? redeemBox() : ''}<div id="myPlan"></div><div id="planList"><div class="loader"><i></i><i></i><i></i></div></div>`;
   $$('[data-cur]', sec).forEach((b) => b.addEventListener('click', () => renderPlans(sec, { ...params, currency: b.dataset.cur })));
@@ -25,9 +25,9 @@ async function renderPlans(sec, params = {}) {
     api('/api/billing/me').then((me) => {
       if (!$('#myPlan')) return;
       $('#myPlan').innerHTML = `<div class="card glass"><b>${L('Your plan', 'உங்கள் திட்டம்')}: ${me.plan === 'free' ? L('Free', 'இலவசம்') : me.plan.startsWith('family') ? L('Family', 'குடும்பம்') : L('Premium', 'பிரீமியம்')}</b>${me.expiresAt ? ` <span class="muted small">${L('until', 'வரை')} ${fmtIsoDate(new Date(me.expiresAt).toISOString().slice(0, 10))}</span>` : ''}
-        ${me.aiPeriod === 'day' && me.aiLimit ? `<div class="tb-row"><span class="tb-label">${L('AI answers today', 'இன்றைய AI பதில்கள்')}</span><span class="tb-value">${me.aiUsedToday} / ${me.aiLimit}</span><span class="tb-bar"><i style="width:${Math.min(100, Math.round(100 * me.aiUsedToday / me.aiLimit))}%"></i></span></div>` : ''}
-        ${me.aiPeriod === 'month' && me.aiLimit ? `<div class="tb-row"><span class="tb-label">${L('AI answers this month', 'இந்த மாத AI பதில்கள்')}</span><span class="tb-value">${me.aiUsedThisMonth} / ${me.aiLimit}</span><span class="tb-bar"><i style="width:${Math.min(100, Math.round(100 * me.aiUsedThisMonth / me.aiLimit))}%"></i></span></div>` : ''}
-        <p class="small muted">${L('Built-in guidance never runs out; the allowance only counts AI-written answers.', 'உள்ளமைந்த வழிகாட்டல் தீராது; AI எழுதிய பதில்கள் மட்டுமே கணக்கிடப்படும்.')}</p>
+        ${me.aiPeriod === 'day' && me.aiLimit ? `<div class="tb-row"><span class="tb-label">${L('Detailed answers today', 'இன்றைய விரிவான பதில்கள்')}</span><span class="tb-value">${me.aiUsedToday} / ${me.aiLimit}</span><span class="tb-bar"><i style="width:${Math.min(100, Math.round(100 * me.aiUsedToday / me.aiLimit))}%"></i></span></div>` : ''}
+        ${me.aiPeriod === 'month' && me.aiLimit ? `<div class="tb-row"><span class="tb-label">${L('Detailed answers this month', 'இந்த மாத விரிவான பதில்கள்')}</span><span class="tb-value">${me.aiUsedThisMonth} / ${me.aiLimit}</span><span class="tb-bar"><i style="width:${Math.min(100, Math.round(100 * me.aiUsedThisMonth / me.aiLimit))}%"></i></span></div>` : ''}
+        <p class="small muted">${L('Everyday guidance never runs out; only detailed answers are counted.', 'அன்றாட வழிகாட்டல் தீராது; விரிவான பதில்கள் மட்டுமே கணக்கிடப்படும்.')}</p>
         ${state.user ? `<button class="chip-btn" id="restoreBtn">↺ ${L('Restore purchases', 'வாங்கியதை மீட்டெடு')}</button>` : ''}</div>`;
       $('#restoreBtn')?.addEventListener('click', async () => { try { const r = await api('/api/billing/restore', { method: 'POST' }); toast(r.restored ? L('Purchase restored 🙏', 'வாங்கியது மீட்டெடுக்கப்பட்டது 🙏') : L('No other purchases found for this account', 'இந்தக் கணக்கில் வேறு வாங்குதல் இல்லை')); renderPlans(sec, params); } catch (e) { toast(e.message); } });
     }).catch(() => {});

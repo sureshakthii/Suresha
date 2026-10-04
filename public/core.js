@@ -310,7 +310,7 @@ export const supportCard = () => `<div class="card glass support-card" role="not
   </div></div>`;
 
 /** Copyright footer shown on the main pages. */
-export const copyright = () => `<footer class="copy">© ${BRAND.year} ${L(`${BRAND.name}. All rights reserved.`, `${BRAND.nameTa}. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.`)}<br><span class="small">${L('Traditional astrology is guidance, not a guarantee. It never replaces medical, legal or financial advice.', 'பாரம்பரிய ஜோதிடம் ஒரு வழிகாட்டல் மட்டுமே; உத்தரவாதம் அல்ல. மருத்துவ, சட்ட, நிதி ஆலோசனைக்கு மாற்றாகாது.')}</span></footer>`;
+export const copyright = () => `<footer class="copy">© ${BRAND.year} ${L(`${BRAND.name}. All rights reserved.`, `${BRAND.nameTa}. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.`)}<br><span class="dev-credit">${L(`Developed and owned by ${BRAND.developer}`, `உருவாக்கம் & உரிமை: ${BRAND.developer}`)}</span><br><span class="small">${L('Traditional astrology is guidance, not a guarantee. It never replaces medical, legal or financial advice.', 'பாரம்பரிய ஜோதிடம் ஒரு வழிகாட்டல் மட்டுமே; உத்தரவாதம் அல்ல. மருத்துவ, சட்ட, நிதி ஆலோசனைக்கு மாற்றாகாது.')}</span></footer>`;
 
 /** Name to show for a family member: their Tamil name in Tamil mode when given. */
 export const displayName = (m) => (m ? (ta() && m.nameTa ? m.nameTa : m.name) : '');

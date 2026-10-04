@@ -2,6 +2,12 @@
 import { birthChart, RASIS, NAKSHATRAS, PLANETS } from './shared/astro.js';
 import { buildTaskPrompt } from './shared/narrator.js';
 import { placeTa } from './shared/places.js';
+import { BRAND } from './shared/brand.js';
+
+export { BRAND };
+/** Brand name in the current language. */
+export const brand = () => (state.lang === 'ta' ? BRAND.nameTa : BRAND.name);
+export const assistantName = () => (state.lang === 'ta' ? BRAND.assistantTa : BRAND.assistantEn);
 
 // Hosted test build (no backend): everything is computed on the device and the
 // AI Jothidar answers through the viewer's own Claude account when available.
@@ -23,7 +29,7 @@ export const state = {
   activeId: store.get('kj_active', initialFamily[0]?.id || null),
   ancestors: store.get('kj_ancestors', []),
   loc: store.get('kj_loc', null),
-  settings: store.get('kj_settings', { large: false, voice: true }),
+  settings: { large: false, voice: true, view: 'simple', rate: 0.92, hc: false, ...store.get('kj_settings', {}) },
   user: null,
   providers: null,
   view: 'home',
@@ -104,7 +110,15 @@ export function saveFamily() {
     syncTimer = setTimeout(() => api('/api/me/data', { method: 'PUT', body: { data: { family: state.family, activeId: state.activeId, ancestors: state.ancestors } } }).catch(() => {}), 600);
   }
 }
-export function saveSettings() { store.set('kj_settings', state.settings); document.body.classList.toggle('large', !!state.settings.large); applyTheme(); }
+export function saveSettings() {
+  store.set('kj_settings', state.settings);
+  document.body.classList.toggle('large', !!state.settings.large);
+  document.body.classList.toggle('hc', !!state.settings.hc);
+  document.body.classList.toggle('detailed', state.settings.view === 'detailed');
+  applyTheme();
+}
+/** Simple view (default) hides specialist tools; Detailed shows everything. */
+export const detailed = () => state.settings.view === 'detailed';
 /** Theme: 'light' (default, best readability), 'dark' (cosmic night) or 'auto' (follow the phone). */
 export function applyTheme() {
   const pref = state.settings.theme || 'light';
@@ -160,6 +174,8 @@ const getSample = () => (samplePromise ||= (window.claude?.use ? window.claude.u
  * onText receives the WHOLE text so far. Resolves { text, source: 'ai' | 'rules' }.
  */
 export async function aiTask({ task, context, messages = [], fallbackText, onText }) {
+  // The person can switch AI off (Privacy & data); then only built-in rules answer and nothing is sent.
+  if (store.get('kj_consent', {}).aiChat === false) { onText?.(fallbackText); return { text: fallbackText, source: 'rules' }; }
   if (STATIC) {
     const sample = await getSample();
     if (sample) {
@@ -230,7 +246,7 @@ export const voiceState = { speaking: false, hasTamil: null };
  * we explain how to install one instead of reading Tamil letters with an English voice.
  * Returns a promise that resolves when speaking ends (or false if it could not start).
  */
-export async function speak(text, { rate = 0.92, onEnd } = {}) {
+export async function speak(text, { rate = state.settings.rate || 0.92, onEnd } = {}) {
   if (!('speechSynthesis' in window) || !state.settings.voice) { toast(L('Read-aloud is switched off or not available on this device', 'வாசித்துக்காட்டும் வசதி இந்தச் சாதனத்தில் இல்லை அல்லது நிறுத்தப்பட்டுள்ளது')); return false; }
   const voices = await loadVoices();
   const tamil = isTamil(text);
@@ -285,13 +301,13 @@ export const micMessage = (code) => ({
 }[code] || L('Could not use the microphone', 'மைக்ரோஃபோனைப் பயன்படுத்த முடியவில்லை'));
 
 /** Copyright footer shown on the main pages. */
-export const copyright = () => `<footer class="copy">© 2026 ${L('Kaippesi Jothidar. All rights reserved.', 'கைப்பேசி ஜோதிடர். அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.')}</footer>`;
+export const copyright = () => `<footer class="copy">© ${BRAND.year} ${L(`${BRAND.name}. All rights reserved.`, `${BRAND.nameTa}. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.`)}<br><span class="small">${L('Traditional astrology is guidance, not a guarantee. It never replaces medical, legal or financial advice.', 'பாரம்பரிய ஜோதிடம் ஒரு வழிகாட்டல் மட்டுமே; உத்தரவாதம் அல்ல. மருத்துவ, சட்ட, நிதி ஆலோசனைக்கு மாற்றாகாது.')}</span></footer>`;
 
 /** Name to show for a family member: their Tamil name in Tamil mode when given. */
 export const displayName = (m) => (m ? (ta() && m.nameTa ? m.nameTa : m.name) : '');
 
 /** Small card shown where a feature needs the installed app (server), e.g. on the hosted test page. */
-export const needsServerCard = (what) => `<div class="card glass coming"><b>📲 ${L('Available in the installed app', 'நிறுவப்பட்ட செயலியில் கிடைக்கும்')}</b><p class="small">${what}</p></div>`;
+export const needsServerCard = (what) => `<div class="card glass coming" role="status"><b>⏸️ ${L('Not available yet', 'இப்போது கிடைக்கவில்லை')}</b><p class="small">${what}</p><p class="small muted">${L('This service needs our online server, which is not connected in this version. Nothing will be charged.', 'இந்தச் சேவைக்கு எங்கள் இணைய சேவையகம் தேவை; இந்தப் பதிப்பில் இணைக்கப்படவில்லை. எந்தக் கட்டணமும் வசூலிக்கப்படாது.')}</p></div>`;
 
 /** Star/pada <select> options (pada gives the rasi). */
 export function starOptions(selected) {
@@ -303,7 +319,24 @@ export const rasiOfStarPada = (star, pada) => Math.floor((star * 4 + (pada - 1))
 const screens = {};
 export const registerScreen = (name, def) => { screens[name] = def; };
 export const currentScreen = () => screens[state.view];
-const TAB_OF = { home: 'home', chart: 'chart', ask: 'ask', chat: 'chat', more: 'more' };
+// Five destinations: Today · My Chart · Family · Ask · Services. Every other screen belongs to one hub,
+// which decides the highlighted tab and where the back button returns.
+const TAB_OF = { home: 'home', chart: 'chart', familyhub: 'familyhub', chat: 'chat', services: 'services' };
+export const HUB_OF = {
+  // Today
+  panchangam: 'home', calendar: 'home', live: 'home', vratham: 'home', weather: 'home', reminders: 'home', tools: 'home', plans: 'home',
+  // My Chart (and Advanced)
+  analysis: 'chart', vargas: 'chart', roadmap: 'chart', life: 'chart', health: 'chart', guide: 'chart', peyarchi: 'chart', numerology: 'chart', parigaram: 'chart', mantras: 'chart', birthtime: 'chart', why: 'chart',
+  // Family
+  family: 'familyhub', relations: 'familyhub', porutham: 'familyhub', couple: 'familyhub', gunamilan: 'familyhub', partners: 'familyhub',
+  muhurtham: 'familyhub', thivasam: 'familyhub', starbday: 'familyhub', names: 'familyhub', ruthu: 'familyhub', familyplan: 'familyhub', share: 'familyhub',
+  // Ask
+  ask: 'chat',
+  // Services
+  journey: 'services', temples: 'services', packages: 'services', seva: 'services', priests: 'services', store: 'services', consult: 'services',
+  // Settings (header gear) — no tab highlighted
+  more: null, about: 'more', legal: 'more', feedback: 'more', invite: 'more', admin: 'more', privacy: 'more', calc: 'more',
+};
 
 export function go(view, params = {}) {
   if (!screens[view]) return;
@@ -319,7 +352,8 @@ export function go(view, params = {}) {
     $('#views').append(sec);
   }
   $$('.view').forEach((v) => { v.hidden = v !== sec; });
-  const tab = screens[view].tab || TAB_OF[view] || (screens[view].parent ? TAB_OF[screens[view].parent] : null);
+  const hub = view in HUB_OF ? HUB_OF[view] : screens[view].parent;
+  const tab = screens[view].tab || TAB_OF[view] || (hub ? TAB_OF[hub] : null);
   $$('.tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   $('#app').classList.toggle('no-tabs', !!screens[view].fullscreen);
   document.dispatchEvent(new CustomEvent('kj:screen', { detail: view }));
@@ -328,7 +362,7 @@ export function go(view, params = {}) {
 }
 
 /** Standard header for sub-screens with a back button. */
-export function subHeader(title, sub = '', back = 'home') {
+export function subHeader(title, sub = '', back = HUB_OF[state.view] || screens[state.view]?.parent || 'home') {
   return `<div class="sub-head"><button class="back-btn" data-back="${back}" aria-label="${L('Back', 'பின்செல்')}">‹</button>
     <div><h2>${title}</h2>${sub ? `<p class="muted small">${sub}</p>` : ''}</div></div>`;
 }

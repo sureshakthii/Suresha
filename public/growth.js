@@ -17,9 +17,11 @@ export function platform() {
 }
 const queue = [];
 let flushTimer;
+// Analytics are opt-in (Settings → Privacy & data). Only event names, screen ids and app version are sent.
+const analyticsAllowed = () => Boolean(store.get('kj_consent', {}).analytics);
 export function track(type, extra = {}) {
-  if (STATIC) return;
-  queue.push({ type, platform: platform(), appVersion: '3.0.0', ...extra });
+  if (STATIC || !analyticsAllowed()) return;
+  queue.push({ type, platform: platform(), appVersion: '4.0.0', ...extra });
   clearTimeout(flushTimer);
   flushTimer = setTimeout(flush, queue.length >= 20 ? 0 : 4000);
 }

@@ -1,12 +1,12 @@
 {
-  "name": "கைப்பேசி ஜோதிடர் — Kaippesi Jothidar",
-  "short_name": "கைப்பேசி ஜோதிடர்",
-  "description": "உங்கள் வாழ்க்கையின் வழிகாட்டி — Your guide for life: Jathagam, Panchangam, Porutham, Muhurtham, Parigaram.",
+  "name": "துணை · THUNAI — Personal Astrology & Spiritual Guidance",
+  "short_name": "துணை",
+  "description": "உங்கள் வாழ்வின் வழித்துணை. — Personal Astrology & Spiritual Guidance: Panchangam, Jathagam, family planning and temple journeys.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#06031a",
-  "theme_color": "#0b0620",
+  "background_color": "#3d0d1f",
+  "theme_color": "#6e1a35",
   "icons": [
     {
       "src": "/icon.svg",

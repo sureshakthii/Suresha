@@ -53,10 +53,10 @@ function launcherHtml(appUrl) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0620" />
-  <title>கைப்பேசி ஜோதிடர்</title>
+  <meta name="theme-color" content="#6e1a35" />
+  <title>துணை · THUNAI</title>
   <style>
-    :root { --bg0: #06031a; --bg1: #140a3a; --bg2: #2a0f4f; --gold: #f5c26b; --gold2: #ffdf9e; --text: #f4ecff; --muted: #b7a9d6; }
+    :root { --bg0: #140a10; --bg1: #2a1220; --bg2: #4a1a2c; --gold: #f0c27a; --gold2: #f7d9a6; --text: #f7f0e8; --muted: #cbbfb4; }
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
     body {
@@ -84,8 +84,8 @@ function launcherHtml(appUrl) {
 <body>
   <main class="wrap">
     <img class="logo" src="icon.png" alt="" />
-    <h1>கைப்பேசி ஜோதிடர்</h1>
-    <p class="en">Kaippesi Jothidar</p>
+    <h1>துணை</h1>
+    <p class="en">THUNAI · Personal Astrology &amp; Spiritual Guidance</p>
     <section id="loading">
       <div class="ring" aria-hidden="true"></div>
       <p>ஏற்றுகிறது…</p>
@@ -141,7 +141,7 @@ function wrapArtifactPage(page) {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0b0620" />
+<meta name="theme-color" content="#6e1a35" />
 ${head}
 </head>
 <body>${body}

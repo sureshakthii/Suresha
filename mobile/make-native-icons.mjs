@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BG = '#0b0620';
+const BG = '#3d0d1f';
 const svgFile = path.join(root, 'public', 'icon.svg');
 const src = fs.existsSync(svgFile)
   ? `data:image/svg+xml;base64,${fs.readFileSync(svgFile).toString('base64')}`

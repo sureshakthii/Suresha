@@ -177,7 +177,17 @@ export const ICONS = {
   feedback: "star",
   legal: "file-text",
   admin: "shield-check",
-  user: "user"
+  user: "user",
+  journey: "route",
+  consult: "user",
+  familyplan: "calendar-check",
+  privacy: "lock",
+  calc: "calculator",
+  birthtime: "clock",
+  tools: "layout-grid",
+  services: "landmark",
+  familyhub: "users-round",
+  why: "info"
 };
 
 /** Concept -> chip colour group (daily | personal | match | spiritual | services | help). */
@@ -221,7 +231,14 @@ export const ICON_GROUP = {
   about: "help",
   feedback: "help",
   legal: "help",
-  admin: "help"
+  admin: "help",
+  journey: "spiritual",
+  consult: "services",
+  familyplan: "match",
+  privacy: "help",
+  calc: "help",
+  birthtime: "personal",
+  tools: "help"
 };
 
 /** Inline SVG string for a Lucide icon name (or an ICONS concept key). Unknown names render an empty box. */

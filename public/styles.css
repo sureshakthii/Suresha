@@ -874,3 +874,184 @@ img, svg, video, canvas { max-width: 100%; }
 .wx-tip.heat { border-left-color: #ea580c; } .wx-tip.rain { border-left-color: #2563eb; } .wx-tip.humid { border-left-color: #0891b2; }
 .wx-tip.good, .wx-tip.best { border-left-color: var(--good); }
 .wx-tip .remind-btn { margin-left: 4px; }
+
+/* =================================================================== THUNAI identity (Stage 1)
+   Warm, refined and accessible: ivory + deep maroon + temple saffron in the day theme,
+   a warm lamp-lit night in the dark theme. Tokens override the earlier palette; feature CSS above is unchanged. */
+[data-theme="light"] {
+  --page: #faf6ef;
+  --gold: #8a4b0f; --gold2: #6e1a35; --saffron: #b8460f;
+  --text: #241a2b; --muted: #5c5068;
+  --glass: #ffffff; --glass-b: rgba(110, 26, 53, 0.13);
+  --surface-strong: #ffffff; --surface-soft: #fdfaf5;
+  --brand: #6e1a35; --brand-ink: #ffffff; --accent: #c5631a; --accent-soft: #fcefe0; --line: #ece3d6;
+}
+:root, [data-theme="dark"] {
+  --brand: #f0c27a; --brand-ink: #2a1306; --accent: #f29a52; --accent-soft: rgba(242, 154, 82, .12); --line: rgba(240, 194, 122, .16);
+}
+[data-theme="dark"] {
+  --page: #17111a;
+  --bg0: #120c14; --bg1: #1c1420; --bg2: #2a1b26;
+  --gold: #f0c27a; --gold2: #f7d9a6; --saffron: #f29a52;
+  --text: #f7f0e8; --muted: #cbbfb4;
+  --glass: #231a26; --glass-b: rgba(240, 194, 122, 0.18);
+  --surface-strong: #1d1520; --surface-soft: #251b28; --surface-pop: #2a1f2d;
+  --orb-opacity: 0;
+}
+[data-theme="dark"] body::before { background: radial-gradient(900px 600px at 100% -10%, #3a2016 0%, transparent 60%), linear-gradient(180deg, #1c1420, #120c14); }
+[data-theme="dark"] #sky { opacity: .35; }
+[data-theme="dark"] .planets-bg { display: none; }
+
+/* Typography: Noto Sans Tamil for reading, Noto Serif Tamil for headings; never above weight 700 in Tamil. */
+body, body.ta { font-family: 'Noto Sans Tamil', 'Inter', system-ui, sans-serif; font-size: 16px; line-height: 1.6; }
+body:not(.ta) { font-family: 'Inter', 'Noto Sans Tamil', system-ui, sans-serif; }
+h1, h2, h3, .card h2, body.ta .card h2, .sub-head h2, body.ta .sub-head h2, .section-title, body.ta .section-title {
+  font-family: 'Noto Serif Tamil', 'Noto Sans Tamil', Georgia, serif; font-weight: 700; letter-spacing: 0;
+}
+.sub-head h2 { font-size: 22px; line-height: 1.3; }
+.section-title { font-size: 17px; }
+.card-title { font-weight: 600; line-height: 1.35; gap: 8px; }
+.card-title > span:first-child { min-width: 0; }
+.clock, .countdown, .w-temp, .plan-price, .big-score, .mu-score, .gauge .num, .invite-code, .td-day { font-family: 'Inter', 'Noto Sans Tamil', sans-serif; font-weight: 700; }
+
+/* Words wrap between words, never letter by letter (fixes the broken planet names and table cells). */
+.card, .factor, .pan-row, .deep-row, .cat { overflow-wrap: break-word; word-break: normal; }
+table { border-collapse: collapse; width: 100%; }
+td, th { overflow-wrap: normal; word-break: keep-all; hyphens: none; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Compact, opaque header — one line of brand, one line of tagline; content never shows through. */
+.topbar, [data-theme="light"] .topbar { background: var(--surface-strong); backdrop-filter: none; -webkit-backdrop-filter: none;
+  border-bottom: 1px solid var(--line); padding-top: calc(8px + env(safe-area-inset-top)); padding-bottom: 8px; gap: 8px; }
+.brand-mini { min-width: 0; flex: 1; }
+.brand-mini img { flex: none; width: 36px; height: 36px; border-radius: 10px; }
+.brand-mini > div { min-width: 0; }
+.bm-ta { font-family: 'Noto Serif Tamil', 'Noto Sans Tamil', serif; font-weight: 700; font-size: 18px; line-height: 1.2; color: var(--brand); white-space: nowrap; }
+.bm-ta .bm-latin { font-family: 'Inter', sans-serif; font-size: 12px; letter-spacing: 2.5px; color: var(--muted); margin-left: 6px; font-weight: 600; }
+.bm-tag { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted) !important; font-weight: 500 !important; font-size: 12px !important; }
+.top-actions .chip-btn { min-height: 40px; min-width: 40px; }
+#langBtn { white-space: nowrap; font-weight: 600; }
+
+/* Large touch targets everywhere (WCAG 2.5.5-ish 44px). */
+.chip-btn, .link-btn, .tabbar button, .menu button, .seg button, .sg, .back-btn { min-height: 44px; }
+.link-btn { display: inline-flex; align-items: center; gap: 4px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Buttons: brand-coloured primary with clear contrast. */
+.btn-gold { background: var(--brand); color: var(--brand-ink); box-shadow: 0 6px 18px rgba(110, 26, 53, .18); font-weight: 600; }
+[data-theme="dark"] .btn-gold { background: linear-gradient(135deg, #f7d9a6, #f0c27a 50%, #f29a52); color: #2a1306; }
+.btn-soft { width: 100%; margin-top: 8px; padding: 13px; border-radius: 14px; border: 1px solid var(--glass-b); background: var(--accent-soft); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+
+/* Hero: warm, no longer a night-sky island in the day theme. */
+[data-theme="light"] .hero { --text: #241a2b; --muted: #5c5068; --gold: #8a4b0f; --gold2: #6e1a35; color: var(--text);
+  background: linear-gradient(160deg, #fff7ea, #fbe9d6 60%, #f7dccd); border: 1px solid #f0dcc4; }
+[data-theme="light"] .hero .td-day { color: var(--brand); }
+
+/* Splash and launcher: warm lamp-lit gradient. */
+[data-theme="light"] .splash, .splash { background: radial-gradient(120% 80% at 50% 0%, #4a1a2c, transparent 70%), linear-gradient(180deg, #2a1220, #140a10); }
+.brand-ta { font-family: 'Noto Serif Tamil', 'Noto Sans Tamil', serif; font-weight: 700; }
+.brand-en { font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: 6px; }
+
+/* Text-with-bar rows: the label is always fully readable, then the bar, then the value in words. */
+.tb-list { display: grid; gap: 12px; }
+.tb-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: baseline; }
+.tb-row .tb-label { font-weight: 600; line-height: 1.4; }
+.tb-row .tb-value { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tb-row .tb-bar { grid-column: 1 / -1; height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.tb-row .tb-bar > i { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+.tb-row .tb-bar > i.good { background: var(--good); } .tb-row .tb-bar > i.warn { background: var(--warn); } .tb-row .tb-bar > i.bad { background: var(--bad); }
+.tb-row .tb-note { grid-column: 1 / -1; font-size: 14px; color: var(--muted); line-height: 1.45; }
+/* Existing bar rows in older screens: let labels wrap instead of truncating with "…". */
+.gb-name, .ar-label, .area-label, .score-label, .lc-label, .hb-label, .life-label, .cm-label { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
+
+/* Large-text mode: real font scaling (no zoom clipping). */
+body.large { font-size: 19px; }
+body.large #views, body.large .tabbar { zoom: 1; }
+body.large .small { font-size: 16px; }
+body.large .card-title { font-size: 19px; }
+body.large .sub-head h2 { font-size: 26px; }
+body.large .tabbar button { font-size: 13px; }
+body.large .tb-row .tb-bar { height: 14px; }
+
+/* High contrast option. */
+body.hc { --muted: var(--text); }
+body.hc .glass, body.hc .card { border: 2px solid var(--text) !important; box-shadow: none !important; }
+body.hc .tag, body.hc .pill { border: 1px solid currentColor; }
+
+/* Labels used across the trust features. */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.6; border: 1px solid transparent; vertical-align: middle; }
+.badge.ai { background: #ede7fb; color: #4c2a85; } [data-theme="dark"] .badge.ai { background: rgba(167, 139, 250, .18); color: #ddd0ff; }
+.badge.rules { background: #e8f1ea; color: #1f5130; } [data-theme="dark"] .badge.rules { background: rgba(74, 222, 128, .14); color: #c9f7da; }
+.badge.est { background: #fff3d6; color: #7a4a00; } [data-theme="dark"] .badge.est { background: rgba(251, 191, 36, .16); color: #fde68a; }
+.badge.unv { background: #fde8e8; color: #8a1c1c; } [data-theme="dark"] .badge.unv { background: rgba(248, 113, 113, .16); color: #fecaca; }
+.badge.ok { background: #dcfce7; color: #14532d; } [data-theme="dark"] .badge.ok { background: rgba(74, 222, 128, .16); color: #bbf7d0; }
+.note-box { padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); border-left: 4px solid var(--accent); font-size: 14px; line-height: 1.5; margin: 8px 0; }
+.note-box.unv { background: rgba(var(--bad-rgb), .07); border-left-color: var(--bad); }
+
+/* ---------- Guidance-first home ---------- */
+.guide-box { background: var(--glass); border: 1px solid var(--glass-b); box-shadow: var(--card-shadow); }
+[data-theme="light"] .guide-box { background: linear-gradient(160deg, #ffffff, #fff6ec); border-color: #f0dcc4; }
+.guide-q { font-size: 22px; line-height: 1.35; margin: 4px 0 12px; color: var(--brand); }
+[data-theme="dark"] .guide-q { color: var(--gold2); }
+.guide-form { margin: 0 0 10px; }
+.guide-sugs { display: grid; gap: 8px; margin-bottom: 8px; }
+.guide-sugs .sg, .suggest-row .sg { text-align: left; white-space: normal; line-height: 1.45; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--glass-b); background: var(--accent-soft); color: var(--text); font: inherit; font-size: 15px; cursor: pointer; }
+.plan-row { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 12px; margin-top: 6px; border-radius: 14px; border: 1px solid var(--glass-b); background: var(--surface-soft); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.journey-cta { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; font: inherit; color: var(--text); cursor: pointer; }
+.journey-cta b { font-size: 17px; color: var(--brand); } [data-theme="dark"] .journey-cta b { color: var(--gold2); }
+.hora-mini[role="button"] { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); cursor: pointer; }
+.btn-soft.danger { color: var(--bad); border-color: rgba(var(--bad-rgb), .4); background: rgba(var(--bad-rgb), .06); }
+
+/* ---------- Ask: answer sections ---------- */
+.ask-switch { display: flex; margin-bottom: 12px; }
+.ask-switch button { flex: 1; }
+.bubble.ai .ans-sec, .ans-sec { margin: 6px 0 10px; }
+.ans-h { font-weight: 700; font-size: 14px; color: var(--brand); margin-bottom: 2px; }
+[data-theme="dark"] .ans-h { color: var(--gold2); }
+.ans-sec ul { margin: 0; padding-left: 18px; }
+.ans-sec li { margin: 3px 0; line-height: 1.5; }
+.ans-question .ans-h + ul li:first-child { font-style: italic; }
+.ans-support { background: var(--accent-soft); border-radius: 12px; padding: 8px 10px; }
+.ans-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 6px; }
+.bubble.ai .btn-row { margin-top: 8px; flex-wrap: wrap; }
+.bubble { overflow-wrap: break-word; }
+
+/* ---------- Journey ---------- */
+label.check input, label.check select { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(var(--saffron-rgb), .2); }
+label.check { color: var(--accent); }
+.trip-opt .card-title { font-size: 18px; }
+.trip-day { border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; margin: 12px 0; }
+.trip-stop { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.trip-stop:last-child { border-bottom: 0; }
+.trip-stop .btn-row { margin-top: 6px; flex-wrap: wrap; }
+.trip-opt details summary { cursor: pointer; color: var(--muted); margin: 6px 0; }
+.share-pre { white-space: pre-wrap; text-align: left; font: inherit; font-size: 14px; background: var(--surface-soft); border-radius: 12px; padding: 10px; max-height: 40vh; overflow: auto; }
+a.chip-btn { text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+
+/* ---------- Profiles & trust ---------- */
+fieldset.certainty { border: 1px solid var(--glass-b); border-radius: 14px; padding: 10px 12px; margin: 0 0 12px; }
+fieldset.certainty legend { font-weight: 600; font-size: 14px; padding: 0 4px; }
+.seg-opt { display: inline-flex !important; align-items: center; gap: 6px; padding: 8px 12px; margin: 0 !important; cursor: pointer; font-size: 15px !important; color: var(--text) !important; }
+.seg-opt input { width: auto; margin: 0; }
+.why-steps li { margin: 8px 0; line-height: 1.55; }
+.advanced > summary { cursor: pointer; list-style: none; }
+.advanced > summary::after { content: '▾'; margin-left: auto; }
+.dasa-now p { margin: 4px 0; }
+.view-toggle { margin: 4px 0 12px; }
+.set-row input[type="range"] { width: 140px; }
+.coming { border-left: 4px solid var(--warn) !important; }
+
+/* Home hero: date block wraps cleanly; clock sits on its own line on narrow phones. */
+.hero .hero-top { flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.hero .tamil-date { flex: 1 1 220px; min-width: 0; }
+.hero .clock { font-size: 20px; }
+.guide-sugs .sg { width: 100%; }
+.guide-sugs .sg { max-width: none; }
+.suggest-row .sg { max-width: 260px; }
+.top-actions { gap: 6px; flex: none; }
+.top-actions .chip-btn { min-height: 40px; min-width: 40px; padding: 6px 10px; }
+.bm-ta span:first-child { background: none; -webkit-text-fill-color: currentColor; color: var(--brand); }
+[data-theme="dark"] .bm-ta span:first-child { color: var(--gold2); }
+.tabbar button span:last-child { white-space: nowrap; font-size: 12px; }
+[data-theme="light"] .ans-h { color: #7a2a12; }
+.trip-details > summary { cursor: pointer; margin: 8px 0; line-height: 1.5; }

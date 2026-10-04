@@ -1,9 +1,10 @@
 // Account: login (mobile OTP, email OTP, Facebook), family profiles and settings.
 import { searchLocalPlaces } from './shared/places.js';
+import { UNKNOWN_TIME_PLACEHOLDER, certaintyOf } from './shared/birthtime.js';
 import { icon, iconChip } from './icons.js';
 import {
   state, $, $$, L, ta, esc, bi, api, STATIC, store, go, registerScreen, subHeader, saveFamily, saveSettings, setLoc,
-  toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright,
+  toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright, BRAND,
   placeName,
 } from './core.js';
 
@@ -72,8 +73,9 @@ function renderLogin(sec) {
   }
   sec.innerHTML = `<div class="login-wrap">
       <img src="logo.svg" alt="" width="96" height="96" class="login-logo">
-      <h1 class="brand-ta small">கைப்பேசி ஜோதிடர்</h1>
-      ${ta() ? '' : '<p class="brand-en small">Kaippesi Jothidar</p>'}
+      <h1 class="brand-ta small">${BRAND.nameTa}</h1>
+      <p class="brand-en small">${BRAND.nameUpper}</p>
+      <p class="muted center">${L(BRAND.descriptorEn, BRAND.taglineTa)}</p>
       <p class="muted center">${L('Sign in to keep your family\'s charts safe and available on every phone.', 'உங்கள் குடும்ப ஜாதகங்களைப் பாதுகாப்பாக எல்லா கைப்பேசியிலும் பெற உள்நுழையவும்.')}</p>
       <div class="card glass login-card">${body}</div>
       <button class="link-btn center-block" id="skipLogin">${L('Continue without signing in', 'உள்நுழையாமல் தொடரவும்')} ›</button>
@@ -209,8 +211,14 @@ function memberForm(m, first) {
     </div>
     <div class="row2">
       <label>${L('Date of birth', 'பிறந்த தேதி')}<input name="date" type="date" required value="${esc(m.date || '')}"></label>
-      <label>${L('Time of birth', 'பிறந்த நேரம்')}<input name="time" type="time" step="1" required value="${esc(m.time || '')}"></label>
+      <label>${L('Time of birth', 'பிறந்த நேரம்')}<input name="time" type="time" step="1"${(m.timeCertainty || 'exact') === 'unknown' ? ' disabled' : ' required'} value="${(m.timeCertainty || 'exact') === 'unknown' ? '' : esc(m.time || '')}"></label>
     </div>
+    <fieldset class="certainty"><legend>${L('How sure are you of the birth time?', 'பிறந்த நேரம் எவ்வளவு உறுதி?')}</legend>
+      <div class="seg" role="radiogroup">${[['exact', 'Exact', 'துல்லியம்'], ['approx', 'Approximate', 'தோராயம்'], ['unknown', 'Unknown', 'தெரியாது']].map(([id, en, tx]) => `<label class="seg-opt"><input type="radio" name="timeCertainty" value="${id}"${(m.timeCertainty || 'exact') === id ? ' checked' : ''}> ${L(en, tx)}</label>`).join('')}</div>
+      <label class="tw"${(m.timeCertainty || 'exact') === 'approx' ? '' : ' hidden'}>${L('Unsure by about', 'சுமார் எவ்வளவு மாறலாம்')}<select name="timeWindowMin">${[[15, '± 15 min', '± 15 நிமி'], [30, '± 30 min', '± 30 நிமி'], [60, '± 1 hour', '± 1 மணி'], [120, '± 2 hours', '± 2 மணி'], [240, '± 4 hours', '± 4 மணி']].map(([v, en, tx]) => `<option value="${v}"${Number(m.timeWindowMin || 60) === v ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label>
+      <p class="small muted">${L('If you are not sure, say so — we will not guess a time. Calendar, temple and family tools work without it; time-sensitive results are limited or clearly marked.', 'உறுதியில்லையெனில் அப்படியே குறிப்பிடுங்கள் — நேரத்தை நாங்கள் ஊகிக்க மாட்டோம். நாட்காட்டி, கோவில், குடும்பக் கருவிகள் நேரமின்றி இயங்கும்; நேரம் சார்ந்த பலன்கள் வரம்புடன் / குறிப்புடன் காட்டப்படும்.')} <button type="button" class="link-btn" data-go="birthtime">${L('What depends on it?', 'எது இதைச் சார்ந்தது?')}</button></p>
+    </fieldset>
+    <label class="set-row"><span>🔒 ${L('Keep this profile private (its chats and concerns are never shared)', 'இந்தச் சுயவிவரம் தனிப்பட்டது (உரையாடல், கவலைகள் பகிரப்படாது)')}</span><input type="checkbox" name="private"${m.private ? ' checked' : ''}></label>
     <label class="place-wrap">${L('Place of birth', 'பிறந்த இடம்')}<input name="place" required placeholder="Chennai" value="${esc(m.place || '')}"><ul id="placeList" class="suggest" hidden></ul></label>
     <div class="row3">
       <label>${L('Latitude', 'அட்சரேகை')}<input name="lat" type="number" step="0.0001" required value="${m.lat ?? ''}"></label>
@@ -228,11 +236,19 @@ function renderFamily(sec, params = {}) {
   const first = params.first || !state.family.length;
   if (editing) {
     sec.innerHTML = `${first ? '' : subHeader(editing.id ? L('Edit details', 'விவரம் திருத்து') : L('Add a family member', 'குடும்ப உறுப்பினர் சேர்'), '', 'family')}
-      <div class="card glass hero-card">${first ? `<h2>${L('Your birth details', 'உங்கள் பிறப்பு விவரங்கள்')}</h2><p class="muted">${L('Enter the exact date, time and place of birth. Everything is calculated for this precise moment.', 'சரியான பிறந்த தேதி, நேரம், இடம் உள்ளிடவும். அந்தத் துல்லியமான நொடிக்கே கணிக்கப்படும்.')}</p>` : ''}
+      <div class="card glass hero-card">${first ? `<h2>${L('Your birth details', 'உங்கள் பிறப்பு விவரங்கள்')}</h2><p class="muted">${L('Enter the date and place of birth, and the time if you know it.', 'பிறந்த தேதி, இடம், தெரிந்தால் நேரம் உள்ளிடவும்.')}</p>` : ''}
       ${memberForm(editing, first)}</div>`;
     const f = $('#memberForm');
     placeSearch(f.elements.place, $('#placeList'), (p) => { f.elements.place.value = p.name; f.elements.lat.value = p.lat; f.elements.lon.value = p.lon; f.elements.tz.value = p.tz; });
     f.addEventListener('submit', (e) => { e.preventDefault(); saveMember(f); });
+    f.addEventListener('change', (e) => {
+      if (e.target.name !== 'timeCertainty') return;
+      const v = e.target.value;
+      f.querySelector('.tw').hidden = v !== 'approx';
+      f.elements.time.disabled = v === 'unknown';
+      f.elements.time.required = v !== 'unknown';
+      if (v === 'unknown') f.elements.time.value = '';
+    });
     $('#delMember')?.addEventListener('click', () => {
       state.family = state.family.filter((x) => x.id !== editing.id);
       if (state.activeId === editing.id) state.activeId = state.family[0]?.id || null;
@@ -240,12 +256,12 @@ function renderFamily(sec, params = {}) {
     });
     return;
   }
-  sec.innerHTML = `${subHeader(L('Family', 'குடும்பம்'), L('Everyone\'s charts in one place', 'அனைவரின் ஜாதகமும் ஒரே இடத்தில்'), 'more')}
+  sec.innerHTML = `${subHeader(L('Family profiles', 'குடும்ப சுயவிவரங்கள்'), L('Everyone\'s charts in one place', 'அனைவரின் ஜாதகமும் ஒரே இடத்தில்'), 'familyhub')}
     ${state.family.map((m) => { const c = chartOf(m); return `<div class="card glass fam-card${m.id === state.activeId ? ' active' : ''}">
       <span class="avatar">${esc(([...displayName(m)][0] || '').toUpperCase())}</span>
       <div style="flex:1"><b>${esc(displayName(m))}</b> <span class="pill">${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))}</span>
-        <div class="muted small">${esc(m.date)} · ${esc(m.time.slice(0, 5))} · ${esc(placeName(m.place))}</div>
-        <div class="small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))} · ${L('Lagnam', 'லக்னம்')} ${esc(rasiName(c.lagna.rasi))}</div></div>
+        <div class="muted small">${esc(m.date)} · ${certaintyOf(m) === 'unknown' ? L('time unknown', 'நேரம் தெரியாது') : `${esc(m.time.slice(0, 5))}${certaintyOf(m) === 'approx' ? ` (± ${m.timeWindowMin || 60} ${L('min', 'நிமி')})` : ''}`} · ${esc(placeName(m.place))}</div>
+        <div class="small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}${certaintyOf(m) === 'exact' ? ` · ${L('Lagnam', 'லக்னம்')} ${esc(rasiName(c.lagna.rasi))}` : ''}</div></div>
       <div class="fam-actions">${m.id === state.activeId ? `<span class="tag good">${L('Active', 'தேர்வு')}</span>` : `<button class="chip-btn" data-use="${esc(m.id)}">${L('Use', 'தேர்வு')}</button>`}
         <button class="link-btn" data-edit="${esc(m.id)}">${L('Edit', 'திருத்து')}</button></div></div>`; }).join('')}
     <button class="btn-gold" id="addMember">➕ ${L('Add family member', 'குடும்ப உறுப்பினர் சேர்')}</button>
@@ -256,8 +272,12 @@ function renderFamily(sec, params = {}) {
 }
 
 function saveMember(f) {
-  const time = f.elements.time.value.length === 5 ? `${f.elements.time.value}:00` : f.elements.time.value;
+  const timeCertainty = f.elements.timeCertainty.value || 'exact';
+  const raw = f.elements.time.value;
+  // Unknown time: a fixed calculation placeholder that is never displayed (see shared/birthtime.js).
+  const time = timeCertainty === 'unknown' ? UNKNOWN_TIME_PLACEHOLDER : raw.length === 5 ? `${raw}:00` : raw;
   const m = {
+    timeCertainty, timeWindowMin: timeCertainty === 'approx' ? Number(f.elements.timeWindowMin.value) : undefined, private: f.elements.private.checked || undefined,
     id: editing.id || Math.random().toString(36).slice(2, 10),
     name: f.elements.name.value.trim(), nameTa: f.elements.nameTa.value.trim() || undefined, relation: f.elements.relation.value, gender: f.elements.gender.value,
     date: f.elements.date.value, time, place: f.elements.place.value.trim(),
@@ -272,34 +292,27 @@ function saveMember(f) {
   editing = null;
   saveFamily();
   toast(L('Saved', 'சேமிக்கப்பட்டது'));
-  go(firstEver ? 'home' : 'family');
+  go(firstEver ? 'chart' : 'family');
 }
 registerScreen('family', { render: renderFamily, parent: 'more' });
 
 // ================================================================ MORE / SETTINGS
 function renderMore(sec) {
   const u = state.user;
-  sec.innerHTML = `<div class="card glass account-card">
+  sec.innerHTML = `${subHeader(L('Settings & account', 'அமைப்புகள் & கணக்கு'), '', 'home')}<div class="card glass account-card">
       <span class="avatar big">${esc(u?.name ? [...u.name][0].toUpperCase() : '🙏')}</span>
       <div style="flex:1">${u ? `<b>${esc(displayName(state.family.find((m) => m.relation === 'self')) || u.name || L('Signed in', 'உள்நுழைந்துள்ளீர்கள்'))}</b><div class="muted small">${esc(u.phone || u.email || (u.hasFacebook ? 'Facebook' : ''))}${u.demo ? ' · demo' : ''}</div>`
     : `<b>${L('Not signed in', 'உள்நுழையவில்லை')}</b><div class="muted small">${L('Sign in to back up your family', 'குடும்ப விவரங்களைப் பாதுகாக்க உள்நுழையவும்')}</div>`}</div>
       ${u ? `<button class="chip-btn" id="signOut">${L('Sign out', 'வெளியேறு')}</button>` : `<button class="chip-btn" data-go="login">${L('Sign in', 'உள்நுழை')}</button>`}</div>
-    <button class="premium-cta" data-go="plans">${iconChip('plans', { size: 20, cls: 'mi-icon' })}${L('Kaippesi Premium — for your whole family', 'கைப்பேசி பிரீமியம் — முழு குடும்பத்திற்கும்')} ›</button>
+    <button class="premium-cta" data-go="plans">${iconChip('plans', { size: 20, cls: 'mi-icon' })}${L(`${BRAND.premiumEn} & ${BRAND.familyEn}`, `${BRAND.premiumTa} & ${BRAND.familyTa}`)} ›</button>
     <div class="menu">
-      <button data-go="life">${iconChip('life', { size: 20, cls: 'mi-icon' })}<span>${L('Life questions — when will it happen?', 'வாழ்க்கைக் கேள்விகள் — எப்போது?')}</span></button>
-      <button data-go="couple">${iconChip('couple', { size: 20, cls: 'mi-icon' })}<span>${L('Married life analysis', 'திருமண வாழ்க்கை ஆய்வு')}</span></button>
-      <button data-go="partners">${iconChip('partners', { size: 20, cls: 'mi-icon' })}<span>${L('Business partner match', 'வணிகக் கூட்டாளி பொருத்தம்')}</span></button>
-      <button data-go="family">${iconChip('family', { size: 20, cls: 'mi-icon' })}<span>${L('Family members', 'குடும்ப உறுப்பினர்கள்')}</span></button>
-      <button data-go="calendar">${iconChip('calendar', { size: 20, cls: 'mi-icon' })}<span>${L('Tamil calendar', 'தமிழ் நாட்காட்டி')}</span></button>
-      <button data-go="muhurtham">${iconChip('muhurtham', { size: 20, cls: 'mi-icon' })}<span>${L('Muhurtham finder', 'முகூர்த்தம் தேடல்')}</span></button>
-      <button data-go="porutham">${iconChip('porutham', { size: 20, cls: 'mi-icon' })}<span>${L('Marriage matching', 'திருமணப் பொருத்தம்')}</span></button>
-      <button data-go="parigaram">${iconChip('parigaram', { size: 20, cls: 'mi-icon' })}<span>${L('Parigaram', 'பரிகாரம்')}</span></button>
-      <button data-go="temples">${iconChip('temples', { size: 20, cls: 'mi-icon' })}<span>${L('Navagraha temples', 'நவகிரக கோவில்கள்')}</span></button>
-      <button data-go="packages">${iconChip('packages', { size: 20, cls: 'mi-icon' })}<span>${L('Yatra packages', 'யாத்திரை பேக்கேஜ்கள்')}</span></button>
-      <button data-go="invite">${iconChip('invite', { size: 20, cls: 'mi-icon' })}<span>${L('Invite family & get free days', 'அழைத்து இலவச நாட்கள் பெறுங்கள்')}</span></button>
+      <button data-go="privacy">${iconChip('privacy', { size: 20, cls: 'mi-icon' })}<span>${L('Privacy & data — consent, export, delete', 'தனியுரிமை & தரவு — அனுமதி, ஏற்றுமதி, நீக்கம்')}</span></button>
+      <button data-go="why">${iconChip('why', { size: 20, cls: 'mi-icon' })}<span>${L('Why this result? How guidance is made', 'இந்த முடிவு ஏன்? வழிகாட்டல் உருவாகும் முறை')}</span></button>
+      <button data-go="calc">${iconChip('calc', { size: 20, cls: 'mi-icon' })}<span>${L('Calculation methods', 'கணிப்பு முறைகள்')}</span></button>
+      <button data-go="legal">${iconChip('legal', { size: 20, cls: 'mi-icon' })}<span>${L('Terms, renewals, cancellation & refunds', 'விதிமுறைகள், புதுப்பித்தல், ரத்து, பணத்திருப்பம்')}</span></button>
       <button data-go="feedback">${iconChip('feedback', { size: 20, cls: 'mi-icon' })}<span>${L('Rate & comment', 'மதிப்பீடு & கருத்து')}</span></button>
-      <button data-go="legal">${iconChip('legal', { size: 20, cls: 'mi-icon' })}<span>${L('Privacy, terms & refunds', 'தனியுரிமை, விதிமுறைகள், பணத்திருப்பம்')}</span></button>
-      <button data-go="about">${iconChip('about', { size: 20, cls: 'mi-icon' })}<span>${L('Why Kaippesi Jothidar', 'ஏன் கைப்பேசி ஜோதிடர்')}</span></button>
+      <button data-go="invite">${iconChip('invite', { size: 20, cls: 'mi-icon' })}<span>${L('Invite family', 'குடும்பத்தினரை அழை')}</span></button>
+      <button data-go="about">${iconChip('about', { size: 20, cls: 'mi-icon' })}<span>${L(`About ${BRAND.name}`, `${BRAND.nameTa} பற்றி`)}</span></button>
     </div>
     <button class="link-btn center-block" data-go="admin">${icon('shield-check', { size: 16 })} ${L('Owner dashboard', 'உரிமையாளர் டாஷ்போர்டு')}</button>
     <div class="card glass settings">
@@ -307,7 +320,10 @@ function renderMore(sec) {
       <div class="set-row"><span>${L('Language', 'மொழி')}</span><div class="seg"><button data-lang="ta" class="${ta() ? 'sel' : ''}">தமிழ்</button><button data-lang="en" class="${ta() ? '' : 'sel'}">English</button></div></div>
       <div class="set-row"><span>${L('Appearance', 'தோற்றம்')}</span><div class="seg">${[['light', 'Day', 'பகல்'], ['dark', 'Night', 'இரவு'], ['auto', 'Auto', 'தானியங்கி']].map(([id, en, tx]) => `<button data-theme-set="${id}" class="${(state.settings.theme || 'light') === id ? 'sel' : ''}">${L(en, tx)}</button>`).join('')}</div></div>
       <label class="set-row"><span>${L('Large text (for elders)', 'பெரிய எழுத்து (பெரியோருக்கு)')}</span><input type="checkbox" id="setLarge"${state.settings.large ? ' checked' : ''}></label>
+      <div class="set-row"><span>${L('View', 'காட்சி')}</span><div class="seg">${[['simple', 'Simple', 'எளியது'], ['detailed', 'Detailed', 'விரிவானது']].map(([id, en, tx]) => `<button data-viewmode="${id}" class="${(state.settings.view || 'simple') === id ? 'sel' : ''}">${L(en, tx)}</button>`).join('')}</div></div>
+      <label class="set-row"><span>${L('High contrast', 'அதிக வேறுபாடு')}</span><input type="checkbox" id="setHc"${state.settings.hc ? ' checked' : ''}></label>
       <label class="set-row"><span>${L('Read answers aloud', 'பதில்களை வாசித்துக்காட்டு')}</span><input type="checkbox" id="setVoice"${state.settings.voice ? ' checked' : ''}></label>
+      <label class="set-row"><span>${L('Read-aloud speed', 'வாசிப்பு வேகம்')} <b id="rateVal">${Number(state.settings.rate || 0.92).toFixed(2)}×</b></span><input type="range" id="setRate" min="0.6" max="1.4" step="0.05" value="${state.settings.rate || 0.92}" aria-label="${L('Read-aloud speed', 'வாசிப்பு வேகம்')}"></label>
       <div class="set-row col"><span>${L('Location for today\'s timings', 'இன்றைய நேரங்களுக்கான இடம்')}: <b>${esc(placeName(state.loc?.name) || '—')}</b></span>
         <label class="place-wrap"><input id="locSearch" placeholder="${esc(L('Search a city…', 'நகரத்தைத் தேடுக…'))}"><ul id="locList" class="suggest" hidden></ul></label>
         ${STATIC ? '' : `<button class="link-btn" id="geoBtn">📍 ${L('Use my current location', 'என் தற்போதைய இருப்பிடம்')}</button>`}</div>
@@ -317,6 +333,8 @@ function renderMore(sec) {
   $$('[data-theme-set]', sec).forEach((b) => b.addEventListener('click', () => { state.settings.theme = b.dataset.themeSet; saveSettings(); renderMore(sec); }));
   $('#setLarge').addEventListener('change', (e) => { state.settings.large = e.target.checked; saveSettings(); });
   $('#setVoice').addEventListener('change', (e) => { state.settings.voice = e.target.checked; saveSettings(); });
+  $('#setHc').addEventListener('change', (e) => { state.settings.hc = e.target.checked; saveSettings(); });
+  $('#setRate').addEventListener('input', (e) => { state.settings.rate = Number(e.target.value); $('#rateVal').textContent = `${state.settings.rate.toFixed(2)}×`; saveSettings(); });
   placeSearch($('#locSearch'), $('#locList'), (p) => { setLoc({ lat: p.lat, lon: p.lon, tz: p.tz, name: p.name }); toast(`📍 ${p.name}`); renderMore(sec); });
   $('#geoBtn')?.addEventListener('click', () => {
     navigator.geolocation?.getCurrentPosition(
@@ -330,17 +348,17 @@ registerScreen('more', { render: renderMore });
 function renderAbout(sec) {
   const P = [
     ['🧭', 'Honest astrology', 'நேர்மையான ஜோதிடம்', 'No fear, no death predictions, no pressure to buy costly poojas or gems. Astrology shows tendencies and timing; your effort and dharma shape the result.', 'பயமுறுத்தல் இல்லை, மரண கணிப்பு இல்லை, விலையுயர்ந்த பூஜை/ரத்தினம் வாங்க அழுத்தம் இல்லை. ஜோதிடம் போக்கையும் நேரத்தையும் காட்டும்; முயற்சியும் தர்மமும் பலனைத் தீர்மானிக்கும்.'],
-    ['🔍', 'See the calculation', 'கணக்கைப் பாருங்கள்', 'Every answer lists the real factors — Horai, Tara Bala, Rahu Kalam, Prasna Lagna — with points. Nothing is hidden.', 'ஒவ்வொரு பதிலிலும் ஓரை, தாரா பலம், ராகு காலம், பிரசன்ன லக்னம் போன்ற உண்மையான காரணிகள் மதிப்புடன் காட்டப்படும்.'],
-    ['🔭', 'Precise to the second', 'நொடி துல்லியம்', 'Planet positions from a professional astronomy engine with the Lahiri ayanamsa, for the exact place and second.', 'தொழில்முறை வானியல் கணிப்பு, லாஹிரி அயனாம்சம் — சரியான இடம், நொடிக்கு.'],
+    ['🔍', 'See the calculation', 'கணக்கைப் பாருங்கள்', 'Every answer lists the chart factors it used, separates traditional interpretation from facts, and says what is uncertain.', 'ஒவ்வொரு பதிலிலும் ஓரை, தாரா பலம், ராகு காலம், பிரசன்ன லக்னம் போன்ற உண்மையான காரணிகள் மதிப்புடன் காட்டப்படும்.'],
+    ['🔭', 'Precise to the second', 'நொடி துல்லியம்', 'Planet positions from an astronomy engine with the Lahiri ayanamsa. Astronomical accuracy does not prove predictions — it only makes the inputs right.', 'தொழில்முறை வானியல் கணிப்பு, லாஹிரி அயனாம்சம் — சரியான இடம், நொடிக்கு.'],
     ['👨‍👩‍👧', 'Made for families', 'குடும்பத்திற்காக', 'All your family\'s charts together: who should be careful today, muhurthams that suit everyone, star birthdays and ancestors\' thivasam.', 'குடும்பத்தினர் அனைவரின் ஜாதகமும் ஒன்றாக: இன்று யார் கவனமாக இருக்க வேண்டும், அனைவருக்கும் ஏற்ற முகூர்த்தம், நட்சத்திரப் பிறந்தநாள், முன்னோர் திவசம்.'],
-    ['💬', 'A Jothidar who listens', 'கேட்கும் ஜோதிடர்', 'Talk in Tamil or English, by voice or text. Answers come from your own chart and today\'s sky — never generic horoscope text.', 'தமிழ் அல்லது ஆங்கிலத்தில், குரல் அல்லது எழுத்தில் பேசுங்கள். உங்கள் ஜாதகம், இன்றைய வானம் அடிப்படையில் பதில் கிடைக்கும்.'],
+    ['💬', 'A Jothidar who listens', 'கேட்கும் ஜோதிடர்', 'Talk in Tamil or English, by voice or text. Chart facts come from the calculation engine; AI answers are clearly labelled.', 'தமிழ் அல்லது ஆங்கிலத்தில், குரல் அல்லது எழுத்தில் பேசுங்கள். உங்கள் ஜாதகம், இன்றைய வானம் அடிப்படையில் பதில் கிடைக்கும்.'],
     ['🪔', 'Free parigaram first', 'இலவச பரிகாரம் முதலில்', 'Prayer, a lamp, charity, feeding animals, respecting elders — remedies anyone can do, every day.', 'வழிபாடு, தீபம், தானம், உயிர்களுக்கு உணவு, பெரியோரை மதித்தல் — யாரும் தினமும் செய்யக்கூடியவை.'],
     ['🔒', 'Private by design', 'தனியுரிமை', 'Birth details stay on your phone unless you sign in to back them up. We never sell your data.', 'உள்நுழைந்து பாதுகாக்கும் வரை பிறப்பு விவரங்கள் உங்கள் கைப்பேசியிலேயே இருக்கும். உங்கள் தரவை விற்பதில்லை.'],
   ];
-  sec.innerHTML = `${subHeader(L('Why Kaippesi Jothidar', 'ஏன் கைப்பேசி ஜோதிடர்'), L('Astrology for peace, health and prosperity — for every family', 'அமைதி, ஆரோக்கியம், செல்வத்திற்கான ஜோதிடம் — ஒவ்வொரு குடும்பத்திற்கும்'), 'more')}
+  sec.innerHTML = `${subHeader(L(`About ${BRAND.name}`, `${BRAND.nameTa} பற்றி`), L(BRAND.descriptorEn, BRAND.taglineTa), 'more')}
     ${P.map(([i, en, tx, den, dta]) => `<div class="card glass about-row"><span class="ti-icon">${i}</span><div><b>${L(en, tx)}</b><p>${L(den, dta)}</p></div></div>`).join('')}
     <div id="aboutTesti"></div>
-    <div class="brand-foot"><img src="logo.svg" alt="" width="64" height="64"><div><b>கைப்பேசி ஜோதிடர்</b>${ta() ? '' : '<span>Kaippesi Jothidar</span>'}</div></div>
+    <div class="brand-foot"><img src="logo.svg" alt="" width="64" height="64"><div><b>${BRAND.nameTa} · ${BRAND.nameUpper}</b><span class="slogan-sm">${BRAND.taglineTa}</span></div></div>
     ${copyright()}`;
   if (!STATIC) import('./growth.js').then((g) => g.loadTestimonials('#aboutTesti'));
 }

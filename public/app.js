@@ -1,5 +1,5 @@
-// Kaippesi Jothidar — app boot, splash, background sky and the one-second live tick.
-import { state, $, $$, L, ta, STATIC, store, go, currentScreen, saveSettings, setLoc, activeMember, toast } from './core.js';
+// Thunai (துணை) — app boot, splash, background sky and the one-second live tick.
+import { state, $, $$, L, ta, STATIC, store, go, currentScreen, saveSettings, setLoc, activeMember, toast, BRAND } from './core.js';
 import { refreshSnap } from './screens-main.js';
 import './screens-tools.js';
 import './screens-world.js';
@@ -13,6 +13,9 @@ import './screens-depth.js';
 import './screens-extra.js';
 import './screens-peyarchi.js';
 import './screens-health.js';
+import './screens-hubs.js';
+import './screens-journey.js';
+import './screens-trust.js';
 import { loadSession } from './account.js';
 import { startAnalytics, loadBilling } from './growth.js';
 
@@ -74,6 +77,12 @@ function applyLang() {
   document.body.classList.toggle('ta', ta());
   document.documentElement.lang = state.lang;
   $$('[data-i18n-en]').forEach((el) => { el.textContent = ta() ? el.dataset.i18nTa : el.dataset.i18nEn; });
+  const text = { ta: BRAND.nameTa, upper: BRAND.nameUpper, tagline: BRAND.taglineTa, descriptor: BRAND.descriptorEn,
+    'tagline-auto': ta() ? BRAND.taglineTa : BRAND.descriptorEn };
+  $$('[data-brand]').forEach((el) => { el.textContent = text[el.dataset.brand] ?? el.textContent; });
+  const lb = $('#langBtn');
+  if (lb) lb.textContent = ta() ? 'EN' : 'தமிழ்';
+  document.title = `${BRAND.nameTa} · ${BRAND.nameUpper} — ${ta() ? BRAND.taglineTa : BRAND.descriptorEn}`;
 }
 
 async function boot() {
@@ -99,9 +108,9 @@ async function boot() {
   if (location.hash === '#login-failed') toast(L('Facebook sign-in failed. Please try again.', 'Facebook உள்நுழைவு தோல்வி. மீண்டும் முயற்சிக்கவும்.'));
   if (location.hash) history.replaceState(null, '', location.pathname);
 
-  if (!state.user && !store.get('kj_skip_login', false)) go('login');
-  else if (!state.family.length) go('family', { add: true, first: true });
-  else go('home');
+  // The calendar and basic guidance work without registration: always open on Today.
+  // Sign-in is offered from Settings and when a feature (backup, purchases) really needs it.
+  go('home');
 
   setInterval(() => {
     if (!state.loc) return;

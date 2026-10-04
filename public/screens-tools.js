@@ -15,9 +15,11 @@ import {
   listen, micMessage,
   yogaName, karanaName,
   placeName,
-  displayName,
+  displayName, assistantName,
 } from './core.js';
-import { dayOutlook, gauge, animateGauges, refreshSnap } from './screens-main.js';
+import { dayOutlook, gauge, animateGauges, refreshSnap, reliabilityOf, setupVoiceInput } from './screens-main.js';
+import { chartFacts, composeAnswer, factsForAI, classify, answerLang } from './shared/guidance.js';
+import { ENGINE_VERSION } from './shared/version.js';
 
 const wait = () => new Promise((r) => setTimeout(r, 40));
 const loader = (msg) => `<div class="loader"><i></i><i></i><i></i></div><p class="muted center">${msg}</p>`;
@@ -25,7 +27,7 @@ const memberOptions = (sel) => state.family.map((m) => `<option value="${esc(m.i
 const padaOptions = (sel = 1) => [1, 2, 3, 4].map((p) => `<option value="${p}"${p === sel ? ' selected' : ''}>${L('Pada', 'பாதம்')} ${p}</option>`).join('');
 
 function aiBlock(id) {
-  return `<div class="card glass" id="${id}" hidden><div class="card-title"><span>✨ ${L('Kaippesi Jothidar explains', 'கைப்பேசி ஜோதிடர் விளக்கம்')}</span><span><button class="link-btn speak-btn" data-target="${id}-text" aria-label="Read aloud">🔊</button> <span class="pill" id="${id}-src"></span></span></div><div class="reply" id="${id}-text"></div></div>`;
+  return `<div class="card glass" id="${id}" hidden><div class="card-title"><span>✨ ${L('Thunai explains', 'துணை விளக்கம்')}</span><span><button class="link-btn speak-btn" data-target="${id}-text" aria-label="Read aloud">🔊</button> <span class="pill" id="${id}-src"></span></span></div><div class="reply" id="${id}-text"></div></div>`;
 }
 async function runAi(id, task, context, fallbackText, messages) {
   const box = $(`#${id}`);
@@ -35,7 +37,7 @@ async function runAi(id, task, context, fallbackText, messages) {
   out.classList.add('typing');
   const r = await aiTask({ task, context, messages, fallbackText, onText: (tx) => { out.textContent = tx; } });
   out.classList.remove('typing');
-  $(`#${id}-src`).textContent = r.source === 'ai' ? '✨ ' + L('Detailed', 'விரிவான பதில்') : '📜 ' + L('Quick', 'சுருக்கம்');
+  $(`#${id}-src`).textContent = r.source === 'ai' ? '🤖 ' + L('AI-generated', 'AI உருவாக்கியது') : '📐 ' + L('Built-in rules (no AI)', 'உள்ளமைந்த விதிகள் (AI இல்லை)');
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 document.addEventListener('click', (e) => {
@@ -189,7 +191,9 @@ registerScreen('porutham', { render: renderPorutham, parent: 'home' });
 const MU_CATS = ['marriage', 'graha_pravesam', 'vehicle', 'naming', 'ear_piercing', 'annaprasanam', 'vidyarambam', 'business', 'property', 'gold_vehicle', 'contract', 'travel', 'office', 'surgery', 'manjal_neerattu', 'delivery', 'launch', 'tech_partner', 'bhoomi_pooja', 'visa'];
 const muForm = { category: 'marriage', days: 30, persons: null };
 
-function renderMuhurtham(sec) {
+function renderMuhurtham(sec, params = {}) {
+  if (params.category && MU_CATS.includes(params.category)) muForm.category = params.category;
+  if (params.allFamily) muForm.persons = state.family.filter((m) => m.relation !== 'organization').map((m) => m.id);
   if (!muForm.persons) muForm.persons = activeMember() ? [activeMember().id] : [];
   sec.innerHTML = `${subHeader(L('Muhurtham Finder', 'முகூர்த்தம் தேடல்'), L('Finds good dates and times that suit everyone involved', 'சம்பந்தப்பட்ட அனைவருக்கும் ஏற்ற நல்ல நாள், நேரம்'))}
     <div class="card glass">
@@ -455,76 +459,107 @@ function renderStarBday(sec) {
 }
 registerScreen('starbday', { render: renderStarBday, parent: 'home', needsLoc: true });
 
-// ================================================================ JOTHIDAR CHAT
+// ================================================================ ASK (explainable guidance chat)
+// Chart facts come only from the calculation engine (shared/guidance.js). With AI configured, the AI
+// receives those facts and must not invent others; without AI, the built-in engine answers the actual
+// question in the same six-part structure. Every answer is labelled with its source.
 const chat = { messages: [], memberId: null, busy: false };
 const SUGGEST = [
-  ['How is my career this year?', 'இந்த வருடம் என் தொழில் எப்படி இருக்கும்?'],
-  ['Which planet is weak for me, and what simple parigaram should I do?', 'எந்த கிரகம் எனக்குப் பலவீனம்? என்ன எளிய பரிகாரம் செய்யலாம்?'],
+  ['Explain my current dasa-bhukti simply.', 'என் நடப்பு தசா-புக்தியை எளிமையாக விளக்குங்கள்.'],
+  ['I feel worried about work. Help me understand my current period.', 'வேலை பற்றிக் கவலையாக இருக்கிறது. என் தற்போதைய காலத்தைப் புரிந்துகொள்ள உதவுங்கள்.'],
+  ['Which planet is weak for me, and what simple practice can I do?', 'எந்த கிரகம் எனக்குப் பலவீனம்? என்ன எளிய வழிபாடு செய்யலாம்?'],
+  ['I have four days’ leave next month. Which temples could I visit?', 'அடுத்த மாதம் நான்கு நாள் விடுப்பு உள்ளது. எந்தக் கோவில்களுக்குச் செல்லலாம்?'],
   ['What is a good time today for important work?', 'இன்று முக்கிய வேலைக்கு நல்ல நேரம் எது?'],
-  ['When is a good period for marriage?', 'திருமணத்திற்கு நல்ல காலம் எப்போது?'],
-  ['How can I improve my finances and savings?', 'என் பொருளாதாரம், சேமிப்பு மேம்பட என்ன செய்யலாம்?'],
-  ['Explain my current dasa in simple words', 'நடப்பு தசையை எளிமையாக விளக்கவும்'],
+  ['Help our family choose dates for a housewarming.', 'கிரகப்பிரவேசத்திற்கு எங்கள் குடும்பத்திற்கு ஏற்ற நாட்களைத் தேர்வு செய்ய உதவுங்கள்.'],
 ];
 
-function chatContext() {
+/** Today's practical timings for the "good time" answers. */
+function todayFacts() {
   refreshSnap();
-  const s = state.snap;
-  const loc = state.loc;
+  const s = state.snap, loc = state.loc;
+  const td = tamilDay(new Date(), loc.lat, loc.lon, loc.tz);
+  const now = Date.now();
   const m = activeMember();
-  const ctx = {
-    today: { dateLocal: fmtIsoDate(new Date(Date.now() + loc.tz * 3600000).toISOString().slice(0, 10)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, yoga: s.yoga.name, currentHorai: s.currentHora.lord, rahuKalam: `${fmtTime(s.rahuKalam.start, loc.tz)}-${fmtTime(s.rahuKalam.end, loc.tz)}`, place: loc.name },
+  return {
+    rahuKalam: `${fmtTime(td.rahuKalam.start, loc.tz)} – ${fmtTime(td.rahuKalam.end, loc.tz)}`,
+    yamagandam: `${fmtTime(td.yamagandam.start, loc.tz)} – ${fmtTime(td.yamagandam.end, loc.tz)}`,
+    goodTimes: td.gowri.filter((g) => g.good && new Date(g.end).getTime() > now).slice(0, 3).map((g) => `${fmtTime(g.start, loc.tz)} (${bi(g)})`),
+    horai: `${planetName(s.currentHora.lord)}`,
+    chandrashtamam: m ? dayOutlook(chartOf(m), s).chandrashtama : false,
   };
-  if (m) {
-    const c = chartOf(m);
-    const o = dayOutlook(c, s);
-    ctx.person = {
-      name: m.name, relation: m.relation, gender: m.gender, birth: `${m.date} ${m.time} ${m.place}`,
-      lagna: `${c.lagna.rasiName} ${c.lagna.dms}`, rasi: c.janmaRasi.name, star: `${c.janmaNakshatra.name} pada ${c.janmaNakshatra.pada}`,
-      planets: Object.fromEntries(Object.entries(c.planets).filter(([k]) => k !== 'Lagna').map(([k, p]) => [k, `${p.rasiName} ${p.dms} ${p.nakshatraName}${p.retrograde && !['Rahu', 'Ketu'].includes(k) ? ' (retro)' : ''} house ${((p.rasi - c.lagna.rasi + 12) % 12) + 1}`])),
-      dasa: c.dasa.current && `${c.dasa.current.lord} Mahadasa (${fmtIsoDate(c.dasa.current.start.toISOString().slice(0, 10))} – ${fmtIsoDate(c.dasa.current.end.toISOString().slice(0, 10))}), ${c.dasa.currentBhukti?.lord} Bhukti until ${c.dasa.currentBhukti && fmtIsoDate(c.dasa.currentBhukti.end.toISOString().slice(0, 10))}`,
-      upcomingDasas: c.dasa.periods.filter((p) => p.start > new Date()).slice(0, 2).map((p) => `${p.lord} from ${p.start.toISOString().slice(0, 10)}`),
-      grahaBalam: grahaStrength(c.planets).map((g) => `${g.planet}: ${g.level}`),
-      doshams: (() => { const d = doshams(c.planets); return { chevvai: d.chevvai.present, rahuKetu: d.rahuKetu.present }; })(),
-      today: { taraBala: o.tara[0], chandraBalaHouse: o.pos, chandrashtamam: o.chandrashtama },
-    };
-  }
-  return ctx;
 }
 
-function chatFallback() {
+function memberFacts() {
   const m = activeMember();
-  refreshSnap();
-  const items = dailyParigaram({ weekday: state.snap.weekday.index, chart: m && chartOf(m), snapshot: state.snap });
-  return `${L('Here is today\'s guidance from your chart:', 'உங்கள் ஜாதகப்படி இன்றைய வழிகாட்டுதல்:')}\n${items.map((i) => `🪔 ${bi(i.reason)} — ${bi(i.free)}`).join('\n')}`;
+  if (!m) return { m: null, facts: null };
+  return { m, facts: chartFacts(chartOf(m), reliabilityOf(m)) };
 }
 
-function renderChat(sec) {
+function chatContext(question) {
+  refreshSnap();
+  const s = state.snap, loc = state.loc;
+  const { m, facts } = memberFacts();
+  const rel = m ? reliabilityOf(m) : null;
+  return {
+    question,
+    detectedTopic: classify(question).intent,
+    replyLanguage: answerLang(question, state.lang) === 'ta' ? 'Tamil' : 'English',
+    today: { date: fmtIsoDate(new Date(Date.now() + loc.tz * 3600000).toISOString().slice(0, 10)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name, ...todayFacts() },
+    person: m ? { name: m.name, relation: m.relation, birthTimeCertainty: rel.certainty, timeSensitiveResultsAllowed: rel.lagna, rasi: rel.rasi ? chartOf(m).janmaRasi.name : 'uncertain', star: rel.nakshatra ? chartOf(m).janmaNakshatra.name : 'uncertain' } : null,
+    verifiedChartFacts: factsForAI(facts),
+    calculationEngine: ENGINE_VERSION,
+  };
+}
+
+function renderAnswerHtml(ans) {
+  return ans.sections.map((sx) => `<div class="ans-sec ans-${sx.key}"><div class="ans-h">${esc(sx.title)}</div><ul>${sx.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`).join('');
+}
+
+function renderChat(sec, params = {}) {
   const m = activeMember();
   if (chat.memberId !== (m?.id || null)) { chat.messages = []; chat.memberId = m?.id || null; }
-  sec.innerHTML = `<div class="chat-head card glass"><div class="avatar big">🪐</div><div><b>${L('Kaippesi Jothidar', 'கைப்பேசி ஜோதிடர்')}</b><div class="muted small">${m ? L(`Reading ${displayName(m)}'s chart`, `${displayName(m)} அவர்களின் ஜாதகப்படி`) : L('Add your birth details for personal answers', 'தனிப்பட்ட பதில்களுக்கு பிறப்பு விவரம் சேர்க்கவும்')}</div></div></div>
-    <div id="chatLog" class="chat-log">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask me anything about your chart, today\'s timings, marriage, career, health or parigaram. You can type or tap the mic and speak in Tamil.', 'வணக்கம்! உங்கள் ஜாதகம், இன்றைய நேரம், திருமணம், தொழில், ஆரோக்கியம், பரிகாரம் — எதைப் பற்றியும் கேளுங்கள். தட்டச்சு செய்யலாம் அல்லது மைக்கை அழுத்தி தமிழில் பேசலாம்.')}</div>`}</div>
+  sec.innerHTML = `<div class="seg ask-switch" role="tablist"><button class="sel" role="tab" aria-selected="true">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button role="tab" aria-selected="false" data-go="ask">🔮 ${L('Is now a good time?', 'இப்போது செய்யலாமா?')}</button></div>
+    <div class="chat-head card glass"><div class="avatar big">🪔</div><div><b>${esc(assistantName())}</b>
+      <div class="muted small">${m ? L(`Using ${displayName(m)}'s chart${m.private ? ' · private profile — this chat stays on this phone' : ''}`, `${displayName(m)} அவர்களின் ஜாதகப்படி${m.private ? ' · தனிப்பட்ட சுயவிவரம் — இந்த உரையாடல் இந்தக் கைப்பேசியிலேயே' : ''}`) : L('Add birth details for personal answers', 'தனிப்பட்ட பதில்களுக்கு பிறப்பு விவரம் சேர்க்கவும்')}</div></div></div>
+    <div id="chatLog" class="chat-log" aria-live="polite">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask about your current period, work, family dates, a temple journey or today’s good times — in Tamil or English. Chart facts come from the calculation engine; interpretations are traditional, not guarantees.', 'வணக்கம்! உங்கள் நடப்புக் காலம், வேலை, குடும்ப நாட்கள், கோவில் பயணம், இன்றைய நல்ல நேரம் — தமிழிலோ ஆங்கிலத்திலோ கேளுங்கள். ஜாதகத் தகவல்கள் கணிப்பு இயந்திரத்திலிருந்து; விளக்கங்கள் பாரம்பரியமானவை, உத்தரவாதம் அல்ல.')}</div>`}</div>
     <div class="suggest-row">${SUGGEST.map(([en, tx]) => `<button class="sg">${esc(L(en, tx))}</button>`).join('')}</div>
     <form id="chatForm" class="chat-form"><button type="button" id="micBtn" class="mic" aria-label="${L('Speak', 'பேசுங்கள்')}">🎙️</button>
-      <label class="sr-only" for="chatInput">${L('Message', 'செய்தி')}</label><input id="chatInput" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask the Jothidar…', 'ஜோதிடரிடம் கேளுங்கள்…'))}">
-      <button class="send" aria-label="${L('Send', 'அனுப்பு')}">➤</button></form>`;
-  const log = $('#chatLog');
-  for (const msg of chat.messages) addBubble(msg.role, msg.content);
+      <label class="sr-only" for="chatInput">${L('Message', 'செய்தி')}</label><input id="chatInput" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai…', 'துணையிடம் கேளுங்கள்…'))}">
+      <button class="send" aria-label="${L('Send', 'அனுப்பு')}">➤</button></form>
+    <p class="small muted center">${L('Voice: your phone converts speech to text (it may use its own online service). The text appears in the box for you to check.', 'குரல்: உங்கள் கைப்பேசி பேச்சை எழுத்தாக மாற்றும் (அதன் இணைய சேவையைப் பயன்படுத்தலாம்). சரிபார்க்க பெட்டியில் உரை தோன்றும்.')}</p>`;
+  for (const msg of chat.messages) addBubble(msg.role, msg.content, msg);
   $$('.sg', sec).forEach((b) => b.addEventListener('click', () => send(b.textContent)));
   $('#chatForm').addEventListener('submit', (e) => { e.preventDefault(); send($('#chatInput').value); });
-  setupMic();
+  setupVoiceInput($('#micBtn'), $('#chatInput'));
+  const log = $('#chatLog');
   log.scrollTop = log.scrollHeight;
-  if (state.params?.topic === 'chart' && !chat.messages.length) send(L('Please read my birth chart and explain the main strengths, challenges and the current dasa.', 'என் ஜாதகத்தைப் பார்த்து முக்கிய பலம், சவால்கள், நடப்பு தசையை விளக்கவும்.'));
+  if (params.q && !chat.messages.some((x) => x.content === params.q)) send(params.q);
+  else if (params.topic === 'chart' && !chat.messages.length) send(L('Please read my chart and explain the main strengths, challenges and the current dasa.', 'என் ஜாதகத்தைப் பார்த்து முக்கிய பலம், சவால்கள், நடப்பு தசையை விளக்கவும்.'));
 }
 
-function addBubble(role, text) {
+function addBubble(role, text, meta = {}) {
   const b = document.createElement('div');
   b.className = `bubble ${role === 'user' ? 'me' : 'ai'}`;
-  b.textContent = text;
-  if (role !== 'user') {
-    const s = document.createElement('button');
-    s.className = 'link-btn say-bubble'; s.textContent = '🔊'; s.setAttribute('aria-label', 'Read aloud');
-    s.addEventListener('click', () => speak(b.firstChild.textContent));
-    b.append(s);
+  if (role === 'user') { b.textContent = text; $('#chatLog').append(b); return b; }
+  const body = document.createElement('div');
+  body.className = 'ans-body';
+  if (meta.answer) body.innerHTML = renderAnswerHtml(meta.answer); else body.textContent = text;
+  const foot = document.createElement('div');
+  foot.className = 'ans-foot';
+  const badge = meta.source === 'ai' ? `<span class="badge ai">🤖 ${L('AI-generated answer', 'AI உருவாக்கிய பதில்')}</span>`
+    : meta.source === 'rules' ? `<span class="badge rules">📐 ${L('Built-in guidance (no AI)', 'உள்ளமைந்த வழிகாட்டல் (AI இல்லை)')}</span>` : '';
+  foot.innerHTML = `${badge}<button class="link-btn say-bubble" aria-label="${L('Read aloud', 'வாசித்துக்காட்டு')}">🔊</button>`;
+  foot.querySelector('.say-bubble').addEventListener('click', () => speak(body.textContent));
+  b.append(body, foot);
+  if (meta.answer?.clarify) {
+    const row = document.createElement('div'); row.className = 'btn-row';
+    meta.answer.clarify.options.forEach((o) => { const x = document.createElement('button'); x.className = 'chip-btn'; x.textContent = bi(o); x.addEventListener('click', () => send(`${chat.messages.filter((mm) => mm.role === 'user').at(-1)?.content || ''} — ${bi(o)}`)); row.append(x); });
+    b.append(row);
+  }
+  if (meta.answer?.actions?.length) {
+    const row = document.createElement('div'); row.className = 'btn-row';
+    meta.answer.actions.forEach((a) => { const x = document.createElement('button'); x.className = 'chip-btn'; x.textContent = `${a.label} ›`; x.addEventListener('click', () => go(a.go, a.param || {})); row.append(x); });
+    b.append(row);
   }
   $('#chatLog').append(b);
   $('#chatLog').scrollTop = $('#chatLog').scrollHeight;
@@ -532,38 +567,29 @@ function addBubble(role, text) {
 }
 
 async function send(text) {
-  text = text.trim();
+  text = String(text || '').trim();
   if (!text || chat.busy) return;
   chat.busy = true;
   $('#chatInput').value = '';
   chat.messages.push({ role: 'user', content: text });
   addBubble('user', text);
-  const b = addBubble('assistant', L('Thinking…', 'யோசிக்கிறேன்…'));
-  b.classList.add('typing');
-  const node = b.firstChild;
-  const r = await aiTask({ task: 'chat', context: chatContext(), messages: chat.messages.slice(-12), fallbackText: chatFallback(), onText: (tx) => { node.textContent = tx; $('#chatLog').scrollTop = $('#chatLog').scrollHeight; } });
-  b.classList.remove('typing');
-  chat.messages.push({ role: 'assistant', content: r.text });
+  const { m, facts } = memberFacts();
+  const answer = composeAnswer({ question: text, lang: state.lang, facts, name: m ? displayName(m) : '', today: todayFacts() });
+  // Safety-critical topics are always answered by the built-in rules, never by free AI text.
+  // Private profiles never send their questions to the AI service.
+  const rulesOnly = ['crisis', 'death', 'pain'].includes(answer.intent) || Boolean(m?.private);
+  let msg = { role: 'assistant', content: answer.text, answer, source: 'rules' };
+  if (!rulesOnly) {
+    const thinking = addBubble('assistant', L('Thinking…', 'யோசிக்கிறேன்…'));
+    thinking.classList.add('typing');
+    const node = thinking.querySelector('.ans-body');
+    const r = await aiTask({ task: 'chat', context: chatContext(text), messages: chat.messages.slice(-12).map(({ role, content }) => ({ role, content })), fallbackText: answer.text, onText: (tx) => { if (tx !== answer.text) node.textContent = tx; } });
+    thinking.remove();
+    if (r.source === 'ai' && r.text.trim()) msg = { role: 'assistant', content: r.text, source: 'ai', answer: { actions: answer.actions } };
+  }
+  chat.messages.push(msg);
+  addBubble('assistant', msg.content, msg);
   chat.busy = false;
-}
-
-function setupMic() {
-  const btn = $('#micBtn');
-  if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) { btn.hidden = true; return; }
-  btn.addEventListener('click', async () => {
-    if (btn.classList.contains('on')) return;
-    btn.classList.add('on');
-    $('#chatInput').placeholder = L('Listening… speak now', 'கேட்கிறேன்… இப்போது பேசுங்கள்');
-    try {
-      const text = await listen({ onPartial: (tx) => { $('#chatInput').value = tx; } });
-      if (text) send(text);
-    } catch (e) {
-      toast(micMessage(e.message), 5000);
-    } finally {
-      btn.classList.remove('on');
-      $('#chatInput').placeholder = L('Ask the Jothidar…', 'ஜோதிடரிடம் கேளுங்கள்…');
-    }
-  });
 }
 registerScreen('chat', { render: renderChat, needsLoc: true });
 

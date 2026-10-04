@@ -15,6 +15,7 @@ for (const f of fs.readdirSync('shared').filter((x) => x.endsWith('.js'))) {
 for (const f of fs.readdirSync('public').filter((x) => x.endsWith('.js') && x !== 'sw.js')) fs.copyFileSync(path.join('public', f), path.join(out, f));
 fs.copyFileSync('public/icon.svg', path.join(out, 'icon.svg'));
 fs.copyFileSync('public/logo.svg', path.join(out, 'logo.svg'));
+fs.cpSync('public/fonts', path.join(out, 'fonts'), { recursive: true });
 const { CATEGORIES } = await import('../server/market.js');
 const catalog = JSON.parse(fs.readFileSync('server/data/products.json', 'utf8'));
 fs.writeFileSync(path.join(out, 'products.json'), JSON.stringify({ ...catalog, categories: CATEGORIES }));
@@ -25,8 +26,8 @@ const html = fs.readFileSync('public/index.html', 'utf8');
 const css = fs.readFileSync('public/styles.css', 'utf8');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('</body>'))
   .replace('<script type="module" src="/app.js"></script>', '<script>window.KJ_STATIC = true;</script>\n  <script type="module" src="app.js"></script>');
-const fonts = /<link href="https:\/\/fonts\.googleapis\.com[^>]+>/.exec(html)[0];
-const page = `<title>கைப்பேசி ஜோதிடர்</title>
+const fonts = `<style>\n${fs.readFileSync('public/fonts.css', 'utf8')}</style>`;
+const page = `<title>துணை · THUNAI</title>
 ${fonts}
 <style>
 :root { color-scheme: dark; }

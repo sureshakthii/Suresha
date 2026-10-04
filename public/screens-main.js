@@ -127,6 +127,7 @@ function renderHome(sec) {
     <div class="quick-row">${QUICK.map(([id, , en, tx]) => `<button class="quick" data-go="${id}">${iconChip(id, { size: 24, cls: 'q-icon' })}<span>${esc(L(en, tx))}</span></button>`).join('')}</div>
     ${todayColorCard()}
     ${reminderCard()}
+    ${weatherCardHtml()}
     <div class="chips">
       <div class="chip-card"><span class="mini-label">${L('Star', 'நட்சத்திரம்')}</span><b>${esc(nakName(snap.nakshatra.index))}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.nakshatra.endsAt, loc.tz)}</span></div>
       <div class="chip-card"><span class="mini-label">${L('Tithi', 'திதி')}</span><b>${esc(ta() ? snap.tithi.ta : snap.tithi.name)}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.tithi.endsAt, loc.tz)}</span></div>
@@ -146,7 +147,6 @@ function renderHome(sec) {
       <div style="text-align:right"><div class="mini-label">${L('ends in', 'முடிய')}</div><div class="countdown" data-end="${new Date(snap.currentHora.end).getTime()}">${countdown(snap.currentHora.end)}</div></div>
     </div>
 
-    ${weatherCardHtml()}
     ${familyCard(snap)}
     ${relationsCard()}
     ${parigaramCard(snap)}

@@ -14,6 +14,7 @@ import {
   placeName,
 } from './core.js';
 import { refreshSnap } from './screens-main.js';
+import { fetchForecast } from './shared/weather.js';
 import { upcomingReminders, deleteReminder } from './remind.js';
 
 const loader = (msg = '') => `<div class="loader"><i></i><i></i><i></i></div>${msg ? `<p class="muted center">${msg}</p>` : ''}`;
@@ -25,7 +26,10 @@ export async function fetchWeather(lat, lon) {
   const key = `${lat.toFixed(2)},${lon.toFixed(2)}`;
   const hit = weatherCache.get(key);
   if (hit && Date.now() - hit.at < 10 * 60000) return hit.data;
-  const data = await api(`/api/weather?lat=${lat}&lon=${lon}`);
+  // Server: station observation + forecast. No server (offline phone app / test page): straight from Open-Meteo.
+  let data;
+  if (STATIC) data = await fetchForecast(lat, lon);
+  else { try { data = await api(`/api/weather?lat=${lat}&lon=${lon}`); } catch { data = await fetchForecast(lat, lon); } }
   weatherCache.set(key, { at: Date.now(), data });
   return data;
 }
@@ -34,7 +38,6 @@ const travelTag = (lvl) => (lvl === 'good' ? 'good' : lvl === 'caution' ? 'warn'
 
 /** Compact weather card for the home screen (fills itself asynchronously). */
 export function weatherCardHtml() {
-  if (STATIC) return '';
   return `<div class="card glass weather-mini" data-go="weather" id="homeWeather">${loader()}</div>`;
 }
 export async function fillHomeWeather() {
@@ -44,21 +47,28 @@ export async function fillHomeWeather() {
     const w = await fetchWeather(state.loc.lat, state.loc.lon);
     if (!$('#homeWeather')) return;
     const obs = w.station?.observed;
-    el.innerHTML = `<div class="w-icon">${wIcon(w.current.weatherCode)}</div>
-      <div style="flex:1"><div class="mini-label">${L('Weather now', 'இப்போதைய வானிலை')} · ${esc(placeName(state.loc.name))}</div>
-        <div class="mini-value">${Math.round(obs?.tempC ?? w.current.tempC)}°C · ${esc(bi(w.current.description))}</div>
-        <div class="mini-sub">💧 ${L('Rain today', 'இன்று மழை')} ${w.daily[0]?.rainChance ?? 0}% · 💨 ${Math.round(w.current.windKph)} km/h</div></div>
-      <span class="tag ${travelTag(w.travel.level)}">${esc(bi(w.travel))}</span>`;
+    const t = Math.round(obs?.tempC ?? w.current.tempC);
+    const today = w.daily[0] || {};
+    el.innerHTML = `<div class="wx-top"><div class="w-icon">${wIcon(w.current.weatherCode)}</div>
+        <div class="wx-temp">${t}°<small>C</small></div>
+        <div style="flex:1;min-width:0"><div class="mini-label">${L('Weather now', 'இப்போதைய வானிலை')} · ${esc(placeName(state.loc.name))}</div>
+          <div class="wx-desc">${esc(bi(w.current.description))}</div>
+          <div class="mini-sub">${L('Feels like', 'உணரும் வெப்பம்')} ${Math.round(w.current.feelsLikeC ?? t)}° · ${today.minC != null ? `${Math.round(today.minC)}°–${Math.round(today.maxC)}°` : ''}</div></div></div>
+      <div class="wx-stats">
+        <div><span>💧</span><b>${w.current.humidity ?? '—'}%</b><small>${L('Humidity', 'ஈரப்பதம்')}</small></div>
+        <div><span>☔</span><b>${today.rainChance ?? 0}%</b><small>${L('Rain today', 'இன்று மழை')}</small></div>
+        <div><span>💨</span><b>${Math.round(w.current.windKph ?? 0)}</b><small>${L('Wind km/h', 'காற்று கி.மீ/மணி')}</small></div>
+      </div>
+      <span class="tag block ${travelTag(w.travel.level)}">${w.travel.level === 'good' ? '🚗' : w.travel.level === 'caution' ? '☂️' : '⛈️'} ${esc(bi(w.travel))}</span>`;
   } catch {
-    el.innerHTML = `<div class="w-icon">🌡️</div><div class="mini-sub">${L('Weather is unavailable right now', 'வானிலை தற்போது கிடைக்கவில்லை')}</div>`;
+    el.innerHTML = `<div class="wx-top"><div class="w-icon">🌡️</div><div class="mini-sub">${STATIC ? L('Live temperature, humidity and rain appear in the installed app (this preview cannot reach the internet).', 'நேரலை வெப்பநிலை, ஈரப்பதம், மழை நிறுவப்பட்ட செயலியில் தெரியும் (இந்த முன்னோட்டத்தால் இணையத்தை அணுக முடியாது).') : L('Weather is unavailable right now', 'வானிலை தற்போது கிடைக்கவில்லை')}</div></div>`;
   }
 }
 
 async function renderWeather(sec, params = {}) {
   const place = params.name || state.loc.name || '';
   const lat = params.lat ?? state.loc.lat, lon = params.lon ?? state.loc.lon;
-  sec.innerHTML = `${subHeader(L('Weather & Travel', 'வானிலை & பயணம்'), esc(placeName(place)), params.back || 'home')}<div id="wBody">${STATIC ? needsServerCard(L('Live weather from the nearest weather station and a 7-day forecast for travel planning.', 'அருகிலுள்ள வானிலை நிலையத்தின் நேரலைத் தகவலும், பயணத் திட்டத்திற்கான 7 நாள் முன்னறிவிப்பும்.')) : loader(L('Contacting the weather station…', 'வானிலை நிலையத்தைத் தொடர்பு கொள்கிறது…'))}</div>`;
-  if (STATIC) return;
+  sec.innerHTML = `${subHeader(L('Weather & Travel', 'வானிலை & பயணம்'), esc(placeName(place)), params.back || 'home')}<div id="wBody">${loader(L('Contacting the weather station…', 'வானிலை நிலையத்தைத் தொடர்பு கொள்கிறது…'))}</div>`;
   try {
     const w = await fetchWeather(lat, lon);
     const obs = w.station?.observed;
@@ -68,7 +78,7 @@ async function renderWeather(sec, params = {}) {
         ${w.travel.reasons.map((r) => `<p class="small">• ${esc(bi(r))}</p>`).join('')}</div>
       <div class="card glass w-now"><div class="w-big">${wIcon(w.current.weatherCode)}</div>
         <div><div class="w-temp">${Math.round(w.current.tempC)}°C</div><div>${esc(bi(w.current.description))}</div>
-        <div class="muted small">${L('Feels like', 'உணர்வு')} ${Math.round(w.current.feelsLikeC)}°C · 💧 ${w.current.humidity}% · 💨 ${Math.round(w.current.windKph)} km/h</div></div></div>
+        <div class="muted small">${L('Feels like', 'உணரும் வெப்பம்')} ${Math.round(w.current.feelsLikeC)}°C · 💧 ${w.current.humidity}% · 💨 ${Math.round(w.current.windKph)} km/h</div></div></div>
       ${obs ? `<div class="card glass"><div class="card-title"><span>📡 ${L('Weather station', 'வானிலை நிலையம்')}: ${esc(w.station.name)}</span><span class="pill">${esc(w.station.icao)} · ${Math.round(w.station.distanceKm)} km</span></div>
         <dl class="kv"><dt>${L('Observed', 'பதிவு')}</dt><dd>${fmtTime(obs.time, state.loc.tz)}</dd><dt>${L('Temperature', 'வெப்பநிலை')}</dt><dd>${obs.tempC ?? '—'}°C</dd>
         ${ta() ? '' : `<dt>Conditions</dt><dd>${esc(obs.conditions || '—')}</dd>`}<dt>${L('Wind', 'காற்று')}</dt><dd>${obs.windKph ?? '—'} km/h ${obs.windDir ?? ''}${obs.windDir != null ? '°' : ''}</dd>

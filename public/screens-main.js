@@ -34,20 +34,29 @@ export function dayOutlook(chart, snap) {
 // Big quick row — daily use (elders) and third-party services (revenue) are one tap away.
 const QUICK = [
   ['panchangam', '📖', 'Panchangam', 'பஞ்சாங்கம்'],
+  ['roadmap', '🛤️', 'Life Road Map', 'வாழ்க்கை வரைபடம்'],
   ['guide', '🧭', 'My Guide', 'என் வழிகாட்டி'],
   ['seva', '🛕', 'Seva', 'சேவைகள்'],
   ['priests', '🧑‍🦳', 'Priests', 'புரோகிதர்கள்'],
   ['store', '🛍️', 'Store', 'கடை'],
   ['packages', '🧳', 'Yatra', 'யாத்திரை'],
+  ['peyarchi', '🪐', 'Peyarchi Palan', 'பெயர்ச்சி பலன்'],
+  ['vratham', '🪔', 'Viratha Days', 'விரத நாட்கள்'],
 ];
 
 const TILES = [
+  ['roadmap', '🛤️', 'Life Road Map — next 10 years', 'வாழ்க்கை வரைபடம் — அடுத்த 10 ஆண்டுகள்'],
   ['life', '🔭', 'Life Questions — when?', 'வாழ்க்கைக் கேள்விகள் — எப்போது?'],
   ['chat', '💬', 'Ask Jothidar', 'ஜோதிடரிடம் கேளுங்கள்'],
   ['ask', '🔮', 'Do or Don\'t?', 'செய்யலாமா?'],
   ['couple', '💑', 'Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்'],
   ['porutham', '💞', 'Star Match (quick 10)', 'நட்சத்திரப் பொருத்தம் (விரைவு 10)'],
+  ['gunamilan', '🧮', '36 Guna Milan (North Indian)', '36 குண மிலன் (வட இந்திய முறை)'],
   ['partners', '🤝', 'Business Partner Match', 'வணிகக் கூட்டாளி பொருத்தம்'],
+  ['peyarchi', '🪐', 'Guru / Sani / Rahu-Ketu Peyarchi', 'குரு / சனி / ராகு-கேது பெயர்ச்சி'],
+  ['vargas', '🔲', 'Divisional Charts & Ashtakavarga', 'வர்க்கச் சக்கரங்கள் & அஷ்டகவர்க்கம்'],
+  ['numerology', '🔢', 'Name & Number Numerology', 'பெயர் & எண் கணிதம்'],
+  ['vratham', '🪔', 'Viratha Days', 'விரத நாட்கள்'],
   ['guide', '🧭', 'My Guide — colour, number, Siddhar', 'என் வழிகாட்டி — நிறம், எண், சித்தர்'],
   ['panchangam', '📖', 'Panchangam', 'பஞ்சாங்கம்'],
   ['muhurtham', '🗓️', 'Muhurtham', 'முகூர்த்தம்'],
@@ -383,6 +392,7 @@ function renderChart(sec) {
   sec.innerHTML = `${memberSwitcher(m.id)}
     <div class="card glass"><div class="card-title"><span>${L('Rasi chart', 'ராசி கட்டம்')}</span><button class="link-btn" data-go="chat" data-param='{"topic":"chart"}'>💬 ${L('Ask about my chart', 'என் ஜாதகம் பற்றிக் கேள்')}</button></div><div id="rasiChart" class="si-chart"></div></div>
     <button class="btn-gold" data-go="analysis">📜 ${L('Full Jathaga analysis — houses, yogas, Sani, Guru', 'முழு ஜாதக ஆய்வு — பாவங்கள், யோகங்கள், சனி, குரு')}</button>
+    <div class="btn-row"><button class="chip-btn" data-go="roadmap">🛤️ ${L('Life Road Map', 'வாழ்க்கை வரைபடம்')}</button><button class="chip-btn" data-go="vargas">🔲 ${L('Divisional charts', 'வர்க்கச் சக்கரங்கள்')}</button><button class="chip-btn" data-go="guide">🧭 ${L('My Guide', 'என் வழிகாட்டி')}</button><button class="chip-btn" data-print="1">🖨️ ${L('Print / PDF', 'அச்சிடு / PDF')}</button></div>
     <div class="card glass"><div class="card-title">${L('Navamsa chart', 'நவாம்ச கட்டம்')}</div><div id="navamsaChart" class="si-chart"></div></div>
     <div class="card glass"><div class="card-title">${L('Birth details', 'பிறப்பு விவரம்')}</div>
       <dl class="kv">

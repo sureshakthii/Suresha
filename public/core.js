@@ -325,6 +325,7 @@ export function subHeader(title, sub = '', back = 'home') {
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-back]');
   if (b) go(b.dataset.back);
+  if (e.target.closest('[data-print]')) { document.querySelectorAll('.view:not([hidden]) details').forEach((d) => { d.open = true; }); window.print(); }
   const g = e.target.closest('[data-go]');
   if (g) go(g.dataset.go, g.dataset.param ? JSON.parse(g.dataset.param) : {});
 });

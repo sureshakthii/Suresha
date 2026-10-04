@@ -285,6 +285,7 @@ function saveMember(f) {
   };
   if (!m.lat && !m.lon) { $('#formErr').textContent = L('Please pick the place from the list, or enter latitude and longitude.', 'பட்டியலிலிருந்து இடத்தைத் தேர்வு செய்யவும் அல்லது அட்சரேகை, தீர்க்கரேகை உள்ளிடவும்.'); return; }
   const i = state.family.findIndex((x) => x.id === m.id);
+  if (i < 0 && m.relation !== 'organization' && state.family.filter((x) => x.relation !== 'organization').length >= 8) { $('#formErr').textContent = L('The Family plan holds up to 8 profiles.', 'குடும்பத் திட்டத்தில் 8 சுயவிவரங்கள் வரை.'); return; }
   if (i >= 0) state.family[i] = m; else state.family.push(m);
   const firstEver = state.family.length === 1;
   if (firstEver || !state.activeId) state.activeId = m.id;

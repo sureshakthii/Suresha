@@ -1,6 +1,10 @@
-# 🪐 Kaippesi Jothidar — கைப்பேசி ஜோதிடர்
+# 🪔 துணை · THUNAI — Personal Astrology & Spiritual Guidance
 
-An AI South Indian astrology mobile app. It covers the Jathagam, a live Rasi Mandalam, Nakshatra, Horai, and Prasnam questions answered as *Do or Don't*.
+**உங்கள் வாழ்வின் வழித்துணை.** A Tamil/English app for daily panchangam, family horoscopes, explainable guidance and temple journeys. It was formerly "Thunai". THUNAI is a *working* brand, configurable in `shared/brand.js`.
+
+> **Start here:** [docs/THUNAI-REVISION.md](docs/THUNAI-REVISION.md) covers what changed, what is still mocked or blocked, the server configuration, validation results, screenshots and the next-release checklist.
+
+**Navigation:** Today · My Chart · Family · Ask · Services, with Settings behind the gear icon. The calendar and basic guidance work without signing in. Ask answers from verified chart facts in six parts, and labels each answer as AI-generated or built-in. Birth time can be Exact, Approximate or Unknown. My Spiritual Journey offers three honest options with sources and estimates clearly labelled.
 
 ## What makes it different
 

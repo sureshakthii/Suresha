@@ -1064,3 +1064,5 @@ fieldset.certainty legend { font-weight: 600; font-size: 14px; padding: 0 4px; }
 .bh-a { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.4; }
 details.bhava summary { font-size: 15px; grid-template-columns: 26px minmax(0, 1fr) 84px; }
 body.large .gb-row, body.large details.bhava summary { font-size: 18px; }
+[data-theme="dark"] .hero { background: linear-gradient(160deg, #3a1d2a, #241521 60%, #1c1119); border: 1px solid rgba(240, 194, 122, .2); }
+[data-theme="dark"] .guide-box { background: linear-gradient(160deg, #2a1d2b, #221824); }

@@ -194,7 +194,7 @@ function buildStandalone() {
   writeConfig(config);
 
   console.log('✔ mobile/www = standalone offline app (dist/artifact); capacitor.config.json has no server.url');
-  console.log('  Google Fonts load when online; offline the phone\'s Tamil system font is used.');
+  console.log('  Noto Sans/Serif Tamil and Inter are bundled, so Tamil text renders the same offline.');
 }
 
 function buildServer() {

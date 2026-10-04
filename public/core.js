@@ -300,6 +300,15 @@ export const micMessage = (code) => ({
   unsupported: L('Voice input is not supported in this browser. Please use Chrome.', 'இந்த உலாவியில் குரல் உள்ளீடு இல்லை. Chrome பயன்படுத்தவும்.'),
 }[code] || L('Could not use the microphone', 'மைக்ரோஃபோனைப் பயன்படுத்த முடியவில்லை'));
 
+/** "Need someone to talk to?" — free, confidential helplines (India), shown on Ask and in Settings. */
+export const supportCard = () => `<div class="card glass support-card" role="note">
+  <div class="card-title"><span>🤝 ${L('Need someone to talk to?', 'யாரிடமாவது பேச வேண்டுமா?')}</span></div>
+  <p class="small">${L('If you feel low, anxious or unsafe, please talk to a person now. A horoscope never decides your life.', 'மனச்சோர்வு, பதற்றம், பாதுகாப்பின்மை உணர்ந்தால் இப்போதே ஒருவரிடம் பேசுங்கள். ஜாதகம் உங்கள் வாழ்க்கையைத் தீர்மானிக்காது.')}</p>
+  <div class="support-lines">
+    <a class="chip-btn" href="tel:14416">📞 Tele-MANAS 14416 <span class="small">${L('free · 24×7 · Tamil', 'இலவசம் · 24×7 · தமிழ்')}</span></a>
+    <a class="chip-btn" href="tel:112">🚨 ${L('Emergency', 'அவசரம்')} 112</a>
+  </div></div>`;
+
 /** Copyright footer shown on the main pages. */
 export const copyright = () => `<footer class="copy">© ${BRAND.year} ${L(`${BRAND.name}. All rights reserved.`, `${BRAND.nameTa}. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.`)}<br><span class="small">${L('Traditional astrology is guidance, not a guarantee. It never replaces medical, legal or financial advice.', 'பாரம்பரிய ஜோதிடம் ஒரு வழிகாட்டல் மட்டுமே; உத்தரவாதம் அல்ல. மருத்துவ, சட்ட, நிதி ஆலோசனைக்கு மாற்றாகாது.')}</span></footer>`;
 

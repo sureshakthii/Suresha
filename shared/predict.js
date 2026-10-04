@@ -165,7 +165,7 @@ export function predictEvent(chart, questionId, { from = new Date(), years = 15 
     top = ranked.filter((w) => w.dasaScore > 0).slice(0, 3).sort((a, b) => a.start - b.start);
   }
   const earliest = [...windows].filter((w) => w.score >= (ranked[0]?.score || 0) * 0.7).sort((a, b) => a.start - b.start)[0] || null;
-  return { question: q, promise, windows: top, earliest, careful, current, remedy: q.remedy, karakaRemedies: q.karakas.filter((k) => strength[k] < 50).map((k) => ({ planet: k, ...NAVAGRAHA[k] })) };
+  return { question: q, promise, windows: top, allWindows: windows, earliest, careful, current, remedy: q.remedy, karakaRemedies: q.karakas.filter((k) => strength[k] < 50).map((k) => ({ planet: k, ...NAVAGRAHA[k] })) };
 }
 
 function windowReasons(sig, md, ad, q, both, jup) {

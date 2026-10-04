@@ -85,6 +85,15 @@ function applyLang() {
   document.title = `${BRAND.nameTa} · ${BRAND.nameUpper} — ${ta() ? BRAND.taglineTa : BRAND.descriptorEn}`;
 }
 
+// The installed Android app reports the phone's font size; with a large system font, switch on the app's own
+// Large text mode once (unless the person already chose a setting).
+function adoptSystemFontScale() {
+  const k = Number(window.KJ_SYSTEM_FONT_SCALE);
+  if (!(k >= 1.15) || state.settings.largeChosen) return;
+  if (!state.settings.large) { state.settings.large = true; saveSettings(); go(state.view, state.params); }
+}
+document.addEventListener('kj:fontscale', adoptSystemFontScale);
+
 async function boot() {
   startSky();
   applyLang();
@@ -97,6 +106,7 @@ async function boot() {
   }
   refreshSnap(true);
   $('#app').hidden = false;
+  adoptSystemFontScale();
 
   $('#themeBtn')?.addEventListener('click', () => { state.settings.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; saveSettings(); });
   $('#langBtn').addEventListener('click', () => { state.lang = ta() ? 'en' : 'ta'; store.set('kj_lang', state.lang); document.dispatchEvent(new Event('kj:lang')); });

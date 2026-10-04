@@ -10,7 +10,8 @@ import { ENGINE_VERSION, CONVENTIONS } from '../shared/version.js';
 
 const suresh = { name: 'Suresh', date: '1982-05-10', time: '10:30:00', lat: 9.9252, lon: 78.1198, tz: 5.5 };
 const facts = chartFacts(birthChart(suresh), timeReliability(suresh), new Date('2026-10-04T06:00:00Z'));
-const ask = (question, lang = 'ta', f = facts) => composeAnswer({ question, lang, facts: f, name: 'Suresh' });
+// App language: Tamil questions are asked in Tamil mode, English questions in English mode (unless a test says otherwise).
+const ask = (question, lang = /[\u0B80-\u0BFF]/.test(question) ? 'ta' : 'en', f = facts) => composeAnswer({ question, lang, facts: f, name: 'Suresh' });
 
 test('brand is configurable and complete', () => {
   for (const k of ['name', 'nameTa', 'taglineTa', 'descriptorEn', 'assistantEn', 'premiumEn']) assert.ok(BRAND[k], k);
@@ -59,10 +60,31 @@ test('answers follow the six-part structure and quote only engine facts', () => 
   assert.ok(ai.housesCountedFrom.startsWith('Lagna'));
 });
 
-test('answer language follows the question; Tamil questions get Tamil headings', () => {
-  assert.equal(answerLang('How is my career?', 'ta'), 'en');
-  assert.equal(answerLang('என் தொழில் எப்படி?', 'en'), 'ta');
-  assert.equal(ask('என் தொழில் எப்படி இருக்கும்?').sections[0].title, 'உங்கள் கேள்வி');
+test('answers follow the language selected in the app, whatever the question language (English, Tamil or Tanglish)', () => {
+  assert.equal(answerLang('How is my career?', 'ta'), 'ta');
+  assert.equal(answerLang('என் தொழில் எப்படி?', 'en'), 'en');
+  const tamilMode = composeAnswer({ question: 'When will I get married?', lang: 'ta', facts });
+  assert.equal(tamilMode.sections[0].title, 'உங்கள் கேள்வி');
+  assert.match(tamilMode.text, /[\u0B80-\u0BFF]/);
+  const tanglish = composeAnswer({ question: 'enakku eppo kalyanam nadakkum', lang: 'ta', facts });
+  assert.equal(tanglish.intent, 'marriage_when');
+  assert.equal(composeAnswer({ question: 'என் தொழில் எப்படி இருக்கும்?', lang: 'en', facts }).sections[0].title, 'Your question');
+});
+
+test('marriage / children: already married or parents get a chart-vs-life check, not a new prediction', () => {
+  const single = composeAnswer({ question: 'when will i get marrage', lang: 'en', facts, life: {} });
+  assert.equal(single.intent, 'marriage_when');
+  assert.match(single.text, /supportive in the coming years/);
+  assert.match(single.text, /Already married\?/);
+  const married = composeAnswer({ question: 'When will I get married?', lang: 'en', facts, life: { maritalStatus: 'married', marriedYear: 2009 } });
+  assert.match(married.text, /already married/);
+  assert.ok(!/supportive in the coming years/.test(married.text), 'no new marriage prediction for a married person');
+  assert.match(married.text, /The year 2009 (falls within|is not inside)/);
+  const parent = composeAnswer({ question: 'kuzhandhai eppo', lang: 'en', facts, life: { maritalStatus: 'married', children: 2, firstChildYear: 2016 } });
+  assert.equal(parent.intent, 'child_when');
+  assert.match(parent.text, /Your profile shows 2 children/);
+  const another = composeAnswer({ question: 'When can we have a second child?', lang: 'en', facts, life: { children: 1 } });
+  assert.match(another.text, /coming years/);
 });
 
 test('safety: pain is clarified, crisis gets helplines, death is never predicted, health is never diagnosed', () => {
@@ -78,7 +100,8 @@ test('safety: pain is clarified, crisis gets helplines, death is never predicted
   assert.ok(!/\b(19|20)\d{2}\b/.test(death.text), 'no dates in a death answer');
   const health = ask('Will I get diabetes?');
   assert.match(health.text, /do not diagnose/);
-  for (const q of ['Will I get married next year?', 'Will my visa be approved?', 'Will I win my court case?']) {
+  assert.match(ask('Will I get married next year?').text, /not a guarantee/);
+  for (const q of ['Will my visa be approved?', 'Will I win my court case?']) {
     assert.match(ask(q).text, /No horoscope can guarantee/, q);
   }
   assert.match(ask('What is our kula deivam?').text, /cannot be established conclusively/);

@@ -15,7 +15,7 @@ import {
   listen, micMessage,
   yogaName, karanaName,
   placeName,
-  displayName, assistantName, BRAND
+  displayName, assistantName, BRAND, supportCard,
 } from './core.js';
 import { dayOutlook, gauge, animateGauges, refreshSnap, reliabilityOf, setupVoiceInput } from './screens-main.js';
 import { chartFacts, composeAnswer, factsForAI, classify, answerLang } from './shared/guidance.js';
@@ -465,12 +465,13 @@ registerScreen('starbday', { render: renderStarBday, parent: 'home', needsLoc: t
 // question in the same six-part structure. Every answer is labelled with its source.
 const chat = { messages: [], memberId: null, busy: false };
 const SUGGEST = [
-  ['Explain my current dasa-bhukti simply.', 'என் நடப்பு தசா-புக்தியை எளிமையாக விளக்குங்கள்.'],
-  ['I feel worried about work. Help me understand my current period.', 'வேலை பற்றிக் கவலையாக இருக்கிறது. என் தற்போதைய காலத்தைப் புரிந்துகொள்ள உதவுங்கள்.'],
+  ['Which temple should I visit?', 'எந்தக் கோவிலுக்குச் செல்லலாம்?'],
+  ['Help me understand my current period', 'என் தற்போதைய காலத்தைப் புரிந்துகொள்ள உதவுங்கள்'],
+  ['Help our family choose a good date', 'எங்கள் குடும்பத்திற்கு ஏற்ற நாளைத் தேர்வு செய்ய உதவுங்கள்'],
+  ['Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'],
+  ['When will I get married?', 'எனக்கு எப்போது திருமணம் நடக்கும்?'],
   ['Which planet is weak for me, and what simple practice can I do?', 'எந்த கிரகம் எனக்குப் பலவீனம்? என்ன எளிய வழிபாடு செய்யலாம்?'],
-  ['I have four days’ leave next month. Which temples could I visit?', 'அடுத்த மாதம் நான்கு நாள் விடுப்பு உள்ளது. எந்தக் கோவில்களுக்குச் செல்லலாம்?'],
   ['What is a good time today for important work?', 'இன்று முக்கிய வேலைக்கு நல்ல நேரம் எது?'],
-  ['Help our family choose dates for a housewarming.', 'கிரகப்பிரவேசத்திற்கு எங்கள் குடும்பத்திற்கு ஏற்ற நாட்களைத் தேர்வு செய்ய உதவுங்கள்.'],
 ];
 
 /** Today's practical timings for the "good time" answers. */
@@ -487,6 +488,22 @@ function todayFacts() {
     horai: `${planetName(s.currentHora.lord)}`,
     chandrashtamam: m ? dayOutlook(chartOf(m), s).chandrashtama : false,
   };
+}
+
+/**
+ * Life details for marriage / children answers: what the person entered, filled in from the family list
+ * (a spouse profile means married; son/daughter profiles give the number of children and the first child's year).
+ */
+function lifeOf(m) {
+  if (!m) return {};
+  const life = { memberId: m.id, maritalStatus: m.maritalStatus, marriedYear: m.marriedYear, children: m.children, firstChildYear: m.firstChildYear };
+  if (m.relation === 'self') {
+    if (!life.maritalStatus && state.family.some((x) => x.relation === 'spouse')) life.maritalStatus = 'married';
+    const kids = state.family.filter((x) => ['son', 'daughter'].includes(x.relation));
+    if (life.children == null && kids.length) life.children = kids.length;
+    if (!life.firstChildYear && kids.length) life.firstChildYear = Math.min(...kids.map((k) => Number(String(k.date).slice(0, 4))));
+  }
+  return life;
 }
 
 function memberFacts() {
@@ -507,6 +524,8 @@ function chatContext(question) {
     today: { date: fmtIsoDate(new Date(Date.now() + loc.tz * 3600000).toISOString().slice(0, 10)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name, ...todayFacts() },
     person: m ? { name: m.name, relation: m.relation, birthTimeCertainty: rel.certainty, timeSensitiveResultsAllowed: rel.lagna, rasi: rel.rasi ? chartOf(m).janmaRasi.name : 'uncertain', star: rel.nakshatra ? chartOf(m).janmaNakshatra.name : 'uncertain' } : null,
     verifiedChartFacts: factsForAI(facts),
+    lifeDetails: (() => { const l = lifeOf(m); return m ? { maritalStatus: l.maritalStatus || 'not given', marriedYear: l.marriedYear || null, children: l.children ?? 'not given', firstChildYear: l.firstChildYear || null } : null; })(),
+    builtInAnswer: composeAnswer({ question, lang: state.lang, facts, life: lifeOf(m), today: todayFacts() }).text,
     calculationEngine: ENGINE_VERSION,
   };
 }
@@ -521,11 +540,12 @@ function renderChat(sec, params = {}) {
   sec.innerHTML = `<div class="seg ask-switch" role="tablist"><button class="sel" role="tab" aria-selected="true">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button role="tab" aria-selected="false" data-go="ask">🔮 ${L('Is now a good time?', 'இப்போது செய்யலாமா?')}</button></div>
     <div class="chat-head card glass"><div class="avatar big">🪔</div><div><b>${esc(assistantName())}</b>
       <div class="muted small">${m ? L(`Using ${displayName(m)}'s chart${m.private ? ' · private profile — this chat stays on this phone' : ''}`, `${displayName(m)} அவர்களின் ஜாதகப்படி${m.private ? ' · தனிப்பட்ட சுயவிவரம் — இந்த உரையாடல் இந்தக் கைப்பேசியிலேயே' : ''}`) : L('Add birth details for personal answers', 'தனிப்பட்ட பதில்களுக்கு பிறப்பு விவரம் சேர்க்கவும்')}</div></div></div>
-    <div id="chatLog" class="chat-log" aria-live="polite">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask about your current period, work, family dates, a temple journey or today’s good times — in Tamil or English. Chart facts come from the calculation engine; interpretations are traditional, not guarantees.', 'வணக்கம்! உங்கள் நடப்புக் காலம், வேலை, குடும்ப நாட்கள், கோவில் பயணம், இன்றைய நல்ல நேரம் — தமிழிலோ ஆங்கிலத்திலோ கேளுங்கள். ஜாதகத் தகவல்கள் கணிப்பு இயந்திரத்திலிருந்து; விளக்கங்கள் பாரம்பரியமானவை, உத்தரவாதம் அல்ல.')}</div>`}</div>
+    <div id="chatLog" class="chat-log" aria-live="polite">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask anything — in Tamil, English or Tanglish. Answers come in English (change language with the தமிழ் button).', 'வணக்கம்! தமிழ், ஆங்கிலம், தங்கிலீஷ் — எப்படியும் கேளுங்கள். பதில் தமிழில் வரும்.')}</div>`}</div>
     <div class="suggest-row">${SUGGEST.map(([en, tx]) => `<button class="sg">${esc(L(en, tx))}</button>`).join('')}</div>
     <form id="chatForm" class="chat-form"><button type="button" id="micBtn" class="mic" aria-label="${L('Speak', 'பேசுங்கள்')}">🎙️</button>
       <label class="sr-only" for="chatInput">${L('Message', 'செய்தி')}</label><input id="chatInput" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai…', 'துணையிடம் கேளுங்கள்…'))}">
       <button class="send" aria-label="${L('Send', 'அனுப்பு')}">➤</button></form>
+    ${supportCard()}
     <p class="small muted center">${L('Voice: your phone converts speech to text (it may use its own online service). The text appears in the box for you to check.', 'குரல்: உங்கள் கைப்பேசி பேச்சை எழுத்தாக மாற்றும் (அதன் இணைய சேவையைப் பயன்படுத்தலாம்). சரிபார்க்க பெட்டியில் உரை தோன்றும்.')}</p>`;
   for (const msg of chat.messages) addBubble(msg.role, msg.content, msg);
   $$('.sg', sec).forEach((b) => b.addEventListener('click', () => send(b.textContent)));
@@ -572,9 +592,10 @@ async function send(text) {
   chat.busy = true;
   $('#chatInput').value = '';
   chat.messages.push({ role: 'user', content: text });
-  addBubble('user', text);
+  const ub = addBubble('user', text);
+  requestAnimationFrame(() => ub.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   const { m, facts } = memberFacts();
-  const answer = composeAnswer({ question: text, lang: state.lang, facts, name: m ? displayName(m) : '', today: todayFacts() });
+  const answer = composeAnswer({ question: text, lang: state.lang, facts, name: m ? displayName(m) : '', today: todayFacts(), life: lifeOf(m) });
   // Safety-critical topics are always answered by the built-in rules, never by free AI text.
   // Private profiles never send their questions to the AI service.
   const rulesOnly = ['crisis', 'death', 'pain'].includes(answer.intent) || Boolean(m?.private);

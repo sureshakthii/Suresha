@@ -25,7 +25,7 @@ fs.writeFileSync(path.join(out, 'plans.json'), JSON.stringify({ plans: PLANS, te
 const html = fs.readFileSync('public/index.html', 'utf8');
 const css = fs.readFileSync('public/styles.css', 'utf8');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('</body>'))
-  .replace('<script type="module" src="/app.js"></script>', '<script>window.KJ_STATIC = true;</script>\n  <script type="module" src="app.js"></script>');
+  .replace('<script type="module" src="/app.js"></script>', `<script>window.KJ_STATIC = true; window.KJ_BUILD = '${(process.env.GITHUB_RUN_NUMBER ? `build ${process.env.GITHUB_RUN_NUMBER} · ` : '')}${new Date().toISOString().slice(0, 10)}';</script>\n  <script type="module" src="app.js"></script>`);
 const fonts = `<style>\n${fs.readFileSync('public/fonts.css', 'utf8')}</style>`;
 const page = `<title>துணை · THUNAI</title>
 ${fonts}

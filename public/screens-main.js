@@ -37,10 +37,10 @@ export function dayOutlook(chart, snap) {
 // Guidance-first: one prominent question box, today's essentials, saved plans and family reminders.
 // Every other tool lives in its hub (My Chart · Family · Ask · Services) or in "All tools".
 export const GUIDE_SUGGESTIONS = [
-  ['I have four days’ leave next month. Which temples could I visit?', 'அடுத்த மாதம் நான்கு நாள் விடுப்பு உள்ளது. எந்தக் கோவில்களுக்குச் செல்லலாம்?'],
-  ['I feel worried about work. Help me understand my current period.', 'வேலை பற்றிக் கவலையாக இருக்கிறது. என் தற்போதைய காலத்தைப் புரிந்துகொள்ள உதவுங்கள்.'],
-  ['Help our family choose dates for a housewarming.', 'கிரகப்பிரவேசத்திற்கு எங்கள் குடும்பத்திற்கு ஏற்ற நாட்களைத் தேர்வு செய்ய உதவுங்கள்.'],
-  ['Explain my current dasa-bhukti simply.', 'என் நடப்பு தசா-புக்தியை எளிமையாக விளக்குங்கள்.'],
+  ['Which temple should I visit?', 'எந்தக் கோவிலுக்குச் செல்லலாம்?'],
+  ['Help me understand my current period', 'என் தற்போதைய காலத்தைப் புரிந்துகொள்ள உதவுங்கள்'],
+  ['Help our family choose a good date', 'எங்கள் குடும்பத்திற்கு ஏற்ற நாளைத் தேர்வு செய்ய உதவுங்கள்'],
+  ['Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'],
 ];
 
 let today = null; // { key, day } cache of tamilDay for the current local date
@@ -68,11 +68,11 @@ function renderHome(sec) {
       <form id="guideForm" class="chat-form guide-form">
         <button type="button" id="guideMic" class="mic" aria-label="${L('Speak your question', 'உங்கள் கேள்வியைப் பேசுங்கள்')}">🎙️</button>
         <label class="sr-only" for="guideInput">${L('Your question', 'உங்கள் கேள்வி')}</label>
-        <input id="guideInput" autocomplete="off" maxlength="600" placeholder="${esc(L('Type or speak in Tamil or English…', 'தமிழில் அல்லது ஆங்கிலத்தில் எழுதுங்கள் / பேசுங்கள்…'))}">
+        <input id="guideInput" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask your question…', 'உங்கள் கேள்வியைக் கேளுங்கள்…'))}">
         <button class="send" aria-label="${L('Ask', 'கேள்')}">➤</button>
       </form>
       <div class="guide-sugs">${GUIDE_SUGGESTIONS.map(([en, tx]) => `<button class="sg" type="button">${esc(L(en, tx))}</button>`).join('')}</div>
-      <p class="small muted">${L('Voice is optional. Speech is converted to text by your phone’s speech service; you can check the words before sending.', 'குரல் விருப்பமானது. உங்கள் கைப்பேசியின் பேச்சு சேவை குரலை எழுத்தாக மாற்றும்; அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
+      <p class="small muted">🎙️ ${L('Type or speak — Tamil, English or Tanglish. You can check the words before sending.', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எழுதலாம் அல்லது பேசலாம். அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
     </section>
 
     <div class="hero">

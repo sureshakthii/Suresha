@@ -4,7 +4,7 @@ import { UNKNOWN_TIME_PLACEHOLDER, certaintyOf } from './shared/birthtime.js';
 import { icon, iconChip } from './icons.js';
 import {
   state, $, $$, L, ta, esc, bi, api, STATIC, store, go, registerScreen, subHeader, saveFamily, saveSettings, setLoc,
-  toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright, BRAND,
+  toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright, BRAND, supportCard,
   placeName,
 } from './core.js';
 
@@ -218,6 +218,17 @@ function memberForm(m, first) {
       <label class="tw"${(m.timeCertainty || 'exact') === 'approx' ? '' : ' hidden'}>${L('Unsure by about', 'சுமார் எவ்வளவு மாறலாம்')}<select name="timeWindowMin">${[[15, '± 15 min', '± 15 நிமி'], [30, '± 30 min', '± 30 நிமி'], [60, '± 1 hour', '± 1 மணி'], [120, '± 2 hours', '± 2 மணி'], [240, '± 4 hours', '± 4 மணி']].map(([v, en, tx]) => `<option value="${v}"${Number(m.timeWindowMin || 60) === v ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label>
       <p class="small muted">${L('If you are not sure, say so — we will not guess a time. Calendar, temple and family tools work without it; time-sensitive results are limited or clearly marked.', 'உறுதியில்லையெனில் அப்படியே குறிப்பிடுங்கள் — நேரத்தை நாங்கள் ஊகிக்க மாட்டோம். நாட்காட்டி, கோவில், குடும்பக் கருவிகள் நேரமின்றி இயங்கும்; நேரம் சார்ந்த பலன்கள் வரம்புடன் / குறிப்புடன் காட்டப்படும்.')} <button type="button" class="link-btn" data-go="birthtime">${L('What depends on it?', 'எது இதைச் சார்ந்தது?')}</button></p>
     </fieldset>
+    <details class="life-details"${m.maritalStatus || m.children ? ' open' : ''}><summary>${L('Life details (optional — makes marriage and children answers accurate)', 'வாழ்க்கை விவரம் (விருப்பம் — திருமணம், குழந்தை பதில்களைத் துல்லியமாக்கும்)')}</summary>
+      <div class="row2">
+        <label>${L('Marital status', 'திருமண நிலை')}<select name="maritalStatus">${[['', '—', '—'], ['single', 'Not married', 'திருமணமாகவில்லை'], ['married', 'Married', 'திருமணமானவர்'], ['other', 'Separated / widowed', 'பிரிந்தவர் / துணையை இழந்தவர்']].map(([v, en, tx]) => `<option value="${v}"${(m.maritalStatus || '') === v ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label>
+        <label>${L('Year of marriage', 'திருமண ஆண்டு')}<input name="marriedYear" inputmode="numeric" maxlength="4" placeholder="2012" value="${esc(m.marriedYear || '')}"></label>
+      </div>
+      <div class="row2">
+        <label>${L('Number of children', 'குழந்தைகள் எண்ணிக்கை')}<input name="children" inputmode="numeric" maxlength="2" placeholder="0" value="${esc(m.children ?? '')}"></label>
+        <label>${L('First child born in (year)', 'முதல் குழந்தை பிறந்த ஆண்டு')}<input name="firstChildYear" inputmode="numeric" maxlength="4" placeholder="2015" value="${esc(m.firstChildYear || '')}"></label>
+      </div>
+      <p class="small muted">${L('Used only on this phone, to check your chart against what has already happened instead of predicting it again.', 'இந்தக் கைப்பேசியில் மட்டும் பயன்படும்; நடந்ததை மீண்டும் கணிக்காமல், அதனுடன் ஜாதகத்தைச் சரிபார்க்க.')}</p>
+    </details>
     <label class="set-row"><span>🔒 ${L('Keep this profile private (its chats and concerns are never shared)', 'இந்தச் சுயவிவரம் தனிப்பட்டது (உரையாடல், கவலைகள் பகிரப்படாது)')}</span><input type="checkbox" name="private"${m.private ? ' checked' : ''}></label>
     <label class="place-wrap">${L('Place of birth', 'பிறந்த இடம்')}<input name="place" required placeholder="Chennai" value="${esc(m.place || '')}"><ul id="placeList" class="suggest" hidden></ul></label>
     <div class="row3">
@@ -278,6 +289,10 @@ function saveMember(f) {
   const time = timeCertainty === 'unknown' ? UNKNOWN_TIME_PLACEHOLDER : raw.length === 5 ? `${raw}:00` : raw;
   const m = {
     timeCertainty, timeWindowMin: timeCertainty === 'approx' ? Number(f.elements.timeWindowMin.value) : undefined, private: f.elements.private.checked || undefined,
+    maritalStatus: f.elements.maritalStatus.value || undefined,
+    marriedYear: /^(19|20)\d{2}$/.test(f.elements.marriedYear.value.trim()) ? Number(f.elements.marriedYear.value.trim()) : undefined,
+    children: /^\d{1,2}$/.test(f.elements.children.value.trim()) ? Number(f.elements.children.value.trim()) : undefined,
+    firstChildYear: /^(19|20)\d{2}$/.test(f.elements.firstChildYear.value.trim()) ? Number(f.elements.firstChildYear.value.trim()) : undefined,
     id: editing.id || Math.random().toString(36).slice(2, 10),
     name: f.elements.name.value.trim(), nameTa: f.elements.nameTa.value.trim() || undefined, relation: f.elements.relation.value, gender: f.elements.gender.value,
     date: f.elements.date.value, time, place: f.elements.place.value.trim(),
@@ -315,6 +330,8 @@ function renderMore(sec) {
       <button data-go="invite">${iconChip('invite', { size: 20, cls: 'mi-icon' })}<span>${L('Invite family', 'குடும்பத்தினரை அழை')}</span></button>
       <button data-go="about">${iconChip('about', { size: 20, cls: 'mi-icon' })}<span>${L(`About ${BRAND.name}`, `${BRAND.nameTa} பற்றி`)}</span></button>
     </div>
+    ${supportCard()}
+    <p class="small muted center">${L('Version', 'பதிப்பு')} ${esc(window.KJ_BUILD || 'dev')} · ${esc(BRAND.nameUpper)}</p>
     <button class="link-btn center-block" data-go="admin">${icon('shield-check', { size: 16 })} ${L('Owner dashboard', 'உரிமையாளர் டாஷ்போர்டு')}</button>
     <div class="card glass settings">
       <div class="card-title">${L('Settings', 'அமைப்புகள்')}</div>
@@ -332,7 +349,7 @@ function renderMore(sec) {
   $('#signOut')?.addEventListener('click', signOut);
   $$('[data-lang]', sec).forEach((b) => b.addEventListener('click', () => { state.lang = b.dataset.lang; store.set('kj_lang', state.lang); document.dispatchEvent(new Event('kj:lang')); }));
   $$('[data-theme-set]', sec).forEach((b) => b.addEventListener('click', () => { state.settings.theme = b.dataset.themeSet; saveSettings(); renderMore(sec); }));
-  $('#setLarge').addEventListener('change', (e) => { state.settings.large = e.target.checked; saveSettings(); });
+  $('#setLarge').addEventListener('change', (e) => { state.settings.large = e.target.checked; state.settings.largeChosen = true; saveSettings(); });
   $('#setVoice').addEventListener('change', (e) => { state.settings.voice = e.target.checked; saveSettings(); });
   $('#setHc').addEventListener('change', (e) => { state.settings.hc = e.target.checked; saveSettings(); });
   $('#setRate').addEventListener('input', (e) => { state.settings.rate = Number(e.target.value); $('#rateVal').textContent = `${state.settings.rate.toFixed(2)}×`; saveSettings(); });

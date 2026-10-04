@@ -11,38 +11,49 @@ import { RASIS, PLANETS } from './astro.js';
 import { grahaStrength, NAVAGRAHA } from './remedies.js';
 import { transitStatus, BHAVAS } from './analysis.js';
 import { luckyNumbers } from './personal.js';
+import { predictEvent } from './predict.js';
 
 export { RULES_VERSION } from './version.js';
 
 const T = (en, ta) => ({ en, ta });
 const isTamilText = (s) => /[஀-௿]/.test(s || '');
-/** Answer in the language the question was written in (English question in Tamil mode → English). */
-export const answerLang = (question, appLang) => (isTamilText(question) ? 'ta' : /[a-z]{3,}/i.test(question || '') ? 'en' : appLang);
+/**
+ * Answers always follow the language the person selected in the app: Tamil mode → Tamil answer, even when the
+ * question was typed in English or Tanglish (many readers cannot read English); English mode → English.
+ */
+export const answerLang = (_question, appLang) => (appLang === 'en' ? 'en' : 'ta');
+export { isTamilText };
 
 // ---------------------------------------------------------------- intents
+// Keywords cover Tamil script, English (with common misspellings) and Tanglish (Tamil typed in English letters).
+const WHEN = /\bwhen\b|\bwhich (year|age|month)\b|\bwhat age\b|\bwill i (get|have|be)\b|\beppo\b|\beppa\b|\beppodhu\b|\beppothu\b|\beppadi\b|\bepdi\b|\bvarum\b|\bnadakkum\b|\bkidaikkum\b|எப்போது|எப்போ|எந்த வருட|எந்த வயதில்|நடக்குமா|கிடைக்குமா|நடக்கும்|கிடைக்கும்/i;
+const MARRIAGE = /mar+[iae]+g|marri|marry|merr?[ia]g|wedd|shaad[iy]|spouse|husband|wife|alliance|\bkall?y?aa?n[ae]?m|thiruman|tiruman|ponnu|maap+ill?ai|varan|jodi|திருமண|கல்யாண|வரன்|மனைவி|கணவர்|மாப்பிள்ளை|பெண் பார்|வாழ்க்கைத் துணை/i;
+const CHILD = /\bkids?\b|child|children|\bbaby\b|pregnan|conceiv|santh?h?anam|kuzh?andh?ai|kulandh?ai|kuzhanth?ai|kulanth?ai|\bpillai|குழந்தை|பிள்ளை|சந்தான|கர்ப்ப|மகப்பேறு/i;
 const RULES = [
-  ['crisis', /suicid|kill myself|end my life|want to die|no reason to live|self.?harm|தற்கொலை|சாக வேண்டும்|உயிரை மாய்|வாழ விருப்பமில்லை|சாகணும்/i],
-  ['death', /when will i die|death date|lifespan|how long will i live|longevity|ஆயுள் எவ்வளவு|எப்போது இறப்|மரணம் எப்போது|சாவு எப்போது|ஆயுட்காலம்/i],
-  ['pain', /\bpain\b|hurt(s|ing)?\b|வலி|வேதனை/i],
-  ['emotional', /worr|anxi|stress|tension|\bsad|depress|lonely|afraid|fear|upset|confus|கவலை|பயம்|மன அழுத்த|மனக்குழப்ப|டென்ஷன்|வருத்த|தனிமை|மனம் சரியில்லை|நிம்மதி/i],
-  ['health', /health|\bill(ness)?\b|\bsick|disease|fever|cancer|\bsugar\b|diabet|\bbp\b|blood pressure|surgery|operation|hospital|doctor|medicine|ஆரோக்கிய|நோய்|உடல்நல|காய்ச்சல்|சர்க்கரை|மருத்துவ|அறுவை|ஆஸ்பத்திரி|மருந்து/i],
-  ['temple', /temple|pilgrim|yatra|kovil|koil|darshan|leave.*visit|trip|tour|கோவில்|கோயில்|யாத்திரை|தரிசன|சுற்றுலா|பயணம்.*கோ|விடுப்பு/i],
-  ['dates', /housewarming|griha|graha pravesam|muhurt|auspicious date|good date|wedding date|which date|naming ceremony|கிரகப்பிரவேச|முகூர்த்த|நல்ல நாள்|தேதி தேர்வு|சுப நாள்|புதுமனை/i],
-  ['vehicle', /\bcar\b|bike|vehicle|scooter|registration|number plate|\bcolou?r\b|கார்|வாகன|பைக்|ஸ்கூட்டர்|நிறம்|பதிவு எண்/i],
-  ['dasa', /dasa|dasha|bhukti|bukthi|antar|mahadasha|current period|my period|தசை|தசா|புக்தி|நடப்பு காலம்|தற்போதைய காலம்/i],
-  ['weak', /weak planet|which planet|planet.*weak|remed|parigar|pariharam|dosh|பலவீன|பரிகார|எந்த கிரகம்|தோஷ/i],
-  ['kuladeivam', /kula ?deiv|family deity|kuladeivam|குலதெய்வ|குல தெய்வ/i],
-  ['marriage', /marri|wedding|spouse|husband|wife|match|alliance|love|திருமண|கல்யாண|வரன்|மனைவி|கணவர்|காதல்|பொருத்த/i],
-  ['pregnancy', /pregnan|baby|child birth|conceive|santhana|குழந்தை பாக்கிய|கர்ப்ப|சந்தான/i],
-  ['legal', /court|case|legal|lawyer|dispute|police|வழக்கு|கோர்ட்|நீதிமன்ற|வக்கீல்|தகராறு/i],
-  ['visa', /visa|abroad|foreign|onsite|overseas|immigra|வெளிநாடு|விசா|அயல்நாடு/i],
-  ['finance', /money|finance|loan|debt|saving|invest|wealth|stock|share market|salary|income|பணம்|கடன்|சேமிப்பு|முதலீடு|செல்வ|வருமான|சம்பள|பொருளாதார/i],
-  ['career', /career|job|work|office|promotion|business|boss|interview|profession|தொழில்|வேலை|அலுவலக|பதவி உயர்வு|வியாபார|நேர்காணல்|உத்தியோக/i],
-  ['education', /exam|study|studies|education|college|school|result|கல்வி|தேர்வு|படிப்பு|கல்லூரி|பள்ளி/i],
-  ['property', /house|home|land|property|flat|plot|வீடு|நிலம்|சொத்து|மனை|பிளாட்/i],
-  ['goodtime', /good time|nalla neram|auspicious time|rahu ?kal|today.*time|time today|நல்ல நேரம்|ராகு காலம்|இன்று.*நேரம்|எந்த நேரம்/i],
-  ['chart', /my chart|horoscope|jathagam|strength|overview|read my|ஜாதக|பலம்|சவால்/i],
-  ['greeting', /^(hi|hello|hey|vanakkam|வணக்கம்|நமஸ்காரம்)\b/i],
+  ['crisis', /suicid|kill myself|end my life|want to die|no reason to live|self.?harm|saaga?num|sethu?d|தற்கொலை|சாக வேண்டும்|உயிரை மாய்|வாழ விருப்பமில்லை|சாகணும்/i],
+  ['death', /when will i die|death date|lifespan|how long will i live|longevity|maranam|aayul|ஆயுள் எவ்வளவு|எப்போது இறப்|மரணம் எப்போது|சாவு எப்போது|ஆயுட்காலம்/i],
+  ['pain', /\bpain\b|hurt(s|ing)?\b|\bvali\b|valikk?u|வலி|வேதனை/i],
+  ['emotional', /worr|anxi|stress|tension|\bsad|depress|lonely|afraid|\bfear|upset|confus|kavalai|bayam|bayama|mana ?kast|nimmadhi|கவலை|பயம்|மன அழுத்த|மனக்குழப்ப|டென்ஷன்|வருத்த|தனிமை|மனம் சரியில்லை|நிம்மதி/i],
+  ['health', /health|\bill(ness)?\b|\bsick|disease|fever|cancer|\bsugar\b|diabet|\bbp\b|blood pressure|surgery|operation|hospital|doctor|medicine|udambu|udal ?nal|\bnoi\b|kaichal|ஆரோக்கிய|நோய்|உடல்நல|காய்ச்சல்|சர்க்கரை|மருத்துவ|அறுவை|ஆஸ்பத்திரி|மருந்து/i],
+  ['marriage_when', { test: (q) => MARRIAGE.test(q) && WHEN.test(q) }],
+  ['child_when', { test: (q) => CHILD.test(q) && (WHEN.test(q) || /bless|பாக்கியம்|bhagyam|baakkiyam/i.test(q)) }],
+  ['temple', /temple|pilgrim|yatra|yaath?irai|kovil|koil|darshan|darisanam|leave.*visit|\btrip\b|\btour|கோவில|கோயில|யாத்திரை|தரிசன|சுற்றுலா|பயணம்.*கோ|விடுப்பு/i],
+  ['dates', /housewarming|griha|graha ?pravesam|grahapravesam|muhurt|mugurt|auspicious date|good date|good day|choose a (good )?(date|day)|wedding date|which date|naming ceremony|nalla naal|naal paar|pudhu veedu|கிரகப்பிரவேச|முகூர்த்த|நல்ல நாள்|தேதி தேர்வு|சுப நாள்|புதுமனை|நாளைத் தேர்வு|ஏற்ற நாள்|நாள் தேர்வு/i],
+  ['vehicle', /\bcar\b|bike|vehicle|scooter|registration|number plate|\bcolou?r\b|\bvandi\b|vaaganam|vaganam|கார்|வாகன|பைக்|ஸ்கூட்டர்|நிறம்|பதிவு எண்/i],
+  ['dasa', /dasa|dasha|dhasa|thasai|dasai|bhukti|bukthi|bhukthi|\bputhi\b|\bbuthi\b|antar|mahadasha|current period|my period|nadapp?u ?kaa?lam|kaa?lath|tharpoth?aiya|தசை|தசா|புக்தி|நடப்பு காலம்|தற்போதைய காலம்|தற்போதைய காலத்தை/i],
+  ['weak', /weak planet|which planet|planet.*weak|remed|parigar|pariharam|parikaram|dosh|graham (balam|weak)|kiragam|பலவீன|பரிகார|எந்த கிரகம்|தோஷ/i],
+  ['kuladeivam', /kula ?deiv|family deity|kuladeivam|kula ?dheivam|குலதெய்வ|குல தெய்வ/i],
+  ['marriage', MARRIAGE],
+  ['pregnancy', CHILD],
+  ['legal', /court|\bcase\b|legal|lawyer|dispute|police|vazhakk?u|vakeel|வழக்கு|கோர்ட்|நீதிமன்ற|வக்கீல்|தகராறு/i],
+  ['visa', /visa|abroad|foreign|onsite|overseas|immigra|velinaadu|velinadu|வெளிநாடு|விசா|அயல்நாடு/i],
+  ['finance', /money|finance|loan|debt|saving|invest|wealth|stock|share market|salary|income|\bpanam\b|\bkasu\b|kadan|semippu|varumanam|பணம்|பணத்|கடன|சேமிப்பு|முதலீடு|செல்வ|வருமான|சம்பள|பொருளாதார/i],
+  ['career', /career|\bjob\b|\bwork|office|promotion|business|\bboss\b|interview|profession|\bvelai\b|\bvela\b|thozhil|tholil|vyabaram|தொழில|வேலை|அலுவலக|பதவி உயர்வு|வியாபார|நேர்காணல்|உத்தியோக/i],
+  ['education', /exam|study|studies|education|college|school|result|padipp?u|padikk|parikshai|kalvi|கல்வி|தேர்வு|படிப்பு|கல்லூரி|பள்ளி/i],
+  ['property', /\bhouse\b|\bhome\b|\bland\b|property|\bflat\b|\bplot\b|\bveedu\b|\bnilam\b|sothu|வீடு|நிலம்|சொத்து|மனை|பிளாட்/i],
+  ['goodtime', /good time|nalla neram|auspicious time|rahu ?kal|raahu|today.*time|time today|inniku.*neram|நல்ல நேரம்|ராகு காலம்|இன்று.*நேரம்|எந்த நேரம்/i],
+  ['chart', /my chart|horoscope|jath?agam|jaadhagam|jadhagam|strength|overview|read my|ஜாதக|பலம்|சவால்/i],
+  ['greeting', /^(hi|hello|hey|vanakkam|namaskaram|வணக்கம்|நமஸ்காரம்)\b/i],
 ];
 
 /** Returns { intent, all } — the first matching intent plus every match (for mixed questions). */
@@ -55,7 +66,9 @@ export function classify(text) {
   if (intent === 'pain' && all.includes('health')) intent = 'health';
   // A vehicle + date question is a date question.
   if (intent === 'vehicle' && all.includes('dates')) intent = 'dates';
-  if (intent === 'temple' && all.includes('dates') && !/temple|கோவில்|கோயில்/i.test(q)) intent = 'dates';
+  if (intent === 'temple' && all.includes('dates') && !/temple|kovil|koil|கோவில|கோயில/i.test(q)) intent = 'dates';
+  // "another / second child" stays a child-timing question even without a "when" word.
+  if (intent === 'pregnancy' && /another|second|next|இன்னொரு|இரண்டாவது|innoru|rendavadhu/i.test(q)) intent = 'child_when';
   return { intent, all };
 }
 
@@ -88,6 +101,8 @@ export function chartFacts(chart, rel, now = new Date()) {
   let transit = null;
   try { transit = transitStatus(chart, now); } catch { /* transit needs the ephemeris; skip if unavailable */ }
   return {
+    chart,
+    rel,
     reference: useLagna ? 'lagna' : 'moon',
     fromSign: from,
     lagnaSign: useLagna ? P.Lagna.rasi : null,
@@ -189,12 +204,46 @@ const DASA_NATURE = {
 
 const freePractice = (k, lang) => (lang === 'ta' ? NAVAGRAHA[k].free.ta : NAVAGRAHA[k].free.en);
 
+// ---------------------------------------------------------------- life events (marriage, children)
+const MONTHS_TA = ['ஜனவரி', 'பிப்ரவரி', 'மார்ச்', 'ஏப்ரல்', 'மே', 'ஜூன்', 'ஜூலை', 'ஆகஸ்ட்', 'செப்டம்பர்', 'அக்டோபர்', 'நவம்பர்', 'டிசம்பர்'];
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const my = (d, lang) => { const x = new Date(d); return `${(lang === 'ta' ? MONTHS_TA : MONTHS_EN)[x.getUTCMonth()]} ${x.getUTCFullYear()}`; };
+const periodText = (w, lang) => (lang === 'ta'
+  ? `${my(w.peakFrom || w.start, 'ta')} – ${my(w.peakTo || w.end, 'ta')} (${PLANETS[w.md].ta} தசை, ${PLANETS[w.ad].ta} புக்தி${w.doubleTransit ? ', குரு–சனி இரட்டைக் கோசாரம்' : ''})`
+  : `${my(w.peakFrom || w.start, 'en')} – ${my(w.peakTo || w.end, 'en')} (${w.md} dasa, ${w.ad} bhukti${w.doubleTransit ? ', Jupiter–Saturn double transit' : ''})`);
+const YEAR = 365.25 * 86400000;
+
+/**
+ * Supportive periods for a life event across the whole adult life, split into past and future, and — when the
+ * person already told us the year it happened — whether that year falls inside one of them (a "match").
+ * This is how a traditional astrologer checks a chart against real life before predicting anything new.
+ */
+export function lifeEventCheck(chart, eventId, { now = new Date(), eventYear = null } = {}) {
+  const birth = chart.utc instanceof Date ? chart.utc : new Date(chart.utc);
+  const adult = new Date(birth.getTime() + 18 * YEAR);
+  const pastRun = adult < now ? predictEvent(chart, eventId, { from: adult, years: Math.min(45, (now - adult) / YEAR) }) : null;
+  const past = pastRun ? pastRun.windows.filter((w) => w.start < now) : [];
+  const future = predictEvent(chart, eventId, { from: now, years: 12 });
+  let match = null;
+  if (eventYear) {
+    const mid = Date.UTC(Number(eventYear), 6, 1);
+    // Compare with every clearly supportive period (not only the top four shown), as a traditional check would.
+    const pool = [...(pastRun?.allWindows || []), ...(future.allWindows || [])];
+    const topScore = Math.max(0, ...pool.map((w) => w.score));
+    const all = pool.filter((w) => w.score >= topScore * 0.55);
+    const hit = all.find((w) => mid >= new Date(w.start).getTime() - 0.5 * YEAR && mid <= new Date(w.end).getTime() + 0.5 * YEAR);
+    const nearest = [...all].sort((a, b) => Math.abs((new Date(a.start).getTime() + new Date(a.end).getTime()) / 2 - mid) - Math.abs((new Date(b.start).getTime() + new Date(b.end).getTime()) / 2 - mid))[0] || null;
+    match = { year: Number(eventYear), hit: hit || null, nearest };
+  }
+  return { past, future: future.windows, promise: future.promise, match };
+}
+
 /**
  * Build the answer.
  * @param {object} p { question, lang, facts (chartFacts or null), name, today: { rahuKalam, yamagandam, goodTimes:[], horai } }
  * @returns {{ intent, lang, sections:[{key,title,lines}], actions:[{go,param,label}], clarify?:{options}, text }}
  */
-export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null, name = '', today = null }) {
+export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null, name = '', today = null, life = {} }) {
   const lang = answerLang(question, appLang);
   const tr = (o) => (lang === 'ta' ? o.ta : o.en);
   const L = (en, ta) => (lang === 'ta' ? ta : en);
@@ -330,6 +379,55 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       add('interpretation', L('Tradition prefers starting important work in a nalla neram and outside Rahu Kalam and Yamagandam.', 'முக்கிய வேலையை நல்ல நேரத்தில், ராகு காலம், எமகண்டம் தவிர்த்துத் தொடங்குவது மரபு.'));
       add('next', L('For a yes/no on a specific action right now, use “Is now a good time?” (Prasnam).', 'இப்போது ஒரு குறிப்பிட்ட செயலுக்கு ஆம்/இல்லை அறிய “இப்போது செய்யலாமா?” (பிரசன்னம்) பயன்படுத்துங்கள்.'));
       actions.push({ go: 'ask', label: L('Is now a good time?', 'இப்போது செய்யலாமா?') });
+      break;
+    }
+    case 'marriage_when':
+    case 'child_when': {
+      if (!f) { needChart(); break; }
+      if (f.rel && f.rel.nakshatra === false) { add('uncertainty', L('Timing needs the dasa periods, but your birth star is uncertain (birth time unknown), so dates cannot be given reliably.', 'காலம் கணிக்க தசா காலம் தேவை; பிறந்த நேரம் தெரியாததால் நட்சத்திரம் உறுதியில்லை, எனவே தேதிகளை நம்பகமாகச் சொல்ல முடியாது.')); break; }
+      const isMarriage = intent === 'marriage_when';
+      const done = isMarriage ? life.maritalStatus === 'married' : Number(life.children) > 0;
+      const eventYear = isMarriage ? life.marriedYear : life.firstChildYear;
+      const askAgain = !isMarriage && done && /another|second|next|இன்னொரு|இரண்டாவது|innoru|rendavadhu/i.test(question);
+      const chk = lifeEventCheck(f.chart, isMarriage ? 'marriage' : 'child', { eventYear: done ? eventYear : null });
+      const key = isMarriage ? 7 : 5;
+      add('factors', houseLine(f, key, lang), planetLine(f, isMarriage ? 'Venus' : 'Jupiter', lang), dasaLine(f, lang),
+        L(`Traditional promise for ${isMarriage ? 'marriage' : 'children'} in this chart: ${chk.promise.level} (${chk.promise.score}/100 points).`, `இந்த ஜாதகத்தில் ${isMarriage ? 'திருமண' : 'குழந்தை'} யோகம் (பாரம்பரியப் புள்ளி): ${chk.promise.level === 'strong' ? 'வலுவானது' : chk.promise.level === 'good' ? 'நல்லது' : 'முயற்சி தேவை'} (${chk.promise.score}/100).`),
+        transitLines(f, lang, ['guru_balam', 'guru_weak']));
+      if (f.dasa?.approx) add('uncertainty', L(`Your birth time is approximate, so these dates may shift by about ${f.dasa.shiftDays} days.`, `பிறந்த நேரம் தோராயமானது; எனவே தேதிகள் சுமார் ${f.dasa.shiftDays} நாட்கள் மாறலாம்.`));
+      if (done && !askAgain) {
+        // Already happened: check the chart against real life instead of predicting it again.
+        add('interpretation', isMarriage
+          ? L('Your profile says you are already married, so instead of predicting a marriage, here is how your chart matches your life.', 'உங்கள் சுயவிவரப்படி உங்களுக்குத் திருமணம் ஆகிவிட்டது; எனவே மீண்டும் கணிக்காமல், உங்கள் ஜாதகம் உங்கள் வாழ்க்கையுடன் எப்படிப் பொருந்துகிறது என்று பார்க்கிறோம்.')
+          : L(`Your profile shows ${life.children} child${Number(life.children) > 1 ? 'ren' : ''}, so here is how your chart matches that, rather than a new prediction.`, `உங்கள் சுயவிவரப்படி உங்களுக்கு ${life.children} குழந்தை${Number(life.children) > 1 ? 'கள்' : ''} உள்ளனர்; எனவே புதிய கணிப்பு அல்ல, ஜாதகப் பொருத்தத்தைப் பார்க்கிறோம்.`));
+        if (chk.match?.hit) add('interpretation', L(`✅ The year ${chk.match.year} falls within ${periodText(chk.match.hit, lang)} — a period your chart marks as supportive. Your chart and your life event agree, which also suggests your birth time is close to right.`, `✅ ${chk.match.year} ஆம் ஆண்டு, உங்கள் ஜாதகம் சாதகமாகக் காட்டும் ${periodText(chk.match.hit, lang)} காலத்திற்குள் வருகிறது. ஜாதகமும் வாழ்க்கை நிகழ்வும் ஒத்துப்போகின்றன; பிறந்த நேரமும் சரியாக இருப்பதைக் காட்டுகிறது.`));
+        else if (chk.match) add('interpretation', L(`The year ${chk.match.year} is not inside the strongest periods by this method${chk.match.nearest ? `; the nearest is ${periodText(chk.match.nearest, lang)}` : ''}. Life events also depend on family decisions and other chart factors; tradition uses such differences to re-check the birth time.`, `இந்த முறைப்படி ${chk.match.year} ஆம் ஆண்டு வலுவான காலங்களுக்குள் இல்லை${chk.match.nearest ? `; அருகிலுள்ளது ${periodText(chk.match.nearest, lang)}` : ''}. வாழ்க்கை நிகழ்வுகள் குடும்ப முடிவுகள், பிற ஜாதகக் காரணிகளையும் சார்ந்தவை; இத்தகைய வேறுபாட்டைக் கொண்டு பிறந்த நேரத்தை மீண்டும் சரிபார்ப்பது மரபு.`));
+        else {
+          if (chk.past.length) add('interpretation', L(`Periods your chart marked as supportive in the past: ${chk.past.map((w) => periodText(w, lang)).join('; ')}.`, `கடந்த காலத்தில் உங்கள் ஜாதகம் சாதகமாகக் காட்டிய காலங்கள்: ${chk.past.map((w) => periodText(w, lang)).join('; ')}.`));
+          add('next', L(`Add the ${isMarriage ? 'year of your marriage' : 'birth year of your first child'} in your profile — Thunai will then show whether your chart matches it.`, `உங்கள் சுயவிவரத்தில் ${isMarriage ? 'திருமண ஆண்டை' : 'முதல் குழந்தை பிறந்த ஆண்டை'} சேர்த்தால், ஜாதகம் பொருந்துகிறதா என்று துணை காட்டும்.`));
+          actions.push({ go: 'family', param: { edit: life.memberId }, label: L('Add life details', 'வாழ்க்கை விவரம் சேர்') });
+        }
+        if (isMarriage) {
+          const h = predictEvent(f.chart, 'harmony', { from: new Date(), years: 8 });
+          if (h.windows.length) add('interpretation', L(`For married life ahead, tradition sees these periods as especially good for togetherness: ${h.windows.slice(0, 2).map((w) => periodText(w, lang)).join('; ')}.`, `இனி வரும் மண வாழ்க்கையில் ஒற்றுமைக்குச் சிறப்பான காலங்கள்: ${h.windows.slice(0, 2).map((w) => periodText(w, lang)).join('; ')}.`));
+          actions.push({ go: 'couple', label: L('Married life analysis', 'மண வாழ்க்கை ஆய்வு') });
+        } else {
+          add('next', L('For your children, use Family → add their birth details to see their own charts, study periods and star birthdays.', 'உங்கள் குழந்தைகளுக்கு: குடும்பம் → அவர்களின் பிறப்பு விவரம் சேர்த்து, அவர்களின் ஜாதகம், கல்விக் காலம், நட்சத்திரப் பிறந்தநாளைப் பாருங்கள்.'));
+          actions.push({ go: 'family', param: { add: true }, label: L('Add a child', 'குழந்தையைச் சேர்') });
+        }
+      } else {
+        const fut = chk.future;
+        if (fut.length) add('interpretation', L(`Periods your chart marks as supportive in the coming years: ${fut.map((w) => periodText(w, lang)).join('; ')}.`, `வரும் ஆண்டுகளில் உங்கள் ஜாதகம் சாதகமாகக் காட்டும் காலங்கள்: ${fut.map((w) => periodText(w, lang)).join('; ')}.`));
+        else add('interpretation', L('No strongly marked period appears in the next 12 years by this method. Effort and the right meeting matter more than any period.', 'இந்த முறைப்படி அடுத்த 12 ஆண்டுகளில் வலுவாகக் குறிக்கப்பட்ட காலம் இல்லை. எந்தக் காலத்தையும் விட முயற்சியும் சரியான சந்திப்பும் முக்கியம்.'));
+        if (fut[0]?.reasons?.length) add('factors', ...fut[0].reasons.slice(0, 2).map((r) => (lang === 'ta' ? r.ta : r.en)));
+        if (life.maritalStatus === undefined && isMarriage) add('next', L('Already married? Set it in your profile — Thunai will then check your chart against your marriage year instead of predicting.', 'ஏற்கனவே திருமணம் ஆகிவிட்டதா? சுயவிவரத்தில் குறிப்பிடுங்கள் — கணிப்புக்குப் பதிலாக உங்கள் திருமண ஆண்டுடன் ஜாதகத்தைச் சரிபார்க்கும்.'));
+        add('next', isMarriage
+          ? L('Use these periods for proposals and meetings, and decide on the person — compatibility is a family conversation, not a verdict.', 'இந்தக் காலங்களை வரன் பார்க்கவும் சந்திப்புகளுக்கும் பயன்படுத்துங்கள்; முடிவு அந்த நபரைப் பொறுத்தது — பொருத்தம் குடும்ப உரையாடல், தீர்ப்பு அல்ல.')
+          : L('Please also consult a gynaecologist; medical guidance is what helps here. Prayer can be a comfort alongside it.', 'மகப்பேறு மருத்துவரையும் அணுகுங்கள்; இங்கு உதவுவது மருத்துவ வழிகாட்டலே. அதனுடன் வழிபாடு ஆறுதலாக இருக்கும்.'));
+        if (isMarriage) actions.push({ go: 'couple', label: L('Check a match', 'பொருத்தம் பார்') });
+      }
+      add('uncertainty', L('These are traditional timing indicators from dasa-bhukti and Jupiter–Saturn transits — not a guarantee of when it will happen.', 'இவை தசா-புக்தி, குரு–சனி கோசார அடிப்படையிலான பாரம்பரியக் கால அறிகுறிகள் — எப்போது நடக்கும் என்பதற்கு உத்தரவாதம் அல்ல.'), ref());
+      add('practice', freePractice(isMarriage ? 'Venus' : 'Jupiter', lang));
       break;
     }
     case 'kuladeivam': {

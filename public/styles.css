@@ -1079,3 +1079,153 @@ body.large .gb-row, body.large details.bhava summary { font-size: 18px; }
 .rm-years { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .rm-year { min-width: 0; overflow: hidden; }
 @media (max-width: 380px) { body.large .rm-years { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* =================================================================== THUNAI design system v2
+   One type scale, one family per script, generous Tamil line-heights (Tamil vowel signs need ≥1.45),
+   a clear gap between every heading and its sub-heading, and refined day / night palettes.
+   This layer comes last on purpose and overrides the older per-screen sizes. */
+:root {
+  --fs-xs: 12px; --fs-sm: 13.5px; --fs-base: 15px; --fs-md: 16px; --fs-lg: 18px; --fs-xl: 21px;
+  --lh-text: 1.6; --lh-head: 1.45;
+  --gap-head: 4px;
+  --font-ui: 'Noto Sans Tamil', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-num: 'Inter', 'Noto Sans Tamil', system-ui, sans-serif;
+}
+body.large { --fs-xs: 14px; --fs-sm: 15.5px; --fs-base: 17.5px; --fs-md: 18.5px; --fs-lg: 21px; --fs-xl: 24px; }
+
+[data-theme="light"] {
+  --page: #faf7f2; --glass: #ffffff; --surface-strong: #ffffff; --surface-soft: #f8f3ec; --surface-pop: #ffffff;
+  --glass-b: #eadfd2; --line: #efe6da; --text: #241a2b; --muted: #5e5367;
+  --brand: #6e1a35; --gold: #8a4b0f; --gold2: #6e1a35; --accent: #c0601d; --accent-soft: #fcf1e4;
+  --card-shadow: 0 1px 2px rgba(60, 35, 20, .05), 0 4px 14px rgba(60, 35, 20, .06);
+}
+[data-theme="dark"] {
+  --page: #141016; --glass: #1f1922; --surface-strong: #18131a; --surface-soft: #251e28; --surface-pop: #2a222d;
+  --glass-b: #3a2f3c; --line: #33293a; --text: #f4ede6; --muted: #c9bdb2;
+  --brand: #f0c27a; --gold: #f0c27a; --gold2: #f6d9a8; --accent: #f29a52; --accent-soft: rgba(242, 154, 82, .1);
+  --card-shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 6px 18px rgba(0, 0, 0, .35);
+}
+[data-theme="dark"] body::before { background: #141016; }
+#sky, .planets-bg { display: none !important; }
+[data-theme="light"] body::before { background: #faf7f2; }
+
+/* Base typography */
+body, body.ta, body:not(.ta) { font-family: var(--font-ui); font-size: var(--fs-base); line-height: var(--lh-text); letter-spacing: 0; }
+p { margin: 0 0 8px; }
+.small, small { font-size: var(--fs-sm) !important; line-height: 1.55; }
+.muted { color: var(--muted); }
+h1, h2, h3, h4, .card h2, body.ta .card h2, .sub-head h2, body.ta .sub-head h2, .section-title, body.ta .section-title, .guide-q, .td-month, .life-answer, .big-line {
+  font-family: var(--font-ui) !important; font-weight: 700; line-height: var(--lh-head) !important; letter-spacing: 0 !important; text-wrap: balance;
+}
+.mini-label { text-transform: none; letter-spacing: 0; font-size: var(--fs-xs); line-height: 1.5; color: var(--muted); }
+.clock, .countdown, .w-temp, .wx-temp, .plan-price, .big-score, .mu-score, .gauge .num, .invite-code, .td-day, .pan-day, .num b, .tb-value {
+  font-family: var(--font-num) !important; font-variant-numeric: tabular-nums; letter-spacing: 0;
+}
+
+/* Header: logo · brand + full tagline (may wrap to two lines) · language · settings */
+.topbar, [data-theme="light"] .topbar { padding: calc(8px + env(safe-area-inset-top)) 12px 8px; gap: 8px; align-items: center; min-height: 60px; }
+.brand-mini { gap: 10px; align-items: center; }
+.brand-mini img { width: 38px; height: 38px; border-radius: 10px; }
+.bm-ta { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; white-space: normal; line-height: 1.3; font-family: var(--font-ui); }
+.bm-ta .bm-name { font-size: 19px; font-weight: 700; color: var(--brand); line-height: 1.3; }
+.bm-ta .bm-latin { margin: 0; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 2px; color: var(--muted); }
+.bm-tag, .bm-tag[data-brand] { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; font-size: 12px !important; line-height: 1.4 !important; margin-top: 1px; color: var(--muted) !important; font-weight: 500 !important; }
+.top-actions { gap: 6px; }
+.top-actions .chip-btn { min-height: 40px; min-width: 40px; padding: 6px 10px; font-size: 13px; }
+body.large .bm-ta .bm-name { font-size: 21px; }
+body.large .bm-tag { font-size: 13.5px !important; }
+
+/* Screen title + sub-title: always stacked with a clear gap, never overlapping */
+.sub-head { display: flex; align-items: flex-start; gap: 12px; margin: 4px 0 16px; }
+.sub-head > div { display: flex; flex-direction: column; gap: var(--gap-head); min-width: 0; flex: 1; }
+.sub-head h2 { margin: 0 !important; font-size: var(--fs-xl) !important; color: var(--brand); }
+[data-theme="dark"] .sub-head h2 { color: var(--gold2); }
+.sub-head p, .sub-head .muted { margin: 0 !important; font-size: var(--fs-sm) !important; line-height: 1.55; }
+.back-btn { width: 40px; height: 40px; min-height: 40px; flex: none; display: grid; place-items: center; font-size: 22px; line-height: 1; margin-top: 2px; }
+
+/* Cards */
+.card { padding: 16px; margin-bottom: 14px; border-radius: 18px; }
+.glass, [data-theme="light"] .glass { background: var(--glass); border: 1px solid var(--glass-b); box-shadow: var(--card-shadow); }
+.card h2 { font-size: var(--fs-lg); margin: 0 0 6px; color: var(--brand); }
+[data-theme="dark"] .card h2 { color: var(--gold2); }
+.card h2 + p, .card h2 + .muted { margin-top: var(--gap-head); }
+.card-title, [data-theme="light"] .card-title { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 10px;
+  font-size: var(--fs-md) !important; font-weight: 700; line-height: var(--lh-head); color: var(--brand); margin-bottom: 12px; }
+[data-theme="dark"] .card-title { color: var(--gold2); }
+.card-title > * { min-width: 0; }
+.section-title, [data-theme="light"] .section-title { font-size: var(--fs-md) !important; margin: 22px 2px 10px; color: var(--brand); }
+[data-theme="dark"] .section-title { color: var(--gold2); }
+.factor, .pan-row, .deep-row, .kv dt, .kv dd { line-height: 1.55; font-size: var(--fs-base); }
+.factor { gap: 10px; align-items: flex-start; }
+.factor > span { min-width: 0; }
+.kv { row-gap: 8px; }
+
+/* Buttons, chips, inputs */
+.chip-btn, .link-btn { font-size: var(--fs-sm); line-height: 1.35; padding: 8px 14px; white-space: normal; text-align: center; }
+.btn-gold, .btn-soft { font-size: var(--fs-md); line-height: 1.4; padding: 13px 16px; border-radius: 14px; }
+input, select, textarea { font-size: var(--fs-base) !important; line-height: 1.45; padding: 11px 12px; }
+form label, label { font-size: var(--fs-sm); line-height: 1.5; }
+.tag, .pill, .badge { line-height: 1.5; white-space: normal; }
+.seg button { font-size: var(--fs-sm); line-height: 1.35; padding: 9px 8px; }
+
+/* Home */
+.greet { font-size: var(--fs-md); font-weight: 600; line-height: 1.45; }
+.guide-q { font-size: var(--fs-xl) !important; margin: 4px 0 12px; }
+.guide-sugs .sg, .suggest-row .sg { font-size: var(--fs-base); line-height: 1.5; padding: 11px 14px; }
+.hero { padding: 16px; border-radius: 18px; }
+.tamil-date { gap: 14px; align-items: center; }
+.td-day { font-size: 52px !important; line-height: 1 !important; min-width: 64px; font-weight: 700; }
+.td-month { font-size: var(--fs-xl) !important; margin: 0 0 2px; }
+.td-year { font-size: var(--fs-sm); line-height: 1.5; }
+.chips { gap: 8px; }
+.chip-card { padding: 10px; line-height: 1.45; }
+.chip-card b { font-size: var(--fs-base); line-height: 1.4; display: block; margin: 2px 0; }
+.gowri .gw b, .kalam > div b { line-height: 1.4; }
+.kalam > div, .gw { font-size: var(--fs-xs); line-height: 1.45; }
+
+/* Tab bar */
+.tabbar button span:last-child { font-size: 11.5px; line-height: 1.3; }
+body.large .tabbar button span:last-child { font-size: 12.5px; }
+
+/* Chat */
+.bubble { font-size: var(--fs-base); line-height: 1.6; }
+.ans-h { font-size: var(--fs-sm); line-height: 1.45; margin-bottom: 4px; }
+.ans-sec li { line-height: 1.55; margin: 4px 0; }
+
+/* Text-with-bar rows */
+.gb-row, .gb-row.static { font-size: var(--fs-base); row-gap: 6px; padding: 10px 0; }
+.gb-row > .gb-name { line-height: 1.45; }
+.tb-row .tb-label { line-height: 1.45; }
+details.bhava summary { font-size: var(--fs-base); }
+
+/* Tables: horizontal scroll inside their card instead of squeezing Tamil words */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-wrap table { min-width: 420px; font-size: var(--fs-sm); }
+.table-wrap td, .table-wrap th { padding: 8px 6px; line-height: 1.45; vertical-align: top; }
+
+/* Old decorative fonts (no longer loaded) fall back to the UI family */
+.brand-en, .bm-en, .brand-foot span, .slogan { font-family: var(--font-ui) !important; letter-spacing: 1px; }
+.guide-sugs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.guide-sugs .sg { font-size: var(--fs-sm); padding: 10px 12px; min-height: 56px; }
+@media (max-width: 330px) { .guide-sugs { grid-template-columns: minmax(0, 1fr); } }
+body.large .guide-sugs { grid-template-columns: minmax(0, 1fr); }
+.life-details { border: 1px solid var(--glass-b); border-radius: 14px; padding: 10px 12px; margin: 0 0 12px; } .life-details summary { cursor: pointer; font-weight: 600; font-size: var(--fs-sm); line-height: 1.5; } .life-details[open] summary { margin-bottom: 10px; }
+.bubble { scroll-margin-top: 84px; } #chatLog { margin-bottom: 8px; }
+.support-card { border-left: 4px solid var(--good) !important; }
+.support-lines { display: flex; flex-wrap: wrap; gap: 8px; }
+.support-lines .chip-btn { display: inline-flex; flex-direction: column; align-items: flex-start; text-decoration: none; }
+.guide-q { font-size: 20px !important; }
+body.large .guide-q { font-size: 23px !important; }
+/* 320 px fixes from the automated QA pass */
+.seg { flex-wrap: wrap; }
+.seg button { flex: 1 1 auto; min-width: 0; }
+.kv { grid-template-columns: minmax(0, auto) minmax(0, 1fr); }
+.kv dd { min-width: 0; overflow-wrap: break-word; }
+.tag, .pill { max-width: 100%; }
+.card-title > span, .factor > b, .gb-row > :nth-child(3) { min-width: 0; }
+.set-row { flex-wrap: wrap; gap: 8px; }
+.set-row > span { min-width: 0; flex: 1 1 160px; }
+.table-wrap { max-width: 100%; }
+details, details > div, .bhava { min-width: 0; max-width: 100%; }
+/* Safety net: nothing may make the whole page scroll sideways (clip keeps sticky headers working). */
+#app { overflow-x: clip; }

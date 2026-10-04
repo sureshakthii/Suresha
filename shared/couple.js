@@ -6,6 +6,7 @@ import { matchPorutham, doshams, doshaSamyam } from './porutham.js';
 import { grahaStrength, NAVAGRAHA } from './remedies.js';
 import { bhavaAnalysis } from './analysis.js';
 import { significations, planetScore, predictEvent } from './predict.js';
+import { deepMarriageChecks } from './lifecheck.js';
 
 const DAY = 86400000;
 const YEAR = 365.25 * DAY;
@@ -173,8 +174,11 @@ export function marriageReport(bride, groom, { weddingDate = new Date(), years =
   const home = agree(houseA.windows, houseB.windows);
   const careYears = rows.filter((r) => r.level === 'care');
   const goodYears = rows.filter((r) => r.level === 'good');
-  const total = Math.round(porutham.score * 10 * 0.45 + mana.overall * 0.55);
-  const verdict = porutham.criticalFail && mana.overall < 60 ? 'consult' : total >= 68 ? 'excellent' : total >= 55 ? 'good' : 'effort';
+  const deep = deepMarriageChecks(bride, groom, weddingDate);
+  // Not only the 10 poruthams: mana porutham and the deep checks (ayul, papa samyam, dasa sandhi, lagna, bhavas) weigh more.
+  const total = Math.round(porutham.score * 10 * 0.3 + mana.overall * 0.35 + deep.score * 0.35);
+  const ayulCare = deep.ayul.bride.level === 'care' || deep.ayul.groom.level === 'care';
+  const verdict = (porutham.criticalFail && mana.overall < 60) || (ayulCare && deep.passed < 6) ? 'consult' : total >= 68 ? 'excellent' : total >= 55 ? 'good' : 'effort';
   const strengths = mana.areas.filter((x) => x.score >= 66).map((x) => x.name);
   const challenges = mana.areas.filter((x) => x.score < 50).map((x) => x.name);
   const remedies = [
@@ -183,7 +187,9 @@ export function marriageReport(bride, groom, { weddingDate = new Date(), years =
     ...(careYears.length ? [T('In care years: daily 10 minutes of talking without phones, and joint decisions only after a night\'s sleep.', 'கவனக் காலங்களில்: தினமும் 10 நிமிடம் கைப்பேசி இல்லாமல் பேசுங்கள்; பெரிய முடிவுகளை ஒரு இரவு கழித்து எடுங்கள்.')] : []),
     ...(!dB.chevvai.present !== !dG.chevvai.present ? [T('For Chevvai dosham: worship Lord Murugan on Tuesdays together.', 'செவ்வாய் தோஷத்திற்கு: செவ்வாய்தோறும் சேர்ந்து முருகன் வழிபாடு.')] : []),
   ];
-  return { porutham, doshams: { bride: dB, groom: dG }, samyam, mana, total, verdict, strengths, challenges, timeline: rows, children, home, careYears, goodYears, remedies, childFallback: childA.windows[0] || childB.windows[0] || null };
+  if (ayulCare) remedies.push(T('For ayul balam: chant the Maha Mrityunjaya mantra together on Mondays and visit Thirukadaiyur Abirami Amman.', 'ஆயுள் பலத்திற்கு: திங்கள்தோறும் சேர்ந்து மகா மிருத்யுஞ்ஜய மந்திரம் சொல்லி, திருக்கடையூர் அபிராமி அம்மனை தரிசியுங்கள்.'));
+  if (!deep.papaOk) remedies.push(T('For papa samyam: Navagraha pooja together before the wedding.', 'பாப சாம்யத்திற்கு: திருமணத்திற்கு முன் சேர்ந்து நவகிரக பூஜை.'));
+  return { porutham, doshams: { bride: dB, groom: dG }, samyam, mana, deep, total, verdict, strengths, challenges, timeline: rows, children, home, careYears, goodYears, remedies, childFallback: childA.windows[0] || childB.windows[0] || null };
 }
 
 const ROLE_FIELDS = [

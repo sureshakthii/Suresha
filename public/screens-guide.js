@@ -1,0 +1,257 @@
+// Personal guide (என் வழிகாட்டி) for every family member, and a big, simple Panchangam (பஞ்சாங்கம்)
+// for elders with a quick "vibe" card for the young generation.
+import { NAKSHATRAS, RASIS, panchang } from './shared/astro.js';
+import { tamilDay } from './shared/tamilcal.js';
+import { personalGuide, DAY_COLOR } from './shared/personal.js';
+import {
+  state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtDate, activeMember, chartOf,
+  registerScreen, subHeader, speak, stopSpeaking, toast, displayName, placeName, yogaName, saveSettings, copyright,
+} from './core.js';
+import { dayOutlook } from './screens-main.js';
+import { isLocked, lockCard } from './growth.js';
+
+const WEEK_TA = ['ஞாயிறு', 'திங்கள்', 'செவ்வாய்', 'புதன்', 'வியாழன்', 'வெள்ளி', 'சனி'];
+const WEEK_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const dayName = (i) => (ta() ? WEEK_TA[i] : WEEK_EN[i]);
+const people = () => state.family.filter((m) => m.relation !== 'organization');
+const swatch = (c, big = false) => `<span class="swatch${big ? ' big' : ''}" style="background:${c.hex}" aria-hidden="true"></span>`;
+
+/** "Guru Vakku" — today's personal word from Kaippesi Jothidar for the active member: outlook, colour, number. Used on home. */
+export function todayColorCard() {
+  const m = activeMember();
+  if (!m || m.relation === 'organization') return '';
+  const c = chartOf(m);
+  const g = personalGuide(c, { date: m.date });
+  const snap = state.snap || panchang(new Date(), state.loc.lat, state.loc.lon, state.loc.tz);
+  const o = dayOutlook(c, snap);
+  const word = {
+    good: L('A strong day — begin important work with confidence.', 'நல்ல நாள் — முக்கிய வேலைகளைத் தைரியமாகத் தொடங்குங்கள்.'),
+    warn: L('A steady day — plan well and remember your Ishta Theivam.', 'நிதானமான நாள் — திட்டமிட்டுச் செயல்படுங்கள், இஷ்ட தெய்வத்தை நினையுங்கள்.'),
+    bad: L(`A day to stay calm — postpone new starts and chant ${g.ishta.mantra}.`, `அமைதி காக்கும் நாள் — புதிய முயற்சிகளைத் தள்ளிவைத்து "${g.ishta.mantra}" சொல்லுங்கள்.`),
+  }[o.overall];
+  return `<div class="card glass color-today guru" data-go="guide">${swatch(g.today, true)}
+    <div style="flex:1;min-width:0"><div class="mini-label">🙏 ${L('Guru Vakku for', 'குரு வாக்கு')} · ${esc(displayName(m))}</div>
+      <div class="small">${esc(word)}</div>
+      <div class="muted small">👕 ${esc(bi(g.today))} · 🔢 ${g.numbers.birth} · 🙏 ${esc(bi(g.ishta.deity))}</div></div><span class="chev">›</span></div>`;
+}
+
+// ================================================================ PERSONAL GUIDE
+const guideUi = { id: null, playing: false };
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    else { await wakeLock?.release(); wakeLock = null; }
+  } catch { /* not granted */ }
+}
+
+function renderGuide(sec) {
+  const pool = people();
+  const m = pool.find((x) => x.id === guideUi.id) || (activeMember()?.relation !== 'organization' ? activeMember() : pool[0]);
+  if (!m) { sec.innerHTML = `${subHeader(L('My Guide', 'என் வழிகாட்டி'))}<p class="muted center">${L('Add a family member first.', 'முதலில் குடும்ப உறுப்பினரைச் சேர்க்கவும்.')}</p>`; return; }
+  guideUi.id = m.id;
+  const c = chartOf(m);
+  const g = personalGuide(c, { date: m.date });
+  const locked = isLocked('predictions');
+  const lvl = { strong: ['good', L('Strong', 'வலுவானது')], medium: ['warn', L('Medium', 'நடுத்தரம்')], care: ['bad', L('Needs care', 'கவனம் தேவை')] }[g.ayul.level];
+  sec.innerHTML = `${subHeader(L('My Guide', 'என் வழிகாட்டி'), L('Lucky number, colour, Ishta Theivam, gemstones, Siddhar and your own mantra playlist', 'அதிர்ஷ்ட எண், நிறம், இஷ்ட தெய்வம், ரத்தினம், சித்தர், உங்கள் மந்திரப் பட்டியல்'))}
+    ${pool.length > 1 ? `<div class="member-switch">${pool.map((x) => `<button class="mchip${x.id === m.id ? ' sel' : ''}" data-gid="${esc(x.id)}">${esc(displayName(x))}</button>`).join('')}</div>` : ''}
+    <div class="card glass guide-head"><div class="g-avatar">${GLYPH[g.lagnaLord]}</div><div><b>${esc(displayName(m))}</b>
+      <div class="muted small">${L('Lagna', 'லக்னம்')}: ${esc(rasiName(c.lagna.rasi ?? c.planets.Lagna.rasi))} · ${L('Star', 'நட்சத்திரம்')}: ${esc(nakName(c.janmaNakshatra.index))} · ${L('Rasi', 'ராசி')}: ${esc(rasiName(c.janmaRasi.index))}</div></div></div>
+
+    <div class="card glass"><div class="card-title">👕 ${L('Colour to wear today', 'இன்று அணிய வேண்டிய நிறம்')}</div>
+      <div class="color-big">${swatch(g.today, true)}<div><b>${esc(bi(g.today))}</b><p class="small">${esc(bi(g.today.note))}</p></div></div>
+      <div class="week-colors">${g.week.map((d) => `<div class="wc${d.weekday === new Date().getDay() ? ' now' : ''}">${swatch(d)}<span>${dayName(d.weekday)}</span></div>`).join('')}</div>
+      <p class="muted small">${L('Always lucky for you', 'எப்போதும் உங்களுக்கு ஏற்ற நிறங்கள்')}: ${g.luckyColors.map((x) => `${swatch(x)} ${esc(bi(x))}`).join(' · ')}</p></div>
+
+    <div class="card glass"><div class="card-title">🔢 ${L('Lucky numbers', 'அதிர்ஷ்ட எண்கள்')}</div>
+      <div class="num-row"><div class="num"><b>${g.numbers.birth}</b><span>${L('Birth number', 'பிறவி எண்')}<br>${GLYPH[g.numbers.birthPlanet]} ${esc(planetName(g.numbers.birthPlanet))}</span></div>
+        <div class="num"><b>${g.numbers.destiny}</b><span>${L('Destiny number', 'விதி எண்')}<br>${GLYPH[g.numbers.destinyPlanet]} ${esc(planetName(g.numbers.destinyPlanet))}</span></div></div>
+      <div class="factor"><span>✨ ${L('Lucky numbers', 'அதிர்ஷ்ட எண்கள்')}</span><b class="pos">${g.numbers.lucky.join(', ')}</b></div>
+      ${g.numbers.avoid.length ? `<div class="factor"><span>🚫 ${L('Less favourable', 'தவிர்க்க வேண்டிய எண்கள்')}</span><b class="neg">${g.numbers.avoid.join(', ')}</b></div>` : ''}
+      <div class="factor"><span>📅 ${L('Lucky dates every month', 'ஒவ்வொரு மாதமும் அதிர்ஷ்ட தேதிகள்')}</span><b class="zero">${g.numbers.luckyDates.join(', ')}</b></div></div>
+
+    <div class="card glass"><div class="card-title">🙏 ${L('Ishta Theivam', 'இஷ்ட தெய்வம்')}</div>
+      <p class="big-line">${esc(bi(g.ishta.deity))}</p><p class="small">🕉️ ${esc(g.ishta.mantra)}</p>
+      <p class="small">⭐ ${L('Your birth-star deity', 'உங்கள் நட்சத்திர வழிபாட்டுத் தெய்வம்')}: <b>${esc(bi(g.ishta.starDeity))}</b></p>
+      <p class="muted small">${L('How we found it', 'கணக்கு')}: ${esc(bi(g.ishta.why))}</p></div>
+
+    ${locked ? lockCard(L('Gemstones, your Siddhar, ayul balam and your personal mantra playlist are part of Premium.', 'ரத்தினங்கள், உங்கள் சித்தர், ஆயுள் பலம், தனிப்பட்ட மந்திரப் பட்டியல் பிரீமியத்தில் உள்ளன.')) : `
+    <div class="card glass"><div class="card-title">💎 ${L('Gemstones', 'ரத்தினங்கள்')}</div>
+      <div class="mini-label">✅ ${L('Suitable for you', 'உங்களுக்கு ஏற்றவை')}</div>
+      ${g.gems.good.map((x) => `<div class="factor"><span>${GLYPH[x.planet]} <b>${esc(bi(x.gem))}</b>${x.primary ? ` <span class="tag good">${L('Main', 'முதன்மை')}</span>` : ''}<br><small class="muted">${esc(bi(x.role))}</small></span></div>`).join('')}
+      <div class="mini-label">⛔ ${L('Avoid', 'தவிர்க்க வேண்டியவை')}</div>
+      ${g.gems.avoid.map((x) => `<div class="factor"><span>${GLYPH[x.planet]} ${esc(bi(x.gem))}<br><small class="muted">${esc(bi(x.role))}</small></span></div>`).join('')}
+      <p class="muted small">⚠️ ${esc(bi(g.gems.note))}</p></div>
+
+    <div class="card glass siddhar"><div class="card-title">🧘 ${L('Your Siddhar', 'உங்கள் சித்தர்')} <span class="pill">${L('Our proposal', 'எங்கள் பரிந்துரை')}</span></div>
+      <p class="big-line">${esc(bi(g.siddhar.main))}</p><p class="small">📍 ${L('Jeeva Samadhi', 'ஜீவ சமாதி')}: ${esc(bi(g.siddhar.main.place))}</p>
+      <p class="small">🕉️ ${esc(g.siddhar.main.mantra)}</p>
+      ${g.siddhar.second ? `<p class="small">➕ ${L('Also', 'மேலும்')}: <b>${esc(bi(g.siddhar.second))}</b> (${esc(bi(g.siddhar.second.place))})</p>` : ''}
+      <p class="muted small">${esc(bi(g.siddhar.why))}</p><p class="small">${esc(bi(g.siddhar.howTo))}</p></div>
+
+    <div class="card glass"><div class="card-title">🌿 ${L('Ayul Balam (long-life strength)', 'ஆயுள் பலம்')}</div>
+      <div class="factor"><span>${esc(bi(g.ayul.text))}</span><span class="tag ${lvl[0]}">${lvl[1]}</span></div>
+      <details><summary class="small">${L('Why', 'காரணம்')}</summary>${g.ayul.reasons.map((r) => `<div class="small">• ${esc(bi(r))}</div>`).join('')}</details>
+      <p class="muted small">${L('We show strength only — never a number of years. Health is in your hands: good food, sleep and check-ups.', 'பலம் மட்டுமே காட்டப்படும் — ஆண்டுகள் அல்ல. ஆரோக்கியம் உங்கள் கையில்: நல்ல உணவு, உறக்கம், பரிசோதனை.')}</p></div>
+
+    <div class="card glass"><div class="card-title"><span>🎧 ${L('My mantra playlist', 'என் மந்திரப் பாடல் பட்டியல்')}</span></div>
+      <p class="muted small">${L('Made from your chart — listen in the morning, while travelling or before sleep.', 'உங்கள் ஜாதகத்திலிருந்து உருவானது — காலையில், பயணத்தில், உறங்கும் முன் கேளுங்கள்.')}</p>
+      <button class="btn-gold" id="plAll">${guideUi.playing ? `⏹ ${L('Stop', 'நிறுத்து')}` : `▶️ ${L('Play all', 'அனைத்தையும் ஒலி')}`}</button>
+      ${g.playlist.map((p, i) => `<div class="pl-item" id="pl-${i}"><button class="play-btn" data-pl="${i}" aria-label="${esc(L('Play', 'ஒலி'))}">▶</button>
+        <div style="flex:1;min-width:0"><b>${esc(bi(p.title))}</b><div class="small">${esc(p.text)}</div><div class="muted small">${esc(bi(p.why))} · ×${p.repeat}</div></div><span class="pl-count" id="plc-${i}"></span></div>`).join('')}
+      <p class="muted small">${L('Uses your phone\'s Tamil voice. If silent: Settings → Google Text-to-speech → install Tamil.', 'உங்கள் கைப்பேசியின் தமிழ் குரலைப் பயன்படுத்தும். ஒலிக்காவிட்டால்: Settings → Google Text-to-speech → தமிழ் நிறுவவும்.')}</p></div>`}
+    <div class="btn-row"><button class="chip-btn" data-go="parigaram">🪔 ${L('Parigaram', 'பரிகாரம்')}</button><button class="chip-btn" data-go="temples">🛕 ${L('Temples', 'கோவில்கள்')}</button><button class="chip-btn" data-go="analysis">📜 ${L('Full analysis', 'முழு ஆய்வு')}</button></div>`;
+
+  $$('[data-gid]', sec).forEach((b) => b.addEventListener('click', () => { stopPlaylist(); guideUi.id = b.dataset.gid; renderGuide(sec); }));
+  const playOne = async (i) => {
+    const p = g.playlist[i];
+    $$('.pl-item', sec).forEach((x) => x.classList.toggle('playing', x.id === `pl-${i}`));
+    for (let k = 0; k < p.repeat && guideUi.playing; k++) {
+      const ok = await speak(p.text, { rate: 0.82 });
+      if (!ok) { guideUi.playing = false; break; }
+      const cnt = $(`#plc-${i}`);
+      if (cnt) cnt.textContent = `${k + 1}/${p.repeat}`;
+    }
+  };
+  $$('[data-pl]', sec).forEach((b) => b.addEventListener('click', async () => {
+    stopPlaylist(); guideUi.playing = true; keepAwake(true);
+    await playOne(Number(b.dataset.pl));
+    stopPlaylist();
+  }));
+  $('#plAll')?.addEventListener('click', async () => {
+    if (guideUi.playing) { stopPlaylist(); renderGuide(sec); return; }
+    guideUi.playing = true; keepAwake(true); $('#plAll').textContent = `⏹ ${L('Stop', 'நிறுத்து')}`;
+    for (let i = 0; i < g.playlist.length && guideUi.playing; i++) await playOne(i);
+    stopPlaylist();
+    if (state.view === 'guide') renderGuide(sec);
+  });
+}
+function stopPlaylist() { guideUi.playing = false; stopSpeaking(); keepAwake(false); $$('.pl-item').forEach((x) => x.classList.remove('playing')); }
+document.addEventListener('kj:screen', (e) => { if (e.detail !== 'guide' && guideUi.playing) stopPlaylist(); });
+registerScreen('guide', { render: renderGuide, parent: 'home', needsMember: true });
+
+// ================================================================ PANCHANGAM
+// Soolam: direction to avoid travelling towards on each weekday, and the parigaram if travel is unavoidable.
+const SOOLAM = [
+  ['West', 'மேற்கு', 'Jaggery', 'வெல்லம்'], ['East', 'கிழக்கு', 'Curd', 'தயிர்'], ['North', 'வடக்கு', 'Milk', 'பால்'], ['North', 'வடக்கு', 'Milk', 'பால்'],
+  ['South', 'தெற்கு', 'Oil (thailam)', 'தைலம்'], ['West', 'மேற்கு', 'Jaggery', 'வெல்லம்'], ['East', 'கிழக்கு', 'Curd', 'தயிர்'],
+];
+// Daily rasi palan from the Moon's position counted from each janma rasi.
+const PALAN = {
+  1: ['warn', 3, 'Moon in your sign — keep calm, avoid hasty words.', 'ஜன்ம சந்திரன் — மனதில் சிறு சஞ்சலம், நிதானமாகப் பேசுங்கள்.'],
+  2: ['warn', 3, 'Mixed money matters; speak gently with family.', 'பண வரவு கலவை; குடும்பத்தில் இனிமையாகப் பேசுங்கள்.'],
+  3: ['good', 5, 'Courage and success — efforts bear fruit.', 'தைரியம், வெற்றி — முயற்சிகள் பலிக்கும்.'],
+  4: ['warn', 3, 'Take care of home and mother; drive carefully.', 'வீடு, தாய் நலனில் கவனம்; வாகனத்தில் கவனம்.'],
+  5: ['warn', 3, 'Think twice before decisions; children bring news.', 'முடிவுகளை யோசித்து எடுங்கள்; பிள்ளைகளால் செய்தி.'],
+  6: ['good', 4, 'Obstacles clear, health improves, debts reduce.', 'தடைகள் விலகும், ஆரோக்கியம் சீராகும், கடன் குறையும்.'],
+  7: ['good', 4, 'Good for partnerships, meetings and travel.', 'கூட்டு முயற்சி, சந்திப்பு, பயணம் நன்று.'],
+  8: ['bad', 1, 'Chandrashtamam — avoid new starts and arguments; pray and rest.', 'சந்திராஷ்டமம் — புதிய முயற்சி, வாக்குவாதம் தவிர்க்கவும்; வழிபட்டு ஓய்வெடுங்கள்.'],
+  9: ['warn', 4, 'Blessings of elders; a good day for prayer.', 'பெரியோர் ஆசி; வழிபாட்டிற்கு நல்ல நாள்.'],
+  10: ['good', 5, 'Progress and praise at work.', 'தொழிலில் முன்னேற்றம், பாராட்டு.'],
+  11: ['good', 5, 'Gains and good news.', 'லாபம், நல்ல செய்தி.'],
+  12: ['warn', 2, 'Expenses — spend wisely and rest well.', 'செலவுகள் — கவனமாகச் செலவிட்டு நன்கு ஓய்வெடுங்கள்.'],
+};
+const starsInRasi = (r) => [...new Set(Array.from({ length: 9 }, (_, i) => Math.floor((r * 9 + i) / 4)))];
+const panUi = { offset: 0 };
+
+function dayFor(offset) {
+  const loc = state.loc;
+  const [d, m, y] = fmtDate(new Date(Date.now() + offset * 86400000), loc.tz).split('-').map(Number); // local DD-MM-YYYY
+  const base = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const noon = new Date(Date.UTC(y, m - 1, d, 12) - loc.tz * 3600000);
+  return { iso: base, noon, td: tamilDay(noon, loc.lat, loc.lon, loc.tz) };
+}
+
+function renderPanchangam(sec) {
+  const loc = state.loc;
+  const { iso, noon, td } = dayFor(panUi.offset);
+  const isToday = panUi.offset === 0;
+  const snapNow = isToday ? (state.snap || panchang(new Date(), loc.lat, loc.lon, loc.tz)) : panchang(noon, loc.lat, loc.lon, loc.tz);
+  const wd = td.weekday.index;
+  const so = SOOLAM[wd];
+  const cRasi = td.chandrashtamaRasi;
+  const [y, mo, d] = iso.split('-');
+  const m = activeMember();
+  const t = (x) => fmtTime(x, loc.tz);
+  const good = td.gowri.filter((g) => g.good);
+  const vibe = m && m.relation !== 'organization' && isToday ? vibeCard(m, snapNow) : '';
+  const spokenTa = `${td.tamil.year.ta} வருடம், ${td.tamil.monthTa} ${td.tamil.day}, ${td.weekday.ta}. திதி ${td.tithi.ta}. நட்சத்திரம் ${NAKSHATRAS[td.nakshatra.index].ta}. யோகம் ${td.yoga.ta || td.yoga.name}. ராகு காலம் ${t(td.rahuKalam.start)} முதல் ${t(td.rahuKalam.end)} வரை. எமகண்டம் ${t(td.yamagandam.start)} முதல் ${t(td.yamagandam.end)} வரை. சூலம் ${so[1]}, பரிகாரம் ${so[3]}. சந்திராஷ்டமம் ${starsInRasi(cRasi).map((s) => NAKSHATRAS[s].ta).join(', ')}.`;
+  const spokenEn = `${td.weekday.en}, ${td.tamil.monthEn} ${td.tamil.day}. Tithi ${td.tithi.name}. Star ${NAKSHATRAS[td.nakshatra.index].en}. Rahu kalam ${t(td.rahuKalam.start)} to ${t(td.rahuKalam.end)}. Soolam ${so[0]}.`;
+  sec.innerHTML = `${subHeader(L('Panchangam', 'பஞ்சாங்கம்'), `📍 ${esc(placeName(loc.name))}`)}
+    <div class="pan-nav"><button class="chip-btn" id="panPrev" aria-label="${esc(L('Previous day', 'முந்தைய நாள்'))}">‹ ${L('Yesterday', 'முந்தைய')}</button>
+      ${isToday ? `<span class="pill">${L('Today', 'இன்று')}</span>` : `<button class="chip-btn" id="panToday">${L('Today', 'இன்று')}</button>`}
+      <button class="chip-btn" id="panNext" aria-label="${esc(L('Next day', 'அடுத்த நாள்'))}">${L('Tomorrow', 'அடுத்த')} ›</button></div>
+    <div class="btn-row"><button class="chip-btn" id="panBig">🔠 ${state.settings.large ? L('Normal text', 'சாதாரண எழுத்து') : L('Big text', 'பெரிய எழுத்து')}</button>
+      <button class="chip-btn" id="panSpeak">🔊 ${L('Read aloud', 'வாசித்துக்காட்டு')}</button><button class="chip-btn" id="panShare">📤 ${L('Share', 'பகிர்')}</button></div>
+
+    <div class="card glass pan-head"><div class="pan-day">${td.tamil.day}</div><div><div class="pan-month">${esc(bi({ en: td.tamil.monthEn, ta: td.tamil.monthTa }))}</div>
+      <div>${esc(ta() ? `${td.tamil.year.ta} வருடம்` : `${td.tamil.year.en} year`)} · <b>${esc(bi(td.weekday))}</b></div><div class="muted">${d}-${mo}-${y} · ${esc(L(td.paksha === 'Shukla' ? 'Valarpirai' : 'Theipirai', td.paksha === 'Shukla' ? 'வளர்பிறை' : 'தேய்பிறை'))}</div></div></div>
+    ${td.festivals.length || td.muhurthaDay ? `<div class="fest-row">${td.festivals.map((f) => `<span class="fest ${f.kind}">${f.kind === 'festival' ? '🎉' : '🪔'} ${esc(bi(f))}</span>`).join('')}${td.muhurthaDay ? `<span class="fest muhurtham">💐 ${L('Subha Muhurtha day', 'சுப முகூர்த்த நாள்')}</span>` : ''}</div>` : ''}
+
+    <div class="card glass pan-big"><div class="card-title">📖 ${L('Pancha Angam — five limbs', 'பஞ்ச அங்கம்')}</div>
+      <div class="pan-row"><span>📅 ${L('Day', 'வாரம்')}</span><b>${esc(bi(td.weekday))}</b></div>
+      <div class="pan-row"><span>🌙 ${L('Tithi', 'திதி')}</span><b>${esc(ta() ? td.tithi.ta : td.tithi.name)}<small>${td.tithi.endsAt ? ` · ${L('till', 'வரை')} ${t(td.tithi.endsAt)}` : ''}</small></b></div>
+      <div class="pan-row"><span>⭐ ${L('Star', 'நட்சத்திரம்')}</span><b>${esc(nakName(td.nakshatra.index))}<small>${td.nakshatra.endsAt ? ` · ${L('till', 'வரை')} ${t(td.nakshatra.endsAt)}` : ''}</small></b></div>
+      <div class="pan-row"><span>🔗 ${L('Yoga', 'யோகம்')}</span><b>${esc(yogaName(td.yoga))}</b></div>
+      <div class="pan-row"><span>🌗 ${L('Karanam', 'கரணம்')}</span><b>${esc(ta() ? td.karanaTa || td.karana : td.karana)}</b></div>
+      <div class="pan-row"><span>♈ ${L('Moon in', 'சந்திரன் ராசி')}</span><b>${esc(rasiName(td.moonRasi.index))}</b></div>
+      <div class="pan-row"><span>☀️ ${L('Sunrise / Sunset', 'சூரிய உதயம் / அஸ்தமனம்')}</span><b>${t(td.sunrise)} / ${t(td.sunset)}</b></div></div>
+
+    <div class="card glass pan-big"><div class="card-title">✨ ${L('Nalla Neram (Gowri)', 'நல்ல நேரம் (கௌரி)')}</div>
+      ${good.map((g) => `<div class="pan-row good"><span>${g.part === 'day' ? '🌞' : '🌙'} ${esc(bi(g))}</span><b>${t(g.start)} – ${t(g.end)}</b></div>`).join('')}</div>
+
+    <div class="card glass pan-big"><div class="card-title">⛔ ${L('Avoid these times', 'தவிர்க்க வேண்டிய நேரம்')}</div>
+      <div class="pan-row bad"><span>🐍 ${L('Rahu Kalam', 'ராகு காலம்')}</span><b>${t(td.rahuKalam.start)} – ${t(td.rahuKalam.end)}</b></div>
+      <div class="pan-row bad"><span>⚔️ ${L('Yamagandam', 'எமகண்டம்')}</span><b>${t(td.yamagandam.start)} – ${t(td.yamagandam.end)}</b></div>
+      <div class="pan-row bad"><span>🌑 ${L('Guligai', 'குளிகை')}</span><b>${t(td.guligai.start)} – ${t(td.guligai.end)}</b></div>
+      <div class="pan-row"><span>🧭 ${L('Soolam', 'சூலம்')}</span><b>${esc(L(so[0], so[1]))}<small> · ${L('parigaram', 'பரிகாரம்')}: ${esc(L(so[2], so[3]))}</small></b></div>
+      <div class="pan-row"><span>🌘 ${L('Chandrashtamam', 'சந்திராஷ்டமம்')}</span><b>${starsInRasi(cRasi).map((s) => esc(nakName(s))).join(', ')}<small> (${esc(rasiName(cRasi))})</small></b></div></div>
+
+    ${vibe}
+
+    <div class="section-title">🔮 ${L('Rasi palan — all 12 signs', '12 ராசி பலன்')}</div>
+    <div class="rasi-grid">${RASIS.map((r, i) => {
+    const pos = ((td.moonRasi.index - i + 12) % 12) + 1;
+    const [lv, stars, en, tx] = PALAN[pos];
+    const mine = m && m.relation !== 'organization' && chartOf(m).janmaRasi.index === i;
+    return `<div class="card glass rp ${lv}${mine ? ' mine' : ''}"><b>${esc(rasiName(i))}${mine ? ' 👤' : ''}</b><span class="stars" aria-label="${stars}/5">${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}</span><p class="small">${esc(L(en, tx))}</p></div>`;
+  }).join('')}</div>
+    <div class="btn-row"><button class="chip-btn" data-go="calendar">📅 ${L('Month calendar', 'மாதக் காலண்டர்')}</button><button class="chip-btn" data-go="muhurtham">🗓️ ${L('Muhurtham', 'முகூர்த்தம்')}</button><button class="chip-btn" data-go="live">🌌 ${L('Live horai', 'நேரலை ஓரை')}</button></div>
+    ${copyright()}`;
+  $('#panPrev').addEventListener('click', () => { panUi.offset -= 1; renderPanchangam(sec); });
+  $('#panNext').addEventListener('click', () => { panUi.offset += 1; renderPanchangam(sec); });
+  $('#panToday')?.addEventListener('click', () => { panUi.offset = 0; renderPanchangam(sec); });
+  $('#panBig').addEventListener('click', () => { state.settings.large = !state.settings.large; saveSettings(); renderPanchangam(sec); });
+  $('#panSpeak').addEventListener('click', () => speak(ta() ? spokenTa : spokenEn));
+  $('#panShare').addEventListener('click', async () => {
+    const text = `🙏 ${L('Kaippesi Jothidar — Panchangam', 'கைப்பேசி ஜோதிடர் — பஞ்சாங்கம்')}\n${ta() ? spokenTa : spokenEn}`;
+    try { if (navigator.share) { await navigator.share({ text }); return; } } catch { return; }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  });
+  $$('.vibe-share', sec).forEach((b) => b.addEventListener('click', async () => {
+    const text = b.dataset.text;
+    try { if (navigator.share) { await navigator.share({ text }); return; } } catch { return; }
+    try { await navigator.clipboard.writeText(text); toast(L('Copied', 'நகலெடுக்கப்பட்டது')); } catch { /* ignore */ }
+  }));
+}
+
+/** Gen Z "vibe" card: energy, lucky colour & number, power hour — short and shareable. */
+function vibeCard(m, snap) {
+  const c = chartOf(m);
+  const o = dayOutlook(c, snap);
+  const g = personalGuide(c, { date: m.date });
+  const energy = o.overall === 'good' ? 88 : o.overall === 'warn' ? 64 : 38;
+  const word = o.overall === 'good' ? L('🔥 Main-character day', '🔥 இன்று உங்கள் நாள்') : o.overall === 'warn' ? L('😌 Chill & steady', '😌 நிதானமான நாள்') : L('🧘 Low-key, self-care day', '🧘 அமைதியா இருங்க, ஓய்வு நாள்');
+  const now = Date.now();
+  const power = (snap.horai || []).find((h) => new Date(h.end).getTime() > now && ['Jupiter', 'Venus', g.lagnaLord].includes(h.lord));
+  const text = `${word} · ${L('Energy', 'ஆற்றல்')} ${energy}% · ${L('Colour', 'நிறம்')}: ${bi(g.today)} · ${L('Lucky no.', 'அதிர்ஷ்ட எண்')} ${g.numbers.birth}${power ? ` · ${L('Power hour', 'சக்தி நேரம்')} ${fmtTime(power.start, state.loc.tz)}` : ''} — ${L('Kaippesi Jothidar', 'கைப்பேசி ஜோதிடர்')}`;
+  return `<div class="card vibe" style="--vc:${g.today.hex}"><div class="vibe-top"><span class="mini-label">✨ ${L('Today\'s vibe', 'இன்றைய வைப்')} · ${esc(displayName(m))}</span><button class="link-btn vibe-share" data-text="${esc(text)}" aria-label="${esc(L('Share', 'பகிர்'))}">📤</button></div>
+    <div class="vibe-word">${word}</div>
+    <div class="vibe-bar"><i style="width:${energy}%"></i></div><div class="muted small">${L('Energy', 'ஆற்றல்')} ${energy}%</div>
+    <div class="vibe-grid"><div>${swatch(g.today)}<span>${esc(bi(g.today))}</span></div><div><b>${g.numbers.birth}</b><span>${L('Lucky no.', 'அதிர்ஷ்ட எண்')}</span></div>
+      ${power ? `<div><b style="color:${COLOR[power.lord]}">${GLYPH[power.lord]} ${fmtTime(power.start, state.loc.tz)}</b><span>${L('Power hour', 'சக்தி நேரம்')} · ${esc(planetName(power.lord))}</span></div>` : ''}</div></div>`;
+}
+registerScreen('panchangam', { render: renderPanchangam, parent: 'home', needsLoc: true });
+
+export { DAY_COLOR };

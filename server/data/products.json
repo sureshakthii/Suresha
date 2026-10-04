@@ -84,7 +84,7 @@
       "id": "pooja-kumkum-100",
       "category": "pooja",
       "name": { "en": "Kumkum", "ta": "குங்குமம்" },
-      "description": { "en": "Turmeric-based kumkum for pooja and archanai.", "ta": "பூஜை, அர்ச்சனைக்கான மஞ்சள் அடிப்படையிலான குங்குமம்." },
+      "description": { "en": "Turmeric-based kumkum for daily pooja.", "ta": "தினசரி பூஜைக்கான மஞ்சள் அடிப்படையிலான குங்குமம்." },
       "price": 60, "unit": "100 g", "stock": 180, "image": "🔴"
     },
     {

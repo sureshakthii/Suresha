@@ -77,7 +77,7 @@ const coupleUi = { wedding: null };
 function renderCouple(sec) {
   coupleUi.wedding ||= iso(new Date());
   const rerender = () => renderCouple(sec);
-  sec.innerHTML = `${subHeader(L('Married Life Analysis', 'திருமண வாழ்க்கை ஆய்வு'), L('Full birth details of both — porutham, mana porutham and the years ahead from the wedding day', 'இருவரின் முழு ஜாதகம் — பொருத்தம், மனப் பொருத்தம், திருமண நாளிலிருந்து வரும் ஆண்டுகள்'), 'porutham')}
+  sec.innerHTML = `${subHeader(L('Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்'), L('Not only 10 poruthams — birth date, time and place of both: ayul balam, papa samyam, dasa sandhi, lagna, 7th/8th/5th/2nd houses, mana porutham and the years after the wedding', '10 பொருத்தம் மட்டுமல்ல — இருவரின் பிறந்த தேதி, நேரம், இடம்: ஆயுள் பலம், பாப சாம்யம், தசா சந்தி, லக்னம், 7/8/5/2 பாவங்கள், மனப் பொருத்தம், திருமணத்திற்குப் பின் ஆண்டுகள்'), 'home')}
     ${personBlock('bride', `👰 ${L('Bride', 'மணப்பெண்')}`, { gender: 'female' })}
     ${personBlock('groom', `🤵 ${L('Groom', 'மணமகன்')}`, { gender: 'male' })}
     <div class="card glass"><label>${L('Wedding date (done or planned)', 'திருமண தேதி (நடந்தது அல்லது திட்டமிட்டது)')}<input type="date" id="wedDate" value="${esc(coupleUi.wedding)}"></label>
@@ -105,13 +105,21 @@ function showCouple(bride, groom) {
   $('#coupleOut').innerHTML = `
     <div class="card glass verdict-card"><div class="muted small">${esc(bi(names[0]))} (${esc(nakName(bride.chart.janmaNakshatra.index))}) · ${esc(bi(names[1]))} (${esc(nakName(groom.chart.janmaNakshatra.index))})</div>
       <div class="big-score">${r.total}<small>/100</small></div><div class="verdict-big ${r.verdict === 'excellent' || r.verdict === 'good' ? 'DO' : r.verdict === 'effort' ? 'CAUTION' : 'AVOID'}">${esc(verdictText)}</div>
-      <div class="muted small">${L('10 poruthams', '10 பொருத்தங்கள்')}: ${r.porutham.score}/10 · ${L('Mana porutham', 'மனப் பொருத்தம்')}: ${r.mana.overall}/100</div></div>
+      <div class="muted small">${L('10 poruthams', '10 பொருத்தங்கள்')}: ${r.porutham.score}/10 · ${L('Mana porutham', 'மனப் பொருத்தம்')}: ${r.mana.overall}/100 · ${L('Deep checks', 'ஆழ்ந்த ஆய்வு')}: ${r.deep.score}/100</div></div>
     <details class="card glass"><summary><b>📋 ${L('10 Poruthams', '10 பொருத்தங்கள்')} — ${esc(bi(VERDICTS[r.porutham.verdict]))}</b></summary>
       ${r.porutham.rows.map((x) => `<div class="factor"><span>${icon(x.status)} ${esc(ta() ? x.ta : x.en)}<br><small class="muted">${esc(bi(x.detail))}</small></span></div>`).join('')}
       ${r.samyam.map((n) => `<div class="factor"><span>${esc(bi(n))}</span><b class="${n.ok ? 'pos' : 'neg'}">${n.ok ? '✓' : '!'}</b></div>`).join('')}</details>
+    <div class="card glass"><div class="card-title">🛡️ ${L('Beyond the 10 poruthams', '10 பொருத்தத்திற்கும் மேலான ஆய்வு')} <span class="pill">${r.deep.passed}/${r.deep.checks.length}</span></div>
+      ${r.deep.checks.map((c) => `<div class="deep-row"><span>${c.ok ? '✅' : '🟡'} <b>${esc(bi(c.name))}</b><br><small class="muted">${esc(bi(c.note))}</small></span></div>`).join('')}
+      <div class="mini-label" style="margin-top:10px">🌿 ${L('Ayul Balam (long-life strength)', 'ஆயுள் பலம்')}</div>
+      <div class="ayul-pair">${[[names[0], r.deep.ayul.bride], [names[1], r.deep.ayul.groom]].map(([n, a]) => `<div><b>${esc(bi(n))}</b><div><span class="tag ${a.level === 'strong' ? 'good' : a.level === 'medium' ? 'warn' : 'bad'}">${a.level === 'strong' ? L('Strong', 'வலுவானது') : a.level === 'medium' ? L('Medium', 'நடுத்தரம்') : L('Needs care', 'கவனம் தேவை')}</span></div><p class="small">${esc(bi(a.text))}</p></div>`).join('')}</div>
+      <p class="muted small">${L('Ayul is shown only as strength — never as years. Please also do a pre-marriage health check-up together.', 'ஆயுள் பலமாக மட்டுமே காட்டப்படும் — ஆண்டுகளாக அல்ல. திருமணத்திற்கு முன் இருவரும் மருத்துவப் பரிசோதனையும் செய்துகொள்ளுங்கள்.')}</p></div>
     ${locked ? lockCard(L('Mana porutham, children and wealth timing and the 25-year married-life timeline are part of Premium.', 'மனப் பொருத்தம், குழந்தை & செல்வ காலம், 25 ஆண்டு திருமண வாழ்க்கைக் காலவரிசை பிரீமியத்தில் உள்ளன.')) : `
     <div class="card glass"><div class="card-title">💗 ${L('Mana Porutham — mind & life compatibility', 'மனப் பொருத்தம் — மனமும் வாழ்க்கையும்')}</div>${areaRows(r.mana.areas)}
       ${r.mana.karmic ? `<p class="small">✨ ${L('Rahu/Ketu link your charts — a strong karmic bond; keep honesty and shared prayer at the centre.', 'ராகு/கேது உங்கள் ஜாதகங்களை இணைக்கிறது — வலுவான கர்ம பந்தம்; நேர்மையும் சேர்ந்த வழிபாடும் மையமாக இருக்கட்டும்.')}</p>` : ''}</div>
+    <div class="card glass"><div class="card-title">🏠 ${L('Marriage houses of each person', 'ஒவ்வொருவரின் திருமண பாவங்கள்')}</div>
+      ${r.deep.houses.bride.map((h, i) => { const g = r.deep.houses.groom[i]; return `<details class="area-row"><summary><span class="gb-name">${esc(bi(h.name))}</span><small>👰 ${h.score} · 🤵 ${g.score}</small></summary><div class="small"><b>${esc(bi(names[0]))}</b></div>${h.notes.map((x) => `<div class="small">• ${esc(bi(x))}</div>`).join('')}<div class="small"><b>${esc(bi(names[1]))}</b></div>${g.notes.map((x) => `<div class="small">• ${esc(bi(x))}</div>`).join('')}</details>`; }).join('')}
+      <p class="small">⚖️ ${L('Papa samyam points', 'பாப சாம்யப் புள்ளிகள்')}: 👰 ${r.deep.papa.bride.total} · 🤵 ${r.deep.papa.groom.total}</p></div>
     <div class="card glass"><div class="card-title">🌟 ${L('Key moments of married life', 'திருமண வாழ்க்கையின் முக்கிய தருணங்கள்')}</div>
       <div class="factor"><span>👶 ${L('Children blessing', 'குழந்தை பாக்கியம்')}</span><b class="zero">${r.children.length ? r.children.slice(0, 2).map((w) => `${monthYear(w.from)} – ${monthYear(w.to)}`).join(', ') : r.childFallback ? monthYear(r.childFallback.peakFrom) : L('with prayer & care', 'வழிபாடு, கவனத்துடன்')}</b></div>
       <div class="factor"><span>🏡 ${L('Own home together', 'சொந்த வீடு')}</span><b class="zero">${r.home.length ? `${monthYear(r.home[0].from)} – ${monthYear(r.home[0].to)}` : (r.goodYears[0] ? `${r.goodYears.find((x) => x.themes.some((t) => /Wealth/.test(t.en)))?.year || r.goodYears[0].year}` : '—')}</b></div>
@@ -131,7 +139,7 @@ function showCouple(bride, groom) {
       bride: { name: names[0].en, star: bride.chart.janmaNakshatra.name, rasi: bride.chart.janmaRasi.name, lagna: bride.chart.lagna.rasiName },
       groom: { name: names[1].en, star: groom.chart.janmaNakshatra.name, rasi: groom.chart.janmaRasi.name, lagna: groom.chart.lagna.rasiName },
       weddingDate: coupleUi.wedding, porutham: `${r.porutham.score}/10`, manaPorutham: r.mana.areas.map((x) => `${x.name.en}: ${x.score}`),
-      doshaSamyam: r.samyam.map((n) => n.en), childrenWindows: r.children.map((w) => `${iso(w.from)}..${iso(w.to)}`),
+      doshaSamyam: r.samyam.map((n) => n.en), deepChecks: r.deep.checks.map((c) => `${c.name.en}: ${c.ok ? 'ok' : 'care'} — ${c.note.en}`), ayul: { bride: r.deep.ayul.bride.level, groom: r.deep.ayul.groom.level }, childrenWindows: r.children.map((w) => `${iso(w.from)}..${iso(w.to)}`),
       goodYears: r.goodYears.map((x) => x.year), careYears: r.careYears.map((x) => ({ year: x.year, why: x.themes.filter((th) => th.kind === 'care').map((th) => th.en) })),
     };
     await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: 'Give a warm, honest married-life reading for this couple from the wedding day: how their bond grows, children, wealth and home, the years that need extra care and exactly how to handle them, and simple parigarams. Be positive and practical; never frighten. About 300 words.' }],

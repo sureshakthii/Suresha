@@ -623,3 +623,71 @@ details.tl-year summary { display: grid; grid-template-columns: 48px 1fr auto; g
 details.tl-year > div { margin-top: 6px; }
 .tl-bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
 .tl-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--gold), var(--saffron)); }
+
+/* ---------- Quick row (Panchangam, Guide, Seva, Priests, Store, Yatra) ---------- */
+.quick-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 14px; }
+.quick { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 6px; border-radius: 18px; cursor: pointer;
+  background: linear-gradient(160deg, rgba(245,194,107,.18), rgba(34,18,74,.6)); border: 1px solid rgba(245,194,107,.35); color: var(--text);
+  font: 600 13px/1.25 inherit; text-align: center; font-family: inherit; }
+.quick .q-icon { font-size: 30px; line-height: 1; }
+.quick:active { transform: scale(.97); }
+@media (min-width: 560px) { .quick-row { grid-template-columns: repeat(6, 1fr); } }
+
+/* ---------- Personal guide ---------- */
+.swatch { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); vertical-align: middle; flex: none; }
+.swatch.big { width: 46px; height: 46px; box-shadow: 0 0 18px rgba(255,255,255,.18); }
+.color-today { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.color-today .chev { font-size: 24px; color: var(--gold); }
+.color-big { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+.week-colors { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 8px 0; }
+.wc { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; padding: 6px 0; border-radius: 10px; }
+.wc.now { background: rgba(245,194,107,.15); outline: 1px solid var(--glass-b); }
+.num-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; }
+.num { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 14px; background: rgba(255,255,255,.05); }
+.num b { font-size: 34px; color: var(--gold); line-height: 1; }
+.num span { font-size: 12px; color: var(--muted); }
+.big-line { font-size: 20px; font-weight: 700; color: var(--gold2); margin: 4px 0; }
+.guide-head { display: flex; gap: 12px; align-items: center; }
+.g-avatar { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-size: 26px; background: rgba(245,194,107,.15); color: var(--gold); flex: none; }
+.pl-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+.pl-item.playing { background: rgba(245,194,107,.08); border-radius: 12px; }
+.play-btn { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--gold); color: #2a1200; font-size: 15px; cursor: pointer; flex: none; }
+.pl-count { font-size: 12px; color: var(--gold2); min-width: 34px; text-align: right; }
+
+/* ---------- Panchangam (big, simple) ---------- */
+.pan-nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.pan-head { display: flex; gap: 16px; align-items: center; }
+.pan-day { font-size: 56px; font-weight: 800; color: var(--gold); line-height: 1; min-width: 70px; text-align: center; }
+.pan-month { font-size: 22px; font-weight: 700; color: var(--gold2); }
+.pan-big { font-size: 16px; }
+.pan-row { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+.pan-row span { color: var(--muted); }
+.pan-row b { text-align: right; font-size: 17px; }
+.pan-row b small { font-weight: 400; color: var(--muted); font-size: 13px; }
+.pan-row.good b { color: var(--good); }
+.pan-row.bad b { color: var(--bad); }
+.rasi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+@media (min-width: 560px) { .rasi-grid { grid-template-columns: repeat(3, 1fr); } }
+.rp { margin: 0; padding: 12px; }
+.rp b { display: block; font-size: 15px; }
+.rp .stars { color: var(--gold); letter-spacing: 2px; font-size: 13px; }
+.rp.good { border-color: rgba(74,222,128,.4); }
+.rp.bad { border-color: rgba(248,113,113,.5); }
+.rp.mine { outline: 2px solid var(--gold); }
+.vibe { position: relative; overflow: hidden; padding: 16px; border-radius: var(--radius); margin-bottom: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--vc) 45%, #1a0b40), #120733 70%); border: 1px solid rgba(255,255,255,.18); }
+.vibe-top { display: flex; justify-content: space-between; align-items: center; }
+.vibe-word { font-size: 24px; font-weight: 800; margin: 6px 0 10px; }
+.vibe-bar { height: 10px; border-radius: 99px; background: rgba(255,255,255,.12); overflow: hidden; }
+.vibe-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff5fa2, #ffd166, #4ade80); border-radius: 99px; }
+.vibe-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.vibe-grid > div { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 12px; background: rgba(0,0,0,.2); font-size: 12px; text-align: center; }
+.vibe-grid b { font-size: 18px; }
+
+/* ---------- Deep marriage checks & temple details ---------- */
+.deep-row { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 13px; }
+.ayul-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ayul-pair > div { padding: 10px; border-radius: 14px; background: rgba(255,255,255,.05); }
+.temple-more summary { cursor: pointer; color: var(--gold2); font-size: 13px; margin-top: 6px; }
+.temple-more p { margin: 6px 0; }
+.pkg-temple { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }

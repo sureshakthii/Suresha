@@ -15,6 +15,7 @@ import {
 } from './core.js';
 import { weatherCardHtml, fillHomeWeather, relationsList, relationRow } from './screens-world.js';
 import { trialBanner, ratePrompt } from './growth.js';
+import { todayColorCard } from './screens-guide.js';
 
 const TARA = [['Janma', 'ஜன்ம', 'warn'], ['Sampat', 'சம்பத்', 'good'], ['Vipat', 'விபத்', 'bad'], ['Kshema', 'க்ஷேம', 'good'], ['Pratyak', 'பிரத்யக்', 'bad'], ['Sadhana', 'சாதக', 'good'], ['Naidhana', 'நைதன', 'bad'], ['Mitra', 'மித்ர', 'good'], ['Parama Mitra', 'பரம மித்ர', 'good']];
 const goodBad = (k) => (k === 'good' ? L('Favourable', 'சாதகம்') : k === 'bad' ? L('Careful', 'கவனம்') : L('Neutral', 'சமம்'));
@@ -30,24 +31,37 @@ export function dayOutlook(chart, snap) {
 }
 
 // ================================================================ HOME
+// Big quick row — daily use (elders) and third-party services (revenue) are one tap away.
+const QUICK = [
+  ['panchangam', '📖', 'Panchangam', 'பஞ்சாங்கம்'],
+  ['guide', '🧭', 'My Guide', 'என் வழிகாட்டி'],
+  ['seva', '🛕', 'Seva', 'சேவைகள்'],
+  ['priests', '🧑‍🦳', 'Priests', 'புரோகிதர்கள்'],
+  ['store', '🛍️', 'Store', 'கடை'],
+  ['packages', '🧳', 'Yatra', 'யாத்திரை'],
+];
+
 const TILES = [
   ['life', '🔭', 'Life Questions — when?', 'வாழ்க்கைக் கேள்விகள் — எப்போது?'],
   ['chat', '💬', 'Ask Jothidar', 'ஜோதிடரிடம் கேளுங்கள்'],
   ['ask', '🔮', 'Do or Don\'t?', 'செய்யலாமா?'],
-  ['couple', '💑', 'Married Life Analysis', 'திருமண வாழ்க்கை ஆய்வு'],
-  ['porutham', '💞', 'Marriage Match', 'திருமணப் பொருத்தம்'],
+  ['couple', '💑', 'Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்'],
+  ['porutham', '💞', 'Star Match (quick 10)', 'நட்சத்திரப் பொருத்தம் (விரைவு 10)'],
   ['partners', '🤝', 'Business Partner Match', 'வணிகக் கூட்டாளி பொருத்தம்'],
+  ['guide', '🧭', 'My Guide — colour, number, Siddhar', 'என் வழிகாட்டி — நிறம், எண், சித்தர்'],
+  ['panchangam', '📖', 'Panchangam', 'பஞ்சாங்கம்'],
   ['muhurtham', '🗓️', 'Muhurtham', 'முகூர்த்தம்'],
   ['calendar', '📅', 'Tamil Calendar', 'தமிழ் காலண்டர்'],
   ['analysis', '📜', 'Full Analysis', 'முழு ஜாதக ஆய்வு'],
   ['relations', '👨‍👩‍👧', 'Family Relations', 'குடும்ப உறவு'],
   ['parigaram', '🪔', 'Parigaram', 'பரிகாரம்'],
-  ['temples', '🛕', 'Temples Near Me', 'அருகில் கோவில்கள்'],
+  ['temples', '🛕', 'Temples & Thala Varalaru', 'கோவில்கள் & தல வரலாறு'],
   ['mantras', '🕉️', 'Mantras', 'மந்திரங்கள்'],
   ['weather', '⛅', 'Weather & Travel', 'வானிலை & பயணம்'],
   ['reminders', '⏰', 'Alarm & Trips', 'அலாரம் & பயணம்'],
-  ['seva', '🔥', 'Seva & Priests', 'சேவை & புரோகிதர்'],
-  ['packages', '🧳', 'Yatra Packages', 'யாத்திரை பேக்கேஜ்'],
+  ['seva', '🔥', 'Temple Seva', 'கோவில் சேவைகள்'],
+  ['priests', '🧑‍🦳', 'Book a Priest', 'புரோகிதர் முன்பதிவு'],
+  ['packages', '🧳', 'Navagraha & Yatra Packages', 'நவகிரக & யாத்திரை பேக்கேஜ்'],
   ['store', '🛍️', 'Pooja Store', 'பூஜைக் கடை'],
   ['names', '👶', 'Baby Names', 'குழந்தை பெயர்'],
   ['thivasam', '🙏', 'Thivasam', 'திவசம் / தர்ப்பணம்'],
@@ -97,6 +111,8 @@ function renderHome(sec) {
     </div>
 
     ${trialBanner()}${ratePrompt()}
+    <div class="quick-row">${QUICK.map(([id, icon, en, tx]) => `<button class="quick" data-go="${id}"><span class="q-icon">${icon}</span><span>${esc(L(en, tx))}</span></button>`).join('')}</div>
+    ${todayColorCard()}
     <div class="chips">
       <div class="chip-card"><span class="mini-label">${L('Star', 'நட்சத்திரம்')}</span><b>${esc(nakName(snap.nakshatra.index))}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.nakshatra.endsAt, loc.tz)}</span></div>
       <div class="chip-card"><span class="mini-label">${L('Tithi', 'திதி')}</span><b>${esc(ta() ? snap.tithi.ta : snap.tithi.name)}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.tithi.endsAt, loc.tz)}</span></div>

@@ -13,7 +13,8 @@ const IST = 5.5 * 3600000; // quota days roll over at midnight India time
 
 const f = (en, ta) => ({ en, ta });
 const FREE_FEATURES = [
-  f('Daily panchangam', 'தினசரி பஞ்சாங்கம்'),
+  f('Daily panchangam & 12 rasi palan', 'தினசரி பஞ்சாங்கம் & 12 ராசி பலன்'),
+  f('Daily colour, lucky number & Ishta Theivam', 'தினசரி நிறம், அதிர்ஷ்ட எண், இஷ்ட தெய்வம்'),
   f('Birth charts (jathagam)', 'ஜாதகக் கட்டங்கள்'),
   f('Tamil calendar', 'தமிழ் நாட்காட்டி'),
   f('Porutham table', 'திருமணப் பொருத்த அட்டவணை'),
@@ -23,12 +24,15 @@ const PREMIUM_FEATURES = [
   f('Unlimited Jothidar chat', 'வரம்பில்லா ஜோதிடர் உரையாடல்'),
   f('Life-timing predictions', 'வாழ்க்கை நிகழ்வுகளுக்கான கால கணிப்புகள்'),
   f('Full analysis reading', 'முழுமையான ஜாதக ஆய்வுப் பலன்'),
-  f('Porutham explanation', 'பொருத்தங்களுக்கு விரிவான விளக்கம்'),
+  f('Complete marriage porutham — ayul, papa samyam, dasa sandhi, 25-year married-life timeline', 'முழுமையான திருமணப் பொருத்தம் — ஆயுள், பாப சாம்யம், தசா சந்தி, 25 ஆண்டு வாழ்க்கைக் காலவரிசை'),
+  f('My Guide — gemstones, Siddhar and personal mantra playlist', 'என் வழிகாட்டி — ரத்தினம், சித்தர், தனிப்பட்ட மந்திரப் பட்டியல்'),
+  f('Business partner porutham', 'வணிகக் கூட்டாளி பொருத்தம்'),
   f('Priority seva booking', 'சேவை முன்பதிவில் முன்னுரிமை'),
 ];
 const FAMILY_FEATURES = [
   f('Everything in Premium', 'பிரீமியத்தின் அனைத்து வசதிகளும்'),
   f('Up to 8 family profiles under one account', 'ஒரே கணக்கில் 8 குடும்ப உறுப்பினர்கள் வரை'),
+  f('Gift it to parents abroad or in India — one plan for the whole family', 'வெளிநாட்டிலோ இந்தியாவிலோ உள்ள பெற்றோருக்குப் பரிசளியுங்கள் — முழுக் குடும்பத்திற்கும் ஒரே திட்டம்'),
 ];
 
 /** Default plans; prices are in rupees / dollars (not minor units). */

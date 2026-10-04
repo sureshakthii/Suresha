@@ -2,17 +2,6 @@
   "appId": "app.kaippesi.jothidar",
   "appName": "கைப்பேசி ஜோதிடர்",
   "webDir": "mobile/www",
-  "server": {
-    "url": "https://kaippesi.example.com",
-    "cleartext": false,
-    "errorPath": "index.html",
-    "allowNavigation": [
-      "kaippesi.example.com",
-      "checkout.razorpay.com",
-      "api.razorpay.com",
-      "checkout.stripe.com"
-    ]
-  },
   "android": {
     "allowMixedContent": false
   },

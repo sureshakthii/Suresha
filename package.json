@@ -10,6 +10,7 @@
     "icons": "node scripts/make-icons.mjs",
     "build:artifact": "node scripts/build-artifact.mjs",
     "mobile:prepare": "node mobile/prepare.mjs",
+    "mobile:prepare:standalone": "node mobile/prepare.mjs --standalone",
     "mobile:icons": "node mobile/make-native-icons.mjs",
     "mobile:android": "npm run mobile:prepare && npx cap sync android",
     "mobile:ios": "npm run mobile:prepare && npx cap sync ios",

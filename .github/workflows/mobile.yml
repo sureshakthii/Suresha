@@ -1,6 +1,15 @@
-# Builds the native wrappers around the deployed web app.
-# Set the repository variable KJ_APP_URL (Settings → Secrets and variables → Actions → Variables),
-# e.g. https://kaippesi.example.com — the apps load that URL.
+# Builds the Android and iOS apps.
+#
+# Two modes (chosen automatically by mobile/prepare.mjs):
+#   • KJ_APP_URL NOT set  → STANDALONE offline app: the whole app is bundled inside the APK / iOS app,
+#     all astrology runs on the phone; login, payments and bookings are disabled ("needs server" card).
+#   • KJ_APP_URL set      → server-backed app that opens the deployed website (login, payments, bookings).
+#     Set it under Settings → Secrets and variables → Actions → Variables, e.g. https://kaippesi.example.com
+#
+# Quick phone test (Android, no signing needed): Actions → "Mobile apps" → Run workflow → download the
+# artifact `kaippesi-android-debug-apk` → unzip → copy app-debug.apk to the phone → install.
+# Huawei: the same APK installs on Huawei phones; AppGallery accepts the signed APK or AAB.
+# iPhone: see the notes on the ios job below and docs/INSTALL-TA.md.
 name: Mobile apps
 
 on:
@@ -27,7 +36,12 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci
-      - run: npm run mobile:android
+      - name: Prepare web bundle (standalone when KJ_APP_URL is unset)
+        run: |
+          if [ -z "$KJ_APP_URL" ]; then
+            echo "::notice title=Standalone build::KJ_APP_URL is not set — building the offline standalone app. Set the repository variable KJ_APP_URL for the server-backed app."
+          fi
+          npm run mobile:android
 
       - name: Decode signing key (only when the secrets are set)
         env:
@@ -51,10 +65,18 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease
 
+      # Debug APK: installable on any Android / Huawei phone without a signing key
+      # (enable "Install unknown apps"). For your own testing and for relatives' trials.
       - uses: actions/upload-artifact@v4
         with:
-          name: android-apk
-          path: android/app/build/outputs/apk/**/*.apk
+          name: kaippesi-android-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+      # Release APK (signed only when the ANDROID_* secrets are set) — for Huawei AppGallery / sideloading.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
@@ -66,6 +88,12 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks"
 
+  # iOS: this job only proves the project compiles (simulator build + UNSIGNED archive).
+  # An unsigned archive cannot be installed on a real iPhone. To install on an iPhone you need a Mac with
+  # Xcode and either
+  #   • a free Apple ID ("Personal Team" in Xcode → Signing): runs on your own iPhone, expires after 7 days, or
+  #   • the Apple Developer Program (US$99/year): TestFlight for up to 10,000 testers + App Store.
+  # Steps: npm ci → npm run mobile:ios → npx cap open ios → App target → Signing & Capabilities → Team → ▶ Run.
   ios:
     runs-on: macos-latest
     steps:
@@ -78,7 +106,7 @@ jobs:
         with:
           xcode-version: latest-stable
       - run: npm ci
-      - run: npm run mobile:ios
+      - run: npm run mobile:ios   # standalone when KJ_APP_URL is unset
 
       # Compile check for the simulator (no signing needed).
       - name: Build for iOS Simulator

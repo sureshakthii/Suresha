@@ -1,36 +1,41 @@
-// Prepares the native (Capacitor) build:
-//   1. writes mobile/www — a tiny offline launcher that opens the deployed web app (KJ_APP_URL)
-//      and shows a Tamil "loading / no internet — retry" screen when the server can't be reached;
-//   2. patches capacitor.config.json so server.url points at KJ_APP_URL, which means the
-//      Android / iOS apps always show the latest deployed version without a store update.
+// Prepares the native (Capacitor) build. Two modes:
 //
-// Usage: KJ_APP_URL=https://kaippesi.example.com node mobile/prepare.mjs
+//   STANDALONE (default when KJ_APP_URL is unset, or with --standalone / KJ_STANDALONE=1):
+//     runs scripts/build-artifact.mjs and copies the backend-free build into mobile/www, vendors
+//     astronomy-engine so nothing loads from a CDN, and REMOVES server.url from capacitor.config.json.
+//     The app then runs fully offline from the bundle: all astrology is computed on the phone,
+//     server-only features (login, payments, bookings, weather) show a "needs server" card and
+//     AI answers fall back to the rule-based text.
+//
+//   SERVER (KJ_APP_URL=https://… set):
+//     writes mobile/www — a tiny offline launcher that opens the deployed web app — and patches
+//     capacitor.config.json so server.url points at KJ_APP_URL, which means the Android / iOS apps
+//     always show the latest deployed version without a store update.
+//
+// Usage: node mobile/prepare.mjs                                    # standalone (offline) app
+//        KJ_APP_URL=https://kaippesi.example.com node mobile/prepare.mjs   # server-backed app
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const configFile = path.join(root, 'capacitor.config.json');
 const wwwDir = path.join(root, 'mobile', 'www');
+const artifactDir = path.join(root, 'dist', 'artifact');
 const PAYMENT_HOSTS = ['checkout.razorpay.com', 'api.razorpay.com', 'checkout.stripe.com'];
-const PLACEHOLDER = 'https://kaippesi.example.com';
+const AE_CDN = 'https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/esm/astronomy.js';
+
+const truthy = (v) => /^(1|true|yes)$/i.test(String(v || '').trim());
+const rawUrl = (process.env.KJ_APP_URL || '').trim();
+const standalone = process.argv.includes('--standalone') || truthy(process.env.KJ_STANDALONE) || !rawUrl;
 
 function appUrlFromEnv() {
-  const raw = (process.env.KJ_APP_URL || '').trim();
-  if (!raw) {
-    const msg = 'KJ_APP_URL is not set (e.g. KJ_APP_URL=https://kaippesi.example.com).';
-    if (process.env.CI) {
-      console.error(`✖ ${msg} Set the repository variable KJ_APP_URL.`);
-      process.exit(1);
-    }
-    console.warn(`⚠ ${msg} Using the placeholder ${PLACEHOLDER} — the app will not reach a real server.`);
-    return new URL(PLACEHOLDER);
-  }
   let url;
   try {
-    url = new URL(raw);
+    url = new URL(rawUrl);
   } catch {
-    console.error(`✖ KJ_APP_URL is not a valid URL: ${raw}`);
+    console.error(`✖ KJ_APP_URL is not a valid URL: ${rawUrl}`);
     process.exit(1);
   }
   if (!['https:', 'http:'].includes(url.protocol)) {
@@ -117,24 +122,104 @@ function launcherHtml(appUrl) {
 `;
 }
 
-const appUrl = appUrlFromEnv();
+function readConfig() {
+  return JSON.parse(fs.readFileSync(configFile, 'utf8'));
+}
+function writeConfig(config) {
+  fs.writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
+}
 
-// 1. mobile/www
-fs.rmSync(wwwDir, { recursive: true, force: true });
-fs.mkdirSync(wwwDir, { recursive: true });
-fs.writeFileSync(path.join(wwwDir, 'index.html'), launcherHtml(appUrl));
-fs.copyFileSync(path.join(root, 'public', 'icon-512.png'), path.join(wwwDir, 'icon.png'));
+// Wraps the artifact page (a bare <title>/<link>/<style> + body fragment) in a full HTML document
+// for the WebView: doctype, charset, mobile viewport with safe areas, theme colour.
+function wrapArtifactPage(page) {
+  const cut = page.indexOf('</style>');
+  if (cut < 0) throw new Error('Unexpected dist/artifact/index.html layout (no </style>).');
+  const head = page.slice(0, cut + '</style>'.length);
+  const body = page.slice(cut + '</style>'.length);
+  return `<!doctype html>
+<html lang="ta">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0620" />
+${head}
+</head>
+<body>${body}
+</body>
+</html>
+`;
+}
 
-// 2. capacitor.config.json → server.url
-const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
-config.server = {
-  ...config.server,
-  url: appUrl.href.replace(/\/$/, ''),
-  cleartext: appUrl.protocol === 'http:',
-  errorPath: 'index.html',
-  allowNavigation: [appUrl.hostname, ...PAYMENT_HOSTS],
-};
-fs.writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
+function buildStandalone() {
+  if (!process.argv.includes('--standalone') && !truthy(process.env.KJ_STANDALONE)) {
+    const note = 'KJ_APP_URL is not set — building the STANDALONE offline app (no server: login, payments and bookings are disabled).';
+    if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Standalone mobile build::${note} Set the repository variable KJ_APP_URL to build the server-backed app.`);
+    else console.log(`ℹ ${note}`);
+  }
+  const r = spawnSync(process.execPath, ['scripts/build-artifact.mjs'], { cwd: root, stdio: 'inherit' });
+  if (r.status !== 0) {
+    console.error('✖ scripts/build-artifact.mjs failed.');
+    process.exit(r.status || 1);
+  }
 
-console.log(`✔ mobile/www written; server.url = ${config.server.url}`);
-console.log(`  (${appUrl.hostname} + ${PAYMENT_HOSTS.join(', ')} allowed for in-app navigation)`);
+  // 1. mobile/www ← dist/artifact (multi-file: index.html, *.js, shared/*.js, logo.svg, icon.svg, *.json)
+  fs.rmSync(wwwDir, { recursive: true, force: true });
+  fs.cpSync(artifactDir, wwwDir, { recursive: true });
+  const indexFile = path.join(wwwDir, 'index.html');
+  fs.writeFileSync(indexFile, wrapArtifactPage(fs.readFileSync(indexFile, 'utf8')));
+  fs.copyFileSync(path.join(root, 'public', 'icon-512.png'), path.join(wwwDir, 'icon.png'));
+
+  // 2. Vendor astronomy-engine so the app works with no internet at all.
+  const aeSrc = path.join(root, 'node_modules', 'astronomy-engine', 'esm', 'astronomy.js');
+  if (fs.existsSync(aeSrc)) {
+    fs.mkdirSync(path.join(wwwDir, 'vendor'), { recursive: true });
+    fs.copyFileSync(aeSrc, path.join(wwwDir, 'vendor', 'astronomy.js'));
+    const sharedDir = path.join(wwwDir, 'shared');
+    for (const f of fs.readdirSync(sharedDir).filter((x) => x.endsWith('.js'))) {
+      const file = path.join(sharedDir, f);
+      const src = fs.readFileSync(file, 'utf8');
+      if (src.includes(AE_CDN)) fs.writeFileSync(file, src.split(AE_CDN).join('../vendor/astronomy.js'));
+    }
+  } else {
+    console.warn('⚠ node_modules/astronomy-engine not found (run npm ci) — the app will load it from the CDN and needs internet on first use.');
+  }
+  const leftovers = fs.readdirSync(wwwDir, { recursive: true })
+    .filter((f) => String(f).endsWith('.js'))
+    .filter((f) => fs.readFileSync(path.join(wwwDir, String(f)), 'utf8').includes('cdn.jsdelivr.net'));
+  if (leftovers.length) console.warn(`⚠ still loading from a CDN: ${leftovers.join(', ')}`);
+
+  // 3. capacitor.config.json → no server.url: Capacitor serves mobile/www from inside the app.
+  const config = readConfig();
+  delete config.server;
+  writeConfig(config);
+
+  console.log('✔ mobile/www = standalone offline app (dist/artifact); capacitor.config.json has no server.url');
+  console.log('  Google Fonts load when online; offline the phone\'s Tamil system font is used.');
+}
+
+function buildServer() {
+  const appUrl = appUrlFromEnv();
+
+  // 1. mobile/www
+  fs.rmSync(wwwDir, { recursive: true, force: true });
+  fs.mkdirSync(wwwDir, { recursive: true });
+  fs.writeFileSync(path.join(wwwDir, 'index.html'), launcherHtml(appUrl));
+  fs.copyFileSync(path.join(root, 'public', 'icon-512.png'), path.join(wwwDir, 'icon.png'));
+
+  // 2. capacitor.config.json → server.url
+  const config = readConfig();
+  config.server = {
+    ...config.server,
+    url: appUrl.href.replace(/\/$/, ''),
+    cleartext: appUrl.protocol === 'http:',
+    errorPath: 'index.html',
+    allowNavigation: [appUrl.hostname, ...PAYMENT_HOSTS],
+  };
+  writeConfig(config);
+
+  console.log(`✔ mobile/www written; server.url = ${config.server.url}`);
+  console.log(`  (${appUrl.hostname} + ${PAYMENT_HOSTS.join(', ')} allowed for in-app navigation)`);
+}
+
+if (standalone) buildStandalone();
+else buildServer();

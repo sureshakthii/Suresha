@@ -4,8 +4,19 @@ This guide is for the app owner, so it explains each step in plain terms. Follow
 
 ## How the store apps work
 
-There is only **one** app: the web app (PWA) that runs on your server. The Android and iOS apps are
-thin native "wrappers" built with [Capacitor](https://capacitorjs.com). When someone opens one:
+There is only **one** app: the web app (PWA). The Android and iOS apps are thin native "wrappers" built
+with [Capacitor](https://capacitorjs.com). `mobile/prepare.mjs` builds them in one of two modes:
+
+| Mode | When | What the app does |
+|---|---|---|
+| **Standalone (offline)** | `KJ_APP_URL` is **not** set (or `--standalone` / `KJ_STANDALONE=1`) | The whole app (`npm run build:artifact` → `dist/artifact`) is bundled inside the APK / iOS app, with astronomy-engine vendored, so it works with **no server and no internet**. Horoscope, porutham, panchangam, prasnam etc. run on the phone; AI answers use the rule-based text; login, payments, bookings and weather show a "needs server" card. `capacitor.config.json` has **no** `server.url`. |
+| **Server** | `KJ_APP_URL=https://…` is set | The app opens your deployed website (below), with login, payments and bookings. `server.url` is written into `capacitor.config.json`. |
+
+Standalone is the default, so you can install and test on phones **today**, before any server exists
+(simple Tamil steps: [INSTALL-TA.md](INSTALL-TA.md)). The committed `capacitor.config.json` is the
+standalone one; the server mode patches it at build time (CI does this from the `KJ_APP_URL` variable).
+
+In **server mode**, when someone opens the app:
 
 1. The **splash screen** shows the logo on the dark purple background (`#0b0620`).
 2. The app opens your deployed website, for example `https://kaippesi.example.com`.
@@ -19,7 +30,7 @@ Capacitor version.
 | File / folder | What it is |
 |---|---|
 | `capacitor.config.json` | App id `app.kaippesi.jothidar`, the name, the website URL, splash and status-bar settings |
-| `mobile/prepare.mjs` | Writes `mobile/www` (the offline launcher page) and puts `KJ_APP_URL` into `capacitor.config.json` |
+| `mobile/prepare.mjs` | Writes `mobile/www`: the standalone offline app (no `KJ_APP_URL`), or the launcher page + `server.url` (with `KJ_APP_URL`) |
 | `mobile/make-native-icons.mjs` | Makes the Android and iOS icons and splash images from the logo (`npm run mobile:icons`) |
 | `android/` | Android Studio project. The same build is used for Google Play and Huawei AppGallery. |
 | `ios/` | Xcode project for the App Store. Plugins come through Swift Package Manager, so no CocoaPods is needed. |
@@ -29,7 +40,10 @@ Capacitor version.
 
 ## Step 1: Deploy the server first
 
-The apps are only as good as the website they open. Follow [DEPLOY.md](DEPLOY.md) until
+*Skip Steps 1–2 for a standalone test build: without `KJ_APP_URL` the workflow builds the offline app
+and uploads `kaippesi-android-debug-apk`, which installs on any Android or Huawei phone.*
+
+The server-backed apps are only as good as the website they open. Follow [DEPLOY.md](DEPLOY.md) until
 `https://<your-domain>/api/health` shows `{"ok":true,...}` in a browser. The site must use **HTTPS**,
 because both stores require it.
 
@@ -68,8 +82,9 @@ open your domain and the payment pages (`checkout.razorpay.com`, `api.razorpay.c
 3. Go to **Actions → Mobile apps → Run workflow**, or push a tag such as `v1.0.0`.
 4. When the run finishes, download the artifacts:
    - `android-aab` → `app-release.aab`. **Upload this file to Google Play.**
-   - `android-apk` → `app-release.apk` (for Huawei, or for sharing with testers) and `app-debug.apk`
-     (for quick testing on your own phone).
+   - `android-release-apk` → `app-release.apk` (for Huawei AppGallery, or for sharing with testers).
+   - `kaippesi-android-debug-apk` → `app-debug.apk` (quick testing on your own or relatives' phones; no
+     signing key needed — allow "Install unknown apps").
 
 If the secrets are missing, the build still runs, but the release files are **unsigned** and the stores
 reject them.
@@ -194,8 +209,8 @@ this with legal advice before you submit.** The rules and fees change often.
   store apps, users should sign in with **mobile or email OTP**.
 - **Voice input** (Tamil speech) depends on the WebView. It may be unavailable in the Android app even
   though it works in Chrome.
-- The app needs the internet. Charts that were cached by the website's service worker may still open
-  offline, but the first launch always needs a connection.
+- In server mode the app needs the internet; the first launch always needs a connection. The standalone
+  build works fully offline (it uses the phone's Tamil font when Google Fonts cannot load).
 
 ---
 
@@ -222,7 +237,8 @@ Then commit the changed images and make a new store release.
 ## Developer reference
 
 ```bash
-npm run mobile:prepare        # write mobile/www + server.url from KJ_APP_URL
+npm run mobile:prepare        # standalone offline app, or launcher + server.url when KJ_APP_URL is set
+npm run mobile:prepare:standalone   # force standalone even if KJ_APP_URL is set
 npm run mobile:android        # prepare + npx cap sync android
 npm run mobile:ios            # prepare + npx cap sync ios
 npm run mobile:open:android   # open Android Studio

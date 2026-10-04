@@ -14,7 +14,7 @@ const licence = fs.readFileSync(path.join(pkgDir, 'LICENSE'), 'utf8').trim();
 
 // App concept (screen id / action) -> Lucide icon name.
 const CONCEPTS = {
-  home: 'house', chart: 'layout-grid', panchangam: 'book-open', roadmap: 'route', guide: 'compass',
+  home: 'house', chart: 'layout-grid', panchangam: 'book-open', roadmap: 'route', health: 'heart-pulse', guide: 'compass',
   seva: 'landmark', priests: 'flame', store: 'shopping-bag', packages: 'luggage', peyarchi: 'orbit',
   vratham: 'sparkles', life: 'telescope', chat: 'message-circle', ask: 'circle-help',
   couple: 'heart-handshake', porutham: 'heart', gunamilan: 'calculator', partners: 'handshake',
@@ -31,7 +31,7 @@ const CONCEPTS = {
 // Colour group for each navigation concept -> class ic-<group> on the icon chip (styled in styles.css).
 const GROUPS = {
   daily: ['panchangam', 'calendar', 'muhurtham', 'vratham', 'live', 'weather', 'reminders'],
-  personal: ['roadmap', 'guide', 'life', 'analysis', 'vargas', 'numerology', 'peyarchi', 'starbday', 'family'],
+  personal: ['roadmap', 'health', 'guide', 'life', 'analysis', 'vargas', 'numerology', 'peyarchi', 'starbday', 'family'],
   match: ['couple', 'porutham', 'gunamilan', 'partners', 'relations'],
   spiritual: ['parigaram', 'mantras', 'temples', 'thivasam', 'names', 'ruthu'],
   services: ['seva', 'priests', 'store', 'packages', 'plans', 'invite'],

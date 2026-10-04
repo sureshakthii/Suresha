@@ -12,6 +12,7 @@ import './screens-roadmap.js';
 import './screens-depth.js';
 import './screens-extra.js';
 import './screens-peyarchi.js';
+import './screens-health.js';
 import { loadSession } from './account.js';
 import { startAnalytics, loadBilling } from './growth.js';
 

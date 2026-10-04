@@ -37,6 +37,7 @@ export function dayOutlook(chart, snap) {
 const QUICK = [
   ['panchangam', '📖', 'Panchangam', 'பஞ்சாங்கம்'],
   ['roadmap', '🛤️', 'Life Road Map', 'வாழ்க்கை வரைபடம்'],
+  ['health', '🌿', 'Health Guide', 'ஆரோக்கிய வழிகாட்டி'],
   ['guide', '🧭', 'My Guide', 'என் வழிகாட்டி'],
   ['seva', '🛕', 'Seva', 'சேவைகள்'],
   ['priests', '🧑‍🦳', 'Priests', 'புரோகிதர்கள்'],
@@ -48,6 +49,7 @@ const QUICK = [
 
 const TILES = [
   ['roadmap', '🛤️', 'Life Road Map — next 10 years', 'வாழ்க்கை வரைபடம் — அடுத்த 10 ஆண்டுகள்'],
+  ['health', '🌿', 'Health Guide — protect, eat & avoid', 'ஆரோக்கிய வழிகாட்டி — பாதுகாப்பு, உணவு'],
   ['life', '🔭', 'Life Questions — when?', 'வாழ்க்கைக் கேள்விகள் — எப்போது?'],
   ['chat', '💬', 'Ask Jothidar', 'ஜோதிடரிடம் கேளுங்கள்'],
   ['ask', '🔮', 'Do or Don\'t?', 'செய்யலாமா?'],

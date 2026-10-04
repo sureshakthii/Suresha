@@ -22,10 +22,15 @@ fs.writeFileSync(path.join(out, 'products.json'), JSON.stringify({ ...catalog, c
 const { PLANS, PLAN_TERMS } = await import('../server/billing.js');
 fs.writeFileSync(path.join(out, 'plans.json'), JSON.stringify({ plans: PLANS, terms: PLAN_TERMS }));
 
+// Time-limited review build: KJ_REVIEW_HOURS (from first launch) and KJ_REVIEW_DAYS (absolute cap from build time).
+const REVIEW = Number(process.env.KJ_REVIEW_HOURS) > 0
+  ? { hours: Number(process.env.KJ_REVIEW_HOURS), until: Date.now() + (Number(process.env.KJ_REVIEW_DAYS) || 3) * 86400000 }
+  : null;
+if (REVIEW) console.log(`Review build: ${REVIEW.hours} h from first launch, hard stop ${new Date(REVIEW.until).toISOString()}`);
 const html = fs.readFileSync('public/index.html', 'utf8');
 const css = fs.readFileSync('public/styles.css', 'utf8');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('</body>'))
-  .replace('<script type="module" src="/app.js"></script>', `<script>window.KJ_STATIC = true; window.KJ_BUILD = '${(process.env.GITHUB_RUN_NUMBER ? `build ${process.env.GITHUB_RUN_NUMBER} · ` : '')}${new Date().toISOString().slice(0, 10)}';</script>\n  <script type="module" src="app.js"></script>`);
+  .replace('<script type="module" src="/app.js"></script>', `<script>window.KJ_STATIC = true; window.KJ_BUILD = '${(process.env.GITHUB_RUN_NUMBER ? `build ${process.env.GITHUB_RUN_NUMBER} · ` : '')}${new Date().toISOString().slice(0, 10)}${REVIEW ? ' · review' : ''}';${REVIEW ? ` window.KJ_REVIEW = ${JSON.stringify(REVIEW)};` : ''}</script>\n  ${REVIEW ? '<script src="review-lock.js"></script>\n  ' : ''}<script type="module" src="app.js"></script>`);
 const fonts = `<style>\n${fs.readFileSync('public/fonts.css', 'utf8')}</style>`;
 const page = `<title>துணை · THUNAI</title>
 ${fonts}

@@ -1,7 +1,7 @@
 // App-shell cache so the Jathagam and live Panchangam work offline. API calls always go to the network.
-const CACHE = 'kj-v8';
+const CACHE = 'kj-v10';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/screens-world.js',
-  '/screens-life.js', '/screens-plans.js', '/screens-couple.js', '/screens-guide.js', '/screens-roadmap.js', '/screens-depth.js', '/screens-extra.js', '/screens-peyarchi.js', '/growth.js', '/legal.js', '/account.js',
+  '/screens-life.js', '/screens-plans.js', '/screens-couple.js', '/screens-guide.js', '/remind.js', '/screens-roadmap.js', '/screens-depth.js', '/screens-extra.js', '/screens-peyarchi.js', '/growth.js', '/legal.js', '/account.js', '/icons.js',
   '/shared/astro.js', '/shared/prasna.js', '/shared/narrator.js', '/shared/places.js', '/shared/tamilcal.js', '/shared/porutham.js',
   '/shared/remedies.js', '/shared/special.js', '/shared/analysis.js', '/shared/relations.js', '/shared/temples.js', '/shared/mantras.js',
   '/shared/predict.js', '/shared/packages.js', '/shared/couple.js', '/shared/lifecheck.js', '/shared/personal.js', '/shared/temple-info.js', '/shared/roadmap.js', '/shared/varga.js', '/shared/ashtakoota.js', '/shared/numerology.js', '/shared/peyarchi.js', '/vendor/astronomy-engine.js', '/icon.svg', '/logo.svg', '/manifest.webmanifest'];

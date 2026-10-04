@@ -212,7 +212,7 @@ test('push: subscribe validation and upsert by endpoint', async () => {
     { subscription: sub(), prefs: prefs({ lat: 100 }) },
     { subscription: sub(), prefs: prefs({ trips: [{ date: '2026-13-01', time: '10:00', title: 'x' }] }) },
     { subscription: sub(), prefs: prefs({ trips: [{ date: '2026-10-05', time: '9am', title: 'x' }] }) },
-    { subscription: sub(), prefs: prefs({ trips: Array.from({ length: 21 }, (_, i) => ({ id: i, date: '2026-10-05', time: '10:00', title: 't' })) }) },
+    { subscription: sub(), prefs: prefs({ trips: Array.from({ length: 61 }, (_, i) => ({ id: i, date: '2026-10-05', time: '10:00', title: 't' })) }) },
   ];
   for (const body of bad) assert.equal((await post('/api/push/subscribe', body)).status, 400, JSON.stringify(body).slice(0, 120));
   assert.equal(rows().length, 0);
@@ -297,4 +297,11 @@ test('push: 410 from the push service removes the subscription', async () => {
   assert.equal(rows().length, 0);
   assert.equal((await post('/api/push/test', { endpoint: sub(2).endpoint })).status, 404);
   P.setPushSender(null);
+});
+
+test('push: general reminders fire at their own time with a reminder message', async () => {
+  const { reminderMessage } = await import('../server/push.js');
+  const m = reminderMessage({ lang: 'ta' }, { id: 'r1', title: 'பிரதோஷம்', place: '' });
+  assert.match(m.body, /பிரதோஷம்/);
+  assert.equal(m.tag, 'rem-r1');
 });

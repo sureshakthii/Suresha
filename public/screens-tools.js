@@ -6,6 +6,9 @@ import { tamilMonth, tamilDay, TAMIL_MONTHS } from './shared/tamilcal.js';
 import { matchPorutham, doshams, doshaSamyam, VERDICTS } from './shared/porutham.js';
 import { grahaStrength, dailyParigaram, NAVAGRAHA } from './shared/remedies.js';
 import { nameLetters, thivasamDates, natchathiraBirthdays, findMuhurtham, milestones } from './shared/special.js';
+import { remindBtn } from './remind.js';
+import { predictEvent } from './shared/predict.js';
+import { personalGuide } from './shared/personal.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtIsoDate,
   activeMember, chartOf, registerScreen, go, subHeader, aiTask, toast, speak, saveFamily, starOptions, rasiOfStarPada, STATIC,
@@ -183,7 +186,7 @@ function computePorutham() {
 registerScreen('porutham', { render: renderPorutham, parent: 'home' });
 
 // ================================================================ MUHURTHAM
-const MU_CATS = ['marriage', 'graha_pravesam', 'naming', 'ear_piercing', 'annaprasanam', 'vidyarambam', 'business', 'property', 'gold_vehicle', 'contract', 'travel', 'office', 'surgery', 'manjal_neerattu', 'delivery', 'launch', 'tech_partner', 'bhoomi_pooja', 'visa'];
+const MU_CATS = ['marriage', 'graha_pravesam', 'vehicle', 'naming', 'ear_piercing', 'annaprasanam', 'vidyarambam', 'business', 'property', 'gold_vehicle', 'contract', 'travel', 'office', 'surgery', 'manjal_neerattu', 'delivery', 'launch', 'tech_partner', 'bhoomi_pooja', 'visa'];
 const muForm = { category: 'marriage', days: 30, persons: null };
 
 function renderMuhurtham(sec) {
@@ -195,30 +198,73 @@ function renderMuhurtham(sec) {
       ${state.family.length ? `<div class="mini-label">${L('Check for these family members', 'இவர்களுக்கு ஏற்றதாக')}</div><div class="member-switch">${state.family.map((m) => `<label class="mchip${muForm.persons.includes(m.id) ? ' sel' : ''}"><input type="checkbox" value="${esc(m.id)}"${muForm.persons.includes(m.id) ? ' checked' : ''}> ${esc(displayName(m))}</label>`).join('')}</div>` : ''}
       <p class="muted small">📍 ${esc(placeName(state.loc.name))} · ${L('Rahu Kalam, Yamagandam, Ashtami, Navami, Amavasai and Chandrashtamam are always excluded.', 'ராகு காலம், எமகண்டம், அஷ்டமி, நவமி, அமாவாசை, சந்திராஷ்டமம் எப்போதும் தவிர்க்கப்படும்.')}</p>
       ${muForm.category === 'delivery' ? `<p class="tag warn block">${L('Only for a planned delivery already advised by your doctor — the doctor\'s medical decision always comes first.', 'மருத்துவர் ஏற்கனவே பரிந்துரைத்த திட்டமிட்ட பிரசவத்திற்கு மட்டும் — மருத்துவரின் முடிவே எப்போதும் முதன்மை.')}</p>` : ''}
+      ${muForm.category === 'vehicle' ? `<p class="muted small">🚗 ${L('Two-wheeler, auto, car or lorry: only Ashwini, Rohini, Mrigasirisham, Punarpoosam, Poosam, Uthiram, Hastham, Chithirai, Swathi, Anusham, Uthiradam, Thiruvonam, Avittam, Sathayam, Uthirattathi and Revathi stars; no Tuesday / Saturday, Kuligai, Theipirai Prathamai or bad yoga; Venus, Mercury, Moon or Jupiter Horai preferred.', 'இரு சக்கர வாகனம், ஆட்டோ, கார், லாரி: அஸ்வினி, ரோகிணி, மிருகசீரிஷம், புனர்பூசம், பூசம், உத்திரம், அஸ்தம், சித்திரை, சுவாதி, அனுஷம், உத்திராடம், திருவோணம், அவிட்டம், சதயம், உத்திரட்டாதி, ரேவதி நட்சத்திரங்கள் மட்டும்; செவ்வாய், சனிக்கிழமை, குளிகை, தேய்பிறை பிரதமை, தீய யோகம் தவிர்க்கப்படும்; சுக்கிரன், புதன், சந்திரன், குரு ஓரை சிறப்பு.')}</p>` : ''}
       <button class="btn-gold" id="muBtn">🗓️ ${L('Find muhurtham', 'முகூர்த்தம் தேடு')}</button>
-    </div><div id="muResult"></div>`;
+    </div><div id="muVehicle"></div><div id="muResult"></div>`;
   $('#muCat').addEventListener('change', (e) => { muForm.category = e.target.value; renderMuhurtham(sec); });
   $('#muDays').addEventListener('change', (e) => { muForm.days = Number(e.target.value); });
   $$('.member-switch input', sec).forEach((i) => i.addEventListener('change', () => {
     muForm.persons = $$('.member-switch input', sec).filter((x) => x.checked).map((x) => x.value);
     i.parentElement.classList.toggle('sel', i.checked);
+    if (muForm.category === 'vehicle') renderVehicleYoga();
   }));
+  if (muForm.category === 'vehicle') renderVehicleYoga();
   $('#muBtn').addEventListener('click', async () => {
     $('#muResult').innerHTML = `<div class="card glass">${loader(L('Checking every half hour of every day…', 'ஒவ்வொரு நாளின் ஒவ்வொரு அரை மணி நேரமும் ஆராயப்படுகிறது…'))}</div>`;
     await wait();
     const persons = muForm.persons.map((id) => state.family.find((m) => m.id === id)).filter(Boolean).map((m) => { const c = chartOf(m); return { name: m.name, janmaNakshatra: c.janmaNakshatra.index, janmaRasi: c.janmaRasi.index }; });
     const res = findMuhurtham({ category: muForm.category, loc: state.loc, persons, days: muForm.days });
-    renderMuResults(res, '#muResult');
+    renderMuResults(res, '#muResult', { showReasons: muForm.category === 'vehicle' });
   });
 }
 
-function renderMuResults(res, target) {
+// Personal Vahana Yogam card: chart promise + next Dasa window (predictEvent), plus vehicle colour and
+// registration-number total from the person's lucky colours and numbers.
+function renderVehicleYoga() {
+  const box = $('#muVehicle');
+  if (!box) return;
+  const people = muForm.persons.map((id) => state.family.find((m) => m.id === id)).filter((m) => m && m.relation !== 'organization' && m.date).slice(0, 3);
+  if (!people.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="card glass">${loader(L('Reading the Jathagam…', 'ஜாதகம் ஆராயப்படுகிறது…'))}</div>`;
+  const tz = state.loc?.tz ?? 5.5;
+  const monthYear = (d) => new Date(d.getTime() + tz * 3600000).toLocaleDateString(ta() ? 'ta-IN' : 'en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const level = (lv) => (lv === 'strong' ? L('Strong', 'வலுவானது') : lv === 'good' ? L('Good', 'நன்று') : L('Comes with effort', 'முயற்சியால் கிடைக்கும்'));
+  setTimeout(() => {
+    box.innerHTML = people.map((m) => {
+      const c = chartOf(m);
+      let r, g;
+      try { r = predictEvent(c, 'vehicle'); g = personalGuide(c, { date: m.date }); } catch { return ''; }
+      const now = Date.now();
+      const w = (r.earliest && r.earliest.peakTo > now ? r.earliest : null) || r.windows.find((x) => x.peakTo > now) || null;
+      const running = w && w.peakFrom <= now;
+      const colors = (g.luckyColors || []).filter(Boolean);
+      const lucky = g.numbers?.lucky || [];
+      const avoid = g.numbers?.avoid || [];
+      return `<div class="card glass">
+        <div class="card-title">🚗 ${L('Vehicle yoga as per your Jathagam', 'உங்கள் ஜாதகப்படி வாகன யோகம்')}</div>
+        <div class="mini-label">${esc(displayName(m))}</div>
+        <span class="tag ${r.promise.level === 'needs effort' ? 'warn' : 'good'}">${L('Promise in chart', 'ஜாதக வாக்குறுதி')}: ${level(r.promise.level)}</span>
+        <p class="small">${w
+          ? `${running ? L('Vehicle period running now', 'வாகன யோக காலம் இப்போது நடக்கிறது') : L('Next best period', 'அடுத்த சிறந்த காலம்')}: <b>${monthYear(w.peakFrom)} – ${monthYear(w.peakTo)}</b> · ${GLYPH[w.md]} ${esc(planetName(w.md))} ${L('Dasa', 'தசை')}, ${GLYPH[w.ad]} ${esc(planetName(w.ad))} ${L('Bhukti', 'புக்தி')}${w.doubleTransit ? ` · ${L('Guru + Sani support', 'குரு + சனி ஆதரவு')}` : ''}`
+          : L('No strong Dasa period soon — choose a good muhurtham below and do the Friday Mahalakshmi lamp.', 'விரைவில் வலுவான தசை காலம் இல்லை — கீழே நல்ல முகூர்த்தம் தேர்ந்து, வெள்ளி மகாலட்சுமி தீபம் ஏற்றவும்.')}</p>
+        ${colors.length ? `<div class="small">🎨 ${L('Vehicle colour that suits you', 'உங்களுக்கு ஏற்ற வாகன நிறம்')}: ${colors.map((x) => `<span class="pill"><span style="display:inline-block;width:.8em;height:.8em;border-radius:50%;vertical-align:middle;background:${esc(x.hex)}"></span> ${esc(bi(x))}</span>`).join(' ')}</div>` : ''}
+        ${lucky.length ? `<div class="small">🔢 ${L('Registration number total (digit sum) to prefer', 'பதிவு எண் கூட்டுத்தொகை')}: <b>${lucky.join(', ')}</b>${avoid.length ? ` · ${L('avoid', 'தவிர்க்க')}: ${avoid.join(', ')}` : ''}</div>` : ''}
+        <p class="small">🪔 ${esc(bi(r.remedy))}</p>
+        <button class="chip-btn" data-go="numerology">🔢 ${L('Check a vehicle number in Numerology', 'எண் கணிதத்தில் வாகன எண்ணைச் சரிபார்க்க')}</button>
+      </div>`;
+    }).join('');
+  }, 30);
+}
+
+const atLocal = (date, time) => { const [y, mo, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(Date.UTC(y, mo - 1, d, h, mi) - (state.loc?.tz ?? 5.5) * 3600000); };
+function renderMuResults(res, target, { showReasons = false } = {}) {
   const loc = state.loc;
   $(target).innerHTML = res.length ? res.map((w, i) => `<div class="card glass mu-card">
       <div class="mu-rank">${i + 1}</div>
       <div style="flex:1"><div class="mini-value">${fmtIsoDate(w.date)} · ${esc(bi(w.weekday))}</div>
-        <div><b>${fmtTime(w.start, loc.tz)} – ${fmtTime(w.end, loc.tz)}</b></div>
+        <div><b>${fmtTime(w.start, loc.tz)} – ${fmtTime(w.end, loc.tz)}</b> ${remindBtn({ title: `${L('Muhurtham', 'முகூர்த்தம்')} ${fmtTime(w.start, loc.tz)}`, at: w.start, label: L('Remind', 'நினைவூட்டு') })}</div>
         <div class="muted small">${esc(nakName(w.nakshatra.index))} · ${esc(ta() ? w.tithi.ta : w.tithi.name)}${w.lagna ? ` · ${L('Lagna', 'லக்னம்')} ${esc(bi({ en: w.lagna.name.en, ta: w.lagna.name.ta }))}` : ''} · ${esc(planetName(w.hora))} ${L('Horai', 'ஓரை')}</div>
+        ${showReasons && w.reasons?.length ? `<div class="small">${w.reasons.slice(0, 4).map((x) => `✓ ${esc(bi(x))}`).join('<br>')}</div>` : ''}
         <details><summary>${L('Why this time?', 'ஏன் இந்த நேரம்?')}</summary>${w.factors.map((f) => `<div class="factor"><span>${esc(ta() ? f.labelTa : f.label)}</span><b class="${f.points > 0 ? 'pos' : f.points < 0 ? 'neg' : 'zero'}">${f.points > 0 ? '+' : ''}${f.points}</b></div>`).join('')}</details>
       </div><div class="mu-score">${w.score}</div></div>`).join('')
     : `<div class="card glass"><p>${L('No fully auspicious time found in this period. Try a longer period.', 'இந்தக் காலத்தில் முழுமையான சுப நேரம் இல்லை. நீண்ட காலத்தைத் தேர்வு செய்யவும்.')}</p></div>`;
@@ -366,7 +412,7 @@ function renderThivasam(sec) {
       const th = thivasamDates({ death, loc: { lat: a.lat, lon: a.lon, tz: a.tz } });
       return `<div class="card glass"><div class="card-title"><span>🙏 ${esc(a.name)}</span><button class="link-btn del-anc" data-id="${esc(a.id)}">${L('Remove', 'நீக்கு')}</button></div>
         <p>${esc(ta() ? `${th.month.ta} மாதம் · ${th.tithi.paksha === 'Shukla' ? 'வளர்பிறை' : 'தேய்பிறை'} ${th.tithi.ta}` : `${th.month.en} month · ${th.tithi.paksha} ${th.tithi.name}`)}</p>
-        ${th.dates.map((x) => `<div class="best">📅 <b>${fmtIsoDate(x.date)}</b> · ${esc(bi(x.weekday))} · ${esc(ta() ? `${x.tamil.monthTa} ${x.tamil.day}` : `${x.tamil.monthEn} ${x.tamil.day}`)}</div>`).join('')}</div>`;
+        ${th.dates.map((x) => `<div class="best">📅 <b>${fmtIsoDate(x.date)}</b> · ${esc(bi(x.weekday))} · ${esc(ta() ? `${x.tamil.monthTa} ${x.tamil.day}` : `${x.tamil.monthEn} ${x.tamil.day}`)} ${remindBtn({ title: `${L('Thivasam', 'திவசம்')} · ${a.name || ''}`, at: atLocal(x.date, '06:00') })}</div>`).join('')}</div>`;
     }).join('') || `<p class="muted center">${L('No ancestors added yet.', 'இன்னும் யாரும் சேர்க்கப்படவில்லை.')}</p>`;
     $$('.del-anc').forEach((b) => b.addEventListener('click', () => { state.ancestors = state.ancestors.filter((x) => x.id !== b.dataset.id); saveFamily(); renderThivasam(sec); }));
     $('#amaList').innerHTML = upcomingAmavasai(loc).map((x) => `<div class="factor"><span>🌑 ${fmtIsoDate(x.date)}</span><b class="zero">${esc(bi(x.weekday))}</b></div>`).join('');
@@ -390,7 +436,7 @@ function renderStarBday(sec) {
     $('#sbList').innerHTML = rows.map(({ m, c, month, next, daysLeft }) => `<div class="card glass sb-row">
         <span class="avatar">${esc(displayName(m).slice(0, 1).toUpperCase())}</span>
         <div style="flex:1"><b>${esc(displayName(m))}</b><div class="muted small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(bi(TAMIL_MONTHS[month]))}</div>
-          ${next ? `<div>🎂 <b>${fmtIsoDate(next.date)}</b> · ${esc(ta() ? `${next.tamil.monthTa} ${next.tamil.day}` : `${next.tamil.monthEn} ${next.tamil.day}`)}</div>` : ''}</div>
+          ${next ? `<div>🎂 <b>${fmtIsoDate(next.date)}</b> · ${esc(ta() ? `${next.tamil.monthTa} ${next.tamil.day}` : `${next.tamil.monthEn} ${next.tamil.day}`)} ${remindBtn({ title: `${L('Star birthday', 'நட்சத்திரப் பிறந்தநாள்')} · ${displayName(m)}`, at: atLocal(next.date, '06:00') })}</div>` : ''}</div>
         ${daysLeft != null ? `<div class="mu-score">${daysLeft === 0 ? '🎉' : daysLeft}<small>${daysLeft === 0 ? L('today', 'இன்று') : L('days', 'நாள்')}</small></div>` : ''}</div>`).join('')
       || `<div class="card glass cta-card" data-go="family" data-param='{"add":true}'>${L('Add family members to see their star birthdays', 'நட்சத்திரப் பிறந்தநாளைப் பார்க்க குடும்பத்தினரைச் சேர்க்கவும்')} ›</div>`;
     // 60th / 70th / 80th celebrations for elders (shown from age 45).
@@ -400,7 +446,7 @@ function renderStarBday(sec) {
       $('#sbList').insertAdjacentHTML('beforeend', `<div class="section-title">🪔 ${L('60th, 70th & 80th celebrations', 'சஷ்டியப்தபூர்த்தி, பீமரத சாந்தி, சதாபிஷேகம்')}</div>
         ${elders.map(({ m, c }) => milestones(c, { lat: m.lat, lon: m.lon, tz: m.tz }).filter((x) => !x.past).map((x) => `<div class="card glass window first">
           <div class="win-dates">${esc(bi(x.name))} · ${esc(m.nameTa && ta() ? m.nameTa : m.name)}</div>
-          ${x.day ? `<div>📅 <b>${fmtIsoDate(x.day.date)}</b> · ${esc(ta() ? `${x.day.tamil.monthTa} ${x.day.tamil.day}` : `${x.day.tamil.monthEn} ${x.day.tamil.day}`)} · ${esc(nakName(c.janmaNakshatra.index))}</div>` : ''}
+          ${x.day ? `<div>${remindBtn({ title: `${bi(x.name)} · ${displayName(m)}`, at: atLocal(x.day.date, '06:00') })} 📅 <b>${fmtIsoDate(x.day.date)}</b> · ${esc(ta() ? `${x.day.tamil.monthTa} ${x.day.tamil.day}` : `${x.day.tamil.monthEn} ${x.day.tamil.day}`)} · ${esc(nakName(c.janmaNakshatra.index))}</div>` : ''}
           ${x.thousandthFullMoon ? `<div class="small muted">🌕 ${L('1000th full moon', '1000-வது பௌர்ணமி')}: ${fmtIsoDate(new Date(x.thousandthFullMoon.getTime() + state.loc.tz * 3600000).toISOString().slice(0, 10))}</div>` : ''}
           <p class="small">${L('Traditionally celebrated at Thirukadaiyur Abhirami–Amritaghateswarar temple or at home with homam.', 'பாரம்பரியமாக திருக்கடையூர் அபிராமி–அமிர்தகடேஸ்வரர் கோவிலில் அல்லது வீட்டில் ஹோமத்துடன் கொண்டாடப்படும்.')}</p>
           <div class="btn-row"><button class="chip-btn" data-go="packages" data-param='{"id":"thirukadaiyur"}'>🧳 ${L('Package', 'பேக்கேஜ்')}</button><button class="chip-btn" data-go="seva" data-param='{"service":"homam"}'>🔥 ${L('Book priest', 'புரோகிதர்')}</button></div></div>`).join('')).join('')}`);

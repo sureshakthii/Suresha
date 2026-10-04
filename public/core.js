@@ -40,7 +40,8 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 export const bi = (o) => (o ? (ta() ? o.ta : o.en) : '');
 
 export const GLYPH = { Sun: '☉', Moon: '☽', Mars: '♂', Mercury: '☿', Jupiter: '♃', Venus: '♀', Saturn: '♄', Rahu: '☊', Ketu: '☋', get Lagna() { return ta() ? 'ல' : 'Asc'; } };
-export const COLOR = { Sun: '#ffb347', Moon: '#e6e9ff', Mars: '#ff7b5c', Mercury: '#7ee2a8', Jupiter: '#ffe066', Venus: '#ff9ed8', Saturn: '#8fb3ff', Rahu: '#c29bff', Ketu: '#d7a57a', Lagna: '#f5c26b' };
+// Planet colours are CSS variables so each theme (light / night / cosmic panels) can keep them readable.
+export const COLOR = Object.fromEntries(['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu', 'Lagna'].map((k) => [k, `var(--pl-${k})`]));
 export const planetName = (k) => (ta() ? PLANETS[k].ta : k);
 export const rasiName = (i) => (ta() ? RASIS[i].ta : RASIS[i].en);
 export const nakName = (i) => (ta() ? NAKSHATRAS[i].ta : NAKSHATRAS[i].en);
@@ -103,7 +104,16 @@ export function saveFamily() {
     syncTimer = setTimeout(() => api('/api/me/data', { method: 'PUT', body: { data: { family: state.family, activeId: state.activeId, ancestors: state.ancestors } } }).catch(() => {}), 600);
   }
 }
-export function saveSettings() { store.set('kj_settings', state.settings); document.body.classList.toggle('large', !!state.settings.large); }
+export function saveSettings() { store.set('kj_settings', state.settings); document.body.classList.toggle('large', !!state.settings.large); applyTheme(); }
+/** Theme: 'light' (default, best readability), 'dark' (cosmic night) or 'auto' (follow the phone). */
+export function applyTheme() {
+  const pref = state.settings.theme || 'light';
+  const dark = pref === 'dark' || (pref === 'auto' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b0620' : '#f6f1e8');
+}
+applyTheme();
+window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
 export function setLoc(loc) { state.loc = loc; store.set('kj_loc', loc); state.snapAt = 0; }
 
 // ---------------------------------------------------------------- network

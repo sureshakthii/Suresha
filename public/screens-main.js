@@ -16,6 +16,8 @@ import {
 import { weatherCardHtml, fillHomeWeather, relationsList, relationRow } from './screens-world.js';
 import { trialBanner, ratePrompt } from './growth.js';
 import { todayColorCard } from './screens-guide.js';
+import { reminderCard } from './remind.js';
+import { iconChip } from './icons.js';
 
 const TARA = [['Janma', 'ஜன்ம', 'warn'], ['Sampat', 'சம்பத்', 'good'], ['Vipat', 'விபத்', 'bad'], ['Kshema', 'க்ஷேம', 'good'], ['Pratyak', 'பிரத்யக்', 'bad'], ['Sadhana', 'சாதக', 'good'], ['Naidhana', 'நைதன', 'bad'], ['Mitra', 'மித்ர', 'good'], ['Parama Mitra', 'பரம மித்ர', 'good']];
 const goodBad = (k) => (k === 'good' ? L('Favourable', 'சாதகம்') : k === 'bad' ? L('Careful', 'கவனம்') : L('Neutral', 'சமம்'));
@@ -120,8 +122,9 @@ function renderHome(sec) {
     </div>
 
     ${trialBanner()}${ratePrompt()}
-    <div class="quick-row">${QUICK.map(([id, icon, en, tx]) => `<button class="quick" data-go="${id}"><span class="q-icon">${icon}</span><span>${esc(L(en, tx))}</span></button>`).join('')}</div>
+    <div class="quick-row">${QUICK.map(([id, , en, tx]) => `<button class="quick" data-go="${id}">${iconChip(id, { size: 24, cls: 'q-icon' })}<span>${esc(L(en, tx))}</span></button>`).join('')}</div>
     ${todayColorCard()}
+    ${reminderCard()}
     <div class="chips">
       <div class="chip-card"><span class="mini-label">${L('Star', 'நட்சத்திரம்')}</span><b>${esc(nakName(snap.nakshatra.index))}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.nakshatra.endsAt, loc.tz)}</span></div>
       <div class="chip-card"><span class="mini-label">${L('Tithi', 'திதி')}</span><b>${esc(ta() ? snap.tithi.ta : snap.tithi.name)}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.tithi.endsAt, loc.tz)}</span></div>
@@ -147,7 +150,7 @@ function renderHome(sec) {
     ${parigaramCard(snap)}
 
     <div class="section-title">${L('Everything for your family', 'உங்கள் குடும்பத்திற்கு அனைத்தும்')}</div>
-    <div class="tiles">${TILES.map(([id, icon, en, tx]) => `<button class="tile" data-go="${id}"><span class="ti-icon">${icon}</span><span>${esc(L(en, tx))}</span></button>`).join('')}</div>
+    <div class="tiles">${TILES.map(([id, , en, tx]) => `<button class="tile" data-go="${id}">${iconChip(id, { size: 22, cls: 'ti-icon' })}<span>${esc(L(en, tx))}</span></button>`).join('')}</div>
 
     <button class="btn-gold share-btn" id="shareToday">📤 ${L('Share today\'s calendar on WhatsApp', 'இன்றைய காலண்டரை WhatsApp-ல் பகிரவும்')}</button>
 
@@ -300,9 +303,9 @@ function renderWheel(pos, lagnaLon, moonNak) {
     const r = radii[lvl];
     const x = r * Math.cos(a), y = -r * Math.sin(a);
     const tx = 100 * Math.cos(a), ty = -100 * Math.sin(a);
-    return `<line x1="${x}" y1="${y}" x2="${tx}" y2="${ty}" stroke="${COLOR[k]}" stroke-opacity=".35"/>
-      <circle cx="${x}" cy="${y}" r="10" fill="rgba(10,4,30,.85)" stroke="${COLOR[k]}"/>
-      <text x="${x}" y="${y}" fill="${COLOR[k]}" font-size="11" text-anchor="middle" dominant-baseline="central">${GLYPH[k]}</text>`;
+    return `<line x1="${x}" y1="${y}" x2="${tx}" y2="${ty}" style="stroke:${COLOR[k]}" stroke-opacity=".35"/>
+      <circle cx="${x}" cy="${y}" r="10" fill="rgba(10,4,30,.85)" style="stroke:${COLOR[k]}"/>
+      <text x="${x}" y="${y}" style="fill:${COLOR[k]}" font-size="11" text-anchor="middle" dominant-baseline="central">${GLYPH[k]}</text>`;
   }).join('');
 }
 

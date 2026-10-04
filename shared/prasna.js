@@ -180,6 +180,17 @@ export const CATEGORIES = [
     goodDays: [0, 1, 3, 4, 5], badDays: [], goodLagna: [1, 3, 4, 8, 11],
   },
   {
+    // Vahanam vanga (two-wheeler, auto, car, lorry): classical Tamil muhurtha rules — only the listed stars,
+    // Mon/Wed/Thu/Fri (Sunday acceptable), no Rikta/Ashtami/Navami/Amavasai or Theipirai Prathamai, no Kuligai,
+    // and a Venus (vahana karaka), Mercury, Moon or Jupiter Horai for the first drive.
+    id: 'vehicle', icon: '🚗', en: 'Vehicle Purchase & First Drive (Vahanam)', ta: 'வாகனம் வாங்க', event: true, auspicious: true,
+    goodHora: ['Venus', 'Mercury', 'Moon', 'Jupiter'], badHora: ['Saturn', 'Mars'],
+    goodNak: [], badNak: [],
+    goodStars: [0, 3, 4, 6, 7, 11, 12, 13, 14, 16, 20, 21, 22, 23, 25, 26],
+    goodDays: [1, 3, 4, 5], badDays: [2, 6],
+    avoidGuligai: true, avoidKrishnaPrathamai: true, avoidBadYoga: true, strictTara: true,
+  },
+  {
     id: 'manjal_neerattu', icon: '🌼', en: 'Manjal Neerattu Vizha', ta: 'மஞ்சள் நீராட்டு விழா', event: true, auspicious: true,
     goodHora: ['Venus', 'Moon', 'Jupiter', 'Mercury'], badHora: ['Saturn', 'Mars'],
     goodNak: ['mridu', 'dhruva', 'kshipra'], badNak: ['ugra', 'tikshna'],
@@ -187,7 +198,7 @@ export const CATEGORIES = [
   },
 ];
 
-const BAD_YOGAS = new Set([0, 5, 8, 9, 12, 14, 16, 18, 26]);
+export const BAD_YOGAS = new Set([0, 5, 8, 9, 12, 14, 16, 18, 26]);
 const TARA = [
   { en: 'Janma', ta: 'ஜன்ம', score: -4 },
   { en: 'Sampat', ta: 'சம்பத்', score: 10 },
@@ -224,7 +235,10 @@ export function scoreSnapshot(snap, category, birth) {
 
   // 3. Nakshatra nature
   const nature = NAKSHATRAS[snap.nakshatra.index].nature;
-  if (cat.goodNak.includes(nature)) add('nak', `${snap.nakshatra.name} star suits this work`, `${snap.nakshatra.ta} நட்சத்திரம் ஏற்றது`, 8, nature);
+  if (cat.goodStars) {
+    if (cat.goodStars.includes(snap.nakshatra.index)) add('nak', `${snap.nakshatra.name} star suits this work`, `${snap.nakshatra.ta} நட்சத்திரம் ஏற்றது`, 8, nature);
+    else add('nak', `${snap.nakshatra.name} star does not suit this work`, `${snap.nakshatra.ta} நட்சத்திரம் ஏற்றதல்ல`, -8, nature);
+  } else if (cat.goodNak.includes(nature)) add('nak', `${snap.nakshatra.name} star suits this work`, `${snap.nakshatra.ta} நட்சத்திரம் ஏற்றது`, 8, nature);
   else if (cat.badNak.includes(nature)) add('nak', `${snap.nakshatra.name} star does not suit this work`, `${snap.nakshatra.ta} நட்சத்திரம் ஏற்றதல்ல`, -8, nature);
 
   // 4. Tithi

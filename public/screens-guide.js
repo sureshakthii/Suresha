@@ -9,6 +9,7 @@ import {
 } from './core.js';
 import { dayOutlook } from './screens-main.js';
 import { isLocked, lockCard } from './growth.js';
+import { remindBtn } from './remind.js';
 
 const WEEK_TA = ['ஞாயிறு', 'திங்கள்', 'செவ்வாய்', 'புதன்', 'வியாழன்', 'வெள்ளி', 'சனி'];
 const WEEK_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -187,7 +188,7 @@ function renderPanchangam(sec) {
 
     <div class="card glass pan-head"><div class="pan-day">${td.tamil.day}</div><div><div class="pan-month">${esc(bi({ en: td.tamil.monthEn, ta: td.tamil.monthTa }))}</div>
       <div>${esc(ta() ? `${td.tamil.year.ta} வருடம்` : `${td.tamil.year.en} year`)} · <b>${esc(bi(td.weekday))}</b></div><div class="muted">${d}-${mo}-${y} · ${esc(L(td.paksha === 'Shukla' ? 'Valarpirai' : 'Theipirai', td.paksha === 'Shukla' ? 'வளர்பிறை' : 'தேய்பிறை'))}</div></div></div>
-    ${td.festivals.length || td.muhurthaDay ? `<div class="fest-row">${td.festivals.map((f) => `<span class="fest ${f.kind}">${f.kind === 'festival' ? '🎉' : '🪔'} ${esc(bi(f))}</span>`).join('')}${td.muhurthaDay ? `<span class="fest muhurtham">💐 ${L('Subha Muhurtha day', 'சுப முகூர்த்த நாள்')}</span>` : ''}</div>` : ''}
+    ${td.festivals.length || td.muhurthaDay ? `<div class="fest-row">${td.festivals.map((f) => `<span class="fest ${f.kind}">${f.kind === 'festival' ? '🎉' : '🪔'} ${esc(bi(f))} ${remindBtn({ title: bi(f), at: td.sunrise })}</span>`).join('')}${td.muhurthaDay ? `<span class="fest muhurtham">💐 ${L('Subha Muhurtha day', 'சுப முகூர்த்த நாள்')}</span>` : ''}</div>` : ''}
 
     <div class="card glass pan-big"><div class="card-title">📖 ${L('Pancha Angam — five limbs', 'பஞ்ச அங்கம்')}</div>
       <div class="pan-row"><span>📅 ${L('Day', 'வாரம்')}</span><b>${esc(bi(td.weekday))}</b></div>
@@ -199,10 +200,10 @@ function renderPanchangam(sec) {
       <div class="pan-row"><span>☀️ ${L('Sunrise / Sunset', 'சூரிய உதயம் / அஸ்தமனம்')}</span><b>${t(td.sunrise)} / ${t(td.sunset)}</b></div></div>
 
     <div class="card glass pan-big"><div class="card-title">✨ ${L('Nalla Neram (Gowri)', 'நல்ல நேரம் (கௌரி)')}</div>
-      ${good.map((g) => `<div class="pan-row good"><span>${g.part === 'day' ? '🌞' : '🌙'} ${esc(bi(g))}</span><b>${t(g.start)} – ${t(g.end)}</b></div>`).join('')}</div>
+      ${good.map((g) => `<div class="pan-row good"><span>${g.part === 'day' ? '🌞' : '🌙'} ${esc(bi(g))}</span><b>${t(g.start)} – ${t(g.end)} ${remindBtn({ title: `${L('Nalla neram', 'நல்ல நேரம்')} · ${bi(g)} ${t(g.start)}`, at: g.start })}</b></div>`).join('')}</div>
 
     <div class="card glass pan-big"><div class="card-title">⛔ ${L('Avoid these times', 'தவிர்க்க வேண்டிய நேரம்')}</div>
-      <div class="pan-row bad"><span>🐍 ${L('Rahu Kalam', 'ராகு காலம்')}</span><b>${t(td.rahuKalam.start)} – ${t(td.rahuKalam.end)}</b></div>
+      <div class="pan-row bad"><span>🐍 ${L('Rahu Kalam', 'ராகு காலம்')}</span><b>${t(td.rahuKalam.start)} – ${t(td.rahuKalam.end)} ${remindBtn({ title: `${L('Rahu Kalam starts', 'ராகு காலம் தொடக்கம்')} ${t(td.rahuKalam.start)}`, at: td.rahuKalam.start })}</b></div>
       <div class="pan-row bad"><span>⚔️ ${L('Yamagandam', 'எமகண்டம்')}</span><b>${t(td.yamagandam.start)} – ${t(td.yamagandam.end)}</b></div>
       <div class="pan-row bad"><span>🌑 ${L('Guligai', 'குளிகை')}</span><b>${t(td.guligai.start)} – ${t(td.guligai.end)}</b></div>
       <div class="pan-row"><span>🧭 ${L('Soolam', 'சூலம்')}</span><b>${esc(L(so[0], so[1]))}<small> · ${L('parigaram', 'பரிகாரம்')}: ${esc(L(so[2], so[3]))}</small></b></div>

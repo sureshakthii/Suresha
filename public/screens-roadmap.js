@@ -6,6 +6,7 @@ import {
   speak, displayName, aiTask, saveFamily,
 } from './core.js';
 import { isLocked, lockCard } from './growth.js';
+import { remindBtn } from './remind.js';
 
 const people = () => state.family.filter((m) => m.relation !== 'organization');
 const mY = (d) => `${monthName(new Date(d).getUTCMonth())} ${new Date(d).getUTCFullYear()}`;
@@ -48,7 +49,7 @@ function drawRoadmap(m) {
 
     ${locked ? lockCard(L('The 10-year period map, yearly outlook and event windows are part of Premium.', '10 ஆண்டு கால வரைபடம், ஆண்டுவாரிப் பலன், நிகழ்வுக் காலங்கள் பிரீமியத்தில் உள்ளன.')) : `
     ${r.milestones.length ? `<div class="card glass"><div class="card-title">🎯 ${L('Next best windows for big steps', 'பெரிய முடிவுகளுக்கான அடுத்த சிறந்த காலங்கள்')}</div>
-      ${r.milestones.map((x) => `<div class="factor"><span>${x.icon} ${esc(bi(x.name))}${x.doubleTransit ? ` <span class="tag good">${L('Double transit', 'இரட்டைக் கோசாரம்')}</span>` : ''}</span><b class="zero">${mY(x.from)} – ${mY(x.to)}</b></div>`).join('')}
+      ${r.milestones.map((x) => `<div class="factor"><span>${x.icon} ${esc(bi(x.name))}${x.doubleTransit ? ` <span class="tag good">${L('Double transit', 'இரட்டைக் கோசாரம்')}</span>` : ''}</span><b class="zero">${mY(x.from)} – ${mY(x.to)} ${x.from > Date.now() ? remindBtn({ title: `${bi(x.name)} — ${L('good period begins', 'நல்ல காலம் தொடக்கம்')}`, at: x.from }) : ''}</b></div>`).join('')}
       <button class="chip-btn" data-go="life">🔭 ${L('Details for each question', 'ஒவ்வொரு கேள்விக்கும் விவரம்')}</button></div>` : ''}
 
     <div class="section-title">📅 ${L('Year by year', 'ஆண்டுவாரியாக')}</div>

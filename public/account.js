@@ -1,5 +1,6 @@
 // Account: login (mobile OTP, email OTP, Facebook), family profiles and settings.
 import { searchLocalPlaces } from './shared/places.js';
+import { icon, iconChip } from './icons.js';
 import {
   state, $, $$, L, ta, esc, bi, api, STATIC, store, go, registerScreen, subHeader, saveFamily, saveSettings, setLoc,
   toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright,
@@ -241,7 +242,7 @@ function renderFamily(sec, params = {}) {
   }
   sec.innerHTML = `${subHeader(L('Family', 'குடும்பம்'), L('Everyone\'s charts in one place', 'அனைவரின் ஜாதகமும் ஒரே இடத்தில்'), 'more')}
     ${state.family.map((m) => { const c = chartOf(m); return `<div class="card glass fam-card${m.id === state.activeId ? ' active' : ''}">
-      <span class="avatar">${esc(displayName(m).slice(0, 1).toUpperCase())}</span>
+      <span class="avatar">${esc(([...displayName(m)][0] || '').toUpperCase())}</span>
       <div style="flex:1"><b>${esc(displayName(m))}</b> <span class="pill">${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))}</span>
         <div class="muted small">${esc(m.date)} · ${esc(m.time.slice(0, 5))} · ${esc(placeName(m.place))}</div>
         <div class="small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))} · ${L('Lagnam', 'லக்னம்')} ${esc(rasiName(c.lagna.rasi))}</div></div>
@@ -279,31 +280,32 @@ registerScreen('family', { render: renderFamily, parent: 'more' });
 function renderMore(sec) {
   const u = state.user;
   sec.innerHTML = `<div class="card glass account-card">
-      <span class="avatar big">${esc((u?.name || '🙏').slice(0, 1).toUpperCase())}</span>
+      <span class="avatar big">${esc(u?.name ? [...u.name][0].toUpperCase() : '🙏')}</span>
       <div style="flex:1">${u ? `<b>${esc(displayName(state.family.find((m) => m.relation === 'self')) || u.name || L('Signed in', 'உள்நுழைந்துள்ளீர்கள்'))}</b><div class="muted small">${esc(u.phone || u.email || (u.hasFacebook ? 'Facebook' : ''))}${u.demo ? ' · demo' : ''}</div>`
     : `<b>${L('Not signed in', 'உள்நுழையவில்லை')}</b><div class="muted small">${L('Sign in to back up your family', 'குடும்ப விவரங்களைப் பாதுகாக்க உள்நுழையவும்')}</div>`}</div>
       ${u ? `<button class="chip-btn" id="signOut">${L('Sign out', 'வெளியேறு')}</button>` : `<button class="chip-btn" data-go="login">${L('Sign in', 'உள்நுழை')}</button>`}</div>
-    <button class="premium-cta" data-go="plans">👑 ${L('Kaippesi Premium — for your whole family', 'கைப்பேசி பிரீமியம் — முழு குடும்பத்திற்கும்')} ›</button>
+    <button class="premium-cta" data-go="plans">${iconChip('plans', { size: 20, cls: 'mi-icon' })}${L('Kaippesi Premium — for your whole family', 'கைப்பேசி பிரீமியம் — முழு குடும்பத்திற்கும்')} ›</button>
     <div class="menu">
-      <button data-go="life">🔭 ${L('Life questions — when will it happen?', 'வாழ்க்கைக் கேள்விகள் — எப்போது?')}</button>
-      <button data-go="couple">💑 ${L('Married life analysis', 'திருமண வாழ்க்கை ஆய்வு')}</button>
-      <button data-go="partners">🤝 ${L('Business partner match', 'வணிகக் கூட்டாளி பொருத்தம்')}</button>
-      <button data-go="family">👨‍👩‍👧 ${L('Family members', 'குடும்ப உறுப்பினர்கள்')}</button>
-      <button data-go="calendar">📅 ${L('Tamil calendar', 'தமிழ் நாட்காட்டி')}</button>
-      <button data-go="muhurtham">🗓️ ${L('Muhurtham finder', 'முகூர்த்தம் தேடல்')}</button>
-      <button data-go="porutham">💞 ${L('Marriage matching', 'திருமணப் பொருத்தம்')}</button>
-      <button data-go="parigaram">🪔 ${L('Parigaram', 'பரிகாரம்')}</button>
-      <button data-go="temples">🛕 ${L('Navagraha temples', 'நவகிரக கோவில்கள்')}</button>
-      <button data-go="packages">🧳 ${L('Yatra packages', 'யாத்திரை பேக்கேஜ்கள்')}</button>
-      <button data-go="invite">🎁 ${L('Invite family & get free days', 'அழைத்து இலவச நாட்கள் பெறுங்கள்')}</button>
-      <button data-go="feedback">⭐ ${L('Rate & comment', 'மதிப்பீடு & கருத்து')}</button>
-      <button data-go="legal">📄 ${L('Privacy, terms & refunds', 'தனியுரிமை, விதிமுறைகள், பணத்திருப்பம்')}</button>
-      <button data-go="about">🌿 ${L('Why Kaippesi Jothidar', 'ஏன் கைப்பேசி ஜோதிடர்')}</button>
+      <button data-go="life">${iconChip('life', { size: 20, cls: 'mi-icon' })}<span>${L('Life questions — when will it happen?', 'வாழ்க்கைக் கேள்விகள் — எப்போது?')}</span></button>
+      <button data-go="couple">${iconChip('couple', { size: 20, cls: 'mi-icon' })}<span>${L('Married life analysis', 'திருமண வாழ்க்கை ஆய்வு')}</span></button>
+      <button data-go="partners">${iconChip('partners', { size: 20, cls: 'mi-icon' })}<span>${L('Business partner match', 'வணிகக் கூட்டாளி பொருத்தம்')}</span></button>
+      <button data-go="family">${iconChip('family', { size: 20, cls: 'mi-icon' })}<span>${L('Family members', 'குடும்ப உறுப்பினர்கள்')}</span></button>
+      <button data-go="calendar">${iconChip('calendar', { size: 20, cls: 'mi-icon' })}<span>${L('Tamil calendar', 'தமிழ் நாட்காட்டி')}</span></button>
+      <button data-go="muhurtham">${iconChip('muhurtham', { size: 20, cls: 'mi-icon' })}<span>${L('Muhurtham finder', 'முகூர்த்தம் தேடல்')}</span></button>
+      <button data-go="porutham">${iconChip('porutham', { size: 20, cls: 'mi-icon' })}<span>${L('Marriage matching', 'திருமணப் பொருத்தம்')}</span></button>
+      <button data-go="parigaram">${iconChip('parigaram', { size: 20, cls: 'mi-icon' })}<span>${L('Parigaram', 'பரிகாரம்')}</span></button>
+      <button data-go="temples">${iconChip('temples', { size: 20, cls: 'mi-icon' })}<span>${L('Navagraha temples', 'நவகிரக கோவில்கள்')}</span></button>
+      <button data-go="packages">${iconChip('packages', { size: 20, cls: 'mi-icon' })}<span>${L('Yatra packages', 'யாத்திரை பேக்கேஜ்கள்')}</span></button>
+      <button data-go="invite">${iconChip('invite', { size: 20, cls: 'mi-icon' })}<span>${L('Invite family & get free days', 'அழைத்து இலவச நாட்கள் பெறுங்கள்')}</span></button>
+      <button data-go="feedback">${iconChip('feedback', { size: 20, cls: 'mi-icon' })}<span>${L('Rate & comment', 'மதிப்பீடு & கருத்து')}</span></button>
+      <button data-go="legal">${iconChip('legal', { size: 20, cls: 'mi-icon' })}<span>${L('Privacy, terms & refunds', 'தனியுரிமை, விதிமுறைகள், பணத்திருப்பம்')}</span></button>
+      <button data-go="about">${iconChip('about', { size: 20, cls: 'mi-icon' })}<span>${L('Why Kaippesi Jothidar', 'ஏன் கைப்பேசி ஜோதிடர்')}</span></button>
     </div>
-    <button class="link-btn center-block" data-go="admin">🔐 ${L('Owner dashboard', 'உரிமையாளர் டாஷ்போர்டு')}</button>
+    <button class="link-btn center-block" data-go="admin">${icon('shield-check', { size: 16 })} ${L('Owner dashboard', 'உரிமையாளர் டாஷ்போர்டு')}</button>
     <div class="card glass settings">
       <div class="card-title">${L('Settings', 'அமைப்புகள்')}</div>
       <div class="set-row"><span>${L('Language', 'மொழி')}</span><div class="seg"><button data-lang="ta" class="${ta() ? 'sel' : ''}">தமிழ்</button><button data-lang="en" class="${ta() ? '' : 'sel'}">English</button></div></div>
+      <div class="set-row"><span>${L('Appearance', 'தோற்றம்')}</span><div class="seg">${[['light', 'Day', 'பகல்'], ['dark', 'Night', 'இரவு'], ['auto', 'Auto', 'தானியங்கி']].map(([id, en, tx]) => `<button data-theme-set="${id}" class="${(state.settings.theme || 'light') === id ? 'sel' : ''}">${L(en, tx)}</button>`).join('')}</div></div>
       <label class="set-row"><span>${L('Large text (for elders)', 'பெரிய எழுத்து (பெரியோருக்கு)')}</span><input type="checkbox" id="setLarge"${state.settings.large ? ' checked' : ''}></label>
       <label class="set-row"><span>${L('Read answers aloud', 'பதில்களை வாசித்துக்காட்டு')}</span><input type="checkbox" id="setVoice"${state.settings.voice ? ' checked' : ''}></label>
       <div class="set-row col"><span>${L('Location for today\'s timings', 'இன்றைய நேரங்களுக்கான இடம்')}: <b>${esc(placeName(state.loc?.name) || '—')}</b></span>
@@ -312,6 +314,7 @@ function renderMore(sec) {
     </div>`;
   $('#signOut')?.addEventListener('click', signOut);
   $$('[data-lang]', sec).forEach((b) => b.addEventListener('click', () => { state.lang = b.dataset.lang; store.set('kj_lang', state.lang); document.dispatchEvent(new Event('kj:lang')); }));
+  $$('[data-theme-set]', sec).forEach((b) => b.addEventListener('click', () => { state.settings.theme = b.dataset.themeSet; saveSettings(); renderMore(sec); }));
   $('#setLarge').addEventListener('change', (e) => { state.settings.large = e.target.checked; saveSettings(); });
   $('#setVoice').addEventListener('change', (e) => { state.settings.voice = e.target.checked; saveSettings(); });
   placeSearch($('#locSearch'), $('#locList'), (p) => { setLoc({ lat: p.lat, lon: p.lon, tz: p.tz, name: p.name }); toast(`📍 ${p.name}`); renderMore(sec); });

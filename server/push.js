@@ -12,7 +12,7 @@ const VAPID_FILE = 'data/vapid.json';
 const TICK_MS = 60000;
 const MORNING_WINDOW_MIN = 60; // still send if the server was briefly down at the exact minute
 const TRIP_LEAD_MS = 60 * 60000;
-const MAX_TRIPS = 20;
+const MAX_TRIPS = 60;
 const DEFAULT_LOC = { lat: 13.0827, lon: 80.2707 }; // Chennai
 const APP_TA = 'கைப்பேசி ஜோதிடர்';
 
@@ -122,7 +122,7 @@ function parsePrefs(p) {
       if (!HM.test(t.time || '')) throw new Invalid('Invalid trip time (HH:MM)');
       const title = str(t.title, 120);
       if (!title) throw new Invalid('Trip title required');
-      return { id: String(t.id ?? i).slice(0, 64), date: t.date, time: t.time, title, place: str(t.place, 120) };
+      return { id: String(t.id ?? i).slice(0, 64), date: t.date, time: t.time, title, place: str(t.place, 120), kind: t.kind === 'reminder' ? 'reminder' : 'trip' };
     }),
   };
 }
@@ -191,6 +191,17 @@ export function tripMessage(prefs, trip) {
   };
 }
 
+const REMINDER_WINDOW_MS = 30 * 60000;
+export function reminderMessage(prefs, r) {
+  const ta = prefs.lang !== 'en';
+  return {
+    title: ta ? `${APP_TA} · நினைவூட்டல்` : 'Kaippesi Jothidar · Reminder',
+    body: `🔔 ${r.title}${r.place ? ` · ${r.place}` : ''}`,
+    url: '/',
+    tag: `rem-${r.id}`,
+  };
+}
+
 const tripKey = (t) => `${t.id}|${t.date}|${t.time}`;
 
 // ---- scheduler ----
@@ -230,8 +241,10 @@ export async function runPushTick(now = Date.now(), send = pushSender) {
       const [y, mo, d] = t.date.split('-').map(Number);
       const [h, mi] = t.time.split(':').map(Number);
       const at = Date.UTC(y, mo - 1, d, h, mi) - prefs.tz * 3600000;
-      if (nowMs >= at - TRIP_LEAD_MS && nowMs < at) {
-        due.push({ build: () => tripMessage(prefs, t), mark: () => { last.trips[key] = nowMs; } });
+      // Trips alert ahead of departure; general reminders (vratham, muhurtham, rahu kalam…) alert at their alarm time.
+      const fire = t.kind === 'reminder' ? nowMs >= at && nowMs < at + REMINDER_WINDOW_MS : nowMs >= at - TRIP_LEAD_MS && nowMs < at;
+      if (fire) {
+        due.push({ build: () => (t.kind === 'reminder' ? reminderMessage(prefs, t) : tripMessage(prefs, t)), mark: () => { last.trips[key] = nowMs; } });
       }
     }
     // Forget reminders for trips that were removed or rescheduled.

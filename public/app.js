@@ -88,6 +88,7 @@ async function boot() {
   refreshSnap(true);
   $('#app').hidden = false;
 
+  $('#themeBtn')?.addEventListener('click', () => { state.settings.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; saveSettings(); });
   $('#langBtn').addEventListener('click', () => { state.lang = ta() ? 'en' : 'ta'; store.set('kj_lang', state.lang); document.dispatchEvent(new Event('kj:lang')); });
   document.addEventListener('kj:lang', () => { applyLang(); go(state.view, state.params); });
   $$('.tabbar button').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));

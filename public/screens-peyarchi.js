@@ -8,7 +8,9 @@ import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, fmtIsoDate,
   activeMember, chartOf, registerScreen, subHeader, speak, displayName, placeName,
 } from './core.js';
+import { remindBtn } from './remind.js';
 
+const localAt = (date, time) => { const [y, mo, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(Date.UTC(y, mo - 1, d, h, mi) - (state.loc?.tz ?? 5.5) * 3600000); };
 const LOADER = '<div class="loader"><i></i><i></i><i></i></div>';
 const later = (fn) => setTimeout(fn, 30);
 const tz = () => state.loc?.tz ?? 5.5;
@@ -109,6 +111,7 @@ function fillNow(cur) {
       <b>${esc(planetName(p))} · ${esc(rasiName(c.rasi))}${c.retrograde && p !== 'Rahu' && p !== 'Ketu' ? ` <span class="pill">${L('retro', 'வக்ரம்')}</span>` : ''}</b>
       <small>${L('Since', 'முதல்')}: ${fmtD(c.since)}</small>
       <small>${L('Next', 'அடுத்து')}: ${c.next ? `${esc(rasiName(c.nextRasi))} · ${fmtD(c.next)}${c.nextRetro && p !== 'Rahu' && p !== 'Ketu' ? ` (${L('retro', 'வக்ரம்')})` : ''}` : '—'}</small>
+      ${c.next ? remindBtn({ title: L(`${p} peyarchi to ${RASIS[c.nextRasi].en}`, `${planetName(p)} பெயர்ச்சி — ${RASIS[c.nextRasi].ta}`), at: c.next, label: L('Remind', 'நினைவூட்டு') }) : ''}
     </div>`;
   }).join('')}</div>`;
 }
@@ -251,6 +254,7 @@ function drawVratham() {
         return `<div class="vr-row${x.date === todayIso ? ' today' : x.date < todayIso ? ' past' : ''}">
           <span class="ic">${t ? t.icon : '🪔'}</span>
           <div class="tx"><b>${esc(bi(x))}</b><span>${esc(fmtIsoDate(x.date))} · ${esc(bi(WEEKDAYS[x.weekday]))}</span></div>
+          ${x.date >= todayIso ? remindBtn({ title: bi(x), at: localAt(x.date, '06:00') }) : ''}
           <button class="chip-btn" data-ics="${m}:${rows.indexOf(x)}" aria-label="${L('Add to calendar', 'நாட்காட்டியில் சேர்')}">📅</button>
         </div>`;
       }).join('')}</div>`;

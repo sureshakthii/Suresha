@@ -14,6 +14,7 @@ import {
   placeName,
 } from './core.js';
 import { refreshSnap } from './screens-main.js';
+import { upcomingReminders, deleteReminder } from './remind.js';
 
 const loader = (msg = '') => `<div class="loader"><i></i><i></i><i></i></div>${msg ? `<p class="muted center">${msg}</p>` : ''}`;
 const todayIso = () => new Date(Date.now() + state.loc.tz * 3600000).toISOString().slice(0, 10);
@@ -406,7 +407,13 @@ registerScreen('priests', { render: (sec, p) => renderSeva(sec, p, 'priests'), p
 
 // ================================================================ REMINDERS (morning alarm + parigaram trips)
 const reminders = store.get('kj_reminders', { morningTime: '05:30', trips: [], pushEndpoint: null });
-const saveReminders = () => store.set('kj_reminders', reminders);
+// General reminders are written by remind.js; keep them when this screen saves its own settings and trips.
+const saveReminders = () => {
+  const cur = store.get('kj_reminders', { trips: [] });
+  reminders.trips = [...reminders.trips.filter((t) => t.kind !== 'reminder'), ...(cur.trips || []).filter((t) => t.kind === 'reminder')];
+  store.set('kj_reminders', reminders);
+};
+const reloadReminders = () => { reminders.trips = store.get('kj_reminders', reminders).trips || []; };
 
 function icsFor(events) {
   const pad = (n) => String(n).padStart(2, '0');
@@ -448,7 +455,7 @@ async function syncPush() {
   const m = activeMember();
   await api('/api/push/subscribe', { method: 'POST', body: { subscription: sub.toJSON(), prefs: {
     morningTime: reminders.morningTime || null, tz: state.loc.tz, lat: state.loc.lat, lon: state.loc.lon, place: state.loc.name, lang: state.lang, name: m ? displayName(m) : '',
-    trips: reminders.trips.filter((t) => t.date >= todayIso()).slice(0, 20).map((t) => ({ id: t.id, date: t.date, time: t.time, title: t.title, place: t.place })),
+    trips: (reloadReminders(), reminders.trips).filter((t) => t.date >= todayIso()).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 60).map((t) => ({ id: t.id, date: t.date, time: t.time, title: t.title, place: t.place, kind: t.kind || 'trip' })),
   } } });
   reminders.pushEndpoint = sub.endpoint;
   saveReminders();
@@ -456,6 +463,7 @@ async function syncPush() {
 }
 
 function renderReminders(sec, params = {}) {
+  reloadReminders();
   const pushOk = !STATIC && 'PushManager' in window;
   sec.innerHTML = `${subHeader(L('Alarm & Reminders', 'அலாரம் & நினைவூட்டல்'), L('Morning panchangam alarm and parigaram trip reminders', 'காலை பஞ்சாங்க அலாரம், பரிகாரப் பயண நினைவூட்டல்'))}
     <div class="card glass"><div class="card-title">🌅 ${L('Morning alarm', 'காலை அலாரம்')}</div>
@@ -472,9 +480,16 @@ function renderReminders(sec, params = {}) {
       <input type="hidden" name="place" value="${esc(params.tripPlace || '')}">
       <button class="btn-gold">${L('Save trip', 'பயணத்தைச் சேமி')}</button>
       <p class="muted small">${L('Tip: use the Muhurtham finder (Travel) to choose a good day.', 'குறிப்பு: நல்ல நாளைத் தேர்வு செய்ய முகூர்த்தம் தேடலில் "பயணம்" பயன்படுத்தவும்.')}</p></form>
-    <div id="tripList"></div>`;
+    <div id="remList"></div><div id="tripList"></div>
+    <div class="card glass"><p class="small">🔔 ${L('Tip: tap the bell on any Panchangam time, viratha day, muhurtham, star birthday, thivasam, peyarchi or road-map window to set a reminder.', 'குறிப்பு: பஞ்சாங்க நேரம், விரத நாள், முகூர்த்தம், நட்சத்திரப் பிறந்தநாள், திவசம், பெயர்ச்சி, வாழ்க்கை வரைபடம் — எங்கும் மணி அடையாளத்தைத் தொட்டு நினைவூட்டல் அமைக்கலாம்.')}</p></div>`;
+  const drawRems = () => {
+    const list = upcomingReminders().filter((t) => t.kind === 'reminder');
+    $('#remList').innerHTML = list.length ? `<div class="card glass"><div class="card-title">🔔 ${L('My reminders', 'என் நினைவூட்டல்கள்')}<span class="pill">${list.length}</span></div>${list.map((t) => `<div class="factor"><span>${esc(t.title)}<br><small class="muted">${fmtIsoDate(t.date)} · ${fmtTime(t.alarm, state.loc.tz)}</small></span><button class="link-btn" data-rdel="${t.id}" aria-label="${esc(L('Delete', 'நீக்கு'))}">✕</button></div>`).join('')}</div>` : '';
+    $$('[data-rdel]', sec).forEach((b) => b.addEventListener('click', () => { deleteReminder(b.dataset.rdel); drawRems(); }));
+  };
+  drawRems();
   const drawTrips = () => {
-    const upcoming = reminders.trips.filter((t) => t.date >= todayIso()).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    const upcoming = reminders.trips.filter((t) => t.kind !== 'reminder' && t.date >= todayIso()).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
     $('#tripList').innerHTML = upcoming.length ? `<div class="card glass"><div class="card-title">🧳 ${L('Upcoming trips', 'வரும் பயணங்கள்')}</div>${upcoming.map((t) => `<div class="factor"><span>🛕 ${esc(t.title)}<br><small class="muted">${fmtIsoDate(t.date)} · ${esc(t.time)}${t.place ? ` · ${esc(placeName(t.place))}` : ''}</small></span>
       <span class="btn-col"><button class="link-btn" data-ics="${t.id}">📅</button><button class="link-btn" data-del="${t.id}">✕</button></span></div>`).join('')}</div>` : '';
     $$('[data-ics]', sec).forEach((b) => b.addEventListener('click', () => { const t = reminders.trips.find((x) => x.id === b.dataset.ics); saveIcs(`trip-${t.date}.ics`, icsFor([{ uid: t.id, title: `🛕 ${t.title}`, start: localToUtc(t.date, t.time), location: t.place, alarm: '-PT60M', minutes: 120 }])); }));

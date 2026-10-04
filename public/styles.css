@@ -1238,3 +1238,6 @@ details, details > div, .bhava { min-width: 0; max-width: 100%; }
 .ans-why { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; margin: 4px 0 6px; }
 .bubble.ai:has(.ans-body .ans-sec) { padding-right: 12px; max-width: 100%; }
 .bubble.ai:has(.ans-body .ans-sec) .say-bubble { position: static; margin-left: auto; }
+.health-cta { display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%; color: var(--text); border-left: 4px solid var(--good, #2e7d32); }
+.health-cta b { color: var(--brand); font-size: var(--fs-md); } [data-theme="dark"] .health-cta b { color: var(--gold2); }
+.health-cta .tag { font-size: var(--fs-xs); vertical-align: middle; }

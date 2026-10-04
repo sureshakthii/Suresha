@@ -19,6 +19,7 @@ import { trialBanner, ratePrompt } from './growth.js';
 import { todayColorCard } from './screens-guide.js';
 import { reminderCard } from './remind.js';
 import { iconChip } from './icons.js';
+import { healthGuide } from './shared/health.js';
 
 const TARA = [['Janma', 'ஜன்ம', 'warn'], ['Sampat', 'சம்பத்', 'good'], ['Vipat', 'விபத்', 'bad'], ['Kshema', 'க்ஷேம', 'good'], ['Pratyak', 'பிரத்யக்', 'bad'], ['Sadhana', 'சாதக', 'good'], ['Naidhana', 'நைதன', 'bad'], ['Mitra', 'மித்ர', 'good'], ['Parama Mitra', 'பரம மித்ர', 'good']];
 const goodBad = (k) => (k === 'good' ? L('Favourable', 'சாதகம்') : k === 'bad' ? L('Careful', 'கவனம்') : L('Neutral', 'சமம்'));
@@ -54,6 +55,20 @@ function todayInfo(loc) {
   return today.day;
 }
 
+// Today: Health & Planets summary for the active member (dasa-bhukti + gochara level, one eat / avoid tip).
+function healthTodayCard(m) {
+  if (!m || m.relation === 'organization') return '';
+  let h;
+  try { h = healthGuide(chartOf(m), { gender: m.gender }); } catch { return ''; }
+  const lv = h.period.level;
+  const word = lv === 'good' ? L('Supportive period', 'ஆதரவான காலம்') : lv === 'steady' ? L('Steady period', 'நிலையான காலம்') : L('Take extra care', 'கூடுதல் கவனம்');
+  const first = (x) => bi(x).split(' — ')[0];
+  return `<button class="card glass cta-card health-cta" data-go="health"><b>🌿 ${L('Health & Planets', 'ஆரோக்கியம் & கிரகங்கள்')} <span class="tag ${lv === 'good' ? 'good' : lv === 'steady' ? 'warn' : 'bad'}">${esc(word)}</span></b>
+    <span class="small">${L('Protect', 'கவனிக்க')}: ${esc(h.bodyAreas.slice(0, 2).map((a) => bi(a)).join(', '))}</span>
+    <span class="small">✅ ${esc(h.diet.eat.slice(0, 2).map(first).join(', '))} · 🚫 ${esc(h.diet.avoid.slice(0, 1).map(first).join(', '))}</span>
+    <span class="small muted">${L('From your Dasa–Bhukti, Gochara & Peyarchi ›', 'உங்கள் தசா–புக்தி, கோசாரம், பெயர்ச்சிப்படி ›')}</span></button>`;
+}
+
 function renderHome(sec) {
   const loc = state.loc;
   const td = todayInfo(loc);
@@ -74,6 +89,7 @@ function renderHome(sec) {
       <div class="guide-sugs">${GUIDE_SUGGESTIONS.map(([en, tx]) => `<button class="sg" type="button">${esc(L(en, tx))}</button>`).join('')}</div>
       <p class="small muted">🎙️ ${L('Type or speak — Tamil, English or Tanglish. You can check the words before sending.', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எழுதலாம் அல்லது பேசலாம். அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
     </section>
+    ${healthTodayCard(m)}
 
     <div class="hero">
       <div class="hero-top">

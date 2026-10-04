@@ -9,3 +9,6 @@ mobile/www/
 # Android signing material — never commit
 *.jks
 *.keystore
+
+# Test-only signing key (public on purpose; release keys stay in CI secrets)
+!android/app/test-signing.keystore

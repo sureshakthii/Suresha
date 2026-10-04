@@ -23,6 +23,8 @@ env:
 jobs:
   android:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # publish the test APK as a downloadable release
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -72,6 +74,20 @@ jobs:
           name: kaippesi-android-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # Phone-friendly download: a direct .apk link (no ZIP, no sign-in needed on a public repo):
+      #   https://github.com/<owner>/<repo>/releases/download/test-latest/Kaippesi-Jothidar.apk
+      - name: Publish test APK as the "test-latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk Kaippesi-Jothidar.apk
+          gh release delete test-latest --yes --cleanup-tag || true
+          gh release create test-latest Kaippesi-Jothidar.apk \
+            --title "கைப்பேசி ஜோதிடர் — test build ${{ github.run_number }}" \
+            --notes "Test APK for Android / Samsung / Huawei. Tap Kaippesi-Jothidar.apk below to download and install. Build ${{ github.run_number }} from ${GITHUB_SHA::7}." \
+            --prerelease --target "$GITHUB_SHA"
+          echo "### 📲 Download on the phone: https://github.com/${{ github.repository }}/releases/download/test-latest/Kaippesi-Jothidar.apk" >> "$GITHUB_STEP_SUMMARY"
       # Release APK (signed only when the ANDROID_* secrets are set) — for Huawei AppGallery / sideloading.
       - uses: actions/upload-artifact@v4
         with:

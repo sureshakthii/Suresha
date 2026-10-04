@@ -7,8 +7,9 @@ android {
         applicationId "app.kaippesi.jothidar"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        // Each CI build gets a higher version so a new APK installs over the previous one.
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1') as Integer)
+        versionName "1.0.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -19,6 +20,14 @@ android {
     // Release signing comes from environment variables (set by .github/workflows/mobile.yml from
     // repository secrets, or exported locally). Without them the release build is left unsigned.
     signingConfigs {
+        // TEST-ONLY key committed on purpose: every test build is signed the same way, so updates install over
+        // the previous test APK. Never use it for Play Store / AppGallery — release builds use the secrets below.
+        testing {
+            storeFile file('test-signing.keystore')
+            storePassword 'kaippesitest'
+            keyAlias 'kaippesitest'
+            keyPassword 'kaippesitest'
+        }
         release {
             def ks = System.getenv('ANDROID_KEYSTORE_FILE')
             if (ks && file(ks).exists()) {
@@ -30,6 +39,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.testing
+        }
         release {
             if (signingConfigs.release.storeFile != null) {
                 signingConfig signingConfigs.release

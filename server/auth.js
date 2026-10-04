@@ -359,5 +359,44 @@ export function authRouter() {
     res.json({ ok: true, updatedAt });
   });
 
+  // Data export: everything stored about this account, as JSON.
+  r.get('/me/export', (req, res) => {
+    const user = currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const d = getDb();
+    const tryAll = (sql) => { try { return d.prepare(sql).all(user.id); } catch { return []; } };
+    const row = d.prepare('SELECT data, updated_at FROM user_data WHERE user_id = ?').get(user.id);
+    res.setHeader('Content-Disposition', 'attachment; filename="thunai-account-export.json"');
+    res.json({
+      exportedAt: new Date(now()).toISOString(),
+      account: d.prepare('SELECT id, name, phone, email, created_at FROM users WHERE id = ?').get(user.id),
+      savedData: row?.data ? JSON.parse(row.data) : null,
+      subscriptions: tryAll('SELECT id, plan, status, currency, amount_minor, gateway, starts_at, expires_at, created_at FROM subscriptions WHERE user_id = ?'),
+      storeOrders: tryAll('SELECT id, items, total, status, created_at FROM store_orders WHERE user_id = ?'),
+      serviceRequests: tryAll('SELECT * FROM service_requests WHERE user_id = ?'),
+      feedback: tryAll('SELECT id, rating, comment, status, created_at FROM feedback WHERE user_id = ?'),
+    });
+  });
+
+  // Account deletion: removes profile data, sessions and the account. Payment and order records are
+  // de-identified (kept only where tax/accounting law requires), never shown again in the app.
+  r.delete('/me', (req, res) => {
+    const user = currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const d = getDb();
+    const run = (sql) => { try { d.prepare(sql).run(user.id); } catch { /* table not present on this instance */ } };
+    run('DELETE FROM user_data WHERE user_id = ?');
+    run('DELETE FROM sessions WHERE user_id = ?');
+    run('DELETE FROM push_subs WHERE user_id = ?');
+    run('DELETE FROM feedback WHERE user_id = ?');
+    run('UPDATE events SET user_id = NULL WHERE user_id = ?');
+    run("UPDATE store_orders SET address = '{}', user_id = 'deleted' WHERE user_id = ?");
+    run("UPDATE service_requests SET contact_phone = NULL, notes = '', user_id = 'deleted' WHERE user_id = ?");
+    run("UPDATE subscriptions SET user_id = 'deleted' WHERE user_id = ?");
+    run('DELETE FROM users WHERE id = ?');
+    setCookie(req, res, SESSION_COOKIE, '', { maxAge: 0 });
+    res.json({ ok: true, deleted: true });
+  });
+
   return r;
 }

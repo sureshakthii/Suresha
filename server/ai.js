@@ -18,7 +18,7 @@ const getClient = () => (client ||= new Anthropic());
  * Generate the reply. `onText` receives streamed text chunks; `onReset` means discard what was streamed.
  * Returns { text, source } where source is 'ai' or 'rules'.
  */
-async function streamClaude({ system, messages, onText }) {
+async function streamClaude({ system, messages, onText, onUsage }) {
   const params = {
     model: MODEL,
     max_tokens: 16000,
@@ -35,6 +35,7 @@ async function streamClaude({ system, messages, onText }) {
   const stream = getClient().beta.messages.stream(params);
   stream.on('text', (t) => { streamed += t; onText?.(t); });
   const msg = await stream.finalMessage();
+  try { onUsage?.({ ...msg.usage, model: msg.model }); } catch { /* metrics must never break an answer */ }
   if (msg.stop_reason === 'refusal' || !streamed.trim()) {
     const err = new Error(`AI stopped: ${msg.stop_reason}`);
     err.streamed = streamed;
@@ -44,7 +45,7 @@ async function streamClaude({ system, messages, onText }) {
 }
 
 /** Run a model call and fall back to `fallback()` text when AI is unavailable or fails. */
-async function withFallback({ system, messages, onText, onReset, fallback }) {
+async function withFallback({ system, messages, onText, onReset, fallback, onUsage }) {
   if (!aiEnabled()) {
     const text = fallback();
     onText?.(text);
@@ -52,7 +53,7 @@ async function withFallback({ system, messages, onText, onReset, fallback }) {
   }
   let streamed = '';
   try {
-    const text = await streamClaude({ system, messages, onText: (t) => { streamed += t; onText?.(t); } });
+    const text = await streamClaude({ system, messages, onUsage, onText: (t) => { streamed += t; onText?.(t); } });
     return { text, source: 'ai' };
   } catch (err) {
     console.error('[ai] falling back to rule-based reply:', err.message);
@@ -83,7 +84,7 @@ export function generateReply({ ctx, evaluation, lang, onText, onReset }) {
  * Chat / explanation tasks ('chat' | 'porutham' | 'names'). The data context is attached to the first
  * user turn; `messages` is the conversation (ending on a user turn for chat).
  */
-export function runTask({ task, context, messages, lang, fallbackText, onText, onReset }) {
+export function runTask({ task, context, messages, lang, fallbackText, onText, onReset, onUsage }) {
   const langLine = `Reply in ${lang === 'ta' ? 'Tamil' : 'English'}.`;
   const dataTurn = `Data (JSON):\n${JSON.stringify(context, null, 2)}\n\n${langLine}`;
   const convo = messages?.length ? messages : [{ role: 'user', content: 'Please explain.' }];
@@ -91,7 +92,7 @@ export function runTask({ task, context, messages, lang, fallbackText, onText, o
   return withFallback({
     system: AI_TASKS[task],
     messages: [{ role: 'user', content: `${dataTurn}\n\n${first.content}` }, ...rest],
-    onText, onReset,
+    onText, onReset, onUsage,
     fallback: () => fallbackText,
   });
 }

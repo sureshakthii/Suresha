@@ -92,7 +92,7 @@ test('me when signed out is free', async () => {
   const m = await me();
   assert.equal(m.plan, 'free');
   assert.equal(m.expiresAt, null);
-  assert.deepEqual(m.entitlements, { unlimitedAi: false, predictions: false, familyProfiles: 1 });
+  assert.deepEqual(m.entitlements, { unlimitedAi: false, aiMonthly: null, predictions: false, familyProfiles: 1 });
   assert.equal(m.aiFreeDaily, 5);
   assert.equal(m.aiUsedToday, 0);
 });
@@ -146,7 +146,7 @@ test('Razorpay checkout + verify activates premium for a month; bad signature 40
   assert.equal(m.plan, 'premium_month');
   assert.equal(m.status, 'active');
   assert.equal(m.expiresAt, subscription.expiresAt);
-  assert.deepEqual(m.entitlements, { unlimitedAi: true, predictions: true, familyProfiles: 1 });
+  assert.deepEqual(m.entitlements, { unlimitedAi: false, aiMonthly: 100, predictions: true, familyProfiles: 1 });
 
   // Gateway failure → 502
   billing.setBillingFetch(async () => new Response('{"error":{}}', { status: 500 }));
@@ -246,7 +246,7 @@ test('admin grant gives complimentary access and lists subscriptions', async () 
   } finally { process.env.ADMIN_TOKEN = 'admin-test'; }
 });
 
-test('AI quota: 402 after the free daily limit when BILLING_ENFORCE=1; premium is unlimited', async () => {
+test('AI quota: 402 after the free daily limit when BILLING_ENFORCE=1; premium has a monthly allowance (never unlimited)', async () => {
   const ask = (cookie) => req('POST', '/api/ai/chat', { context: { a: 1 }, messages: [{ role: 'user', content: 'Hi' }], fallbackText: 'fallback' }, as(cookie));
   // Not enforced by default
   for (let i = 0; i < 4; i++) assert.equal((await ask()).status, 200);
@@ -265,7 +265,7 @@ test('AI quota: 402 after the free daily limit when BILLING_ENFORCE=1; premium i
   assert.equal(m.aiFreeDaily, 3);
   const blocked = await ask(dave);
   assert.equal(blocked.status, 402);
-  assert.deepEqual(await blocked.json(), { error: 'Free daily limit reached — upgrade to Premium for unlimited answers', upgrade: true });
+  assert.deepEqual(await blocked.json(), { error: 'Free daily AI limit reached — built-in guidance keeps working; Premium includes a monthly AI allowance', upgrade: true });
   // Invalid requests are not counted
   assert.equal((await req('POST', '/api/ai/chat', { messages: [{ role: 'assistant', content: 'x' }] })).status, 400);
 
@@ -273,7 +273,13 @@ test('AI quota: 402 after the free daily limit when BILLING_ENFORCE=1; premium i
   for (let i = 0; i < 3; i++) assert.equal((await ask()).status, 200);
   assert.equal((await ask()).status, 402);
 
-  // Premium (alice) is unlimited
-  for (let i = 0; i < 5; i++) assert.equal((await ask(alice)).status, 200);
-  assert.equal((await me(alice)).aiUsedToday, 5);
+  // Premium (alice) has a defined monthly allowance
+  process.env.AI_PREMIUM_MONTHLY = '5';
+  try {
+    for (let i = 0; i < 5; i++) assert.equal((await ask(alice)).status, 200);
+    const ma = await me(alice);
+    assert.equal(ma.aiUsedThisMonth, 5);
+    assert.equal(ma.aiLimit, 5);
+    assert.equal((await ask(alice)).status, 402);
+  } finally { delete process.env.AI_PREMIUM_MONTHLY; }
 });

@@ -2,6 +2,7 @@ import { BRAND } from '../shared/brand.js';
 import crypto from 'node:crypto';
 import express from 'express';
 import { getDb } from './db.js';
+import { requireAdmin as adminRole, audit } from './admin.js';
 import { currentUser } from './auth.js';
 
 // Subscriptions: plans, Razorpay (INR) / Stripe Checkout (USD) payments, entitlements and the free AI quota.
@@ -13,36 +14,54 @@ const DAY = 86400000;
 const IST = 5.5 * 3600000; // quota days roll over at midnight India time
 
 const f = (en, ta) => ({ en, ta });
+const price = (cur, key, dflt) => { const v = Number(process.env[`PRICE_${cur}_${key}`]); return Number.isFinite(v) && v > 0 ? v : dflt; };
+/** Monthly AI-answer allowance per plan (AI_PREMIUM_MONTHLY, AI_FAMILY_MONTHLY). Never "unlimited" until costs are measured. */
+export const aiAllowance = (kind) => { const v = Number(process.env[kind === 'family' ? 'AI_FAMILY_MONTHLY' : 'AI_PREMIUM_MONTHLY']); return Number.isInteger(v) && v > 0 ? v : kind === 'family' ? 250 : 100; };
+/** Terms shown next to every price (also in public/legal.js). */
+export const PLAN_TERMS = {
+  renewal: f('One-time payment for the chosen period. It does not renew automatically — you choose whether to buy again.', 'தேர்ந்த காலத்திற்கான ஒருமுறைக் கட்டணம். தானாகப் புதுப்பிக்கப்படாது — மீண்டும் வாங்குவது உங்கள் முடிவு.'),
+  cancellation: f('Nothing to cancel: access simply ends on the expiry date. Contact us within 7 days for a refund if the service did not work for you.', 'ரத்து செய்ய வேண்டியதில்லை: காலாவதி நாளில் அணுகல் முடியும். சேவை சரியாக இயங்கவில்லை எனில் 7 நாட்களுக்குள் பணத்திருப்பம் கோரலாம்.'),
+  refund: f('Full refund within 7 days of purchase on request; after that, a pro-rata refund for unused months of a yearly plan. Refunds go back to the original payment method in 5–7 working days.', 'வாங்கிய 7 நாட்களுக்குள் கோரினால் முழுப் பணத்திருப்பம்; அதன் பின் ஆண்டுத் திட்டத்தில் பயன்படுத்தாத மாதங்களுக்கு விகிதாசாரப் பணத்திருப்பம். 5–7 வேலை நாட்களில் அசல் கட்டண முறைக்குத் திரும்பும்.'),
+};
 const FREE_FEATURES = [
   f('Daily panchangam & 12 rasi palan', 'தினசரி பஞ்சாங்கம் & 12 ராசி பலன்'),
   f('Daily colour, lucky number & Ishta Theivam', 'தினசரி நிறம், அதிர்ஷ்ட எண், இஷ்ட தெய்வம்'),
   f('Birth charts (jathagam)', 'ஜாதகக் கட்டங்கள்'),
   f('Tamil calendar', 'தமிழ் நாட்காட்டி'),
   f('Porutham table', 'திருமணப் பொருத்த அட்டவணை'),
-  f('5 Jothidar answers per day', 'நாளொன்றுக்கு 5 ஜோதிடர் பதில்கள்'),
+  f('Built-in explainable guidance, unlimited', 'உள்ளமைந்த விளக்க வழிகாட்டல், வரம்பின்றி'),
+  f('A few AI-written answers per day (when AI is enabled)', 'நாளொன்றுக்குச் சில AI பதில்கள் (AI இயக்கத்தில் இருந்தால்)'),
 ];
 const PREMIUM_FEATURES = [
-  f('Unlimited Jothidar chat', 'வரம்பில்லா ஜோதிடர் உரையாடல்'),
+  f(`Up to ${aiAllowance('premium')} AI-written answers per month (built-in guidance is always unlimited)`, `மாதம் ${aiAllowance('premium')} AI பதில்கள் வரை (உள்ளமைந்த வழிகாட்டல் எப்போதும் வரம்பின்றி)`),
+  f('Saved journey plans and printable reports', 'சேமித்த பயணத் திட்டங்கள், அச்சிடக்கூடிய அறிக்கைகள்'),
   f('Life-timing predictions', 'வாழ்க்கை நிகழ்வுகளுக்கான கால கணிப்புகள்'),
   f('Full analysis reading', 'முழுமையான ஜாதக ஆய்வுப் பலன்'),
-  f('Complete marriage porutham — ayul, papa samyam, dasa sandhi, 25-year married-life timeline', 'முழுமையான திருமணப் பொருத்தம் — ஆயுள், பாப சாம்யம், தசா சந்தி, 25 ஆண்டு வாழ்க்கைக் காலவரிசை'),
+  f('Detailed marriage matching — papa samyam, dasa sandhi, married-life periods', 'விரிவான திருமணப் பொருத்தம் — பாப சாம்யம், தசா சந்தி, மண வாழ்க்கைக் காலங்கள்'),
   f('My Guide — gemstones, Siddhar and personal mantra playlist', 'என் வழிகாட்டி — ரத்தினம், சித்தர், தனிப்பட்ட மந்திரப் பட்டியல்'),
   f('Business partner porutham', 'வணிகக் கூட்டாளி பொருத்தம்'),
-  f('Priority seva booking', 'சேவை முன்பதிவில் முன்னுரிமை'),
+
 ];
 const FAMILY_FEATURES = [
   f('Everything in Premium', 'பிரீமியத்தின் அனைத்து வசதிகளும்'),
+  f(`Up to ${aiAllowance('family')} AI-written answers per month, shared by the family`, `குடும்பத்திற்குப் பகிர்ந்து மாதம் ${aiAllowance('family')} AI பதில்கள் வரை`),
+  f('Shared event and journey planning with private profiles', 'தனிப்பட்ட சுயவிவரங்களுடன் பகிர்ந்த நிகழ்வு, பயணத் திட்டமிடல்'),
   f('Up to 8 family profiles under one account', 'ஒரே கணக்கில் 8 குடும்ப உறுப்பினர்கள் வரை'),
   f('Gift it to parents abroad or in India — one plan for the whole family', 'வெளிநாட்டிலோ இந்தியாவிலோ உள்ள பெற்றோருக்குப் பரிசளியுங்கள் — முழுக் குடும்பத்திற்கும் ஒரே திட்டம்'),
 ];
 
-/** Default plans; prices are in rupees / dollars (not minor units). */
+/**
+ * Plans. Prices are INITIAL TEST PRICES and are configurable without code changes:
+ *   PRICE_INR_PREMIUM_MONTH (199) · PRICE_INR_PREMIUM_YEAR (1999) · PRICE_INR_FAMILY_MONTH (399) · PRICE_INR_FAMILY_YEAR (3999)
+ *   PRICE_USD_PREMIUM_MONTH (4.99) · PRICE_USD_PREMIUM_YEAR (49) · PRICE_USD_FAMILY_MONTH (9.99) · PRICE_USD_FAMILY_YEAR (99)
+ * Payments are one-time for the period (no automatic renewal). Prices are in rupees / dollars (not minor units).
+ */
 export const PLANS = [
   { id: 'free', name: f('Free', 'இலவசம்'), interval: null, price: { INR: 0, USD: 0 }, features: FREE_FEATURES },
-  { id: 'premium_month', name: f('Premium — monthly', 'பிரீமியம் — மாதாந்திரம்'), interval: 'month', price: { INR: 199, USD: 4.99 }, features: PREMIUM_FEATURES },
-  { id: 'premium_year', name: f('Premium — yearly', 'பிரீமியம் — ஆண்டுக்கு'), interval: 'year', price: { INR: 1999, USD: 49 }, features: PREMIUM_FEATURES },
-  { id: 'family_month', name: f('Family — monthly', 'குடும்பம் — மாதாந்திரம்'), interval: 'month', price: { INR: 399, USD: 9.99 }, features: FAMILY_FEATURES },
-  { id: 'family_year', name: f('Family — yearly', 'குடும்பம் — ஆண்டுக்கு'), interval: 'year', price: { INR: 3999, USD: 99 }, features: FAMILY_FEATURES },
+  { id: 'premium_month', name: f('Premium — monthly', 'பிரீமியம் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'PREMIUM_MONTH', 199), USD: price('USD', 'PREMIUM_MONTH', 4.99) }, features: PREMIUM_FEATURES },
+  { id: 'premium_year', name: f('Premium — yearly', 'பிரீமியம் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'PREMIUM_YEAR', 1999), USD: price('USD', 'PREMIUM_YEAR', 49) }, features: PREMIUM_FEATURES },
+  { id: 'family_month', name: f('Family — monthly', 'குடும்பம் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'FAMILY_MONTH', 399), USD: price('USD', 'FAMILY_MONTH', 9.99) }, features: FAMILY_FEATURES },
+  { id: 'family_year', name: f('Family — yearly', 'குடும்பம் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'FAMILY_YEAR', 3999), USD: price('USD', 'FAMILY_YEAR', 99) }, features: FAMILY_FEATURES },
 ];
 const PLAN = new Map(PLANS.map((p) => [p.id, p]));
 const PAID = PLANS.filter((p) => p.interval).map((p) => p.id);
@@ -64,6 +83,12 @@ const SCHEMA = `
     created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS subscriptions_user ON subscriptions(user_id);
+  CREATE TABLE IF NOT EXISTS webhook_events (
+    id TEXT PRIMARY KEY,
+    gateway TEXT NOT NULL,
+    type TEXT,
+    received_at INTEGER NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS ai_usage (
     usage_key TEXT NOT NULL,
     day TEXT NOT NULL,
@@ -137,7 +162,8 @@ const subOut = (s, admin = false) => ({
 export function entitlementsFor(user) {
   const sub = activeSub(user?.id);
   const paid = !!sub;
-  return { unlimitedAi: paid, predictions: paid, familyProfiles: sub?.plan.startsWith('family') ? 8 : 1 };
+  const family = !!sub?.plan.startsWith('family');
+  return { unlimitedAi: false, aiMonthly: paid ? aiAllowance(family ? 'family' : 'premium') : null, predictions: paid, familyProfiles: family ? 8 : 1 };
 }
 
 // ---- complimentary access (used by server/growth.js: gift codes, trials, referrals) ----
@@ -168,12 +194,16 @@ const today = () => new Date(now() + IST).toISOString().slice(0, 10);
 const usageKey = (req) => { const u = currentUser(req); return u ? `u:${u.id}` : `ip:${req.ip}`; };
 const usedToday = (key) => db().prepare('SELECT count FROM ai_usage WHERE usage_key = ? AND day = ?').get(key, today())?.count || 0;
 
-/** { allowed, used, limit } — limit is null for unlimited plans. */
+const month = () => today().slice(0, 7);
+const usedThisMonth = (key) => db().prepare("SELECT COALESCE(SUM(count), 0) AS n FROM ai_usage WHERE usage_key = ? AND day LIKE ?").get(key, `${month()}-%`)?.n || 0;
+
+/** { allowed, used, limit, period } — paid plans have a monthly allowance; free has a daily one. */
 export function checkAiQuota(req) {
+  const ent = entitlementsFor(currentUser(req));
+  if (ent.aiMonthly) { const used = usedThisMonth(usageKey(req)); return { allowed: used < ent.aiMonthly, used, limit: ent.aiMonthly, period: 'month' }; }
   const used = usedToday(usageKey(req));
-  if (entitlementsFor(currentUser(req)).unlimitedAi) return { allowed: true, used, limit: null };
   const limit = freeDaily();
-  return { allowed: used < limit, used, limit };
+  return { allowed: used < limit, used, limit, period: 'day' };
 }
 
 /** Count one successful AI call for this person (or IP when signed out). */
@@ -185,6 +215,25 @@ export function recordAiUsage(req) {
 // ---- gateways ----
 
 const razorpayConfigured = () => !!(env('RAZORPAY_KEY_ID') && env('RAZORPAY_KEY_SECRET'));
+const razorpayAuth = () => `Basic ${Buffer.from(`${env('RAZORPAY_KEY_ID')}:${env('RAZORPAY_KEY_SECRET')}`).toString('base64')}`;
+
+/** Returns true the first time an event id is seen (duplicate callbacks and retries are ignored). */
+function firstDelivery(gateway, id, type) {
+  if (!id) return true; // no id supplied: rely on idempotent state transitions below
+  const r = db().prepare('INSERT OR IGNORE INTO webhook_events (id, gateway, type, received_at) VALUES (?, ?, ?, ?)').run(`${gateway}:${id}`, gateway, type || null, now());
+  return r.changes === 1;
+}
+
+/** Apply a captured payment to a subscription or a store order identified by the Razorpay order id. Idempotent. */
+function applyRazorpayPayment(orderId, paymentId) {
+  const sub = orderId && db().prepare("SELECT * FROM subscriptions WHERE gateway = 'razorpay' AND gateway_ref = ?").get(orderId);
+  if (sub) { if (sub.status === 'pending' || sub.status === 'failed') activate({ ...sub, status: 'pending' }, { paymentRef: paymentId }); return 'subscription'; }
+  try {
+    const r = db().prepare("UPDATE store_orders SET status = 'paid', razorpay_payment_id = ?, updated_at = ? WHERE razorpay_order_id = ? AND status = 'awaiting_payment'").run(paymentId, now(), orderId);
+    if (r.changes) return 'order';
+  } catch { /* store tables not created on this instance */ }
+  return null;
+}
 
 async function createRazorpayOrder(amountPaise, receipt) {
   const auth = Buffer.from(`${env('RAZORPAY_KEY_ID')}:${env('RAZORPAY_KEY_SECRET')}`).toString('base64');
@@ -240,14 +289,8 @@ function requireUser(req, res, next) {
   next();
 }
 
-function requireAdmin(req, res, next) {
-  const token = env('ADMIN_TOKEN');
-  if (!token) return res.status(503).json({ error: 'Admin is not configured (set ADMIN_TOKEN)' });
-  const given = req.get('x-admin-token');
-  if (!given) return res.status(401).json({ error: 'Admin token required' });
-  if (!safeEqual(given, token)) return res.status(403).json({ error: 'Invalid admin token' });
-  next();
-}
+// Named, role-based admin tokens with lock-out (server/admin.js).
+const requireAdmin = adminRole('finance');
 
 const handle = (fn) => async (req, res, next) => {
   try {
@@ -272,7 +315,7 @@ export function billingRouter() {
 
   r.get('/billing/plans', handle((req, res) => {
     const currency = currencyOf(req.query.currency, 'INR');
-    res.json({ currency, plans: PLANS.map((p) => ({ ...p, currency, amount: p.price[currency] })) });
+    res.json({ currency, testPrices: true, terms: PLAN_TERMS, plans: PLANS.map((p) => ({ ...p, currency, amount: p.price[currency] })) });
   }));
 
   r.get('/billing/me', (req, res) => {
@@ -289,7 +332,7 @@ export function billingRouter() {
     res.json({
       plan: sub ? sub.plan : 'free', status: sub ? sub.status : 'active', expiresAt: sub ? sub.expires_at : null,
       trialEndsAt: sub && ['gift', 'trial'].includes(sub.gateway) ? sub.expires_at : null, locked: lapsed, enforced: billingEnforced(),
-      entitlements: entitlementsFor(user), aiUsedToday: quota.used, aiFreeDaily: freeDaily(),
+      entitlements: entitlementsFor(user), aiUsedToday: quota.period === 'day' ? quota.used : null, aiUsedThisMonth: quota.period === 'month' ? quota.used : null, aiLimit: quota.limit, aiPeriod: quota.period, aiFreeDaily: freeDaily(),
     });
   });
 
@@ -345,6 +388,7 @@ export function billingRouter() {
     if (!verifyStripeSignature(req.get('stripe-signature'), raw, secret)) return res.status(400).json({ error: 'Invalid signature' });
     let event;
     try { event = JSON.parse(raw.toString('utf8')); } catch { return res.status(400).json({ error: 'Invalid payload' }); }
+    if (!firstDelivery('stripe', event?.id, event?.type)) return res.json({ received: true, duplicate: true });
     if (event?.type === 'checkout.session.completed') {
       const session = event.data?.object || {};
       const subId = session.metadata?.subscription_id || session.client_reference_id;
@@ -353,6 +397,73 @@ export function billingRouter() {
     }
     res.json({ received: true });
   });
+
+  // Razorpay webhook (raw body; configure in the Razorpay dashboard with RAZORPAY_WEBHOOK_SECRET).
+  // Events: payment.captured / order.paid → activate; payment.failed → mark failed; refund.processed → revoke.
+  // This is the source of truth when the phone closes before /billing/verify runs.
+  r.post('/billing/razorpay/webhook', (req, res) => {
+    const secret = env('RAZORPAY_WEBHOOK_SECRET');
+    if (!secret) return res.status(503).json({ error: 'Razorpay webhook is not configured' });
+    const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    const expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');
+    if (!safeEqual(req.get('x-razorpay-signature') || '', expected)) return res.status(400).json({ error: 'Invalid signature' });
+    let event;
+    try { event = JSON.parse(raw.toString('utf8')); } catch { return res.status(400).json({ error: 'Invalid payload' }); }
+    if (!firstDelivery('razorpay', req.get('x-razorpay-event-id'), event?.event)) return res.json({ received: true, duplicate: true });
+    const pay = event?.payload?.payment?.entity || {};
+    const orderId = pay.order_id || event?.payload?.order?.entity?.id;
+    if (event.event === 'payment.captured' || event.event === 'order.paid') applyRazorpayPayment(orderId, pay.id || null);
+    else if (event.event === 'payment.failed' && orderId) {
+      db().prepare("UPDATE subscriptions SET status = 'failed' WHERE gateway = 'razorpay' AND gateway_ref = ? AND status = 'pending'").run(orderId);
+      try { db().prepare("UPDATE store_orders SET status = 'payment_failed', updated_at = ? WHERE razorpay_order_id = ? AND status = 'awaiting_payment'").run(now(), orderId); } catch { /* no store */ }
+    } else if (event.event === 'refund.processed' || event.event === 'refund.created') {
+      const rf = event?.payload?.refund?.entity || {};
+      const sub = rf.payment_id && db().prepare("SELECT * FROM subscriptions WHERE payment_ref = ?").get(rf.payment_id);
+      if (sub && sub.status !== 'refunded' && Number(rf.amount) >= Number(sub.amount_minor)) {
+        db().prepare("UPDATE subscriptions SET status = 'refunded', expires_at = ? WHERE id = ?").run(now(), sub.id);
+        audit(null, 'billing.refund.webhook', sub.id, { amount: rf.amount });
+      }
+      try { if (rf.payment_id) db().prepare("UPDATE store_orders SET status = 'refunded', updated_at = ? WHERE razorpay_payment_id = ?").run(now(), rf.payment_id); } catch { /* no store */ }
+    }
+    res.json({ received: true });
+  });
+
+  // Restore purchases: re-check pending Razorpay payments with the gateway (e.g. after a crash or a new phone).
+  r.post('/billing/restore', requireUser, handle(async (req, res) => {
+    let restored = 0;
+    if (razorpayConfigured()) {
+      const pending = db().prepare("SELECT * FROM subscriptions WHERE user_id = ? AND gateway = 'razorpay' AND status IN ('pending', 'failed') AND created_at > ?").all(req.user.id, now() - 30 * DAY);
+      for (const sub of pending) {
+        try {
+          const r2 = await billingFetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(sub.gateway_ref)}/payments`, { headers: { Authorization: razorpayAuth() } });
+          const items = (await r2.json().catch(() => ({}))).items || [];
+          const paid = items.find((x) => x.status === 'captured');
+          if (paid) { applyRazorpayPayment(sub.gateway_ref, paid.id); restored += 1; }
+        } catch (err) { console.error('restore check failed:', err.message); }
+      }
+    }
+    const sub = activeSub(req.user.id);
+    res.json({ restored, plan: sub ? sub.plan : 'free', expiresAt: sub ? sub.expires_at : null });
+  }));
+
+  // Admin refund (finance role): refunds through Razorpay, revokes access and writes an audit record.
+  r.post('/admin/billing/refund', requireAdmin, handle(async (req, res) => {
+    const b = body(req);
+    const sub = typeof b.subscriptionId === 'string' && db().prepare('SELECT * FROM subscriptions WHERE id = ?').get(b.subscriptionId);
+    if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+    if (sub.status === 'refunded') return res.json({ subscription: subOut(sub, true), already: true });
+    if (sub.gateway !== 'razorpay' || !sub.payment_ref) return res.status(400).json({ error: 'Only captured Razorpay payments can be refunded here; refund Stripe payments from the Stripe dashboard.' });
+    const amount = b.amountMinor === undefined ? sub.amount_minor : Number(b.amountMinor);
+    if (!Number.isInteger(amount) || amount < 1 || amount > sub.amount_minor) fail('amountMinor must be between 1 and the amount paid');
+    const r2 = await billingFetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(sub.payment_ref)}/refund`, {
+      method: 'POST', headers: { Authorization: razorpayAuth(), 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, notes: { subscription: sub.id } }),
+    });
+    const out = await r2.json().catch(() => ({}));
+    if (!r2.ok) return res.status(502).json({ error: `Razorpay refund failed (${r2.status})` });
+    if (amount >= sub.amount_minor) db().prepare("UPDATE subscriptions SET status = 'refunded', expires_at = ? WHERE id = ?").run(now(), sub.id);
+    audit(req, 'billing.refund', sub.id, { amount, refundId: out.id || null });
+    res.json({ subscription: subOut(db().prepare('SELECT * FROM subscriptions WHERE id = ?').get(sub.id), true), refundId: out.id || null });
+  }));
 
   // Admin
   r.post('/admin/billing/grant', requireAdmin, handle((req, res) => {
@@ -365,6 +476,7 @@ export function billingRouter() {
     db().prepare(`INSERT INTO subscriptions (id, user_id, plan, status, currency, amount_minor, gateway, gateway_ref, created_at)
       VALUES (?, ?, ?, 'pending', 'INR', 0, 'admin', NULL, ?)`).run(id, b.userId, plan.id, now());
     const sub = activate(db().prepare('SELECT * FROM subscriptions WHERE id = ?').get(id), { days });
+    audit(req, 'billing.grant', b.userId, { plan: plan.id, days, subscriptionId: id });
     res.status(201).json({ subscription: subOut(sub, true) });
   }));
 

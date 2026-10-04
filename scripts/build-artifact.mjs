@@ -19,8 +19,8 @@ fs.cpSync('public/fonts', path.join(out, 'fonts'), { recursive: true });
 const { CATEGORIES } = await import('../server/market.js');
 const catalog = JSON.parse(fs.readFileSync('server/data/products.json', 'utf8'));
 fs.writeFileSync(path.join(out, 'products.json'), JSON.stringify({ ...catalog, categories: CATEGORIES }));
-const { PLANS } = await import('../server/billing.js');
-fs.writeFileSync(path.join(out, 'plans.json'), JSON.stringify(PLANS));
+const { PLANS, PLAN_TERMS } = await import('../server/billing.js');
+fs.writeFileSync(path.join(out, 'plans.json'), JSON.stringify({ plans: PLANS, terms: PLAN_TERMS }));
 
 const html = fs.readFileSync('public/index.html', 'utf8');
 const css = fs.readFileSync('public/styles.css', 'utf8');

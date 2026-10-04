@@ -6,6 +6,8 @@ process.env.DB_PATH = ':memory:';
 process.env.AUTH_DEV_MODE = '1';
 process.env.AUTH_SECRET = 't';
 process.env.ADMIN_TOKEN = 'admin-test';
+process.env.RATE_LIMITS = 'off'; // validation-heavy suite; the limiter has its own test
+process.env.STORE_ALLOW_SAMPLE = '1'; // the shipped catalogue is a sample; real checkout refuses it (see production.test.js)
 for (const k of ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'ANNADHANAM_RATE', 'TWILIO_ACCOUNT_SID', 'MSG91_AUTH_KEY', 'SMTP_URL']) delete process.env[k];
 
 let server, base, market, buyer, priestUser;

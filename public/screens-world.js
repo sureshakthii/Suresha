@@ -264,13 +264,14 @@ async function renderStore(sec, params = {}) {
   const list = c.products.filter((p) => cat === 'all' || p.category === cat);
   const count = Object.values(cart).reduce((a, b) => a + b, 0);
   const total = Object.entries(cart).reduce((a, [id, q]) => a + (c.products.find((p) => p.id === id)?.price || 0) * q, 0);
-  $('#stBody').innerHTML = `${c.sample ? `<p class="tag warn block">${L('Sample catalogue — products and prices will be set by the store owner.', 'மாதிரி பட்டியல் — பொருட்களும் விலைகளும் கடை உரிமையாளரால் அமைக்கப்படும்.')}</p>` : ''}
+  const open = c.open === true && !STATIC;
+  $('#stBody').innerHTML = `${open ? '' : `<div class="card glass coming" role="status"><b>⏸️ ${L('Store not open yet', 'கடை இன்னும் திறக்கப்படவில்லை')}</b><p class="small">${L('These are SAMPLE items to show how the store will look. They are not for sale and nothing can be ordered or charged.', 'இவை கடை எப்படி இருக்கும் என்று காட்டும் மாதிரிப் பொருட்கள் மட்டுமே. விற்பனைக்கு இல்லை; ஆர்டரோ கட்டணமோ இல்லை.')}</p></div>`}
     <div class="member-switch"><button class="mchip${cat === 'all' ? ' sel' : ''}" data-cat="all">${L('All', 'அனைத்தும்')}</button>${c.categories.map((k) => `<button class="mchip${cat === k.id ? ' sel' : ''}" data-cat="${esc(k.id)}">${esc(bi(k))}</button>`).join('')}</div>
     <div class="products">${list.map((p) => `<div class="card glass product"><div class="p-img">${esc(p.image || '🪔')}</div>
       <b>${esc(bi(p.name))}</b><p class="muted small">${esc(bi(p.description))}</p>
       <div class="p-row"><span class="price">${inr(p.price)}</span><span class="muted small">${esc(unitName(p.unit))}</span></div>
-      <div class="qty"><button data-dec="${p.id}" aria-label="Remove one">−</button><span>${cart[p.id] || 0}</span><button data-inc="${p.id}" aria-label="Add one">+</button></div></div>`).join('')}</div>
-    ${count ? `<div class="cart-bar"><span>🛒 ${count} · <b>${inr(total)}</b></span><button class="btn-gold small-btn" id="checkout">${L('Checkout', 'வாங்கு')}</button></div>` : ''}
+      ${open ? `<div class="qty"><button data-dec="${p.id}" aria-label="Remove one">−</button><span>${cart[p.id] || 0}</span><button data-inc="${p.id}" aria-label="Add one">+</button></div>` : `<span class="badge est">${L('Sample', 'மாதிரி')}</span>`}</div>`).join('')}</div>
+    ${count && open ? `<div class="cart-bar"><span>🛒 ${count} · <b>${inr(total)}</b></span><button class="btn-gold small-btn" id="checkout">${L('Checkout', 'வாங்கு')}</button></div>` : ''}
     <div id="checkoutBox"></div>
     <div class="btn-row"><button class="chip-btn" data-go="seva">🛕 ${L('Temple seva', 'கோவில் சேவைகள்')}</button><button class="chip-btn" data-go="priests">🧑‍🦳 ${L('Priests', 'புரோகிதர்கள்')}</button></div>`;
   $$('[data-cat]', sec).forEach((b) => b.addEventListener('click', () => renderStore(sec, { category: b.dataset.cat })));

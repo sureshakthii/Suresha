@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import express from 'express';
 import { getDb } from './db.js';
+import { requireAdmin as adminRole, audit } from './admin.js';
 import { currentUser, normalizePhone } from './auth.js';
 
 // Marketplace: pooja store (Razorpay), priest directory, service requests, admin.
@@ -255,14 +256,8 @@ function requireUser(req, res, next) {
   next();
 }
 
-function requireAdmin(req, res, next) {
-  const token = env('ADMIN_TOKEN');
-  if (!token) return res.status(503).json({ error: 'Admin is not configured (set ADMIN_TOKEN)' });
-  const given = req.get('x-admin-token');
-  if (!given) return res.status(401).json({ error: 'Admin token required' });
-  if (!safeEqual(given, token)) return res.status(403).json({ error: 'Invalid admin token' });
-  next();
-}
+// Named, role-based admin tokens with lock-out (server/admin.js).
+const requireAdmin = adminRole('support');
 
 // Turns validator errors into 400s; everything else falls through to the app error handler.
 const handle = (fn) => async (req, res, next) => {
@@ -285,10 +280,12 @@ export function marketRouter() {
     const cat = req.query.category;
     if (cat !== undefined && !CATEGORIES.some((c) => c.id === cat)) fail(`category must be one of: ${CATEGORIES.map((c) => c.id).join(', ')}`);
     const products = cat ? CATALOG.products.filter((p) => p.category === cat) : CATALOG.products;
-    res.json({ sample: !!CATALOG.sample, currency: CATALOG.currency, categories: CATEGORIES, products });
+    res.json({ sample: !!CATALOG.sample, open: !CATALOG.sample || env('STORE_ALLOW_SAMPLE') === '1', currency: CATALOG.currency, categories: CATEGORIES, products });
   }));
 
   r.post('/store/orders', requireUser, handle(async (req, res) => {
+    // Never sell the sample catalogue. A real catalogue sets "sample": false; STORE_ALLOW_SAMPLE=1 is for dev/tests only.
+    if (CATALOG.sample && env('STORE_ALLOW_SAMPLE') !== '1') return res.status(409).json({ error: 'The store is not open yet — the catalogue shown is a sample and is not for sale.', storeClosed: true });
     const b = body(req);
     const { lines, total } = priceItems(b.items);
     const address = parseAddress(b.address);
@@ -440,6 +437,17 @@ export function marketRouter() {
 
   // Admin (each route checks x-admin-token)
 
+  // The customer can cancel their own request before it is completed (fulfilment tracking keeps the history).
+  r.post('/requests/:id/cancel', requireUser, handle((req, res) => {
+    const d = db();
+    const row = d.prepare('SELECT * FROM service_requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!row) return res.status(404).json({ error: 'Request not found' });
+    if (!['requested', 'confirmed', 'assigned'].includes(row.status)) return res.status(409).json({ error: `This request is already ${row.status}` });
+    d.prepare("UPDATE service_requests SET status = 'cancelled', updated_at = ? WHERE id = ?").run(now(), row.id);
+    audit({ admin: { name: `user:${req.user.id}`, role: 'customer' }, ip: req.ip }, 'request.cancel', row.id, { from: row.status });
+    res.json({ request: requestOut(d.prepare('SELECT * FROM service_requests WHERE id = ?').get(row.id)) });
+  }));
+
   r.get('/admin/priests', requireAdmin, handle((req, res) => {
     const { status } = req.query;
     if (status !== undefined) oneOf(status, PRIEST_STATUSES, 'status');
@@ -454,6 +462,7 @@ export function marketRouter() {
     const d = db();
     const { changes } = d.prepare('UPDATE priests SET status = ?, updated_at = ? WHERE id = ?').run(status, now(), req.params.id);
     if (!changes) return res.status(404).json({ error: 'Priest not found' });
+    audit(req, 'priest.status', req.params.id, { status });
     res.json({ priest: priestFull(d.prepare('SELECT * FROM priests WHERE id = ?').get(req.params.id)) });
   }));
 
@@ -467,6 +476,7 @@ export function marketRouter() {
     const d = db();
     const { changes } = d.prepare('UPDATE store_orders SET status = ?, updated_at = ? WHERE id = ?').run(status, now(), req.params.id);
     if (!changes) return res.status(404).json({ error: 'Order not found' });
+    audit(req, 'order.status', req.params.id, { status });
     res.json({ order: orderOut(d.prepare('SELECT * FROM store_orders WHERE id = ?').get(req.params.id), true) });
   }));
 
@@ -489,6 +499,7 @@ export function marketRouter() {
     }
     if (status === 'assigned' && !priestId) fail("priestId is required when status is 'assigned'");
     d.prepare('UPDATE service_requests SET status = ?, priest_id = ?, updated_at = ? WHERE id = ?').run(status, priestId, now(), row.id);
+    audit(req, 'request.status', row.id, { from: row.status, status, priestId });
     res.json({ request: requestOut(d.prepare('SELECT * FROM service_requests WHERE id = ?').get(row.id), true) });
   }));
 

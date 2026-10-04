@@ -12,6 +12,8 @@ import { pushRouter, startPushScheduler } from './push.js';
 import { marketRouter } from './market.js';
 import { billingEnforced, billingRouter, checkAiQuota, recordAiUsage } from './billing.js';
 import { growthRouter } from './growth.js';
+import { rateLimit, requireAdmin, auditLog } from './admin.js';
+import { businessMetrics, recordAiCost } from './metrics.js';
 import { tamilMonth } from '../shared/tamilcal.js';
 import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
 import { findMuhurtham } from '../shared/special.js';
@@ -70,8 +72,16 @@ export function createApp() {
   const app = express();
   if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
   app.use('/api/billing/stripe/webhook', express.raw({ type: '*/*', limit: '256kb' })); // Stripe signs the raw bytes
+  app.use('/api/billing/razorpay/webhook', express.raw({ type: '*/*', limit: '256kb' })); // Razorpay signs the raw bytes
   app.use('/api/me/data', express.json({ limit: '256kb' })); // saved family profiles can be larger
   app.use(express.json({ limit: '64kb' }));
+  // Basic security headers and per-IP rate limits (in-memory; use a shared store with several instances).
+  app.use((_req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin'); res.setHeader('X-Frame-Options', 'SAMEORIGIN'); next(); });
+  if (process.env.RATE_LIMITS !== 'off') {
+    app.use(['/api/chart', '/api/places', '/api/weather', '/api/panchang', '/api/calendar'], rateLimit({ windowMs: 60000, max: Number(process.env.RATE_READ_PER_MIN) || 120 }));
+    const writes = rateLimit({ windowMs: 10 * 60000, max: Number(process.env.RATE_WRITE_PER_10MIN) || 30 });
+    app.use(['/api/store/orders', '/api/requests', '/api/billing/redeem', '/api/billing/checkout', '/api/billing/restore'], (req, res, next) => (req.method === 'POST' ? writes(req, res, next) : next()));
+  }
   app.use('/api', authRouter());
   app.use('/api', weatherRouter());
   app.use('/api', pushRouter());
@@ -80,6 +90,8 @@ export function createApp() {
   app.use('/api', growthRouter());
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, ai: aiEnabled() }));
+  app.get('/api/admin/metrics', requireAdmin('viewer'), (req, res) => res.json(businessMetrics({ days: Math.min(365, Math.max(1, Number(req.query.days) || 30)) })));
+  app.get('/api/admin/audit', requireAdmin('owner'), (req, res) => res.json({ audit: auditLog(Number(req.query.limit) || 200) }));
 
   app.get('/api/categories', (_req, res) => {
     res.json(CATEGORIES.map(({ id, icon, en, ta }) => ({ id, icon, en, ta })));
@@ -198,7 +210,12 @@ export function createApp() {
     if (process.env.AI_REQUIRE_LOGIN === '1' && !currentUser(req)) return res.status(401).json({ error: 'Please sign in to use the AI Jothidar' });
     if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many questions — please wait a few minutes' });
     const metered = billingEnforced();
-    if (metered && !checkAiQuota(req).allowed) return res.status(402).json({ error: 'Free daily limit reached — upgrade to Premium for unlimited answers', upgrade: true });
+    const quota = metered ? checkAiQuota(req) : null;
+    if (quota && !quota.allowed) {
+      return res.status(402).json(quota.period === 'month'
+        ? { error: `Monthly AI allowance of ${quota.limit} answers reached — built-in guidance keeps working`, upgrade: false }
+        : { error: 'Free daily AI limit reached — built-in guidance keeps working; Premium includes a monthly AI allowance', upgrade: true });
+    }
     const { context = {}, messages = [], lang = 'en', fallbackText = '' } = req.body || {};
     if (JSON.stringify(context).length > 20000) throw new BadRequest('Context too large');
     if (!Array.isArray(messages) || messages.length > 24) throw new BadRequest('Invalid messages');
@@ -207,7 +224,8 @@ export function createApp() {
       return { role: m.role, content: m.content.slice(0, 2000) };
     });
     if (msgs.length && (msgs[0].role !== 'user' || msgs[msgs.length - 1].role !== 'user')) throw new BadRequest('Conversation must start and end with the person');
-    const args = { task, context, messages: msgs, lang, fallbackText: String(fallbackText).slice(0, 4000) || '🙏' };
+    const args = { task, context, messages: msgs, lang, fallbackText: String(fallbackText).slice(0, 4000) || '🙏',
+      onUsage: (u) => recordAiCost({ userId: currentUser(req)?.id || null, task, model: u.model, usage: u }) };
     if (!(req.headers.accept || '').includes('text/event-stream')) {
       const r = await runTask(args);
       if (metered) recordAiUsage(req);

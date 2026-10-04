@@ -75,6 +75,7 @@ function renderPeyarchi(sec) {
   if (pyRasi == null) pyRasi = mine ?? 0;
   const m = activeMember();
   sec.innerHTML = `${subHeader(L('Peyarchi Palan', 'பெயர்ச்சி பலன்'), L('Guru, Sani, Rahu and Ketu transits for all 12 rasis', 'குரு, சனி, ராகு, கேது பெயர்ச்சி — 12 ராசிகளுக்கும்'))}
+    <div class="note-box" role="note">${L('Transit readings are traditional tendencies for a whole Moon sign — not personal guarantees. For money, health or legal decisions, the professional’s advice comes first.', 'பெயர்ச்சி பலன்கள் ஒரு ராசி முழுமைக்குமான பாரம்பரியப் போக்குகள் — தனிப்பட்ட உத்தரவாதம் அல்ல. பணம், உடல்நலம், சட்ட முடிவுகளுக்கு நிபுணர் ஆலோசனையே முதன்மை.')}</div>
     <div id="pyNow">${LOADER}</div>
     <div class="card glass">
       <div class="card-title"><span>${L('Choose your rasi', 'உங்கள் ராசியைத் தேர்ந்தெடுங்கள்')}</span>${mine != null && m ? `<span class="pill">★ ${esc(displayName(m))}</span>` : ''}</div>

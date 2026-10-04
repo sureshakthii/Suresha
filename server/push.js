@@ -286,6 +286,21 @@ export async function runPushTick(now = Date.now(), send = pushSender) {
   return { sent, removed };
 }
 
+/**
+ * Send one notification to every device a signed-in user subscribed (e.g. a booking status change).
+ * Never throws; subscriptions that the push service reports as gone are removed.
+ */
+export async function notifyUser(userId, payload, send = pushSender) {
+  if (!userId) return 0;
+  let rows = [];
+  try { rows = db().prepare('SELECT * FROM push_subs WHERE user_id = ?').all(userId); } catch { return 0; }
+  let sent = 0;
+  for (const row of rows) {
+    try { await send(JSON.parse(row.subscription), payload); sent++; } catch (err) { if (isGone(err)) removeSub(row.id); }
+  }
+  return sent;
+}
+
 let timer = null;
 /** Start the once-a-minute scheduler (call once when the server starts listening). */
 export function startPushScheduler() {

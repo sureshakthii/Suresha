@@ -96,7 +96,7 @@ export function trialBanner() {
 export function redeemBox() {
   if (STATIC) return '';
   return `<form class="card glass" id="redeemForm"><div class="card-title">🎁 ${L('Gift or trial code', 'பரிசு / சோதனைக் குறியீடு')}</div>
-    <div class="phone-in"><input id="redeemCode" placeholder="KJ-XXXX-XXXX" autocapitalize="characters" maxlength="20" required><button class="btn-gold small-btn">${L('Apply', 'பயன்படுத்து')}</button></div><p class="err" id="redeemErr"></p></form>`;
+    <div class="phone-in"><input id="redeemCode" aria-label="${esc(L('Gift or trial code', 'பரிசு / சோதனைக் குறியீடு'))}" placeholder="KJ-XXXX-XXXX" autocapitalize="characters" maxlength="20" required><button class="btn-gold small-btn">${L('Apply', 'பயன்படுத்து')}</button></div><p class="err" id="redeemErr"></p></form>`;
 }
 export function wireRedeem(onDone) {
   $('#redeemForm')?.addEventListener('submit', async (e) => {

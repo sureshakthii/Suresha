@@ -14,7 +14,8 @@ const people = () => state.family.filter((m) => m.relation !== 'organization');
 const mY = (d) => `${monthName(new Date(d).getUTCMonth())} ${new Date(d).getUTCFullYear()}`;
 const lvTag = (lv) => `<span class="tag ${lv === 'good' ? 'good' : lv === 'steady' ? 'warn' : 'bad'}">${lv === 'good' ? L('Good', 'நன்று') : lv === 'steady' ? L('Steady', 'நிலை') : L('Care', 'கவனம்')}</span>`;
 const bar = (s) => `<span class="gb-bar"><i class="${s >= 62 ? 'strong' : s >= 50 ? 'average' : 'weak'}" style="width:${s}%"></i></span>`;
-const area = (id) => ROAD_AREAS.find((a) => a.id === id);
+// Health is not scored from the chart; if the engine picks it, show a neutral marker instead.
+const area = (id) => ROAD_AREAS.find((a) => a.id === id) || { id, icon: '•', en: 'General', ta: 'பொது' };
 
 function renderRoadmap(sec) {
   const m = activeMember()?.relation !== 'organization' ? activeMember() : people()[0];
@@ -62,7 +63,7 @@ function drawRoadmap(m) {
     ${r.periods.map((p) => `<details class="card glass rm-period ${p.level}"${p.current ? ' open' : ''}><summary>
         <span><b>${GLYPH[p.md]} ${esc(planetName(p.md))} – ${GLYPH[p.ad]} ${esc(planetName(p.ad))}</b><br><small class="muted">${mY(p.start)} – ${mY(p.end)}</small></span>${lvTag(p.level)}</summary>
       ${ROAD_AREAS.map((a) => `<div class="gb-row static"><span class="gb-name">${a.icon} ${esc(bi(a))}</span>${bar(p.scores[a.id])}<b>${p.scores[a.id]}</b></div>`).join('')}
-      <p class="small">⭐ ${L('Focus', 'கவனம் செலுத்த')}: <b>${esc(bi(area(p.focus)))}</b>${p.careArea ? ` · 🤍 ${L('Care', 'கவனம்')}: ${esc(bi(area(p.careArea)))}` : ''}</p>
+      <p class="small">${p.focus !== 'health' ? `⭐ ${L('Focus', 'கவனம் செலுத்த')}: <b>${esc(bi(area(p.focus)))}</b>` : ''}${p.careArea && p.careArea !== 'health' ? ` · 🤍 ${L('Care', 'கவனம்')}: ${esc(bi(area(p.careArea)))}` : ''}</p>
       ${p.notes.map((n) => `<p class="small">🪐 ${esc(bi(n))}</p>`).join('')}
       <p class="small">🪔 ${esc(bi(p.remedy.deity))} · ${esc(bi(p.remedy.mantra))}</p></details>`).join('')}
     <button class="btn-gold" id="rmAi">📜 ${L('Guru\'s reading of my road map', 'என் வரைபடத்திற்கு குருவின் விளக்கம்')}</button>

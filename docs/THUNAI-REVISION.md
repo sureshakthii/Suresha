@@ -102,14 +102,14 @@ This report covers what changed, what is still mocked or blocked, the server con
 | Restore purchases | **Implemented** | `POST /api/billing/restore` re-checks pending Razorpay orders with the gateway. |
 | Cancellation | **Documented** | Plans are one-time and never auto-renew, so there is nothing to cancel. Terms are shown on the Plans screen. |
 | Refunds | **Implemented** (finance role) | `POST /api/admin/billing/refund` calls Razorpay, revokes access and writes an audit record. |
-| Pooja store | **Blocked on purpose** | Sample catalogue. Checkout returns 409 until a real catalogue (`"sample": false`) exists. Stock decrement and courier fulfilment are **not implemented**. |
-| Seva, priest and package requests | **Request tracking only** | Statuses run requested → confirmed → assigned → completed or cancelled. Customers can cancel. **No payment or partner fulfilment.** Shown as unavailable in the standalone APK. |
+| Pooja store | **Blocked on purpose** | Sample catalogue. Checkout returns 409 until a real catalogue (`"sample": false`) exists. **Stock accounting is implemented**: paid orders, plus 30-minute holds for pending checkouts, reduce what is left. Courier fulfilment is **not implemented**. |
+| Seva, priest and package requests | **Request tracking, acceptance and status history** | Statuses run requested → confirmed → assigned → accepted/declined → completed or cancelled. Every change is logged in `request_events`. The assigned priest accepts or declines (`/api/priests/me/requests/:id/respond`). The customer gets a push notification on each change. **My bookings** (Services) shows the timeline and a Cancel button. **No payment or real partners yet.** Shown as unavailable in the standalone APK. |
 | Human consultation | **Prepared, closed** | Fixed prices and durations are shown as proposals. Nobody is labelled "verified" until checks exist. |
 | AI answers | **Optional** | Needs `ANTHROPIC_API_KEY` on the server. The standalone APK always uses the built-in engine. |
 | Weather | **Working** | Open-Meteo plus METAR, no key needed. |
 | Admin | **Implemented** | `ADMIN_TOKENS` with owner, finance, support and viewer roles; lock-out after 10 failures; `audit_log`; `GET /api/admin/audit` (owner only). |
-| Backups | **Script plus tested restore** | `scripts/db-backup.mjs backup | verify | restore`. Schedule it, and copy backups off the server. |
-| Rate limits | **Implemented, per instance** | Read routes 120/min/IP, write routes 30 per 10 min/IP, AI 40 per 10 min/IP, plus the OTP limits. Use a shared store if you run several instances. |
+| Backups | **Scheduled, verified, tested restore** | Set `BACKUP_DIR` (and optionally `BACKUP_EVERY_HOURS`, `BACKUP_KEEP`). The server backs up on schedule, verifies each copy and prunes old ones. Manual CLI: `scripts/db-backup.mjs backup | verify | restore`. Still copy backups off the server. |
+| Rate limits | **Implemented, persistent** | Read routes 120/min/IP, write routes 30 per 10 min/IP, plus the admin lock-out, are stored in SQLite: they survive restarts and are shared by every process on the same database. The AI (40 per 10 min) and OTP limits are still in memory. Several servers on separate databases would need a shared store. |
 | Secrets | **Server only** | No keys in client code (audited). The Razorpay *key id* is public by design. |
 
 Do not treat a browser preview as proof of how the installed app or the server behaves. Test the signed APK against the deployed server (see §8).
@@ -180,7 +180,7 @@ Edit `shared/brand.js`. The static fallbacks that cannot import it are:
 A handful of sentence-level strings say "Thunai" literally; find them with `grep -rn "Thunai\|துணை" public server shared`. Trademark and domain checks are still pending, and `supportEmail` is a placeholder.
 
 ## 8. Validation results
-- `npm test`: **148 tests pass**, up from 120. New suites:
+- `npm test`: **152 tests pass**, up from 120. New suites:
   - `thunai.test.js`: brand; classification of the screenshot questions; *different questions get different answers*; the six-part structure; safety rules; birth-time rules; journey labels and arithmetic.
   - `production.test.js`: webhook signature and duplicates; payment failure and restore; refund role and audit; closed sample store; booking cancellation; export and delete; admin roles and lock-out; rate limits; metrics.
   - `reference.test.js` and `backup.test.js`.
@@ -195,13 +195,13 @@ A handful of sentence-level strings say "Thunai" literally; find them with `grep
   - AI answers with a real API key.
 
   These need the reviewable build and test keys (§10).
+- **Automated layout and accessibility checks** (run for this release): all 42 screens at 320 px, in normal and large text, show no sideways overflow and no script errors. Every button has an accessible name, every field a label, every image an alt attribute. The active tab is announced as the current page, and focus moves to each new screen's heading.
 - **Known issues and limits:**
-  - Rate limits and the admin lock-out are in memory, per instance.
-  - The temple data is compiled, not expert-reviewed. Hours and accessibility are unverified.
+  - The AI and OTP rate limits are still in memory, per process.
+  - The temple data is compiled, not expert-reviewed. Reviewers record checked facts in `shared/temple-verified.js` (source, date, reviewer); those show as **Verified**, and reviews older than 180 days show as **Needs re-check**. Everything else stays **Unverified**.
   - The journey's road distances are straight-line × 1.3.
-  - Store stock is never decremented.
-  - Some older specialist screens (porutham details, peyarchi) still use their original wording, reviewed only for fear and guarantee language.
-  - Large-text mode should still be checked on real small phones.
+  - The older specialist screens were reviewed for fear and guarantee language. Fixed: the Prasnam "success is certain" line, and the Rahu-in-6th court promise. Transit readings carry a "tendencies, not guarantees" note.
+  - The automated 320 px check is not a substitute for testing on real small phones.
 
 ## 9. Screenshots of key flows
 In `docs/screenshots/`, taken from the offline bundle at 390×844 px:
@@ -230,9 +230,9 @@ In `docs/screenshots/`, taken from the offline bundle at 390×844 px:
 2. [ ] Build the **reviewable** APK: Actions → "Mobile apps" → Run workflow. This publishes the `test-latest` release, which is a public link on a public repository, so decide first. Install it and walk through every screen with elders and young users.
 3. [ ] Deploy the server with the §4 settings. Register the Razorpay webhook. Make one ₹1 test-mode payment, one deliberately failed payment, and one refund.
 4. [ ] Run a TalkBack/VoiceOver pass and check large text on a 5-inch phone.
-5. [ ] Expert review of temple associations. Verify the opening hours for the top 20 temples and record dates in `shared/journey.js` `REVIEW`.
+5. [ ] Expert review of temple associations. Verify the opening hours and accessibility for the top 20 temples and record them in `shared/temple-verified.js` (source, date, reviewer).
 6. [ ] Set the AI cost prices, and decide whether to set `BILLING_ENFORCE=1` and `AI_REQUIRE_LOGIN=1` after measuring usage.
 7. [ ] Legal review of terms, refunds and privacy against the DPDP Act 2023 and DPDP Rules, plus app-store data-safety forms. Confirm the phased compliance dates with counsel.
-8. [ ] Schedule `scripts/db-backup.mjs backup` with off-site copies, and do a restore drill.
+8. [ ] Set `BACKUP_DIR` on the server, copy backups off-site, and do a restore drill with `scripts/db-backup.mjs restore`.
 9. [ ] Store: only with a real catalogue, stock handling and a courier partner. Bookings: only with operational partners and disclosed commissions.
 10. [ ] Do not enable real charges publicly until steps 2, 3 and 7 are done.

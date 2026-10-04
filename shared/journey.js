@@ -11,6 +11,7 @@
 import { TEMPLES, distanceKm } from './temples.js';
 import { templeInfo } from './temple-info.js';
 import { NAVAGRAHA } from './remedies.js';
+import { verifiedField } from './temple-verified.js';
 
 const B = (en, ta) => ({ en, ta });
 
@@ -72,6 +73,8 @@ function relevance(t, { prefs = [], planets = [] }) {
 }
 
 function hoursOf(t) {
+  const v = verifiedField(t.id, 'hours');
+  if (v) return { text: { en: v.en, ta: v.ta || v.en }, status: v.stale ? 'stale' : 'verified', verifiedOn: v.verifiedOn, source: v.source };
   const info = templeInfo(t.id);
   return info ? { text: info.timings, status: 'unverified' } : { text: B('Not available — please check with the temple', 'தகவல் இல்லை — கோவிலில் உறுதி செய்யவும்'), status: 'missing' };
 }
@@ -154,8 +157,9 @@ export function planJourney(p) {
       key, title, ...extra,
       temples: picked.map((x) => ({
         id: x.t.id, name: x.t.name, deity: x.t.deity, town: x.t.town, planet: x.t.planet, tags: x.t.tags, note: x.t.note,
-        km: x.km, hours: hoursOf(x.t), association: x.t.planet ? B(`Navagraha sthalam for ${x.t.planet}; deity ${NAVAGRAHA[x.t.planet].deity.en}`, `${x.t.planet} நவகிரகத் தலம்; தெய்வம் ${NAVAGRAHA[x.t.planet].deity.ta}`) : x.t.deity,
-        accessibility: 'unverified', lat: x.t.lat, lon: x.t.lon,
+        km: x.km, hours: hoursOf(x.t), associationReview: verifiedField(x.t.id, 'association'), accessibilityInfo: verifiedField(x.t.id, 'accessibility'),
+        association: verifiedField(x.t.id, 'association') ? { en: verifiedField(x.t.id, 'association').en, ta: verifiedField(x.t.id, 'association').ta || verifiedField(x.t.id, 'association').en } : x.t.planet ? B(`Navagraha sthalam for ${x.t.planet}; deity ${NAVAGRAHA[x.t.planet].deity.en}`, `${x.t.planet} நவகிரகத் தலம்; தெய்வம் ${NAVAGRAHA[x.t.planet].deity.ta}`) : x.t.deity,
+        accessibility: verifiedField(x.t.id, 'accessibility') ? (verifiedField(x.t.id, 'accessibility').stale ? 'stale' : 'verified') : 'unverified', lat: x.t.lat, lon: x.t.lon,
       })),
       itinerary: route.days, totalKm: Math.round(route.totalKm), cost,
       overBudget: p.budget ? cost.total > p.budget : false,

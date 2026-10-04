@@ -103,6 +103,7 @@ async function boot() {
   document.addEventListener('kj:lang', () => { applyLang(); go(state.view, state.params); });
   $$('.tabbar button').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
 
+  const startHash = location.hash;
   if (location.hash === '#billing-success') toast(L('Payment received — Premium is active 🙏', 'கட்டணம் பெறப்பட்டது — பிரீமியம் செயலில் 🙏'));
   if (location.hash === '#welcome') toast(L('Signed in with Facebook', 'Facebook மூலம் உள்நுழைந்தீர்கள்'));
   if (location.hash === '#login-failed') toast(L('Facebook sign-in failed. Please try again.', 'Facebook உள்நுழைவு தோல்வி. மீண்டும் முயற்சிக்கவும்.'));
@@ -110,7 +111,7 @@ async function boot() {
 
   // The calendar and basic guidance work without registration: always open on Today.
   // Sign-in is offered from Settings and when a feature (backup, purchases) really needs it.
-  go('home');
+  go(startHash === '#bookings' ? 'bookings' : 'home');
 
   setInterval(() => {
     if (!state.loc) return;

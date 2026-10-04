@@ -1,7 +1,7 @@
 // Hubs for the five-destination navigation: Family and Services tabs, plus "All tools".
 // Existing feature screens are unchanged; they are just reached from one clear place.
 import {
-  state, $, $$, L, ta, esc, STATIC, go, registerScreen, subHeader, saveFamily, copyright, detailed, saveSettings,
+  state, $, $$, L, ta, esc, STATIC, api, toast, fmtIsoDate, needsServerCard, go, registerScreen, subHeader, saveFamily, copyright, detailed, saveSettings,
   activeMember, chartOf, displayName, nakName, rasiName, RELATIONS, bi, BRAND,
 } from './core.js';
 import { iconChip } from './icons.js';
@@ -52,6 +52,7 @@ export const FEATURES = [
   { id: 'packages', hub: 'services', en: 'Yatra packages', ta: 'யாத்திரை பேக்கேஜ்', level: 'simple', status: 'server' },
   { id: 'seva', hub: 'services', en: 'Temple seva requests', ta: 'கோவில் சேவை கோரிக்கை', level: 'simple', status: 'server' },
   { id: 'priests', hub: 'services', en: 'Priest requests', ta: 'புரோகிதர் கோரிக்கை', level: 'simple', status: 'server' },
+  { id: 'bookings', hub: 'services', en: 'My bookings — status & cancel', ta: 'என் முன்பதிவுகள் — நிலை & ரத்து', level: 'simple', status: 'server' },
   { id: 'consult', hub: 'services', en: 'Talk to a human astrologer', ta: 'ஜோதிடருடன் நேரில் பேச', level: 'simple', status: 'server' },
   { id: 'store', hub: 'services', en: 'Pooja store', ta: 'பூஜைக் கடை', level: 'advanced', status: 'sample' },
   { id: 'plans', hub: 'services', en: 'Premium & Family plans', ta: 'பிரீமியம் & குடும்பத் திட்டங்கள்', level: 'simple' },
@@ -134,6 +135,35 @@ function renderServices(sec) {
     ${copyright()}`;
 }
 registerScreen('services', { render: renderServices });
+
+// ================================================================ MY BOOKINGS (fulfilment tracking)
+const STEP = {
+  requested: ['Requested', 'கோரப்பட்டது'], confirmed: ['Confirmed', 'உறுதி'], assigned: ['Priest / partner assigned', 'புரோகிதர் / கூட்டாளர் நியமனம்'],
+  accepted: ['Accepted by the priest', 'புரோகிதர் ஏற்றார்'], declined: ['Priest unavailable — being reassigned', 'புரோகிதர் இயலவில்லை — மீண்டும் நியமனம்'],
+  completed: ['Completed', 'நிறைவு'], cancelled: ['Cancelled', 'ரத்து'],
+};
+const stepName = (st) => L(...(STEP[st] || [st, st]));
+const fmtAt = (t) => new Date(t).toLocaleString(ta() ? 'ta-IN' : 'en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+async function renderBookings(sec) {
+  sec.innerHTML = `${subHeader(L('My bookings', 'என் முன்பதிவுகள்'), L('Every request with its status history', 'ஒவ்வொரு கோரிக்கையும் அதன் நிலை வரலாற்றுடன்'))}<div id="bkBody"></div>`;
+  const body = $('#bkBody');
+  if (STATIC) { body.innerHTML = needsServerCard(L('Seva, priest and yatra requests are tracked by the online server.', 'சேவை, புரோகிதர், யாத்திரைக் கோரிக்கைகள் இணைய சேவையகத்தால் கண்காணிக்கப்படும்.')); return; }
+  if (!state.user) { body.innerHTML = `<div class="card glass cta-card" data-go="login">${L('Sign in to see your bookings', 'உங்கள் முன்பதிவுகளைப் பார்க்க உள்நுழையவும்')} ›</div>`; return; }
+  let requests = [];
+  try { ({ requests } = await api('/api/requests')); } catch (e) { body.innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
+  if (!requests.length) { body.innerHTML = `<p class="muted">${L('No bookings yet.', 'இன்னும் முன்பதிவு இல்லை.')}</p><button class="btn-soft" data-go="seva">🛕 ${L('Request a seva', 'சேவை கோரு')}</button>`; return; }
+  body.innerHTML = requests.map((r) => `<article class="card glass">
+      <div class="card-title"><span>${esc(r.service || r.type)} · ${fmtIsoDate(r.date)}</span><span class="badge ${r.status === 'completed' ? 'ok' : r.status === 'cancelled' ? 'unv' : 'est'}">${esc(stepName(r.status))}</span></div>
+      <ol class="bk-timeline">${(r.history?.length ? r.history : [{ status: r.status, at: r.updatedAt }]).map((h) => `<li><b>${esc(stepName(h.status))}</b> <span class="muted small">${fmtAt(h.at)}</span></li>`).join('')}</ol>
+      ${['requested', 'confirmed', 'assigned'].includes(r.status) ? `<button class="chip-btn" data-cancel="${esc(r.id)}">✕ ${L('Cancel this request', 'இந்தக் கோரிக்கையை ரத்து செய்')}</button>` : ''}
+    </article>`).join('') + `<p class="small muted">${L('You get a notification when the status changes (if notifications are switched on).', 'நிலை மாறும்போது அறிவிப்பு வரும் (அறிவிப்புகள் இயக்கத்தில் இருந்தால்).')}</p>`;
+  $$('[data-cancel]', sec).forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm(L('Cancel this request?', 'இந்தக் கோரிக்கையை ரத்து செய்யவா?'))) return;
+    try { await api(`/api/requests/${b.dataset.cancel}/cancel`, { method: 'POST' }); toast(L('Request cancelled', 'கோரிக்கை ரத்து செய்யப்பட்டது')); renderBookings(sec); } catch (e) { toast(e.message); }
+  }));
+}
+registerScreen('bookings', { render: renderBookings, parent: 'services' });
 
 // ================================================================ HUMAN CONSULTATION (prepared, not live)
 function renderConsult(sec) {

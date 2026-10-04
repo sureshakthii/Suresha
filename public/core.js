@@ -333,7 +333,7 @@ export const HUB_OF = {
   // Ask
   ask: 'chat',
   // Services
-  journey: 'services', temples: 'services', packages: 'services', seva: 'services', priests: 'services', store: 'services', consult: 'services',
+  journey: 'services', bookings: 'services', temples: 'services', packages: 'services', seva: 'services', priests: 'services', store: 'services', consult: 'services',
   // Settings (header gear) — no tab highlighted
   more: null, about: 'more', legal: 'more', feedback: 'more', invite: 'more', admin: 'more', privacy: 'more', calc: 'more',
 };
@@ -354,11 +354,16 @@ export function go(view, params = {}) {
   $$('.view').forEach((v) => { v.hidden = v !== sec; });
   const hub = view in HUB_OF ? HUB_OF[view] : screens[view].parent;
   const tab = screens[view].tab || TAB_OF[view] || (hub ? TAB_OF[hub] : null);
-  $$('.tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.tabbar button').forEach((b) => { const on = b.dataset.tab === tab; b.classList.toggle('active', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   $('#app').classList.toggle('no-tabs', !!screens[view].fullscreen);
   document.dispatchEvent(new CustomEvent('kj:screen', { detail: view }));
   if (prev !== view) scrollTo({ top: 0 });
   screens[view].render(sec, params);
+  // Screen readers / keyboard: move focus to the new screen's heading when the person navigates.
+  if (prev !== view && document.activeElement && document.activeElement !== document.body) {
+    const h = sec.querySelector('h1, h2');
+    if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+  }
 }
 
 /** Standard header for sub-screens with a back button. */

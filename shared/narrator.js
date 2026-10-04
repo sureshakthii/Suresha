@@ -70,7 +70,7 @@ export function ruleBasedReply(ctx, evaluation, lang) {
   const head = {
     DO: ta ? '✅ ஆம் — தாராளமாக செய்யலாம்.' : '✅ Yes — this is a favourable time. Go ahead.',
     CAUTION: ta ? '⚠️ கவனத்துடன் செய்யலாம்.' : '⚠️ Mixed signals — proceed with care.',
-    AVOID: ta ? '⏳ சிறந்த நேரம் விரைவில் வருகிறது — அப்போது தொடங்கினால் வெற்றி நிச்சயம்.' : '⏳ A better time is coming soon — start then and success comes easier.',
+    AVOID: ta ? '⏳ சிறந்த நேரம் விரைவில் வருகிறது — அப்போது தொடங்குவது பாரம்பரியப்படி அதிக சாதகமாகக் கருதப்படும்.' : '⏳ A better time is coming soon — tradition considers starting then more favourable.',
   }[evaluation.verdict];
   const top = [...evaluation.factors].sort((a, b) => (b.points > 0) - (a.points > 0) || Math.abs(b.points) - Math.abs(a.points)).slice(0, 4);
   const lines = top.map((f) => `${f.points >= 0 ? '🌟' : '🔸'} ${ta ? f.labelTa : f.label}`);

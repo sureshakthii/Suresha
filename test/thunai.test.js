@@ -141,3 +141,19 @@ test('journey cost estimate is transparent arithmetic', () => {
   assert.equal(c.total, 1500);
   assert.equal(c.lines.length, 4);
 });
+
+test('journey: reviewed temple facts show as verified with source and date; old reviews need a re-check', async () => {
+  const { VERIFIED, verifiedField } = await import('../shared/temple-verified.js');
+  VERIFIED.madurai_meenakshi = { hours: { en: '5:00–12:30, 16:00–21:30', source: 'Temple office phone call', verifiedOn: new Date().toISOString().slice(0, 10), verifiedBy: 'test' } };
+  VERIFIED.koodal_azhagar = { hours: { en: '6–12', source: 'Visit', verifiedOn: '2020-01-01', verifiedBy: 'test' } };
+  try {
+    const plan = planJourney({ start: { lat: 9.9252, lon: 78.1198, name: 'Madurai' }, days: 1, travellers: 1, transport: 'bus' });
+    const all = plan.options.flatMap((o) => o.temples);
+    const m = all.find((t) => t.id === 'madurai_meenakshi');
+    assert.equal(m.hours.status, 'verified');
+    assert.equal(m.hours.source, 'Temple office phone call');
+    const k = all.find((t) => t.id === 'koodal_azhagar');
+    if (k) assert.equal(k.hours.status, 'stale');
+    assert.equal(verifiedField('madurai_meenakshi', 'accessibility'), null, 'unreviewed fields stay unverified');
+  } finally { delete VERIFIED.madurai_meenakshi; delete VERIFIED.koodal_azhagar; }
+});

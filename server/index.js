@@ -14,6 +14,7 @@ import { billingEnforced, billingRouter, checkAiQuota, recordAiUsage } from './b
 import { growthRouter } from './growth.js';
 import { rateLimit, requireAdmin, auditLog } from './admin.js';
 import { businessMetrics, recordAiCost } from './metrics.js';
+import { startBackupSchedule } from './backup.js';
 import { tamilMonth } from '../shared/tamilcal.js';
 import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
 import { findMuhurtham } from '../shared/special.js';
@@ -261,5 +262,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   createApp().listen(port, '0.0.0.0', () => {
     console.log(`🪔 ${BRAND.name} running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);
     startPushScheduler();
+    startBackupSchedule();
   });
 }

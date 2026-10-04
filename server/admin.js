@@ -18,6 +18,11 @@ const SCHEMA = `
     ip TEXT
   );
   CREATE INDEX IF NOT EXISTS audit_at ON audit_log(at);
+  CREATE TABLE IF NOT EXISTS rate_hits (
+    key TEXT PRIMARY KEY,
+    window_start INTEGER NOT NULL,
+    n INTEGER NOT NULL
+  );
 `;
 const ready = new WeakSet();
 function db() {
@@ -47,8 +52,26 @@ export function adminIdentities() {
   return out;
 }
 
-// Simple lock-out against token guessing: 10 failures per IP per 15 minutes.
-const failures = new Map();
+/**
+ * Count one hit for `key` in a fixed window; returns the count in the current window.
+ * Stored in SQLite, so limits survive restarts and are shared by every process using the same database.
+ */
+export function hit(key, windowMs, { peek = false } = {}) {
+  const t = Date.now();
+  const d = db();
+  const row = d.prepare('SELECT window_start, n FROM rate_hits WHERE key = ?').get(key);
+  if (!row || t - row.window_start >= windowMs) {
+    if (peek) return 0;
+    d.prepare('INSERT INTO rate_hits (key, window_start, n) VALUES (?, ?, 1) ON CONFLICT(key) DO UPDATE SET window_start = excluded.window_start, n = 1').run(key, t);
+    if (Math.random() < 0.01) d.prepare('DELETE FROM rate_hits WHERE window_start < ?').run(t - 86400000);
+    return 1;
+  }
+  if (peek) return row.n;
+  d.prepare('UPDATE rate_hits SET n = n + 1 WHERE key = ?').run(key);
+  return row.n + 1;
+}
+
+// Lock-out against token guessing: 10 failures per IP per 15 minutes.
 const WINDOW = 15 * 60000;
 
 /** Express middleware: requireAdmin(minRole = 'support'). Sets req.admin = { name, role }. */
@@ -56,14 +79,12 @@ export function requireAdmin(minRole = 'support') {
   return (req, res, next) => {
     const ids = adminIdentities();
     if (!ids.length) return res.status(503).json({ error: 'Admin is not configured (set ADMIN_TOKEN or ADMIN_TOKENS)' });
-    const f = failures.get(req.ip);
-    if (f && f.n >= 10 && Date.now() - f.t < WINDOW) return res.status(429).json({ error: 'Too many failed admin attempts. Try again later.' });
+    if (hit(`adminfail:${req.ip}`, WINDOW, { peek: true }) >= 10) return res.status(429).json({ error: 'Too many failed admin attempts. Try again later.' });
     const given = req.get('x-admin-token');
     if (!given) return res.status(401).json({ error: 'Admin token required' });
     const who = ids.find((i) => safeEqual(given, i.token));
     if (!who) {
-      const cur = f && Date.now() - f.t < WINDOW ? f : { n: 0, t: Date.now() };
-      cur.n += 1; failures.set(req.ip, cur);
+      hit(`adminfail:${req.ip}`, WINDOW);
       return res.status(403).json({ error: 'Invalid admin token' });
     }
     if (rank(who.role) < rank(minRole)) return res.status(403).json({ error: `This action needs the ${minRole} role` });
@@ -85,17 +106,12 @@ export function auditLog(limit = 200) {
     .map((r) => ({ ...r, details: r.details ? JSON.parse(r.details) : null }));
 }
 
-/** Tiny in-memory rate limiter (per instance). Use a shared store (e.g. Redis) when running several instances. */
+let limiterSeq = 0;
+/** Fixed-window rate limiter backed by SQLite (see hit()). */
 export function rateLimit({ windowMs, max, key = (req) => req.ip, message = 'Too many requests. Please slow down.' }) {
-  const hits = new Map();
+  const name = `rl${++limiterSeq}`;
   return (req, res, next) => {
-    const k = key(req);
-    const t = Date.now();
-    const h = hits.get(k);
-    if (!h || t - h.t > windowMs) { hits.set(k, { n: 1, t }); return next(); }
-    h.n += 1;
-    if (h.n > max) return res.status(429).json({ error: message });
-    if (hits.size > 50000) hits.clear();
+    if (hit(`${name}:${key(req)}`, windowMs) > max) return res.status(429).json({ error: message });
     next();
   };
 }

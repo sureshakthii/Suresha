@@ -277,3 +277,26 @@ test('admin auth: 401 without token, 403 wrong token, 503 when ADMIN_TOKEN unset
     assert.equal((await req('GET', '/api/admin/orders', undefined, ADMIN)).status, 503);
   } finally { process.env.ADMIN_TOKEN = 'admin-test'; }
 });
+
+test('fulfilment tracking: history, priest accepts or declines, customer sees every step', async () => {
+  const ok = await req('POST', `/api/priests/me/requests/${serviceReqId}/respond`, { decision: 'accept' }, as(priestUser));
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).request.status, 'assigned');
+  assert.equal((await req('POST', `/api/priests/me/requests/${serviceReqId}/respond`, { decision: 'maybe' }, as(priestUser))).status, 400);
+  const dec = await (await req('POST', `/api/priests/me/requests/${serviceReqId}/respond`, { decision: 'decline' }, as(priestUser))).json();
+  assert.equal(dec.request.status, 'confirmed');
+  assert.equal(dec.request.priestId, null);
+  const mine = (await (await req('GET', '/api/requests', undefined, as(buyer))).json()).requests.find((r) => r.id === serviceReqId);
+  assert.deepEqual(mine.history.map((h) => h.status), ['requested', 'assigned', 'accepted', 'declined']);
+});
+
+test('stock: paid and recently held orders reduce what is left; the last items cannot be sold twice', async () => {
+  const before = (await (await req('GET', '/api/store/products')).json()).products.find((p) => p.id === 'lamp-kuthu-vilakku-18').stock;
+  const r1 = await req('POST', '/api/store/orders', { items: [{ id: 'lamp-kuthu-vilakku-18', qty: before - 1 }], address }, as(buyer));
+  assert.equal(r1.status, 201);
+  const left = (await (await req('GET', '/api/store/products')).json()).products.find((p) => p.id === 'lamp-kuthu-vilakku-18').stock;
+  assert.equal(left, 1);
+  const r2 = await req('POST', '/api/store/orders', { items: [{ id: 'lamp-kuthu-vilakku-18', qty: 2 }], address }, as(buyer));
+  assert.equal(r2.status, 400);
+  assert.match((await r2.json()).error, /Only 1 left/);
+});

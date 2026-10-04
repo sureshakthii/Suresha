@@ -187,7 +187,8 @@ export const ICONS = {
   tools: "layout-grid",
   services: "landmark",
   familyhub: "users-round",
-  why: "info"
+  why: "info",
+  bookings: "calendar-check"
 };
 
 /** Concept -> chip colour group (daily | personal | match | spiritual | services | help). */
@@ -238,7 +239,8 @@ export const ICON_GROUP = {
   privacy: "help",
   calc: "help",
   birthtime: "personal",
-  tools: "help"
+  tools: "help",
+  bookings: "services"
 };
 
 /** Inline SVG string for a Lucide icon name (or an ICONS concept key). Unknown names render an empty box. */

@@ -143,7 +143,10 @@ function submit() {
   $('#tripResult').scrollIntoView({ behavior: 'smooth' });
 }
 
-const statusBadge = (s) => (s === 'unverified' ? `<span class="badge unv">${L('Unverified', 'சரிபார்க்கப்படவில்லை')}</span>` : s === 'missing' ? `<span class="badge unv">${L('Not available', 'தகவல் இல்லை')}</span>` : `<span class="badge ok">${L('Verified', 'சரிபார்க்கப்பட்டது')}</span>`);
+const statusBadge = (s) => (s === 'unverified' ? `<span class="badge unv">${L('Unverified', 'சரிபார்க்கப்படவில்லை')}</span>`
+  : s === 'missing' ? `<span class="badge unv">${L('Not available', 'தகவல் இல்லை')}</span>`
+    : s === 'stale' ? `<span class="badge est">${L('Needs re-check', 'மீண்டும் சரிபார்க்க வேண்டும்')}</span>`
+      : `<span class="badge ok">${L('Verified', 'சரிபார்க்கப்பட்டது')}</span>`);
 const est = () => `<span class="badge est">${L('Estimate', 'மதிப்பீடு')}</span>`;
 
 function dayDate(i) {
@@ -172,9 +175,9 @@ function optionHtml(o, idx) {
     ${o.itinerary.map((d, di) => `<div class="trip-day"><div class="mini-label">${L('Day', 'நாள்')} ${d.day}${plan.date ? ` · ${dayDate(di)}` : ''} · ${L('travel', 'பயணம்')} ${hrs(d.driveHours)} ${est()}</div>
       ${d.stops.map((s) => { const t = o.temples.find((x) => x.id === s.temple.id); return `<div class="trip-stop">
         <b>🛕 ${esc(bi(t.name))}</b> <span class="muted small">· ${esc(t.town)} · ${L('from previous stop', 'முந்தைய இடத்திலிருந்து')} ~${Math.round(s.km)} ${L('km', 'கி.மீ')}, ${hrs(s.hours)}</span>
-        <div class="small">${L('Tradition', 'மரபு')}: ${esc(bi(t.association))} · <span class="muted">${L('Source', 'ஆதாரம்')}: ${esc(bi(REVIEW.associations.source))}</span></div>
-        <div class="small">${L('Opening hours', 'திறப்பு நேரம்')}: ${esc(bi(t.hours.text))} ${statusBadge(t.hours.status)} <span class="muted">${L('Last verified: never', 'கடைசியாக சரிபார்த்தது: இல்லை')}</span></div>
-        <div class="small">${L('Accessibility', 'அணுகல்')}: ${statusBadge('unverified')} ${esc(bi(REVIEW.accessibility.source))}</div>
+        <div class="small">${L('Tradition', 'மரபு')}: ${esc(bi(t.association))} · <span class="muted">${L('Source', 'ஆதாரம்')}: ${t.associationReview ? `${esc(t.associationReview.source)} · ${L('reviewed', 'சரிபார்த்தது')} ${esc(t.associationReview.verifiedOn)}` : esc(bi(REVIEW.associations.source))}</span></div>
+        <div class="small">${L('Opening hours', 'திறப்பு நேரம்')}: ${esc(bi(t.hours.text))} ${statusBadge(t.hours.status)} <span class="muted">${t.hours.verifiedOn ? `${L('Verified on', 'சரிபார்த்த நாள்')} ${esc(t.hours.verifiedOn)} · ${esc(t.hours.source)}` : L('Last verified: never', 'கடைசியாக சரிபார்த்தது: இல்லை')}</span></div>
+        <div class="small">${L('Accessibility', 'அணுகல்')}: ${statusBadge(t.accessibility)} ${t.accessibilityInfo ? `${esc(bi({ en: t.accessibilityInfo.en, ta: t.accessibilityInfo.ta || t.accessibilityInfo.en }))} <span class="muted">(${esc(t.accessibilityInfo.source)}, ${esc(t.accessibilityInfo.verifiedOn)})</span>` : esc(bi(REVIEW.accessibility.source))}</div>
         <div class="btn-row"><a class="chip-btn" href="${templeLinks(t).directions}" target="_blank" rel="noopener">🧭 ${L('Directions', 'வழி')}</a><a class="chip-btn" href="${REVIEW.hours.url}" target="_blank" rel="noopener">🏛️ ${L('Official HR&CE site', 'அதிகாரப்பூர்வ HR&CE')}</a>${plan.date ? remindBtn({ title: `${bi(t.name)}`, at: `${new Date(new Date(`${plan.date}T06:00:00+05:30`).getTime() + di * 86400000).toISOString()}`, place: t.town, label: L('Remind', 'நினைவூட்டு') }) : ''}</div>
       </div>`; }).join('')}
       ${d.returnKm ? `<div class="small muted">↩ ${L('Return to', 'திரும்புதல்')} ${esc(plan.inputs.start.name)}: ~${Math.round(d.returnKm)} ${L('km', 'கி.மீ')}, ${hrs(d.returnHours)}</div>` : ''}

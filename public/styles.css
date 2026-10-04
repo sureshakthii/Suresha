@@ -1066,3 +1066,16 @@ details.bhava summary { font-size: 15px; grid-template-columns: 26px minmax(0, 1
 body.large .gb-row, body.large details.bhava summary { font-size: 18px; }
 [data-theme="dark"] .hero { background: linear-gradient(160deg, #3a1d2a, #241521 60%, #1c1119); border: 1px solid rgba(240, 194, 122, .2); }
 [data-theme="dark"] .guide-box { background: linear-gradient(160deg, #2a1d2b, #221824); }
+.bk-timeline { margin: 4px 0 10px; padding-left: 20px; } .bk-timeline li { margin: 4px 0; }
+/* 320 px / large-text fixes found by the automated overflow check */
+.week-colors { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.wc { min-width: 0; font-size: 10.5px; }
+.wc > * { max-width: 100%; overflow-wrap: break-word; text-align: center; }
+.rasi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.rp { min-width: 0; }
+.account-card { flex-wrap: wrap; }
+.account-card > div { min-width: 0; }
+@media (max-width: 360px) { body.large .rasi-grid { grid-template-columns: minmax(0, 1fr); } }
+.rm-years { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.rm-year { min-width: 0; overflow: hidden; }
+@media (max-width: 380px) { body.large .rm-years { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

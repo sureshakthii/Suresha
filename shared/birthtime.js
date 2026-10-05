@@ -6,6 +6,7 @@
 //             placeholder (local noon) that is never shown, and every time-sensitive result is withheld.
 // The check recomputes the chart at both ends of the uncertainty window and reports what changes.
 import { birthChart } from './astro.js';
+import { kattamReliability } from './kattam.js';
 
 export const CERTAINTY = ['exact', 'approx', 'unknown'];
 export const UNKNOWN_TIME_PLACEHOLDER = '12:00:00';
@@ -27,6 +28,7 @@ export const certaintyOf = (m) => (CERTAINTY.includes(m?.timeCertainty) ? m.time
  * { certainty, windowMin, lagna, houses, navamsa, vargas, rasi, nakshatra, pada, dasa, dasaShiftDays, timeShown, notes[] }
  */
 export function timeReliability(m) {
+  if (m?.kattam) return kattamReliability(m);
   const certainty = certaintyOf(m);
   if (certainty === 'exact') {
     return { certainty, windowMin: 0, lagna: true, houses: true, navamsa: true, vargas: true, rasi: true, nakshatra: true, pada: true, dasa: true, dasaShiftDays: 0, timeShown: true, notes: [] };

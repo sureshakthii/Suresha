@@ -3,7 +3,7 @@
 import { birthChart } from './shared/astro.js';
 import { loveMatch } from './shared/love.js';
 import { closingPrayer } from './shared/daily.js';
-import { state, $, L, esc, bi, registerScreen, subHeader, toast, displayName, saveFamily } from './core.js';
+import { state, chartOf, $, L, esc, bi, registerScreen, subHeader, toast, displayName, saveFamily } from './core.js';
 import { personBlock, wirePersonBlocks, forms } from './screens-couple.js';
 
 let result = null;
@@ -12,7 +12,7 @@ function chartFor(slot) {
   const f = forms[slot];
   if (f.mode === 'family' && state.family.length) {
     const m = state.family.find((x) => x.id === f.memberId) || state.family.find((x) => x.relation !== 'organization');
-    return { chart: birthChart(m), name: displayName(m), gender: m.gender, timeKnown: m.timeCertainty !== 'unknown' };
+    return { chart: chartOf(m), name: displayName(m), gender: m.gender, timeKnown: m.timeCertainty !== 'unknown' && !m.kattam };
   }
   if (!f.name || !f.date) throw new Error(L('Please enter a name and birth date for both people.', 'இருவருக்கும் பெயர், பிறந்த தேதியை உள்ளிடவும்.'));
   const loc = f.lat != null ? { lat: Number(f.lat), lon: Number(f.lon), tz: Number(f.tz) } : { lat: state.loc?.lat ?? 13.08, lon: state.loc?.lon ?? 80.27, tz: state.loc?.tz ?? 5.5 };

@@ -1,8 +1,9 @@
 // My Spiritual Journey — connects the horoscope, the temple database and trip planning in one flow.
 // Asks only for what is missing, confirms voice-transcribed values, and returns three honest options.
-import { planJourney, parseTripText, worshipOptions, REVIEW, COST_ASSUMPTIONS } from './shared/journey.js';
+import { planJourney, parseTripText, worshipOptions, REVIEW, COST_ASSUMPTIONS, dayInfo } from './shared/journey.js';
+import { fetchWeather } from './screens-world.js';
 import { NAVAGRAHA } from './shared/remedies.js';
-import { templeLinks } from './shared/temples.js';
+import { templeLinks, TEMPLES } from './shared/temples.js';
 import { searchLocalPlaces } from './shared/places.js';
 import {
   state, $, $$, L, esc, bi, store, go, registerScreen, subHeader, toast, activeMember, chartOf, displayName, planetName, fmtIsoDate,
@@ -15,7 +16,7 @@ import { chartFacts } from './shared/guidance.js';
 
 const form = {
   startName: '', lat: null, lon: null, date: '', days: null, travellers: null, who: [], transport: 'bus', tier: 'economy',
-  budget: '', pace: 'moderate', mobility: 'none', prefs: [], useChart: true, confirmed: {},
+  budget: '', pace: 'moderate', mobility: 'none', prefs: [], useChart: true, confirmed: {}, focus: [],
 };
 let plan = null;
 
@@ -50,11 +51,16 @@ function renderJourney(sec, params = {}) {
     const p = savedPlans().find((x) => x.id === params.open);
     if (p) { plan = p.plan; Object.assign(form, p.form); }
   }
-  if (params.question && !form.confirmed.fromQuestion) applyParsed(parseTripText(params.question), true);
+  if (params.temples?.length) { form.focus = params.temples; plan = null; }
+  if (params.question && !form.confirmed.fromQuestion && !params.temples?.length) applyParsed(parseTripText(params.question), true);
   if (form.lat == null && state.loc) { form.lat = state.loc.lat; form.lon = state.loc.lon; form.startName = state.loc.name; }
   const fam = state.family.filter((m) => m.relation !== 'organization');
   const m = activeMember();
   sec.innerHTML = `${subHeader(L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்'), L('Your chart, the temple database and your trip — together', 'உங்கள் ஜாதகம், கோவில் தகவல், உங்கள் பயணம் — ஒன்றாக'))}
+    ${form.focus.length ? `<div class="card glass focus-card"><div class="card-title">🛕 ${L('Recommended for you from your chart', 'உங்கள் ஜாதகப்படி உங்களுக்குப் பரிந்துரை')}</div>
+      <p><b>${form.focus.map((id) => esc(bi(TEMPLES.find((t) => t.id === id)?.name || { en: id, ta: id }))).join(' · ')}</b></p>
+      <p class="small">${L('The temple is already chosen — just pick the date and who is going, then tap “Show options”. We add weather, festival crowd and opening times for that day.', 'கோவில் ஏற்கனவே தேர்வு செய்யப்பட்டது — தேதியும் உடன் வருபவர்களையும் மட்டும் தேர்வு செய்து “வழிகளைக் காட்டு” அழுத்துங்கள். அன்றைய வானிலை, விழாக் கூட்டம், நடை நேரம் சேர்த்துத் தருவோம்.')}</p>
+      <button type="button" class="link-btn" id="clearFocus">${L('Choose other temples instead', 'வேறு கோவில்களைத் தேர்வு செய்ய')}</button></div>` : ''}
     <div class="card glass">
       <label for="tripText">${L('Describe your trip (optional — type or speak)', 'உங்கள் பயணத்தை விவரிக்கவும் (விருப்பம் — எழுதவும் / பேசவும்)')}</label>
       <div class="chat-form"><button type="button" id="tripMic" class="mic" aria-label="${L('Speak', 'பேசுங்கள்')}">🎙️</button>
@@ -94,6 +100,7 @@ function renderJourney(sec, params = {}) {
   f.elements.start.addEventListener('input', () => { form.lat = null; });
   f.addEventListener('change', (e) => { e.target.closest('label')?.classList.remove('check'); if (e.target.name) form.confirmed[e.target.name] = true; });
   f.addEventListener('submit', (e) => { e.preventDefault(); readForm(f); submit(); });
+  $('#clearFocus')?.addEventListener('click', () => { form.focus = []; plan = null; renderJourney(sec); });
   setupVoiceInput($('#tripMic'), $('#tripText'));
   $('#tripParse').addEventListener('click', () => { readForm(f); applyParsed(parseTripText($('#tripText').value), false); renderJourney(sec); });
   if (plan) showPlan(plan);
@@ -136,7 +143,7 @@ function submit() {
   if (unchecked.length && !confirm(L('Some values came from your words. Are the highlighted city, dates and numbers correct?', 'சில மதிப்புகள் உங்கள் சொற்களிலிருந்து எடுக்கப்பட்டன. ஒளிரும் ஊர், தேதி, எண்கள் சரியா?'))) return;
   unchecked.forEach((k) => { form.confirmed[k] = true; });
   const { planets, note } = chartPlanets();
-  plan = planJourney({ start: { lat: form.lat, lon: form.lon, name: form.startName }, days: form.days, travellers: form.travellers, transport: form.transport, tier: form.tier, budget: Number(form.budget) || null, pace: form.pace, mobility: form.mobility, prefs: form.prefs, planets });
+  plan = planJourney({ start: { lat: form.lat, lon: form.lon, name: form.startName }, days: form.days, travellers: form.travellers, transport: form.transport, tier: form.tier, budget: Number(form.budget) || null, pace: form.pace, mobility: form.mobility, prefs: form.prefs, planets, focus: form.focus });
   plan.chartNote = note;
   plan.date = form.date;
   showPlan(plan);
@@ -180,6 +187,39 @@ const statusBadge = (s) => (s === 'unverified' ? `<span class="badge unv">${L('U
       : `<span class="badge ok">${L('Verified', 'சரிபார்க்கப்பட்டது')}</span>`);
 const est = () => `<span class="badge est">${L('Estimate', 'மதிப்பீடு')}</span>`;
 
+function dayIso(i) {
+  if (!plan.date) return null;
+  const d = new Date(`${plan.date}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + i);
+  return d.toISOString().slice(0, 10);
+}
+// That day at the temple: weather (filled in after render), festivals / holidays and the expected crowd.
+function dayBox(d, di) {
+  const iso = dayIso(di);
+  const t = d.stops[0]?.temple;
+  if (!iso || !t) return '';
+  const info = dayInfo(iso, t);
+  const crowd = { high: ['bad', L('Heavy crowd expected', 'அதிக கூட்டம் எதிர்பார்க்கலாம்')], medium: ['warn', L('Moderate crowd', 'மிதமான கூட்டம்')], low: ['good', L('Usually calm', 'பொதுவாக அமைதி')] }[info.crowd];
+  return `<div class="day-box">
+    <div class="day-wx small" data-wx="${t.lat},${t.lon},${iso}">☁️ ${L('Checking weather…', 'வானிலை பார்க்கிறது…')}</div>
+    <div class="small"><span class="tag ${crowd[0]}">👥 ${crowd[1]}</span>${info.why.length ? ` <span class="muted">${info.why.map((w) => esc(bi(w))).join(' · ')}</span>` : ''}</div>
+    ${info.festivals.length ? `<div class="small">🪔 ${L('That day', 'அன்று')}: <b>${info.festivals.map((f) => esc(bi(f))).join(', ')}</b></div>` : ''}
+    ${info.holiday ? `<div class="small">🏖️ ${L('Public holiday', 'பொது விடுமுறை')}: ${esc(bi(info.holiday))}</div>` : ''}
+    ${info.crowd === 'high' ? `<div class="small trip-warn">${L('Start very early (before 6 AM), keep water and snacks, and expect longer darshan queues.', 'அதிகாலை (காலை 6-க்கு முன்) புறப்படுங்கள்; தண்ணீர், சிற்றுண்டி வைத்திருங்கள்; தரிசன வரிசை நீளமாக இருக்கும்.')}</div>` : ''}
+  </div>`;
+}
+async function fillDayWeather() {
+  for (const el of document.querySelectorAll('[data-wx]')) {
+    const [lat, lon, iso] = el.dataset.wx.split(',');
+    const days = Math.round((new Date(`${iso}T12:00:00+05:30`) - Date.now()) / 86400000);
+    if (days > 6) { el.innerHTML = `🗓️ ${L('Weather forecast appears 7 days before the trip — check again then.', 'வானிலை முன்னறிவிப்பு பயணத்திற்கு 7 நாள் முன் தெரியும் — அப்போது மீண்டும் பாருங்கள்.')}`; continue; }
+    try {
+      const w = await fetchWeather(Number(lat), Number(lon));
+      const day = (w.daily || []).find((x) => x.date === iso);
+      el.innerHTML = day ? `${day.rainChance >= 60 ? '🌧️' : day.rainChance >= 30 ? '🌦️' : '☀️'} ${esc(bi(day.description))} · ${Math.round(day.minC)}°–${Math.round(day.maxC)}°C · ${L('rain', 'மழை')} ${day.rainChance ?? 0}%${day.rainChance >= 60 ? ` — ${L('carry an umbrella; plan indoor darshan first', 'குடை எடுத்துச் செல்லுங்கள்')}` : ''}` : L('Weather not available for this date.', 'இந்தத் தேதிக்கு வானிலை இல்லை.');
+    } catch { el.textContent = L('Weather will show when the phone is online.', 'இணைய இணைப்பில் வானிலை தெரியும்.'); }
+  }
+}
+
 function dayDate(i) {
   if (!plan.date) return '';
   const d = new Date(`${plan.date}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + i);
@@ -204,6 +244,7 @@ function optionHtml(o, idx) {
     </ul></div>
     <details class="trip-details"${idx === 0 ? ' open' : ''}><summary class="ans-h">🗓️ ${L('Day-by-day itinerary', 'நாள் வாரியான பயணத் திட்டம்')} · ${o.temples.map((t) => esc(bi(t.name))).join(', ')}</summary>
     ${o.itinerary.map((d, di) => `<div class="trip-day"><div class="mini-label">${L('Day', 'நாள்')} ${d.day}${plan.date ? ` · ${dayDate(di)}` : ''} · ${L('travel', 'பயணம்')} ${hrs(d.driveHours)} ${est()}</div>
+      ${dayBox(d, di)}
       ${d.stops.map((s) => { const t = o.temples.find((x) => x.id === s.temple.id); return `<div class="trip-stop">
         <b>🛕 ${esc(bi(t.name))}</b> <span class="muted small">· ${esc(t.town)} · ${L('from previous stop', 'முந்தைய இடத்திலிருந்து')} ~${Math.round(s.km)} ${L('km', 'கி.மீ')}, ${hrs(s.hours)}</span>
         ${timeLine(s)}
@@ -221,6 +262,7 @@ function optionHtml(o, idx) {
     <div class="btn-row">
       <button class="chip-btn" data-save="${idx}">💾 ${L('Save', 'சேமி')}</button>
       <button class="chip-btn" data-share="${idx}">📤 ${L('Share', 'பகிர்')}</button>
+      ${o.temples[0] ? `<button class="chip-btn" data-go="weather" data-param='${esc(JSON.stringify({ lat: o.temples[0].lat, lon: o.temples[0].lon, name: bi(o.temples[0].name), back: 'journey' }))}'>☁️ ${L('Weather', 'வானிலை')}</button>` : ''}
       <button class="chip-btn" disabled aria-disabled="true" title="${esc(L('No booking partner is operational yet', 'முன்பதிவுக் கூட்டாளர் இன்னும் இல்லை'))}">🎫 ${L('Booking not available yet', 'முன்பதிவு இன்னும் இல்லை')}</button>
     </div>
   </article>`;
@@ -249,6 +291,7 @@ function showPlan(p) {
       L('Opening hours are unverified — please confirm with each temple.', 'திறப்பு நேரம் சரிபார்க்கப்படவில்லை — ஒவ்வொரு கோவிலிலும் உறுதி செய்யவும்.')];
     sharePreview(L('Temple journey', 'கோவில் பயணம்'), lines.join('\n'));
   }));
+  fillDayWeather();
 }
 
 registerScreen('journey', { render: renderJourney, parent: 'services', needsLoc: true });

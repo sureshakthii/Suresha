@@ -489,7 +489,7 @@ export function reliabilityOf(m) {
 
 function certaintyBanner(rel) {
   if (rel.certainty === 'exact') return '';
-  const head = rel.certainty === 'unknown' ? L('Birth time: unknown', 'பிறந்த நேரம்: தெரியாது') : L(`Birth time: approximate (± ${rel.windowMin} min)`, `பிறந்த நேரம்: தோராயம் (± ${rel.windowMin} நிமி)`);
+  const head = rel.certainty === 'kattam' ? L('Chart from the written jathagam (Rasi Kattam)', 'எழுதிய ஜாதகத்திலிருந்து (ராசி கட்டம்)') : rel.certainty === 'unknown' ? L('Birth time: unknown', 'பிறந்த நேரம்: தெரியாது') : L(`Birth time: approximate (± ${rel.windowMin} min)`, `பிறந்த நேரம்: தோராயம் (± ${rel.windowMin} நிமி)`);
   return `<div class="note-box${rel.lagna ? '' : ' unv'}" role="note"><b>🕰️ ${head}</b><ul class="small">${rel.notes.map((n) => `<li>${esc(L(n.en, n.ta))}</li>`).join('')}</ul>
     <button class="link-btn" data-go="birthtime">${L('What depends on birth time?', 'எவை பிறந்த நேரத்தைச் சார்ந்தவை?')}</button></div>`;
 }
@@ -590,7 +590,7 @@ function renderAsk(sec) {
       <div class="cat-grid">${cats.map((c) => `<button class="cat${prasnaCategory === c.id ? ' sel' : ''}" data-id="${c.id}"><span class="ci">${c.icon}</span>${esc(bi(c))}</button>`).join('')}</div>
       <label class="sr-only" for="question">${L('Your question', 'உங்கள் கேள்வி')}</label>
       <textarea id="question" rows="2" maxlength="400" placeholder="${esc(L('Your question (optional) — e.g. Can I sign the flat agreement today?', 'உங்கள் கேள்வி (விருப்பம்) — உ.தா. இன்று ஒப்பந்தம் கையெழுத்திடலாமா?'))}"></textarea>
-      <button id="askBtn" class="btn-gold"${prasnaCategory ? '' : ' disabled'}>🔮 ${L('Ask now', 'இப்போது கேளுங்கள்')}</button>
+      <button id="askBtn" class="btn-gold">🔮 ${L('Ask now', 'இப்போது கேளுங்கள்')}</button>
     </div>
     <div id="answer"${lastAnswer ? '' : ' hidden'}>
       <div class="card glass verdict-card" id="verdictCard"></div>
@@ -654,6 +654,12 @@ async function askOnDevice(body, m) {
 
 async function ask() {
   const btn = $('#askBtn');
+  if (!prasnaCategory) {
+    toast(L('First choose what you are about to do (one of the boxes above).', 'முதலில் செய்யப்போகும் காரியத்தை மேலே உள்ள பெட்டிகளில் ஒன்றைத் தேர்வு செய்யுங்கள்.'));
+    $('.cat-grid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('.cat-grid')?.classList.add('pulse'); setTimeout(() => $('.cat-grid')?.classList.remove('pulse'), 1600);
+    return;
+  }
   btn.disabled = true;
   $('#answer').hidden = false;
   $('#verdictCard').innerHTML = `<div class="loader"><i></i><i></i><i></i></div><p class="muted">${L('Casting the Prasnam…', 'பிரசன்னம் கணிக்கப்படுகிறது…')}</p>`;

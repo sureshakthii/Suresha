@@ -250,6 +250,7 @@ function renderFamily(sec, params = {}) {
   if (editing) {
     sec.innerHTML = `${first ? '' : subHeader(editing.id ? L('Edit details', 'விவரம் திருத்து') : L('Add a family member', 'குடும்ப உறுப்பினர் சேர்'), '', 'family')}
       <div class="card glass hero-card">${first ? `<h2>${L('Your birth details', 'உங்கள் பிறப்பு விவரங்கள்')}</h2><p class="muted">${L('Enter the date and place of birth, and the time if you know it.', 'பிறந்த தேதி, இடம், தெரிந்தால் நேரம் உள்ளிடவும்.')}</p>` : ''}
+      ${editing.id ? '' : `<button type="button" class="card glass cta-card kattam-cta" data-go="kattam"><b>📜 ${L('Only have the written jathagam (Rasi Kattam)?', 'எழுதிய ஜாதகம் (ராசி கட்டம்) மட்டும் உள்ளதா?')}</b><span class="small">${L('No birth time needed — fill the 12 boxes and the birth star, with the photo beside you.', 'பிறந்த நேரம் தேவையில்லை — புகைப்படத்தைப் பார்த்து 12 கட்டங்களையும் நட்சத்திரத்தையும் நிரப்புங்கள்.')}</span></button>`}
       ${memberForm(editing, first)}</div>`;
     const f = $('#memberForm');
     placeSearch(f.elements.place, $('#placeList'), (p) => { f.elements.place.value = p.name; f.elements.lat.value = p.lat; f.elements.lon.value = p.lon; f.elements.tz.value = p.tz; });
@@ -280,7 +281,7 @@ function renderFamily(sec, params = {}) {
     <button class="btn-gold" id="addMember">➕ ${L('Add family member', 'குடும்ப உறுப்பினர் சேர்')}</button>
     ${state.user ? '' : `<p class="muted small center">${L('Sign in to back up your family and use it on other phones.', 'குடும்ப விவரங்களைப் பாதுகாக்க, பிற கைப்பேசிகளில் பயன்படுத்த உள்நுழையவும்.')}</p>`}`;
   $$('[data-use]', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.use; saveFamily(); renderFamily(sec); }));
-  $$('[data-edit]', sec).forEach((b) => b.addEventListener('click', () => go('family', { edit: b.dataset.edit })));
+  $$('[data-edit]', sec).forEach((b) => b.addEventListener('click', () => { const mm = state.family.find((x) => x.id === b.dataset.edit); go(mm?.kattam ? 'kattam' : 'family', { edit: b.dataset.edit }); }));
   $('#addMember').addEventListener('click', () => go('family', { add: true }));
 }
 

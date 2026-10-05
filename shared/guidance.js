@@ -16,6 +16,7 @@ import { healthGuide } from './health.js';
 import { closingPrayer } from './daily.js';
 import { faithBlessing, universalPractice } from './faith.js';
 import { tamilDay } from './tamilcal.js';
+import { TEMPLES } from './temples.js';
 
 export { RULES_VERSION } from './version.js';
 
@@ -434,7 +435,11 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       add('uncertainty', L('Worship associations differ between families and traditions; your Kula Deivam and family custom come first.', 'வழிபாட்டு மரபுகள் குடும்பத்திற்குக் குடும்பம் வேறுபடும்; உங்கள் குலதெய்வமும் குடும்ப வழக்கமும் முதன்மை.'));
       add('facts', L('Opening hours, travel time and costs change. The journey planner labels each detail as verified or estimated, with its source and date.', 'திறப்பு நேரம், பயண நேரம், செலவு மாறும். பயணத் திட்டத்தில் ஒவ்வொரு விவரமும் சரிபார்க்கப்பட்டதா / மதிப்பீடா என ஆதாரம், தேதியுடன் காட்டப்படும்.'));
       add('next', L('Open My Spiritual Journey: enter your dates, starting city and budget, and you will get three options — nearby, matching your leave, and a local worship option.', 'என் ஆன்மீகப் பயணம் திறந்து, தேதிகள், புறப்படும் ஊர், பட்ஜெட் உள்ளிடுங்கள் — அருகில், விடுப்புக்கு ஏற்ப, உள்ளூர் வழிபாடு என மூன்று வழிகள் கிடைக்கும்.'));
-      actions.push({ go: 'journey', param: { question }, label: L('Plan my journey', 'என் பயணம் திட்டமிடு') });
+      {
+        const lordsT = f ? [...new Set([f.dasa?.lord, f.weakest[0]?.planet].filter(Boolean))] : [];
+        const focus = TEMPLES.filter((t) => lordsT.includes(t.planet)).map((t) => t.id);
+        actions.push({ go: 'journey', param: { question, temples: focus, planets: lordsT }, label: L('🛕 Plan the visit to these temples', '🛕 இந்தக் கோவில்களுக்குப் பயணம் திட்டமிடு') });
+      }
       break;
     }
     case 'dates': {

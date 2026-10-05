@@ -12,6 +12,7 @@ import { TEMPLES, distanceKm } from './temples.js';
 import { templeInfo, templeRanges } from './temple-info.js';
 import { NAVAGRAHA } from './remedies.js';
 import { PLANETS } from './astro.js';
+import { tamilDay } from './tamilcal.js';
 import { verifiedField } from './temple-verified.js';
 
 const B = (en, ta) => ({ en, ta });
@@ -65,7 +66,7 @@ function relevance(t, { prefs = [], planets = [] }) {
   const reasons = [];
   if (t.planet && planets.includes(t.planet)) {
     score += 3;
-    reasons.push({ kind: 'chart', planet: t.planet, ...B(`Traditionally associated with ${t.planet}, which is relevant in your chart (${planets.indexOf(t.planet) === 0 ? 'current dasa lord' : 'needs care'})`, `உங்கள் ஜாதகத்தில் முக்கியமான ${NAVAGRAHA[t.planet] ? t.planet : ''} கிரகத்துடன் பாரம்பரியமாக இணைந்த தலம் (${planets.indexOf(t.planet) === 0 ? 'நடப்பு தசா நாதன்' : 'கவனம் தேவை'})`) });
+    reasons.push({ kind: 'chart', planet: t.planet, ...B(`Traditionally associated with ${t.planet}, which is relevant in your chart (${planets.indexOf(t.planet) === 0 ? 'current dasa lord' : 'needs care'})`, `உங்கள் ஜாதகத்தில் முக்கியமான ${NAVAGRAHA[t.planet] ? (PLANETS[t.planet]?.ta || t.planet) : ''} கிரகத்துடன் பாரம்பரியமாக இணைந்த தலம் (${planets.indexOf(t.planet) === 0 ? 'நடப்பு தசா நாதன்' : 'கவனம் தேவை'})`) });
   }
   const tagHit = prefs.filter((p) => t.tags.includes(p));
   if (tagHit.length) { score += 2; reasons.push({ kind: 'pref', ...B(`Matches your preference (${tagHit.join(', ')})`, `உங்கள் விருப்பத்துடன் பொருந்துகிறது (${tagHit.join(', ')})`) }); }
@@ -194,6 +195,17 @@ export function planJourney(p) {
     };
   };
   const rank = (arr) => arr.sort((a, b) => b.score - a.score || a.km - b.km);
+  // Temples already recommended from the person's chart come first (the person only picks date and travellers).
+  const focus = (p.focus || []).filter((id) => TEMPLES.some((t) => t.id === id));
+  if (focus.length) {
+    for (const x of scored) if (focus.includes(x.t.id)) { x.score += 100; x.reasons = [{ kind: 'focus', ...B('Recommended from your chart (Dasa / planet that needs support)', 'உங்கள் ஜாதகப்படி பரிந்துரை (தசை / ஆதரவு தேவைப்படும் கிரகம்)') }, ...x.reasons]; }
+    const focusPick = rank(scored.filter((x) => focus.includes(x.t.id))).slice(0, days * TEMPLES_PER_DAY[pace]);
+    const A0 = make('A', B('Your recommended temples', 'உங்களுக்குப் பரிந்துரைக்கப்பட்ட கோவில்கள்'), focusPick, days);
+    const local0 = [...scored].sort((a, b) => a.km - b.km);
+    const localPick0 = local0.filter((x) => x.km <= 30).slice(0, 2);
+    const C0 = make('C', B('Minimal travel or worship close to home', 'குறைந்த பயணம் அல்லது வீட்டருகே வழிபாடு'), localPick0.length ? localPick0 : local0.slice(0, 1), 1, { homeWorship: true });
+    return { options: [A0, C0], inputs: { ...p, days, travellers, transport, tier, pace }, review: REVIEW, assumptions: COST_ASSUMPTIONS, focus };
+  }
   // A. Nearby and economical: within ~150 km road, at most 2 days, cheapest transport.
   const nearPool = rank(scored.filter((x) => x.km <= 150));
   const nearPick = (nearPool.length ? nearPool : rank([...scored].sort((a, b) => a.km - b.km).slice(0, 4))).slice(0, Math.min(4, TEMPLES_PER_DAY[pace] * Math.min(days, 2)));
@@ -211,6 +223,43 @@ export function planJourney(p) {
   const localPick = local.filter((x) => x.km <= 30).slice(0, 2);
   const C = make('C', B('Minimal travel or worship close to home', 'குறைந்த பயணம் அல்லது வீட்டருகே வழிபாடு'), localPick.length ? localPick : local.slice(0, 1), 1, { homeWorship: true });
   return { options: [A, Bplan, C], inputs: { ...p, days, travellers, transport, tier, pace }, review: REVIEW, assumptions: COST_ASSUMPTIONS };
+}
+
+// National / state public holidays with fixed dates (month-day). Festival holidays come from the Tamil calendar.
+const FIXED_HOLIDAYS = { '01-01': T2('New Year’s Day', 'ஆங்கிலப் புத்தாண்டு'), '01-26': T2('Republic Day', 'குடியரசு தினம்'), '05-01': T2('May Day', 'மே தினம்'),
+  '08-15': T2('Independence Day', 'சுதந்திர தினம்'), '10-02': T2('Gandhi Jayanthi', 'காந்தி ஜெயந்தி'), '12-25': T2('Christmas', 'கிறிஸ்துமஸ்') };
+function T2(en, ta) { return { en, ta }; }
+const SHIVA_DAYS = /Pradosham|Sivarathri|Arudra|Pournami/; const MURUGA_DAYS = /Sashti|Karthigai|Poosam|Visakam|Soorasamharam/;
+const PERUMAL_DAYS = /Ekadasi|Thiruvonam|Vaikunta/; const AMMAN_DAYS = /Pooram|Navarathri|Pournami|Aadi/;
+
+/**
+ * Day facts for one temple visit: festivals / vrathams that day (Tamil calendar), public holiday, weekend,
+ * school-holiday season, and an expected crowd level with the reasons. Weather is added by the screen.
+ */
+export function dayInfo(dateIso, temple) {
+  const d = new Date(`${dateIso}T12:00:00+05:30`);
+  let festivals = [];
+  try { festivals = tamilDay(d, temple.lat, temple.lon, 5.5).festivals || []; } catch { /* calendar unavailable */ }
+  const md = dateIso.slice(5);
+  const holiday = FIXED_HOLIDAYS[md] || null;
+  const wd = d.getUTCDay();
+  const weekend = wd === 0 || wd === 6;
+  const month = Number(dateIso.slice(5, 7));
+  const schoolHols = month === 5 || (month === 12 && Number(dateIso.slice(8)) >= 22) || (month === 4 && Number(dateIso.slice(8)) >= 25);
+  const tags = temple.tags || [];
+  let score = 0; const why = [];
+  if (weekend) { score += 1; why.push(wd === 6 ? T2('Saturday', 'சனிக்கிழமை') : T2('Sunday', 'ஞாயிற்றுக்கிழமை')); }
+  if (wd === 6 && temple.planet === 'Saturn') { score += 2; why.push(T2('Saturday at a Sani sthalam — very busy', 'சனி தலத்தில் சனிக்கிழமை — மிகக் கூட்டம்')); }
+  if (holiday) { score += 1; why.push(holiday); }
+  if (schoolHols) { score += 1; why.push(T2('School holiday season', 'பள்ளி விடுமுறைக் காலம்')); }
+  for (const f of festivals) {
+    const shivaLike = tags.includes('shiva') || tags.includes('navagraha') || !!temple.planet;
+    const hit = (shivaLike && SHIVA_DAYS.test(f.en)) || (tags.includes('murugan') && MURUGA_DAYS.test(f.en))
+      || (tags.includes('perumal') && PERUMAL_DAYS.test(f.en)) || (tags.includes('amman') && AMMAN_DAYS.test(f.en)) || f.kind === 'festival';
+    if (hit) { score += 2; why.push(T2(`${f.en} — special at this temple`, `${f.ta} — இந்தக் கோவிலில் சிறப்பு`)); }
+  }
+  const crowd = score >= 3 ? 'high' : score >= 1 ? 'medium' : 'low';
+  return { date: dateIso, festivals, holiday, weekend, crowd, why };
 }
 
 /** Optional worship suggestions — free and simple first. */

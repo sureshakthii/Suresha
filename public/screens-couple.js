@@ -4,7 +4,7 @@ import { birthChart } from './shared/astro.js';
 import { marriageReport, partnershipReport } from './shared/couple.js';
 import { VERDICTS } from './shared/porutham.js';
 import {
-  state, $, $$, L, ta, esc, bi, GLYPH, planetName, nakName, rasiName, fmtIsoDate, registerScreen, subHeader, aiTask, speak, toast,
+  state, chartOf, $, $$, L, ta, esc, bi, GLYPH, planetName, nakName, rasiName, fmtIsoDate, registerScreen, subHeader, aiTask, speak, toast,
   displayName, saveFamily, placeName,
 } from './core.js';
 import { placeSearch } from './account.js';
@@ -52,7 +52,7 @@ function resolve(slot, label) {
   const f = forms[slot];
   if (f.mode === 'family' && state.family.length) {
     const m = state.family.find((x) => x.id === f.memberId) || state.family.find((x) => x.relation !== 'organization');
-    return { member: m, chart: birthChart(m), name: { en: m.name, ta: displayName(m) } };
+    return { member: m, chart: chartOf(m), name: { en: m.name, ta: displayName(m) } };
   }
   if (!f.name || !f.date || !f.time || f.lat == null) throw new Error(L(`Please enter ${label}'s name, birth date, time and place (pick the city from the list).`, `${label} — பெயர், பிறந்த தேதி, நேரம், இடம் (பட்டியலிலிருந்து நகரம்) உள்ளிடவும்.`));
   const m = { id: `${slot}_${f.date}_${f.time}`, name: f.name.trim(), gender: f.gender, date: f.date, time: f.time.length === 5 ? `${f.time}:00` : f.time, place: f.place, lat: Number(f.lat), lon: Number(f.lon), tz: Number(f.tz), relation: 'other' };

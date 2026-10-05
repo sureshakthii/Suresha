@@ -290,3 +290,21 @@ test('today plan: sacred day linked to the person, horai with time and 9-week re
   const child = todayPlan({ chart, snap, festivals: [{ en: 'Sashti Viratham', ta: 'சஷ்டி விரதம்' }], now, age: 9 });
   assert.match(child.items[0].text.en, /children need not fast/);
 });
+
+test('written jathagam: chart rebuilt from the Rasi Kattam, star and dasa balance', async () => {
+  const { chartFromKattam, kattamReliability, kattamWarnings, KATTAM_PLANETS } = await import('../shared/kattam.js');
+  const real = birthChart(suresh);
+  const planets = Object.fromEntries(KATTAM_PLANETS.map((p) => [p, real.planets[p].rasi]));
+  const bal = real.dasa.balance.years;
+  const k = { star: real.janmaNakshatra.index, pada: real.janmaNakshatra.pada, lagna: real.lagna.rasi, planets, balance: { years: Math.floor(bal), months: Math.round((bal - Math.floor(bal)) * 12) } };
+  const c = chartFromKattam({ ...suresh, kattam: k });
+  assert.equal(c.janmaNakshatra.index, real.janmaNakshatra.index);
+  assert.equal(c.janmaRasi.index, real.janmaRasi.index);
+  assert.equal(c.lagna.rasi, real.lagna.rasi);
+  assert.equal(c.dasa.current.lord, real.dasa.current.lord);
+  assert.ok(Math.abs(new Date(c.dasa.current.end) - new Date(real.dasa.current.end)) < 45 * 86400000);
+  const rel = kattamReliability({ kattam: k });
+  assert.ok(rel.lagna && !rel.navamsa && rel.dasa);
+  assert.equal(kattamWarnings(k).length, 0);
+  assert.ok(kattamWarnings({ ...k, planets: { ...planets, Moon: (planets.Moon + 3) % 12 } }).length >= 1);
+});

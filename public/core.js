@@ -1,4 +1,5 @@
 // Shared UI core: state, language, formatting, API/AI plumbing, family profiles and navigation.
+import { chartFromKattam } from './shared/kattam.js';
 import { birthChart, RASIS, NAKSHATRAS, PLANETS } from './shared/astro.js';
 import { buildTaskPrompt } from './shared/narrator.js';
 import { placeTa } from './shared/places.js';
@@ -88,8 +89,8 @@ export const activeMember = () => state.family.find((m) => m.id === state.active
 const chartCache = new Map();
 export function chartOf(m) {
   if (!m) return null;
-  const key = `${m.id}|${m.date}|${m.time}|${m.lat}|${m.lon}|${m.tz}`;
-  if (!chartCache.has(key)) chartCache.set(key, birthChart(m));
+  const key = `${m.id}|${m.date}|${m.time}|${m.lat}|${m.lon}|${m.tz}|${m.kattam ? JSON.stringify(m.kattam) : ''}`;
+  if (!chartCache.has(key)) chartCache.set(key, m.kattam ? chartFromKattam(m) : birthChart(m));
   return chartCache.get(key);
 }
 export const RELATIONS = [
@@ -337,7 +338,7 @@ export const HUB_OF = {
   // My Chart (and Advanced)
   analysis: 'chart', vargas: 'chart', roadmap: 'chart', life: 'chart', health: 'chart', guide: 'chart', peyarchi: 'chart', numerology: 'chart', parigaram: 'chart', mantras: 'chart', birthtime: 'chart', why: 'chart',
   // Family
-  family: 'familyhub', relations: 'familyhub', porutham: 'familyhub', couple: 'familyhub', lovematch: 'familyhub', gunamilan: 'familyhub', partners: 'familyhub',
+  family: 'familyhub', kattam: 'familyhub', relations: 'familyhub', porutham: 'familyhub', couple: 'familyhub', lovematch: 'familyhub', gunamilan: 'familyhub', partners: 'familyhub',
   muhurtham: 'familyhub', thivasam: 'familyhub', starbday: 'familyhub', names: 'familyhub', ruthu: 'familyhub', familyplan: 'familyhub', share: 'familyhub',
   // Ask
   ask: 'chat',
@@ -439,6 +440,18 @@ if (typeof window !== 'undefined') {
 export function printPage(title = document.querySelector('.view:not([hidden]) h2')?.textContent || 'Thunai') {
   if (window.ThunaiNative?.print) { setTimeout(() => window.ThunaiNative.print(`Thunai - ${title}`.slice(0, 80)), 150); return; }
   window.print();
+}
+
+// Phone keyboard: while typing, hide the bottom tab bar (it would sit on top of the text box) and keep the
+// focused field in view.
+if (typeof document !== 'undefined') {
+  const typing = (el) => el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit', 'range'].includes(el.type)));
+  document.addEventListener('focusin', (e) => {
+    if (!typing(e.target)) return;
+    document.body.classList.add('kb-open');
+    setTimeout(() => e.target.scrollIntoView?.({ block: 'center', behavior: 'smooth' }), 350);
+  });
+  document.addEventListener('focusout', () => setTimeout(() => { if (!typing(document.activeElement)) document.body.classList.remove('kb-open'); }, 120));
 }
 
 export function subHeader(title, sub = '', back = HUB_OF[state.view] || screens[state.view]?.parent || 'home') {

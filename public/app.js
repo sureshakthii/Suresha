@@ -8,6 +8,7 @@ import './screens-plans.js';
 import './legal.js';
 import './screens-couple.js';
 import './screens-love.js';
+import './screens-kattam.js';
 import './screens-guide.js';
 import './screens-roadmap.js';
 import './screens-depth.js';

@@ -35,6 +35,7 @@ export const FEATURES = [
   { id: 'familyplan', hub: 'familyhub', en: 'Shared events & journeys', ta: 'பகிர்ந்த நிகழ்வுகள் & பயணங்கள்', level: 'simple' },
   { id: 'muhurtham', hub: 'familyhub', en: 'Muhurtham — choose dates', ta: 'முகூர்த்தம் — நாள் தேர்வு', level: 'simple' },
   { id: 'relations', hub: 'familyhub', en: 'Family relations today', ta: 'இன்று குடும்ப உறவு', level: 'simple' },
+  { id: 'kattam', hub: 'familyhub', en: 'Add from the written jathagam (Rasi Kattam)', ta: 'எழுதிய ஜாதகத்திலிருந்து சேர் (ராசி கட்டம்)', level: 'simple' },
   { id: 'lovematch', hub: 'familyhub', en: 'Love Match 💘 — emotional sync & chemistry', ta: 'காதல் பொருத்தம் 💘 — உணர்வு & ஈர்ப்பு', level: 'simple' },
   { id: 'porutham', hub: 'familyhub', en: 'Star match (quick 10)', ta: 'நட்சத்திரப் பொருத்தம் (விரைவு 10)', level: 'simple' },
   { id: 'couple', hub: 'familyhub', en: 'Detailed marriage matching', ta: 'விரிவான திருமணப் பொருத்தம்', level: 'simple' },

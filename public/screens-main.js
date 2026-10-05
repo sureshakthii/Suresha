@@ -167,8 +167,9 @@ function renderHome(sec) {
   const fest = td.festivals;
   const plans = savedPlans();
   sec.innerHTML = `
+    <div class="home-greet">🙏 ${L('Vanakkam', 'வணக்கம்')}${m ? `, ${esc(displayName(m))}` : ''}</div>
+    ${todayPlanCard(m, snap, loc, td)}
     <section class="guide-box card" aria-labelledby="guideQ">
-      <div class="greet">🙏 ${L('Vanakkam', 'வணக்கம்')}${m ? `, ${esc(displayName(m))}` : ''}</div>
       <h2 id="guideQ" class="guide-q">${L('What would you like guidance on?', 'எதற்கு வழிகாட்டல் வேண்டும்?')}</h2>
       <form id="guideForm" class="chat-form guide-form">
         <button type="button" id="guideMic" class="mic" aria-label="${L('Speak your question', 'உங்கள் கேள்வியைப் பேசுங்கள்')}">🎙️</button>
@@ -179,7 +180,6 @@ function renderHome(sec) {
       <div class="guide-sugs">${GUIDE_SUGGESTIONS.map(([en, tx]) => `<button class="sg" type="button">${esc(L(en, tx))}</button>`).join('')}</div>
       <p class="small muted">🎙️ ${L('Type or speak — Tamil, English or Tanglish. You can check the words before sending.', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எழுதலாம் அல்லது பேசலாம். அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
     </section>
-    ${todayPlanCard(m, snap, loc, td)}
     ${dailyCard(m, snap, loc)}
     ${healthTodayCard(m)}
     <button class="card glass cta-card love-cta" data-go="lovematch"><b>💘 ${L('Love Match', 'காதல் பொருத்தம்')}</b><span class="small">${L('Emotional sync, chemistry and the star match — check your love vibe and share it', 'உணர்வு, ஈர்ப்பு, நட்சத்திரப் பொருத்தம் — உங்கள் காதல் அதிர்வைப் பார்த்துப் பகிருங்கள்')}</span></button>

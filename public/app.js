@@ -132,6 +132,14 @@ async function boot() {
     if (fresh && state.view === 'home') go('home');
     else s?.tick?.();
   }, 1000);
+  // After an update, say once which version is now running — so testers can be sure the new APK is installed.
+  try {
+    const b = window.KJ_BUILD;
+    if (b && store.get('kj_seen_build', null) !== b) {
+      if (store.get('kj_seen_build', null)) setTimeout(() => toast(L(`✨ Updated to ${b} — see Today’s guidance at the top`, `✨ புதிய பதிப்பு: ${b} — மேலே "இன்றைய வழிகாட்டல்" பாருங்கள்`), 6000), 2500);
+      store.set('kj_seen_build', b);
+    }
+  } catch { /* ignore */ }
   if (!STATIC && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 

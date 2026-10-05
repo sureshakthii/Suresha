@@ -115,7 +115,7 @@ function drawHealth(m) {
     <div class="card glass"><div class="card-title">🍲 ${L('What to eat & avoid', 'உண்ண வேண்டியவை & தவிர்க்க வேண்டியவை')}</div>
       <div class="hl-cols"><div class="eat"><h4>✅ ${L('Eat', 'உண்ணுங்கள்')}</h4><ul>${eatList.map(li).join('')}</ul></div>
         <div class="avoid"><h4>🚫 ${L('Avoid', 'தவிர்க்கவும்')}</h4><ul>${avoidList.map(li).join('')}</ul></div></div>
-      ${locked ? '' : `<div class="factor"><span>🕯️ ${L('Fasting day', 'விரத நாள்')}: <b>${esc(bi(h.diet.fasting.day))}</b><br><small class="muted">${esc(bi(h.diet.fasting.why))}</small></span></div>`}
+      ${locked || h.age < 14 ? '' : `<div class="factor"><span>🕯️ ${L('Fasting day', 'விரத நாள்')}: <b>${esc(bi(h.diet.fasting.day))}</b><br><small class="muted">${esc(bi(h.diet.fasting.why))}</small></span></div>`}
       <p class="muted small">${L('General wellness food — follow your doctor\'s diet if you have a condition.', 'பொது நல உணவு மட்டுமே — உடல்நலப் பிரச்சினை இருந்தால் மருத்துவர் சொல்லும் உணவையே பின்பற்றுங்கள்.')}</p></div>
 
     <div class="card glass"><div class="card-title">🧘 ${L('Daily habits & yoga', 'தினசரிப் பழக்கங்கள் & யோகா')}</div>

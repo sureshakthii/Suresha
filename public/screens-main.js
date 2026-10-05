@@ -115,7 +115,20 @@ function healthTodayCard(m) {
     <span class="small muted">${L('From your Dasa–Bhukti, Gochara & Peyarchi ›', 'உங்கள் தசா–புக்தி, கோசாரம், பெயர்ச்சிப்படி ›')}</span></button>`;
 }
 
+// The Today screen is re-drawn when the calendar day changes (app left open overnight or resumed next morning),
+// so the daily review, do's and don'ts always belong to today.
+let homeDay = '';
+const dayKey = () => { const tz = state.loc?.tz ?? 5.5; return new Date(Date.now() + tz * 3600000).toISOString().slice(0, 10); };
+function refreshIfNewDay() {
+  if (homeDay && dayKey() !== homeDay) { state.snapAt = 0; state.snap = null; if (state.view === 'home') go('home', {}); }
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshIfNewDay(); });
+  setInterval(refreshIfNewDay, 60000);
+}
+
 function renderHome(sec) {
+  homeDay = dayKey();
   const loc = state.loc;
   const td = todayInfo(loc);
   const snap = state.snap || panchang(new Date(), loc.lat, loc.lon, loc.tz);

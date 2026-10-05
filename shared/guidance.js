@@ -273,7 +273,38 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
   };
   const ref = () => f && referenceNote(f, lang);
 
-  switch (intent) {
+  // Age & life-stage control: a child's chart is never read for marriage, children, career, money,
+  // property or court matters — tradition reads those only after the person is mature (18+).
+  const age = f?.birthDate ? Math.floor((Date.now() - new Date(`${f.birthDate}T00:00:00Z`).getTime()) / 31557600000) : null;
+  const ageGate = () => {
+    if (age == null || !f) return false;
+    const TOPIC = {
+      marriage: T('marriage', 'திருமணம்'), marriage_when: T('marriage', 'திருமணம்'), child_when: T('children', 'குழந்தைப் பேறு'),
+      pregnancy: T('children', 'குழந்தைப் பேறு'), career: T('career and job', 'வேலை, தொழில்'), finance: T('money and earnings', 'பணம், வருமானம்'),
+      property: T('property', 'சொத்து'), legal: T('court and disputes', 'வழக்கு, தகராறு'), vehicle: T('buying a vehicle', 'வாகனம் வாங்குதல்'),
+    }[intent];
+    if (age < 18 && TOPIC) {
+      add('answer', L(`This is a minor's chart (age ${age}). Future results such as ${TOPIC.en} are not read for a child — tradition studies them only after 18, when the person is mature. For now this chart is read for studies, health and good habits.`,
+        `இது சிறு வயது ஜாதகம் (வயது ${age}). ${TOPIC.ta} போன்ற எதிர்காலப் பலன்கள் குழந்தைக்குப் பார்க்கப்படுவதில்லை — 18 வயது நிறைந்து முதிர்ச்சி வந்த பிறகே பார்க்கப்படும். இப்போது கல்வி, ஆரோக்கியம், நல்ல பழக்கங்களுக்காக மட்டுமே இந்த ஜாதகம் பார்க்கப்படுகிறது.`));
+      const fifth = f.houseInfo(5);
+      setMeter(0.5 * f.strength.Mercury.score + 0.3 * f.strength[fifth.lord].score + 0.2 * (f.dasa ? f.strength[f.dasa.lord].score : 50), T('studies', 'கல்வி'));
+      add('factors', houseLine(f, 4, lang), houseLine(f, 5, lang), planetLine(f, 'Mercury', lang), dasaLine(f, lang));
+      add('interpretation', L(`For a child, the 4th house (learning), 5th house (intelligence) and Mercury (memory and speech) are what matter now.`, `குழந்தைக்கு இப்போது முக்கியமானவை: 4-ம் வீடு (கல்வி), 5-ம் வீடு (அறிவு), புதன் (நினைவாற்றல், பேச்சு).`),
+        f.dasa && L(`Current ${f.dasa.lord} dasa: ${DASA_NATURE[f.dasa.lord].en}.`, `நடப்பு ${pName(f.dasa.lord, 'ta')} தசை: ${DASA_NATURE[f.dasa.lord].ta}.`));
+      add('practice', L('Simple prayer for studies: “Saraswathi Namasthubhyam” before study time; Vinayagar prayer on Wednesdays.', 'கல்விக்கு எளிய வழிபாடு: படிக்கும் முன் “சரஸ்வதி நமஸ்துப்யம்”; புதன்தோறும் விநாயகர் வழிபாடு.'));
+      add('next', L('You can ask about this child’s studies, health, a good day to start school or classes, or a temple for learning.', 'இந்தக் குழந்தையின் கல்வி, ஆரோக்கியம், பள்ளி / வகுப்பு தொடங்க நல்ல நாள், கல்விக்கான கோவில் பற்றிக் கேட்கலாம்.'));
+      return true;
+    }
+    if (age >= 50 && (intent === 'child_when' || intent === 'pregnancy') && !Number(life.children)) {
+      add('answer', L(`At ${age}, the 5th house is read for the welfare of children in the family and for disciples and younger people you guide — not for new childbirth timing.`, `${age} வயதில், 5-ம் வீடு குடும்பக் குழந்தைகளின் நலன், நீங்கள் வழிகாட்டும் இளையோர் பற்றியே பார்க்கப்படுகிறது — புதிய குழந்தைப் பிறப்பு நேரம் அல்ல.`));
+      add('factors', houseLine(f, 5, lang), planetLine(f, 'Jupiter', lang), dasaLine(f, lang));
+      setMeter(f.strength.Jupiter.score, T('children’s welfare', 'குழந்தைகள் நலன்'));
+      return true;
+    }
+    return false;
+  };
+
+  if (!ageGate()) switch (intent) {
     case 'crisis': {
       add('support',
         L('I am really glad you told me. What you are feeling matters, and you do not have to carry it alone.', 'நீங்கள் சொன்னதற்கு மிக்க நன்றி. நீங்கள் உணர்வது முக்கியமானது; இதைத் தனியாகச் சுமக்க வேண்டியதில்லை.'),
@@ -314,7 +345,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       if (care.length) add('interpretation', L(`Coming months to note: ${care.map((m) => `${my(`${m.month}-15`, 'en')} (${m.level === 'good' ? 'good' : 'take care'})`).join(', ')}.`, `கவனிக்க வேண்டிய மாதங்கள்: ${care.map((m) => `${my(`${m.month}-15`, 'ta')} (${m.level === 'good' ? 'நன்று' : 'கவனம்'})`).join(', ')}.`));
       add('facts', L(`Eat: ${hg.diet.eat.slice(0, 5).map((x) => x.en).join('; ')}`, `உண்ண: ${hg.diet.eat.slice(0, 5).map((x) => x.ta).join('; ')}`),
         L(`Avoid / reduce: ${hg.diet.avoid.slice(0, 4).map((x) => x.en).join('; ')}`, `தவிர்க்க / குறைக்க: ${hg.diet.avoid.slice(0, 4).map((x) => x.ta).join('; ')}`),
-        L(`Fasting day: ${hg.diet.fasting.day.en}`, `விரத நாள்: ${hg.diet.fasting.day.ta}`));
+        hg.age >= 14 && L(`Fasting day: ${hg.diet.fasting.day.en}`, `விரத நாள்: ${hg.diet.fasting.day.ta}`));
       add('uncertainty', L('This is traditional astrological and Siddha/Ayurveda-style guidance about tendencies — not a diagnosis and not a prediction of illness. Your doctor’s advice always comes first; keep regular check-ups.', 'இது பாரம்பரிய ஜோதிட, சித்த/ஆயுர்வேத வழியிலான போக்குகள் பற்றிய வழிகாட்டல் — நோய் கண்டறிதலோ நோய் கணிப்போ அல்ல. மருத்துவர் ஆலோசனையே எப்போதும் முதன்மை; வழக்கமான பரிசோதனைகளைத் தொடருங்கள்.'));
       add('practice', ...hg.remedies.planets.slice(0, 2).map((r) => `${pName(r.planet, lang)}: ${tr(r.free)}`));
       add('next', L('Open Health & Planets for the full 12-month care map, foods and yoga.', 'முழு 12 மாத கவன வரைபடம், உணவு, யோகாவுக்கு "ஆரோக்கியம் & கிரகங்கள்" திறங்கள்.'));
@@ -565,6 +596,9 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
     }
   }
 
+  if (age >= 60 && intent === 'career' && S.answer?.length) {
+    add('interpretation', L(`At ${age}, tradition reads the 10th house for respect, advisory roles and the legacy you leave — more than for a new job.`, `${age} வயதில், 10-ம் வீடு மரியாதை, ஆலோசனைப் பங்கு, நீங்கள் விட்டுச் செல்லும் பெயர் ஆகியவற்றுக்காகப் பார்க்கப்படுகிறது — புதிய வேலைக்காக மட்டும் அல்ல.`));
+  }
   // Straight answer first (fallback: the first support/interpretation line), then all planet details, fully visible.
   if (!S.answer?.length) { const src = ['support', 'interpretation', 'next'].find((k) => S[k]?.length); if (src) S.answer = [S[src].shift()]; }
   // Close with the deities of the person's running Dasa and Bhukti lords (not after a crisis or a medical alarm).

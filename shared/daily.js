@@ -114,10 +114,49 @@ export function dailyReview(chart, snap, now = new Date()) {
     dos.push(T('Continue ongoing work; plan rather than launch', 'நடக்கும் வேலையைத் தொடருங்கள்; தொடங்குவதை விட திட்டமிடுங்கள்'), T('Keep health and sleep regular', 'உடல்நலம், உறக்கம் சீராக இருக்கட்டும்'));
     donts.push(T('Avoid lending money or hasty commitments', 'கடன் கொடுப்பது, அவசர உறுதிமொழி தவிர்க்கவும்'), T('Do not react in anger', 'கோபத்தில் பதில் சொல்ல வேண்டாம்'));
   }
+  // Today's star nature (நட்சத்திர குணம்) — changes every day and decides what kind of work suits the day.
+  const NAK_CLASS = { 3: 'dhruva', 11: 'dhruva', 20: 'dhruva', 25: 'dhruva', 14: 'chara', 6: 'chara', 21: 'chara', 22: 'chara', 23: 'chara',
+    1: 'ugra', 9: 'ugra', 10: 'ugra', 19: 'ugra', 24: 'ugra', 2: 'mishra', 15: 'mishra', 0: 'kshipra', 7: 'kshipra', 12: 'kshipra',
+    4: 'mridu', 13: 'mridu', 16: 'mridu', 26: 'mridu', 5: 'tikshna', 8: 'tikshna', 17: 'tikshna', 18: 'tikshna' };
+  const NAK_TIP = {
+    dhruva: [T('Good for lasting things — foundations, savings, long-term plans', 'நிலையான காரியங்களுக்கு உகந்தது — அடிக்கல், சேமிப்பு, நீண்டகாலத் திட்டம்'), T('Avoid hasty travel plans', 'அவசரப் பயணத் திட்டம் தவிர்க்கவும்')],
+    chara: [T('Good for travel, vehicles and moving things forward', 'பயணம், வாகனம், காரியங்களை முன்னெடுக்க உகந்தது'), T('Avoid starting things meant to stay fixed (house foundation)', 'நிலைத்திருக்க வேண்டியவற்றை (வீட்டு அடிக்கல்) இன்று தொடங்க வேண்டாம்')],
+    ugra: [T('Good for courage, hard decisions and clearing obstacles', 'தைரியம், கடின முடிவுகள், தடை நீக்கத்திற்கு உகந்தது'), T('Avoid auspicious beginnings like engagements or housewarming', 'நிச்சயதார்த்தம், புதுமனை புகுவிழா போன்ற சுப தொடக்கங்கள் வேண்டாம்')],
+    mishra: [T('Good for routine work and finishing pending tasks', 'வழக்கமான வேலைகள், நிலுவைப் பணிகளை முடிக்க உகந்தது'), T('Avoid big new ventures today', 'இன்று பெரிய புதிய முயற்சி வேண்டாம்')],
+    kshipra: [T('Good for trade, learning, medicine and quick tasks', 'வியாபாரம், கல்வி, மருத்துவம், விரைவுப் பணிகளுக்கு உகந்தது'), T('Avoid long-drawn disputes', 'நீடிக்கும் தகராறு தவிர்க்கவும்')],
+    mridu: [T('Good for friendships, arts, new clothes and gentle talks', 'நட்பு, கலை, புத்தாடை, இனிய உரையாடலுக்கு உகந்தது'), T('Avoid harsh words and confrontation', 'கடுஞ்சொல், மோதல் தவிர்க்கவும்')],
+    tikshna: [T('Good for cleaning up, ending bad habits and research', 'சுத்தம் செய்தல், கெட்ட பழக்கம் விடுதல், ஆய்வுக்கு உகந்தது'), T('Avoid new beginnings and lending money', 'புதிய தொடக்கம், கடன் கொடுத்தல் தவிர்க்கவும்')],
+  };
+  const DAY_DO = [
+    T('Sunday: government work, meeting officials, health check', 'ஞாயிறு: அரசுப் பணி, அதிகாரிகளைச் சந்தித்தல், உடல் பரிசோதனை'),
+    T('Monday: family matters, short trips, buying household items', 'திங்கள்: குடும்ப விஷயங்கள், குறும்பயணம், வீட்டுப் பொருட்கள் வாங்குதல்'),
+    T('Tuesday: property, courage, sports and repairs', 'செவ்வாய்: சொத்து, தைரியமான செயல், விளையாட்டு, பழுது நீக்கம்'),
+    T('Wednesday: studies, writing, business deals and accounts', 'புதன்: கல்வி, எழுத்து, வியாபார ஒப்பந்தம், கணக்கு'),
+    T('Thursday: learning from elders, finance, prayer and teaching', 'வியாழன்: பெரியோரிடம் கற்றல், நிதி, வழிபாடு, கற்பித்தல்'),
+    T('Friday: arts, music, new clothes, jewellery and celebrations', 'வெள்ளி: கலை, இசை, புத்தாடை, நகை, கொண்டாட்டம்'),
+    T('Saturday: service to others, hard work, oil bath and charity', 'சனி: பிறருக்குச் சேவை, கடின உழைப்பு, எண்ணெய்க் குளியல், தானம்'),
+  ];
+  const STUDY_DO = [
+    T('Revise yesterday’s lessons in the morning', 'காலையில் நேற்றைய பாடங்களை மீண்டும் படியுங்கள்'), T('Help at home and respect parents', 'வீட்டில் உதவி, பெற்றோரை மதித்தல்'),
+    T('Play outdoors and sleep early', 'வெளியே விளையாடி, சீக்கிரம் உறங்குங்கள்'), T('Practise writing and maths', 'எழுத்து, கணக்குப் பயிற்சி'),
+    T('Learn something from a teacher or elder', 'ஆசிரியர் / பெரியோரிடம் ஒன்று கற்றுக்கொள்ளுங்கள்'), T('Music, drawing or a creative hobby', 'இசை, ஓவியம், படைப்பு விருப்பம்'),
+    T('Share and help a friend', 'நண்பருடன் பகிர்ந்து உதவுங்கள்'),
+  ];
+  const cls = NAK_CLASS[snap.nakshatra.index] || 'mishra';
+  const childAge = chart.date ? Math.floor((now - new Date(`${chart.date}T00:00:00Z`)) / 31557600000) : 30;
+  if (childAge < 18) {
+    dos.length = 0; donts.length = 0;
+    dos.push(STUDY_DO[wd], chandrashtamam ? T('Stay calm and gentle with family today', 'இன்று குடும்பத்தினரிடம் அமைதியாக இருங்கள்') : T('A good day to learn something new', 'புதிதாக ஒன்று கற்க நல்ல நாள்'));
+    donts.push(T('No screens late at night', 'இரவு நேரம் கைப்பேசி / திரை வேண்டாம்'), T('Avoid junk food and skipping meals', 'நொறுக்குத் தீனி, உணவைத் தவிர்த்தல் வேண்டாம்'));
+  } else {
+    if ((cls === 'ugra' || cls === 'tikshna') && dos.length) dos[0] = T('Push ongoing important work forward (not new auspicious starts)', 'நடக்கும் முக்கிய வேலையை முன்னெடுங்கள் (புதிய சுப தொடக்கம் அல்ல)');
+    dos.push(NAK_TIP[cls][0], DAY_DO[wd]);
+    donts.push(NAK_TIP[cls][1]);
+  }
   donts.push(T('Begin nothing new during Rahu Kalam', 'ராகு காலத்தில் புதிதாக எதையும் தொடங்க வேண்டாம்'));
 
   return {
-    personal: true, level, label, score, chandra, chandrashtamam, tara: { n: taraN, name: taraName }, why, dos, donts,
+    personal: true, minor: childAge < 18, starNature: cls, level, label, score, chandra, chandrashtamam, tara: { n: taraN, name: taraName }, why, dos, donts,
     deity, dayLord, starDeity: STAR_DEITY[js], dasaDeity: md ? { planet: md, name: PLANET_DEITY[md], mantra: DEITY_MANTRA[md] } : null,
     prayer: closingPrayer(chart, now),
     nextChandrashtamam: nextChandrashtamam(jr, now),

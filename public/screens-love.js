@@ -62,6 +62,12 @@ function renderLove(sec) {
   $('#lvGo').addEventListener('click', () => {
     try {
       const a = chartFor('loveA'), b = chartFor('loveB');
+      const ageOf = (c) => Math.floor((Date.now() - new Date(`${c.date}T00:00:00Z`)) / 31557600000);
+      if (ageOf(a.chart) < 18 || ageOf(b.chart) < 18) {
+        result = null;
+        $('#lvOut').innerHTML = `<section class="card glass"><div class="card-title">🌱 ${L('Not for minors', 'சிறு வயதினருக்கு அல்ல')}</div><p>${L('Love and marriage matching is read only when both people are 18 or older. For now, the chart guides studies, health and friendships.', 'காதல் / திருமணப் பொருத்தம் இருவருக்கும் 18 வயது நிறைந்த பிறகே பார்க்கப்படும். இப்போது ஜாதகம் கல்வி, ஆரோக்கியம், நட்புக்கே வழிகாட்டும்.')}</p></section>`;
+        return;
+      }
       result = { ...loveMatch(a.chart, b.chart, { genderA: a.gender, genderB: b.gender, names: [a.name, b.name] }), charts: [a.chart, b.chart], approx: !a.timeKnown || !b.timeKnown };
       $('#lvOut').innerHTML = renderResult();
       wireShare();

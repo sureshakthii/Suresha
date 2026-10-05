@@ -37,7 +37,7 @@ ${fonts}
 <style>
 :root { color-scheme: dark; }
 ${css}
-.topbar { top: env(safe-area-inset-top, 0px); }
+.topbar { top: 0; }
 </style>
 ${body}`;
 fs.writeFileSync(path.join(out, 'index.html'), page);

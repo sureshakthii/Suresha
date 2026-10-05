@@ -218,3 +218,27 @@ test('answers carry one headline percentage whose wording matches the verdict', 
   const ans = c.sections.find((s) => s.key === 'answer').lines[0];
   if (c.meter.pct < 45) assert.match(ans, /patience/); else assert.doesNotMatch(ans, /slow for now/);
 });
+
+test('age control: a child is never read for marriage, career or money; elders get life-stage wording', async () => {
+  const kid = { ...suresh, name: 'A', date: '2020-03-12', time: '16:50:00' };
+  const fk = chartFacts(birthChart(kid), timeReliability(kid));
+  for (const q of ['When will I get married?', 'How is my career?', 'kalyanam eppo', 'panam eppo varum']) {
+    const a = composeAnswer({ question: q, lang: 'en', facts: fk });
+    assert.match(a.sections.find((s) => s.key === 'answer').lines[0], /minor's chart/, q);
+  }
+  const study = composeAnswer({ question: 'How are my studies?', lang: 'en', facts: fk });
+  assert.doesNotMatch(study.text, /minor's chart/);
+  const { dailyReview } = await import('../shared/daily.js');
+  const { panchang } = await import('../shared/astro.js');
+  const now = new Date('2026-10-05T04:00:00Z');
+  const r = dailyReview(birthChart(kid), panchang(now, kid.lat, kid.lon, kid.tz), now);
+  assert.ok(r.minor && !r.dos.some((d) => /signature|venture/i.test(d.en)));
+});
+
+test('daily do\'s and don\'ts change with the day\'s star and weekday', async () => {
+  const { dailyReview } = await import('../shared/daily.js');
+  const { panchang } = await import('../shared/astro.js');
+  const chart = birthChart(suresh);
+  const lists = ['2026-10-05', '2026-10-06', '2026-10-07'].map((d) => { const t = new Date(`${d}T04:00:00Z`); return dailyReview(chart, panchang(t, suresh.lat, suresh.lon, suresh.tz), t).dos.map((x) => x.en).join('|'); });
+  assert.equal(new Set(lists).size, 3);
+});

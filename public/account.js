@@ -336,7 +336,7 @@ function renderMore(sec) {
     <div class="card glass settings">
       <div class="card-title">${L('Settings', 'அமைப்புகள்')}</div>
       <div class="set-row"><span>${L('Language', 'மொழி')}</span><div class="seg"><button data-lang="ta" class="${ta() ? 'sel' : ''}">தமிழ்</button><button data-lang="en" class="${ta() ? '' : 'sel'}">English</button></div></div>
-      <div class="set-row"><span>${L('Appearance', 'தோற்றம்')}</span><div class="seg">${[['light', 'Day', 'பகல்'], ['dark', 'Night', 'இரவு'], ['auto', 'Auto', 'தானியங்கி']].map(([id, en, tx]) => `<button data-theme-set="${id}" class="${(state.settings.theme || 'light') === id ? 'sel' : ''}">${L(en, tx)}</button>`).join('')}</div></div>
+      <div class="set-row"><span>${L('Appearance', 'தோற்றம்')}</span><div class="seg">${[['light', 'Day', 'பகல்'], ['dark', 'Night', 'இரவு'], ['auto', 'Auto', 'தானியங்கி']].map(([id, en, tx]) => `<button data-theme-set="${id}" class="${(state.settings.theme || 'dark') === id ? 'sel' : ''}">${L(en, tx)}</button>`).join('')}</div></div>
       <label class="set-row"><span>${L('Large text (for elders)', 'பெரிய எழுத்து (பெரியோருக்கு)')}</span><input type="checkbox" id="setLarge"${state.settings.large ? ' checked' : ''}></label>
       <div class="set-row"><span>${L('View', 'காட்சி')}</span><div class="seg">${[['simple', 'Simple', 'எளியது'], ['detailed', 'Detailed', 'விரிவானது']].map(([id, en, tx]) => `<button data-viewmode="${id}" class="${(state.settings.view || 'simple') === id ? 'sel' : ''}">${L(en, tx)}</button>`).join('')}</div></div>
       <label class="set-row"><span>${L('High contrast', 'அதிக வேறுபாடு')}</span><input type="checkbox" id="setHc"${state.settings.hc ? ' checked' : ''}></label>

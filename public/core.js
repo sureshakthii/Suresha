@@ -29,7 +29,7 @@ export const state = {
   activeId: store.get('kj_active', initialFamily[0]?.id || null),
   ancestors: store.get('kj_ancestors', []),
   loc: store.get('kj_loc', null),
-  settings: { large: false, voice: true, view: 'simple', rate: 0.92, hc: false, ...store.get('kj_settings', {}) },
+  settings: { large: false, voice: true, view: 'simple', rate: 0.92, hc: true, theme: 'dark', ...store.get('kj_settings', {}) },
   user: null,
   providers: null,
   view: 'home',
@@ -119,9 +119,9 @@ export function saveSettings() {
 }
 /** Simple view (default) hides specialist tools; Detailed shows everything. */
 export const detailed = () => state.settings.view === 'detailed';
-/** Theme: 'light' (default, best readability), 'dark' (cosmic night) or 'auto' (follow the phone). */
+/** Theme: 'dark' (default on a new install), 'light' or 'auto' (follow the phone). */
 export function applyTheme() {
-  const pref = state.settings.theme || 'light';
+  const pref = state.settings.theme || 'dark';
   const dark = pref === 'dark' || (pref === 'auto' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b0620' : '#f6f1e8');

@@ -145,7 +145,7 @@ body.ta { font-family: 'Noto Sans Tamil', 'Poppins', system-ui, sans-serif; }
 .app { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; min-height: 100%; padding-bottom: calc(var(--tab-h) + 24px + env(safe-area-inset-bottom)); }
 .topbar {
   position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between;
-  padding: calc(10px + env(safe-area-inset-top)) 16px 10px; backdrop-filter: blur(14px);
+  padding: calc(10px + var(--sat)) 16px 10px; backdrop-filter: blur(14px);
   background: linear-gradient(180deg, var(--surface-strong), var(--surface-soft));
   border-bottom: 1px solid rgba(var(--gold-rgb), .12);
 }
@@ -484,7 +484,7 @@ details.nava p { font-size: 13.5px; }
 .tabbar .tab-center .ti { font-size: 26px; }
 
 /* Login */
-.login-wrap { max-width: 420px; margin: 0 auto; padding-top: calc(28px + env(safe-area-inset-top)); display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.login-wrap { max-width: 420px; margin: 0 auto; padding-top: calc(28px + var(--sat)); display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .login-logo { align-self: center; filter: drop-shadow(0 0 24px rgba(var(--gold-rgb), .45)); border-radius: 22px; }
 .brand-ta.small { font-size: 34px; text-align: center; }
 .brand-en.small { font-family: 'Cinzel Decorative', serif; text-align: center; color: var(--gold2); letter-spacing: 3px; margin: 0 0 6px; }
@@ -836,7 +836,7 @@ img, svg, video, canvas { max-width: 100%; }
 @media (orientation: landscape) and (max-height: 500px) {
   :root { --tab-h: 54px; }
   .tabbar button { flex-direction: row; gap: 6px; font-size: 12px; }
-  .topbar { padding-top: calc(6px + env(safe-area-inset-top)); padding-bottom: 6px; }
+  .topbar { padding-top: calc(6px + var(--sat)); padding-bottom: 6px; }
   .hero { padding: 14px; }
   .td-day { font-size: 48px; min-width: 64px; }
   .si-chart, .wheel-card svg { max-width: min(100%, 78vh); margin-left: auto; margin-right: auto; }
@@ -922,7 +922,7 @@ td, th { overflow-wrap: normal; word-break: keep-all; hyphens: none; }
 
 /* Compact, opaque header — one line of brand, one line of tagline; content never shows through. */
 .topbar, [data-theme="light"] .topbar { background: var(--surface-strong); backdrop-filter: none; -webkit-backdrop-filter: none;
-  border-bottom: 1px solid var(--line); padding-top: calc(8px + env(safe-area-inset-top)); padding-bottom: 8px; gap: 8px; }
+  border-bottom: 1px solid var(--line); padding-top: calc(8px + var(--sat)); padding-bottom: 8px; gap: 8px; }
 .brand-mini { min-width: 0; flex: 1; }
 .brand-mini img { flex: none; width: 36px; height: 36px; border-radius: 10px; }
 .brand-mini > div { min-width: 0; }
@@ -1123,7 +1123,7 @@ h1, h2, h3, h4, .card h2, body.ta .card h2, .sub-head h2, body.ta .sub-head h2, 
 }
 
 /* Header: logo · brand + full tagline (may wrap to two lines) · language · settings */
-.topbar, [data-theme="light"] .topbar { padding: calc(8px + env(safe-area-inset-top)) 12px 8px; gap: 8px; align-items: center; min-height: 60px; }
+.topbar, [data-theme="light"] .topbar { padding: calc(8px + var(--sat)) 12px 8px; gap: 8px; align-items: center; min-height: 60px; }
 .brand-mini { gap: 10px; align-items: center; }
 .brand-mini img { width: 38px; height: 38px; border-radius: 10px; }
 .bm-ta { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; white-space: normal; line-height: 1.3; font-family: var(--font-ui); }
@@ -1336,9 +1336,9 @@ body.large .sub-head { top: calc(var(--top-h, 64px) / 1.15); }
 .am-label { font-weight: 700; font-size: var(--fs-sm); color: var(--text); }
 /* Hide-on-scroll header */
 .topbar { transition: transform .22s ease; will-change: transform; }
-body.hdr-hide .topbar { transform: translateY(calc(-100% - env(safe-area-inset-top, 0px))); }
+body.hdr-hide .topbar { transform: translateY(calc(-100% - var(--sat))); }
 .sub-head { transition: top .22s ease; }
-body.hdr-hide .sub-head { top: env(safe-area-inset-top, 0px); }
+body.hdr-hide .sub-head { top: var(--sat); }
 body.large.hdr-hide .sub-head { top: 0; }
 
 /* Easy date & time pickers */
@@ -1353,3 +1353,18 @@ input.easy-src { position: absolute !important; opacity: 0 !important; pointer-e
 .easy-tm { grid-template-columns: 1fr 1fr 1fr; }
 .easy-dt select { padding: 10px 22px 10px 8px !important; text-overflow: clip; }
 .ans-meter, .ans-body .ans-sec, .ans-why { white-space: normal; }
+
+/* Status-bar height in one variable (Android 15+ draws the app edge-to-edge under the status bar) */
+:root { --sat: env(safe-area-inset-top, 0px); }
+/* The header scrolls with its own padding for the status bar; it is never shifted down over the page. */
+.topbar { top: 0 !important; }
+/* A solid strip behind the status bar so page content never shows through the clock / battery icons. */
+body::after { content: ''; position: fixed; left: 0; right: 0; top: 0; height: var(--sat); background: var(--status-bg, #faf7f2); z-index: 9; pointer-events: none; }
+[data-theme="dark"] body::after, body[data-theme="dark"]::after { --status-bg: #141016; }
+:root[data-theme="dark"] { --status-bg: #141016; }
+
+/* FINAL header rule: the header is part of the page (not pinned), so content can never slide underneath it.
+   Screen titles (sub-head) stay pinned just below the status bar. */
+.topbar { position: relative !important; top: 0 !important; transform: none !important; }
+body.hdr-hide .topbar { transform: none !important; }
+.sub-head, body.hdr-hide .sub-head, body.large .sub-head { top: var(--sat) !important; }

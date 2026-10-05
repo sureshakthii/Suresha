@@ -207,3 +207,14 @@ test('love match: five meters, vibe 0-100, shares no private data', async () => 
   assert.ok(r.vibe >= 0 && r.vibe <= 100 && r.tier.ta);
   for (const m of r.meters) assert.ok(m.score >= 0 && m.score <= 100 && m.why.ta, m.id);
 });
+
+test('answers carry one headline percentage whose wording matches the verdict', () => {
+  for (const q of ['How is my career this year?', 'Explain my current dasa', 'How is my health?', 'When will I get married?']) {
+    const a = ask(q);
+    assert.ok(a.meter && a.meter.pct >= 20 && a.meter.pct <= 92, q);
+    assert.match(a.text, new RegExp(`${a.meter.pct}%`), q);
+  }
+  const c = ask('How is my career this year?');
+  const ans = c.sections.find((s) => s.key === 'answer').lines[0];
+  if (c.meter.pct < 45) assert.match(ans, /patience/); else assert.doesNotMatch(ans, /slow for now/);
+});

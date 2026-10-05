@@ -349,6 +349,7 @@ export const HUB_OF = {
 
 export function go(view, params = {}) {
   if (!screens[view]) return;
+  document.body.classList.remove('hdr-hide');
   if (screens[view].needsMember && !activeMember()) { view = 'family'; params = { add: true, first: true }; }
   const prev = state.view;
   state.view = view;
@@ -403,6 +404,18 @@ if (typeof document !== 'undefined') {
     e.preventDefault();
     if (t.dataset.enter) document.getElementById(t.dataset.enter)?.click(); else t.form?.requestSubmit();
   });
+}
+
+// Header hides while scrolling down (content is never covered) and returns on scroll up or near the top.
+if (typeof window !== 'undefined') {
+  let lastY = 0;
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    if (y < 60) document.body.classList.remove('hdr-hide');
+    else if (y > lastY + 6) document.body.classList.add('hdr-hide');
+    else if (y < lastY - 6) document.body.classList.remove('hdr-hide');
+    lastY = y;
+  }, { passive: true });
 }
 
 export function subHeader(title, sub = '', back = HUB_OF[state.view] || screens[state.view]?.parent || 'home') {

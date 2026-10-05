@@ -17,6 +17,7 @@ import './screens-health.js';
 import './screens-hubs.js';
 import './screens-journey.js';
 import './screens-trust.js';
+import './easy-date.js';
 import { loadSession } from './account.js';
 import { startAnalytics, loadBilling } from './growth.js';
 

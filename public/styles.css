@@ -1321,3 +1321,35 @@ body.large .sub-head { top: calc(var(--top-h, 64px) / 1.15); }
 .lv-list { margin: 0; padding-left: 18px; line-height: 1.6; color: var(--text); }
 .love-cta { display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%; color: var(--text); border-left: 4px solid #e11d74; background: linear-gradient(120deg, rgba(236, 72, 153, .1), transparent 70%), var(--glass); }
 .love-cta b { color: #c2185b; font-size: var(--fs-md); } [data-theme="dark"] .love-cta b { color: #f9a8d4; }
+/* Headline score at the top of an answer */
+.ans-meter { border-radius: 14px; padding: 10px 12px; margin: 2px 0 10px; background: rgba(27, 127, 59, .08); border: 1px solid rgba(27, 127, 59, .25); }
+.ans-meter.mid { background: rgba(161, 92, 0, .08); border-color: rgba(161, 92, 0, .28); }
+.ans-meter.low { background: rgba(180, 35, 24, .07); border-color: rgba(180, 35, 24, .25); }
+.am-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; color: var(--text); }
+.am-top b { font-size: 26px; line-height: 1.1; color: #1b7f3b; }
+.ans-meter.mid .am-top b { color: #a15c00; } .ans-meter.low .am-top b { color: #b42318; }
+[data-theme="dark"] .am-top b { color: #6ee7a0; } [data-theme="dark"] .ans-meter.mid .am-top b { color: #fbbf24; } [data-theme="dark"] .ans-meter.low .am-top b { color: #f87171; }
+.am-bar { height: 10px; border-radius: 99px; background: rgba(0, 0, 0, .08); overflow: hidden; margin: 6px 0 4px; }
+[data-theme="dark"] .am-bar { background: rgba(255, 255, 255, .1); }
+.am-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f59e0b, #1b7f3b); }
+.ans-meter.mid .am-bar i { background: linear-gradient(90deg, #f59e0b, #a15c00); } .ans-meter.low .am-bar i { background: linear-gradient(90deg, #f87171, #b42318); }
+.am-label { font-weight: 700; font-size: var(--fs-sm); color: var(--text); }
+/* Hide-on-scroll header */
+.topbar { transition: transform .22s ease; will-change: transform; }
+body.hdr-hide .topbar { transform: translateY(calc(-100% - env(safe-area-inset-top, 0px))); }
+.sub-head { transition: top .22s ease; }
+body.hdr-hide .sub-head { top: env(safe-area-inset-top, 0px); }
+body.large.hdr-hide .sub-head { top: 0; }
+
+/* Easy date & time pickers */
+input.easy-src { position: absolute !important; opacity: 0 !important; pointer-events: none !important; width: 1px !important; height: 1px !important; padding: 0 !important; border: 0 !important; }
+.easy-dt { display: grid; grid-template-columns: 0.8fr 1.5fr 1fr; gap: 8px; margin-top: 4px; }
+.easy-tm { grid-template-columns: 1fr 1fr 1.4fr; }
+.easy-dt select, .easy-dt input { width: 100%; min-width: 0; margin: 0; }
+.easy-dt input.bad { border-color: var(--bad, #b42318); }
+.row2:has(.easy-dt), .grid2:has(.easy-dt), .row3:has(.easy-dt) { grid-template-columns: 1fr !important; }
+.easy-dt select, .easy-dt input { padding: 10px 8px !important; font-size: var(--fs-base) !important; background-position: right 6px center; }
+.easy-dt { grid-template-columns: 1.1fr 1.5fr 1fr; gap: 6px; }
+.easy-tm { grid-template-columns: 1fr 1fr 1fr; }
+.easy-dt select { padding: 10px 22px 10px 8px !important; text-overflow: clip; }
+.ans-meter, .ans-body .ans-sec, .ans-why { white-space: normal; }

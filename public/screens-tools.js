@@ -538,7 +538,9 @@ function renderAnswerHtml(ans) {
   const rest = secs.filter((sx) => sx.key !== 'answer' && sx.key !== 'prayer');
   const prayer = secs.filter((sx) => sx.key === 'prayer');
   const sec = (sx) => `<div class="ans-sec ans-${sx.key}"><div class="ans-h">${esc(sx.title)}</div><ul>${sx.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
-  return `${top.map(sec).join('')}${rest.length ? `<div class="ans-why">${esc(L('Why — planets, Dasa & transits', 'காரணம் — கிரகங்கள், தசை & கோசாரம்'))}</div>${rest.map(sec).join('')}` : ''}${prayer.map(sec).join('')}`;
+  const m = ans.meter;
+  const meterHtml = m ? `<div class="ans-meter ${m.level}" role="img" aria-label="${esc(`${m.topic} ${m.pct}% ${m.label}`)}"><div class="am-top"><span>${esc(m.topic)}</span><b>${m.pct}%</b></div><div class="am-bar"><i style="width:${m.pct}%"></i></div><div class="am-label">${esc(m.label)}</div></div>` : '';
+  return `${meterHtml}${top.map(sec).join('')}${rest.length ? `<div class="ans-why">${esc(L('Why — planets, Dasa & transits', 'காரணம் — கிரகங்கள், தசை & கோசாரம்'))}</div>${rest.map(sec).join('')}` : ''}${prayer.map(sec).join('')}`;
 }
 
 function renderChat(sec, params = {}) {

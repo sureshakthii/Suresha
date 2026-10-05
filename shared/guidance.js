@@ -257,6 +257,14 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
   const add = (key, ...lines) => { (S[key] ||= []).push(...lines.flat().filter(Boolean)); };
   const actions = [];
   let clarify = null;
+  // One headline percentage for the question (traditional point score, never a probability).
+  let meter = null;
+  const setMeter = (pct, topic) => {
+    const v = Math.max(20, Math.min(92, Math.round(pct)));
+    const label = v >= 75 ? T('Very favourable', 'மிகச் சாதகம்') : v >= 60 ? T('Favourable', 'சாதகம்') : v >= 45 ? T('Moderate — steady effort', 'மிதமானது — தொடர் முயற்சி') : T('Needs care & patience', 'கவனமும் பொறுமையும் தேவை');
+    meter = { pct: v, label: tr(label), level: v >= 60 ? 'good' : v >= 45 ? 'mid' : 'low', topic: topic ? tr(topic) : '' };
+  };
+  const transitAdj = (f2, ids) => (f2.transit?.status || []).reduce((a, x) => a + (ids.includes(x.id) ? ({ guru_balam: 6, sani_good: 5, guru_weak: -4, ezharai: -6, ashtama: -8 }[x.id] || 0) : 0), 0);
   add('question', String(question).trim());
 
   const needChart = () => {
@@ -294,6 +302,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       if (!f) { needChart(); break; }
       const hg = healthGuide(f.chart, { gender: life.gender });
       const p = hg.period;
+      setMeter({ good: 80, steady: 63, care: 46 }[p.level] ?? 60, T('health', 'ஆரோக்கியம்'));
       const lvlEn = { good: 'a supportive period for health', steady: 'a steady period — keep your routine', care: 'a period to take extra care of your health' }[p.level];
       const lvlTa = { good: 'ஆரோக்கியத்திற்கு ஆதரவான காலம்', steady: 'நிலையான காலம் — வழக்கத்தைத் தொடருங்கள்', care: 'ஆரோக்கியத்தில் கூடுதல் கவனம் தேவையான காலம்' }[p.level];
       if (!acute) add('answer', L(`By your dasa, bhukti and current transits, this is ${lvlEn}. Protect: ${hg.bodyAreas.slice(0, 2).map((x) => x.en).join('; ')}.`, `உங்கள் தசை, புக்தி, கோசாரப்படி இது ${lvlTa}. கவனிக்க: ${hg.bodyAreas.slice(0, 2).map((x) => x.ta).join('; ')}.`),
@@ -331,6 +340,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       if (!f) { needChart(); break; }
       add('factors', dasaLine(f, lang), f.dasa && planetLine(f, f.dasa.lord, lang), f.bhukti && f.bhukti.lord !== f.dasa?.lord && planetLine(f, f.bhukti.lord, lang));
       if (f.dasa) {
+        setMeter(0.6 * f.strength[f.dasa.lord].score + 0.4 * (f.bhukti ? f.strength[f.bhukti.lord].score : f.strength[f.dasa.lord].score) + transitAdj(f, ['ezharai', 'ashtama', 'sani_good', 'guru_balam', 'guru_weak']), T('your current period', 'நடப்புக் காலம்'));
         add('answer', L(`You are now in ${f.dasa.lord} mahadasa (until ${my(f.dasa.end, 'en')})${f.bhukti ? ` with ${f.bhukti.lord} bhukti until ${my(f.bhukti.end, 'en')}` : ''}. In simple words: ${DASA_NATURE[f.dasa.lord].en.split(';')[0]}${f.bhukti ? `, and for now ${DASA_NATURE[f.bhukti.lord].en.split(';')[0].replace(/^an? /, '').replace(/^period of /, '')}` : ''}.`, `நீங்கள் இப்போது ${pName(f.dasa.lord, 'ta')} மகா தசையில் (${my(f.dasa.end, 'ta')} வரை)${f.bhukti ? `, ${pName(f.bhukti.lord, 'ta')} புக்தியில் (${my(f.bhukti.end, 'ta')} வரை)` : ''} இருக்கிறீர்கள். எளிமையாகச் சொன்னால்: ${DASA_NATURE[f.dasa.lord].ta.split(';')[0]}.`));
         add('interpretation', L(`${f.dasa.lord} mahadasa: ${DASA_NATURE[f.dasa.lord].en}.`, `${pName(f.dasa.lord, 'ta')} மகா தசை: ${DASA_NATURE[f.dasa.lord].ta}.`));
         if (f.bhukti) add('interpretation', L(`Within it, the ${f.bhukti.lord} bhukti adds the flavour of ${DASA_NATURE[f.bhukti.lord].en.split(';')[0]}.`, `அதற்குள் ${pName(f.bhukti.lord, 'ta')} புக்தி — ${DASA_NATURE[f.bhukti.lord].ta.split(';')[0]}.`));
@@ -427,6 +437,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       const askAgain = !isMarriage && done && /another|second|next|இன்னொரு|இரண்டாவது|innoru|rendavadhu/i.test(question);
       const chk = lifeEventCheck(f.chart, isMarriage ? 'marriage' : 'child', { eventYear: done ? eventYear : null });
       const key = isMarriage ? 7 : 5;
+      setMeter(chk.promise.score, isMarriage ? T('marriage', 'திருமணம்') : T('children', 'குழந்தைப் பேறு'));
       add('factors', houseLine(f, key, lang), planetLine(f, isMarriage ? 'Venus' : 'Jupiter', lang), dasaLine(f, lang),
         L(`Traditional promise for ${isMarriage ? 'marriage' : 'children'} in this chart: ${chk.promise.level} (${chk.promise.score}/100 points).`, `இந்த ஜாதகத்தில் ${isMarriage ? 'திருமண' : 'குழந்தை'} யோகம் (பாரம்பரியப் புள்ளி): ${chk.promise.level === 'strong' ? 'வலுவானது' : chk.promise.level === 'good' ? 'நல்லது' : 'முயற்சி தேவை'} (${chk.promise.score}/100).`),
         transitLines(f, lang, ['guru_balam', 'guru_weak']));
@@ -502,8 +513,14 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
         const main = f.houseInfo(AREA.houses[0]);
         const lordG = f.strength[main.lord];
         const linkedNow = f.dasa && (f.ruled(f.dasa.lord).some((h) => AREA.houses.includes(h)) || AREA.houses.includes(f.planetHouse(f.dasa.lord)));
-        const verdictEn = lordG.level === 'strong' ? 'well supported' : lordG.level === 'weak' ? 'slow but steady with patience' : 'good with steady effort';
-        const verdictTa = lordG.level === 'strong' ? 'நல்ல ஆதரவுடன் உள்ளது' : lordG.level === 'weak' ? 'பொறுமையுடன் மெதுவாக முன்னேறும்' : 'தொடர் முயற்சியால் நன்றாக இருக்கும்';
+        const karG = f.strength[AREA.karaka];
+        const dasaG = f.dasa ? f.strength[f.dasa.lord] : null;
+        setMeter(0.45 * lordG.score + 0.25 * (karG?.score ?? 50) + 0.2 * (dasaG?.score ?? 50) + (linkedNow ? 8 : 0)
+          + transitAdj(f, intent === 'marriage' || intent === 'pregnancy' ? ['guru_balam', 'guru_weak'] : ['ezharai', 'ashtama', 'sani_good', 'guru_balam', 'guru_weak']), T(AREA.en, AREA.ta));
+        // Verdict words follow the headline percentage so the score and the sentence always agree.
+        const pv = meter.pct;
+        const verdictEn = pv >= 75 ? 'very well supported' : pv >= 60 ? 'well supported' : pv >= 45 ? 'good with steady effort' : 'slow for now — it needs patience and steady effort';
+        const verdictTa = pv >= 75 ? 'மிகுந்த ஆதரவுடன் உள்ளது' : pv >= 60 ? 'நல்ல ஆதரவுடன் உள்ளது' : pv >= 45 ? 'தொடர் முயற்சியால் நன்றாக இருக்கும்' : 'இப்போது மெதுவாக உள்ளது — பொறுமையும் தொடர் முயற்சியும் தேவை';
         add('answer', L(`Your ${AREA.en} is ${verdictEn}.${linkedNow ? ` Your current ${f.dasa.lord} dasa activates this area, so ${my(new Date(), 'en').split(' ')[1]}–${my(f.dasa.end, 'en').split(' ')[1]} is an active time for it.` : ' Your current dasa is focused on other areas, so progress here comes through steady effort.'}`, `உங்கள் ${AREA.ta} ${verdictTa}.${linkedNow ? ` நடப்பு ${pName(f.dasa.lord, 'ta')} தசை இந்தப் பகுதியைச் செயல்படுத்துகிறது; எனவே ${my(f.dasa.end, 'ta').split(' ')[1]} வரை இது செயலூக்கமான காலம்.` : ' நடப்பு தசை பிற பகுதிகளில் கவனம் செலுத்துகிறது; இங்கு தொடர் முயற்சியால் முன்னேற்றம் வரும்.'}`));
         add('interpretation', lordG.level === 'strong'
           ? L(`The ${ordEn(AREA.houses[0])} house lord ${main.lord} is strong — tradition reads this as good support for ${AREA.en}.`, `${AREA.houses[0]}-ம் வீட்டு அதிபதி ${pName(main.lord, 'ta')} பலமாக உள்ளார் — ${AREA.ta} ஆகியவற்றுக்கு நல்ல ஆதரவு என மரபு கூறுகிறது.`)
@@ -558,5 +575,6 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
   const order = ['question', 'answer', 'support', 'factors', 'interpretation', 'uncertainty', 'facts', 'practice', 'next', 'prayer'];
   const sections = order.filter((k) => S[k]?.length).map((k) => ({ key: k, title: tr(SECTION_TITLES[k]), lines: S[k] }));
   const text = sections.map((s) => `${s.title}:\n${s.lines.map((l) => `• ${l}`).join('\n')}`).join('\n\n');
-  return { intent, lang, sections, actions, clarify, text };
+  const textOut = meter ? text.replace(/^([^\n]*\n• )/m, `$1${meter.pct}% — ${meter.label}. `) : text;
+  return { intent, lang, sections, actions, clarify, meter, text: textOut };
 }

@@ -71,7 +71,7 @@ function drawRoadmap(m) {
     <div class="btn-row"><button class="chip-btn" id="rmPrint">🖨️ ${L('Print / save as PDF', 'அச்சிடு / PDF ஆக சேமி')}</button><button class="chip-btn" data-go="guide">🧭 ${L('My Guide', 'என் வழிகாட்டி')}</button><button class="chip-btn" data-go="analysis">📜 ${L('Full analysis', 'முழு ஆய்வு')}</button></div>
     <p class="muted small center">${L('A road map shows the seasons of life; your effort, family and faith drive the journey.', 'வரைபடம் வாழ்க்கையின் பருவங்களைக் காட்டுகிறது; பயணத்தை நடத்துவது உங்கள் உழைப்பும் குடும்பமும் நம்பிக்கையும்.')}</p>`;
   $('#rmSpeak').addEventListener('click', () => speak(spoken));
-  $('#rmPrint').addEventListener('click', () => { $$('#rmBody details').forEach((d) => { d.open = true; }); window.print(); });
+  $('#rmPrint').addEventListener('click', () => { $$('#rmBody details').forEach((d) => { d.open = true; }); import('./core.js').then((c) => c.printPage()); });
   $('#rmAi')?.addEventListener('click', async () => {
     $('#rmAiBox').hidden = false;
     const t = $('#rmAiText');

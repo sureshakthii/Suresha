@@ -1,5 +1,6 @@
 // Feature screens: Tamil calendar, Porutham, Muhurtham, Ruthu, Parigaram, Names, Thivasam,
 // Natchathira birthday, Jothidar chat and the shareable daily card.
+import { faithOf } from './shared/faith.js';
 import { panchang, vedicDay, RASIS, NAKSHATRAS } from './shared/astro.js';
 import { CATEGORIES, getCategory } from './shared/prasna.js';
 import { tamilMonth, tamilDay, TAMIL_MONTHS } from './shared/tamilcal.js';
@@ -496,7 +497,7 @@ function todayFacts() {
  */
 function lifeOf(m) {
   if (!m) return {};
-  const life = { memberId: m.id, gender: m.gender, maritalStatus: m.maritalStatus, marriedYear: m.marriedYear, children: m.children, firstChildYear: m.firstChildYear };
+  const life = { memberId: m.id, gender: m.gender, faith: faithOf(m), maritalStatus: m.maritalStatus, marriedYear: m.marriedYear, children: m.children, firstChildYear: m.firstChildYear };
   if (m.relation === 'self') {
     if (!life.maritalStatus && state.family.some((x) => x.relation === 'spouse')) life.maritalStatus = 'married';
     const kids = state.family.filter((x) => ['son', 'daughter'].includes(x.relation));

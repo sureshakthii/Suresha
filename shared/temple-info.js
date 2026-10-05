@@ -37,7 +37,7 @@ function tm(ranges, noteEn = '', noteTa = '') {
   const ta = `சுமார் ${ranges.map(([a, b]) => (period(hour(a)) === period(hour(b))
     ? `${period(hour(a))} ${h12(a)}–${h12(b)}`
     : `${period(hour(a))} ${h12(a)} – ${period(hour(b))} ${h12(b)}`)).join(', ')}${noteTa ? ` (${noteTa})` : ''}`;
-  return B(en, ta);
+  return { ...B(en, ta), ranges };
 }
 const STD = tm([['6:00', '12:00'], ['16:00', '20:30']]);
 const VILLAGE = tm([['6:30', '12:00'], ['16:30', '20:00']]);
@@ -562,6 +562,13 @@ export const TEMPLE_INFO = Object.fromEntries(TEMPLES.filter((t) => RAW[t.id]).m
     festival: r.f,
   }];
 }));
+
+/** Opening ranges in minutes after midnight, e.g. [[300, 750], [960, 1290]] (approximate; standard if unknown). */
+export function templeRanges(id) {
+  const r = (TEMPLE_INFO[id]?.timings || STD).ranges || STD.ranges;
+  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  return r.map(([a, b]) => [toMin(a), toMin(b)]);
+}
 
 /** Details for a temple id, or null. */
 export const templeInfo = (id) => TEMPLE_INFO[id] || null;

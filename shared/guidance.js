@@ -14,6 +14,8 @@ import { luckyNumbers } from './personal.js';
 import { predictEvent } from './predict.js';
 import { healthGuide } from './health.js';
 import { closingPrayer } from './daily.js';
+import { faithBlessing, universalPractice } from './faith.js';
+import { tamilDay } from './tamilcal.js';
 
 export { RULES_VERSION } from './version.js';
 
@@ -32,7 +34,7 @@ const WHEN = /\bwhen\b|\bwhich (year|age|month)\b|\bwhat age\b|\bwill i (get|hav
 const MARRIAGE = /mar+[iae]+g|marri|marry|merr?[ia]g|wedd|shaad[iy]|spouse|husband|wife|alliance|\bkall?y?aa?n[ae]?m|thiruman|tiruman|ponnu|maap+ill?ai|varan|jodi|திருமண|கல்யாண|வரன்|மனைவி|கணவர்|மாப்பிள்ளை|பெண் பார்|வாழ்க்கைத் துணை/i;
 const CHILD = /\bkids?\b|child|children|\bbaby\b|pregnan|conceiv|santh?h?anam|kuzh?andh?ai|kulandh?ai|kuzhanth?ai|kulanth?ai|\bpillai|குழந்தை|பிள்ளை|சந்தான|கர்ப்ப|மகப்பேறு/i;
 const RULES = [
-  ['crisis', /suicid|kill myself|end my life|want to die|no reason to live|self.?harm|saaga?num|sethu?d|தற்கொலை|சாக வேண்டும்|உயிரை மாய்|வாழ விருப்பமில்லை|சாகணும்/i],
+  ['crisis', /suicid|kill myself|end my life|want to die|no reason to live|self.?harm|saaga?num|sethu?d|saa?ga ?(po|pog)|sethu ?(po|pog)|sethuruv|uyir ?vida|thar ?kolai|going to die|don'?t want to live|do not want to live|சாகப் ?போ|சாகப்போ|செத்துப் ?போ|செத்துருவ|தற்கொலை|சாக வேண்டும்|உயிரை மாய்|வாழ விருப்பமில்லை|சாகணும்/i],
   ['death', /when will i die|death date|lifespan|how long will i live|longevity|maranam|aayul|ஆயுள் எவ்வளவு|எப்போது இறப்|மரணம் எப்போது|சாவு எப்போது|ஆயுட்காலம்/i],
   ['pain', /\bpain\b|hurt(s|ing)?\b|\bvali\b|valikk?u|வலி|வேதனை/i],
   ['emotional', /worr|anxi|stress|tension|\bsad|depress|lonely|afraid|\bfear|upset|confus|kavalai|bayam|bayama|mana ?kast|nimmadhi|கவலை|பயம்|மன அழுத்த|மனக்குழப்ப|டென்ஷன்|வருத்த|தனிமை|மனம் சரியில்லை|நிம்மதி/i],
@@ -45,10 +47,12 @@ const RULES = [
   ['dasa', /dasa|dasha|dhasa|thasai|dasai|bhukti|bukthi|bhukthi|\bputhi\b|\bbuthi\b|antar|mahadasha|current period|my period|nadapp?u ?kaa?lam|kaa?lath|tharpoth?aiya|தசை|தசா|புக்தி|நடப்பு காலம்|தற்போதைய காலம்|தற்போதைய காலத்தை/i],
   ['weak', /weak planet|which planet|planet.*weak|remed|parigar|pariharam|parikaram|dosh|graham (balam|weak)|kiragam|பலவீன|பரிகார|எந்த கிரகம்|தோஷ/i],
   ['kuladeivam', /kula ?deiv|family deity|kuladeivam|kula ?dheivam|குலதெய்வ|குல தெய்வ/i],
+  ['love', /\blove\b|crush|girlfriend|boyfriend|relationship|propos|kaa?dhal|kadal vazh|lover|காதல்/i],
+  ['festival', /festival|vizhaa?|pandigai|pandikai|viratham|vratham|ekadasi|pradosh|amavas|pournami|விழா|பண்டிகை|விரத|ஏகாதசி|பிரதோஷ|அமாவாசை|பௌர்ணமி/i],
   ['marriage', MARRIAGE],
   ['pregnancy', CHILD],
   ['legal', /court|\bcase\b|legal|lawyer|dispute|police|vazhakk?u|vakeel|வழக்கு|கோர்ட்|நீதிமன்ற|வக்கீல்|தகராறு/i],
-  ['visa', /visa|abroad|foreign|onsite|overseas|immigra|velinaadu|velinadu|வெளிநாடு|விசா|அயல்நாடு/i],
+  ['visa', /visa|abroad|foreign|onsite|overseas|immigra|velinaadu|velinadu|videsh|videsam|videsham|வெளிநாடு|வெளிநாட்ட|விசா|அயல்நாடு|விதேச/i],
   ['finance', /money|finance|loan|debt|saving|invest|wealth|stock|share market|salary|income|\bpanam\b|\bkasu\b|kadan|semippu|varumanam|பணம்|பணத்|கடன|சேமிப்பு|முதலீடு|செல்வ|வருமான|சம்பள|பொருளாதார/i],
   ['career', /career|\bjob\b|\bwork|office|promotion|business|\bboss\b|interview|profession|\bvelai\b|\bvela\b|thozhil|tholil|vyabaram|தொழில|வேலை|அலுவலக|பதவி உயர்வு|வியாபார|நேர்காணல்|உத்தியோக/i],
   ['education', /exam|study|studies|education|college|school|result|padipp?u|padikk|parikshai|kalvi|கல்வி|தேர்வு|படிப்பு|கல்லூரி|பள்ளி/i],
@@ -281,7 +285,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
     const TOPIC = {
       marriage: T('marriage', 'திருமணம்'), marriage_when: T('marriage', 'திருமணம்'), child_when: T('children', 'குழந்தைப் பேறு'),
       pregnancy: T('children', 'குழந்தைப் பேறு'), career: T('career and job', 'வேலை, தொழில்'), finance: T('money and earnings', 'பணம், வருமானம்'),
-      property: T('property', 'சொத்து'), legal: T('court and disputes', 'வழக்கு, தகராறு'), vehicle: T('buying a vehicle', 'வாகனம் வாங்குதல்'),
+      property: T('property', 'சொத்து'), legal: T('court and disputes', 'வழக்கு, தகராறு'), vehicle: T('buying a vehicle', 'வாகனம் வாங்குதல்'), love: T('love and relationships', 'காதல், உறவு'),
     }[intent];
     if (age < 18 && TOPIC) {
       add('answer', L(`This is a minor's chart (age ${age}). Future results such as ${TOPIC.en} are not read for a child — tradition studies them only after 18, when the person is mature. For now this chart is read for studies, health and good habits.`,
@@ -458,6 +462,42 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       actions.push({ go: 'ask', label: L('Is now a good time?', 'இப்போது செய்யலாமா?') });
       break;
     }
+    case 'love': {
+      if (!f) { needChart(); break; }
+      // Romance: 5th house (love), 7th house (partner), Venus (affection); Jupiter for a woman's chart.
+      const kar = life.gender === 'female' ? 'Jupiter' : 'Venus';
+      const fifth = f.houseInfo(5), seventh = f.houseInfo(7);
+      const linked = f.dasa && ([5, 7].includes(f.planetHouse(f.dasa.lord)) || f.ruled(f.dasa.lord).some((h) => [5, 7].includes(h)) || f.dasa.lord === 'Venus');
+      setMeter(0.35 * f.strength[fifth.lord].score + 0.25 * f.strength.Venus.score + 0.2 * f.strength[seventh.lord].score + 0.2 * (f.dasa ? f.strength[f.dasa.lord].score : 50) + (linked ? 8 : 0) + transitAdj(f, ['guru_balam', 'guru_weak']), T('love life', 'காதல் வாழ்க்கை'));
+      const pv = meter.pct;
+      if (age >= 60) {
+        add('answer', L(`At ${age}, the 5th and 7th houses speak of companionship, warmth and harmony at home. Your chart shows ${pv >= 60 ? 'good support' : 'that patience and gentle words matter most'} for that now.`, `${age} வயதில், 5, 7-ம் வீடுகள் துணை, அன்பு, வீட்டு இணக்கத்தைக் குறிக்கின்றன. இப்போது உங்கள் ஜாதகம் ${pv >= 60 ? 'அதற்கு நல்ல ஆதரவு' : 'பொறுமையும் இனிய சொல்லும் மிக முக்கியம் என்று'} காட்டுகிறது.`));
+      } else {
+        add('answer', L(`Your love life is ${pv >= 75 ? 'very well supported' : pv >= 60 ? 'well supported' : pv >= 45 ? 'steady — it grows with patience and honesty' : 'slow for now — friendship and patience come first'}.${linked ? ` Your current ${f.dasa.lord} dasa activates romance and partnership, so this is an active time.` : ''}`,
+          `உங்கள் காதல் வாழ்க்கை ${pv >= 75 ? 'மிகுந்த ஆதரவுடன் உள்ளது' : pv >= 60 ? 'நல்ல ஆதரவுடன் உள்ளது' : pv >= 45 ? 'நிலையாக உள்ளது — பொறுமை, நேர்மையால் வளரும்' : 'இப்போது மெதுவாக உள்ளது — முதலில் நட்பு, பொறுமை'}.${linked ? ` நடப்பு ${pName(f.dasa.lord, 'ta')} தசை காதல், துணை பகுதியைச் செயல்படுத்துகிறது; இது செயலூக்கமான காலம்.` : ''}`));
+      }
+      add('factors', houseLine(f, 5, lang), houseLine(f, 7, lang), planetLine(f, 'Venus', lang), kar !== 'Venus' && planetLine(f, kar, lang), dasaLine(f, lang), transitLines(f, lang, ['guru_balam', 'guru_weak']));
+      add('interpretation', L('Tradition reads the 5th house for romance, the 7th for a lasting partner, and Venus for affection and attraction.', 'மரபுப்படி 5-ம் வீடு காதல், 7-ம் வீடு நிலையான துணை, சுக்கிரன் அன்பு, ஈர்ப்பு.'));
+      add('uncertainty', L('No chart decides whom you will love. Respect, consent and honesty build every good relationship.', 'யாரைக் காதலிப்பீர்கள் என்பதை எந்த ஜாதகமும் தீர்மானிக்காது. மரியாதை, சம்மதம், நேர்மையே நல்ல உறவின் அடிப்படை.'));
+      add('practice', L('Friday: light a ghee lamp for Goddess Mahalakshmi; wear something clean and bright; speak kindly.', 'வெள்ளி: மகாலட்சுமிக்கு நெய் தீபம்; சுத்தமான, பிரகாசமான உடை; இனிய சொல்.'));
+      add('next', L('Check the Love Match with the person you like — both charts side by side.', 'நீங்கள் விரும்பும் நபருடன் காதல் பொருத்தம் பாருங்கள் — இருவர் ஜாதகமும் ஒப்பீடு.'));
+      actions.push({ go: 'lovematch', label: L('💘 Love Match', '💘 காதல் பொருத்தம்') });
+      break;
+    }
+    case 'festival': {
+      const lat = f?.chart?.lat ?? 9.9252, lon = f?.chart?.lon ?? 78.1198, tz = f?.chart?.tz ?? 5.5;
+      const list = [];
+      for (let d = 0; d < 31 && list.length < 8; d++) {
+        const day = new Date(Date.now() + d * 86400000);
+        const noon = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 12 - tz));
+        try { for (const fe of tamilDay(noon, lat, lon, tz).festivals || []) list.push(`${noon.toISOString().slice(0, 10)} — ${tr(fe)}`); } catch { /* skip day */ }
+      }
+      add('answer', list.length ? L(`Next festivals and viratha days: ${list.slice(0, 3).join('; ')}.`, `அடுத்த விழாக்கள், விரத நாட்கள்: ${list.slice(0, 3).join('; ')}.`) : L('No major festival in the next 30 days.', 'அடுத்த 30 நாட்களில் பெரிய விழா இல்லை.'));
+      if (list.length > 3) add('facts', ...list.slice(3));
+      add('next', L('Open the Tamil calendar for the full list with timings, and set a reminder.', 'நேரத்துடன் முழுப் பட்டியலுக்கு தமிழ் நாட்காட்டியைத் திறந்து நினைவூட்டல் அமையுங்கள்.'));
+      actions.push({ go: 'vratham', label: L('Viratha days', 'விரத நாட்கள்') }, { go: 'calendar', label: L('Tamil calendar', 'தமிழ் நாட்காட்டி') });
+      break;
+    }
     case 'marriage_when':
     case 'child_when': {
       if (!f) { needChart(); break; }
@@ -469,7 +509,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       const chk = lifeEventCheck(f.chart, isMarriage ? 'marriage' : 'child', { eventYear: done ? eventYear : null });
       const key = isMarriage ? 7 : 5;
       setMeter(chk.promise.score, isMarriage ? T('marriage', 'திருமணம்') : T('children', 'குழந்தைப் பேறு'));
-      add('factors', houseLine(f, key, lang), planetLine(f, isMarriage ? 'Venus' : 'Jupiter', lang), dasaLine(f, lang),
+      add('factors', houseLine(f, key, lang), planetLine(f, isMarriage && life.gender !== 'female' ? 'Venus' : 'Jupiter', lang), dasaLine(f, lang),
         L(`Traditional promise for ${isMarriage ? 'marriage' : 'children'} in this chart: ${chk.promise.level} (${chk.promise.score}/100 points).`, `இந்த ஜாதகத்தில் ${isMarriage ? 'திருமண' : 'குழந்தை'} யோகம் (பாரம்பரியப் புள்ளி): ${chk.promise.level === 'strong' ? 'வலுவானது' : chk.promise.level === 'good' ? 'நல்லது' : 'முயற்சி தேவை'} (${chk.promise.score}/100).`),
         transitLines(f, lang, ['guru_balam', 'guru_weak']));
       if (f.dasa?.approx) add('uncertainty', L(`Your birth time is approximate, so these dates may shift by about ${f.dasa.shiftDays} days.`, `பிறந்த நேரம் தோராயமானது; எனவே தேதிகள் சுமார் ${f.dasa.shiftDays} நாட்கள் மாறலாம்.`));
@@ -523,7 +563,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
     }
     default: {
       // Life areas: career, finance, marriage, education, property, pregnancy, legal, visa, chart, general.
-      const AREA = {
+      let AREA = {
         career: { houses: [10, 6, 11], karaka: 'Saturn', en: 'work and career', ta: 'வேலை, தொழில்' },
         finance: { houses: [2, 11], karaka: 'Jupiter', en: 'money and savings', ta: 'பணம், சேமிப்பு' },
         marriage: { houses: [7, 2], karaka: 'Venus', en: 'marriage and partnership', ta: 'திருமணம், வாழ்க்கைத் துணை' },
@@ -533,6 +573,8 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
         legal: { houses: [6], karaka: 'Saturn', en: 'disputes', ta: 'வழக்கு, தகராறு' },
         visa: { houses: [9, 12], karaka: 'Rahu', en: 'travel abroad', ta: 'வெளிநாட்டுப் பயணம்' },
       }[intent];
+      // Tradition: for a woman's chart the husband is read from Jupiter, for a man's chart the wife from Venus.
+      if (AREA && intent === 'marriage' && life.gender === 'female') AREA = { ...AREA, karaka: 'Jupiter' };
       if (intent === 'greeting') {
         add('support', L(`Vanakkam${name ? `, ${name}` : ''}! Ask me about your current period, work, family dates, a temple journey, or today’s good times.`, `வணக்கம்${name ? `, ${name}` : ''}! உங்கள் நடப்புக் காலம், வேலை, குடும்ப நாட்கள், கோவில் பயணம், இன்றைய நல்ல நேரம் — எதைப் பற்றியும் கேளுங்கள்.`));
         break;
@@ -603,8 +645,15 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
   if (!S.answer?.length) { const src = ['support', 'interpretation', 'next'].find((k) => S[k]?.length); if (src) S.answer = [S[src].shift()]; }
   // Close with the deities of the person's running Dasa and Bhukti lords (not after a crisis or a medical alarm).
   if (f?.chart && !['crisis', 'death', 'pain'].includes(intent)) {
-    const pr = closingPrayer(f.chart, f.now ? new Date(f.now) : new Date());
-    if (pr) add('prayer', `🙏 ${pr.lines.map((x) => tr(x)).join(' · ')}`);
+    if (life.faith && life.faith !== 'hindu') {
+      // Other faiths: a blessing in their own faith and practices that suit every faith.
+      const bl = faithBlessing(life.faith);
+      if (bl) add('prayer', tr(bl));
+      if (S.practice?.length) S.practice = [tr(universalPractice(f.weakest?.[0]?.planet || f.dasa?.lord))];
+    } else {
+      const pr = closingPrayer(f.chart, f.now ? new Date(f.now) : new Date());
+      if (pr) add('prayer', `🙏 ${pr.lines.map((x) => tr(x)).join(' · ')}`);
+    }
   }
   const order = ['question', 'answer', 'support', 'factors', 'interpretation', 'uncertainty', 'facts', 'practice', 'next', 'prayer'];
   const sections = order.filter((k) => S[k]?.length).map((k) => ({ key: k, title: tr(SECTION_TITLES[k]), lines: S[k] }));

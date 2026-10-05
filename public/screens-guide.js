@@ -190,7 +190,7 @@ function renderPanchangam(sec) {
       <div>${esc(ta() ? `${td.tamil.year.ta} வருடம்` : `${td.tamil.year.en} year`)} · <b>${esc(bi(td.weekday))}</b></div><div class="muted">${d}-${mo}-${y} · ${esc(L(td.paksha === 'Shukla' ? 'Valarpirai' : 'Theipirai', td.paksha === 'Shukla' ? 'வளர்பிறை' : 'தேய்பிறை'))}</div></div></div>
     ${td.festivals.length || td.muhurthaDay ? `<div class="fest-row">${td.festivals.map((f) => `<span class="fest ${f.kind}">${f.kind === 'festival' ? '🎉' : '🪔'} ${esc(bi(f))} ${remindBtn({ title: bi(f), at: td.sunrise })}</span>`).join('')}${td.muhurthaDay ? `<span class="fest muhurtham">💐 ${L('Subha Muhurtha day', 'சுப முகூர்த்த நாள்')}</span>` : ''}</div>` : ''}
 
-    <div class="card glass pan-big"><div class="card-title">📖 ${L('Pancha Angam — five limbs', 'பஞ்ச அங்கம்')}</div>
+    <div class="card glass pan-big"><div class="card-title">📖 ${L('Panchangam — the five limbs', 'பஞ்சாங்கம் — ஐந்து அங்கங்கள்')}</div>
       <div class="pan-row"><span>📅 ${L('Day', 'வாரம்')}</span><b>${esc(bi(td.weekday))}</b></div>
       <div class="pan-row"><span>🌙 ${L('Tithi', 'திதி')}</span><b>${esc(ta() ? td.tithi.ta : td.tithi.name)}<small>${td.tithi.endsAt ? ` · ${L('till', 'வரை')} ${t(td.tithi.endsAt)}` : ''}</small></b></div>
       <div class="pan-row"><span>⭐ ${L('Star', 'நட்சத்திரம்')}</span><b>${esc(nakName(td.nakshatra.index))}<small>${td.nakshatra.endsAt ? ` · ${L('till', 'வரை')} ${t(td.nakshatra.endsAt)}` : ''}</small></b></div>

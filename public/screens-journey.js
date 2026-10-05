@@ -143,6 +143,37 @@ function submit() {
   $('#tripResult').scrollIntoView({ behavior: 'smooth' });
 }
 
+// 'H:MM' (24 h) → '7:45 AM' / 'காலை 7:45'
+const clock = (t) => { if (!t) return ''; const [h, m] = t.split(':').map(Number); const hh = ((h + 11) % 12) + 1; const mm = String(m).padStart(2, '0');
+  return L(`${hh}:${mm} ${h < 12 ? 'AM' : 'PM'}`, `${h < 12 ? 'காலை' : h < 16 ? 'மதியம்' : h < 19 ? 'மாலை' : 'இரவு'} ${hh}:${mm}`); };
+function timeLine(s) {
+  const base = `🕘 ${L('Reach', 'சென்றடைதல்')} ~${clock(s.arrive)} · ${L('darshan till', 'தரிசனம்')} ~${clock(s.leave)} · ${L('temple closes', 'நடை சாத்தல்')} ~${clock(s.closes)}`;
+  const warn = s.closedToday ? `<div class="trip-warn">⚠️ ${L('You would reach after the temple closes for the day — start earlier or move this temple to the next morning.', 'கோவில் நடை சாத்திய பின் சென்றடைவீர்கள் — முன்னதாகப் புறப்படுங்கள் அல்லது அடுத்த நாள் காலைக்கு மாற்றுங்கள்.')}</div>`
+    : s.wait >= 30 ? `<div class="trip-warn">⏳ ${L(`The temple is closed for the afternoon break — about ${Math.round(s.wait / 60 * 10) / 10} h wait; it reopens around ${clock(s.opens)}. Plan lunch and rest nearby.`, `மதிய இடைவேளையில் நடை சாத்தப்பட்டிருக்கும் — சுமார் ${Math.round(s.wait / 60 * 10) / 10} மணி காத்திருப்பு; ${clock(s.opens)} அளவில் மீண்டும் திறக்கும். அருகில் உணவு, ஓய்வு திட்டமிடுங்கள்.`)}</div>`
+      : s.tight ? `<div class="trip-warn">⚠️ ${L(`Tight: reach by ${clock(s.reachBy)} for unhurried darshan before closing.`, `நெருக்கடி: நடை சாத்தும் முன் நிதானமான தரிசனத்திற்கு ${clock(s.reachBy)}-க்குள் சென்றடையுங்கள்.`)}</div>` : '';
+  return `<div class="small trip-time">${base} ${est()}</div>${warn}`;
+}
+// Each traveller: running Dasa / Bhukti lords → the temple tradition links to them and the parigaram to do on this trip.
+function travellerAdvice(o) {
+  const people = (form.who.length ? state.family.filter((m) => form.who.includes(m.id)) : state.family).filter((m) => m.relation !== 'organization').slice(0, 8);
+  if (!people.length) return '';
+  const rows = people.map((m) => {
+    let c; try { c = chartOf(m); } catch { return ''; }
+    const now = new Date();
+    const per = (c.dasa?.periods || []).find((p) => new Date(p.start) <= now && now < new Date(p.end));
+    const md = per?.lord, ad = per?.bhuktis?.find((b) => new Date(b.start) <= now && now < new Date(b.end))?.lord;
+    if (!md) return '';
+    const lords = [...new Set([md, ad].filter(Boolean))];
+    const onTrip = o.temples.filter((t) => lords.includes(t.planet));
+    const n = NAVAGRAHA[md];
+    return `<div class="trav-row"><b>👤 ${esc(displayName(m))}</b> <span class="muted small">· ${esc(planetName(md))} ${L('Dasa', 'தசை')}${ad && ad !== md ? ` / ${esc(planetName(ad))} ${L('Bhukti', 'புக்தி')}` : ''}</span>
+      <div class="small">🛕 ${onTrip.length ? `${L('On this trip', 'இந்தப் பயணத்தில்')}: <b>${onTrip.map((t) => esc(bi(t.name))).join(', ')}</b>` : `${L('Best temple for this period', 'இந்தக் காலத்திற்கு உகந்த கோவில்')}: <b>${esc(bi(n.temple))}</b>`} — ${esc(bi(n.deity))}</div>
+      <div class="small">🪔 ${L('Parigaram during the trip', 'பயணத்தில் செய்ய வேண்டிய பரிகாரம்')}: ${esc(bi(n.free))}</div>
+      <div class="small muted">🎁 ${esc(bi(n.charity))}</div></div>`;
+  }).filter(Boolean);
+  return rows.length ? `<div class="ans-sec trav-sec"><div class="ans-h">👨‍👩‍👧 ${L('For each traveller — by Dasa & Bhukti', 'ஒவ்வொருவருக்கும் — தசா, புக்திப்படி')}</div>${rows.join('')}
+    <p class="small muted">${L('Visit the temple in the morning on the planet’s weekday if you can; keep the parigaram simple and sincere.', 'முடிந்தால் அந்தக் கிரகத்தின் கிழமையில் காலையில் தரிசனம்; பரிகாரம் எளிமையாக, மனதார.')}</p></div>` : '';
+}
 const statusBadge = (s) => (s === 'unverified' ? `<span class="badge unv">${L('Unverified', 'சரிபார்க்கப்படவில்லை')}</span>`
   : s === 'missing' ? `<span class="badge unv">${L('Not available', 'தகவல் இல்லை')}</span>`
     : s === 'stale' ? `<span class="badge est">${L('Needs re-check', 'மீண்டும் சரிபார்க்க வேண்டும்')}</span>`
@@ -175,15 +206,17 @@ function optionHtml(o, idx) {
     ${o.itinerary.map((d, di) => `<div class="trip-day"><div class="mini-label">${L('Day', 'நாள்')} ${d.day}${plan.date ? ` · ${dayDate(di)}` : ''} · ${L('travel', 'பயணம்')} ${hrs(d.driveHours)} ${est()}</div>
       ${d.stops.map((s) => { const t = o.temples.find((x) => x.id === s.temple.id); return `<div class="trip-stop">
         <b>🛕 ${esc(bi(t.name))}</b> <span class="muted small">· ${esc(t.town)} · ${L('from previous stop', 'முந்தைய இடத்திலிருந்து')} ~${Math.round(s.km)} ${L('km', 'கி.மீ')}, ${hrs(s.hours)}</span>
+        ${timeLine(s)}
         <div class="small">${L('Tradition', 'மரபு')}: ${esc(bi(t.association))} · <span class="muted">${L('Source', 'ஆதாரம்')}: ${t.associationReview ? `${esc(t.associationReview.source)} · ${L('reviewed', 'சரிபார்த்தது')} ${esc(t.associationReview.verifiedOn)}` : esc(bi(REVIEW.associations.source))}</span></div>
         <div class="small">${L('Opening hours', 'திறப்பு நேரம்')}: ${esc(bi(t.hours.text))} ${statusBadge(t.hours.status)} <span class="muted">${t.hours.verifiedOn ? `${L('Verified on', 'சரிபார்த்த நாள்')} ${esc(t.hours.verifiedOn)} · ${esc(t.hours.source)}` : L('Last verified: never', 'கடைசியாக சரிபார்த்தது: இல்லை')}</span></div>
         <div class="small">${L('Accessibility', 'அணுகல்')}: ${statusBadge(t.accessibility)} ${t.accessibilityInfo ? `${esc(bi({ en: t.accessibilityInfo.en, ta: t.accessibilityInfo.ta || t.accessibilityInfo.en }))} <span class="muted">(${esc(t.accessibilityInfo.source)}, ${esc(t.accessibilityInfo.verifiedOn)})</span>` : esc(bi(REVIEW.accessibility.source))}</div>
-        <div class="btn-row"><a class="chip-btn" href="${templeLinks(t).directions}" target="_blank" rel="noopener">🧭 ${L('Directions', 'வழி')}</a><a class="chip-btn" href="${REVIEW.hours.url}" target="_blank" rel="noopener">🏛️ ${L('Official HR&CE site', 'அதிகாரப்பூர்வ HR&CE')}</a>${plan.date ? remindBtn({ title: `${bi(t.name)}`, at: `${new Date(new Date(`${plan.date}T06:00:00+05:30`).getTime() + di * 86400000).toISOString()}`, place: t.town, label: L('Remind', 'நினைவூட்டு') }) : ''}</div>
+        <div class="btn-row"><a class="chip-btn" href="${templeLinks(t).directions}" target="_blank" rel="noopener">🧭 ${L('Directions', 'வழி')}</a><a class="chip-btn" href="${templeLinks(t).contact}" target="_blank" rel="noopener">📞 ${L('Phone & today’s timings', 'தொலைபேசி & இன்றைய நேரம்')}</a>${templeLinks(t).official ? `<a class="chip-btn" href="${templeLinks(t).official}" target="_blank" rel="noopener">🌐 ${L('Official website', 'அதிகாரப்பூர்வ தளம்')}</a>` : `<a class="chip-btn" href="${REVIEW.hours.url}" target="_blank" rel="noopener">🏛️ ${L('Official HR&CE site', 'அதிகாரப்பூர்வ HR&CE')}</a>`}${plan.date ? remindBtn({ title: `${bi(t.name)}`, at: `${new Date(new Date(`${plan.date}T06:00:00+05:30`).getTime() + di * 86400000).toISOString()}`, place: t.town, label: L('Remind', 'நினைவூட்டு') }) : ''}</div>
       </div>`; }).join('')}
       ${d.returnKm ? `<div class="small muted">↩ ${L('Return to', 'திரும்புதல்')} ${esc(plan.inputs.start.name)}: ~${Math.round(d.returnKm)} ${L('km', 'கி.மீ')}, ${hrs(d.returnHours)}</div>` : ''}
     </div>`).join('')}
     </details>
     ${o.homeWorship ? `<div class="ans-sec"><div class="ans-h">🪔 ${L('Or worship at home (free)', 'அல்லது வீட்டிலேயே வழிபாடு (இலவசம்)')}</div><p class="small">${homePlanet ? `${esc(planetName(homePlanet))}: ${esc(bi(NAVAGRAHA[homePlanet].free))}` : L('Light a lamp at sunrise or sunset and spend ten quiet minutes in prayer.', 'சூரிய உதயம் / மறைவில் தீபம் ஏற்றி, பத்து நிமிடம் அமைதியாக வழிபடுங்கள்.')}</p></div>` : ''}
+    ${travellerAdvice(o)}
     <div class="ans-sec"><div class="ans-h">${L('Optional worship', 'விருப்ப வழிபாடு')}</div><ul class="small">${worshipOptions(o.temples[0]?.planet || homePlanet).map((w) => `<li>${esc(bi(w))}</li>`).join('')}</ul></div>
     <div class="btn-row">
       <button class="chip-btn" data-save="${idx}">💾 ${L('Save', 'சேமி')}</button>

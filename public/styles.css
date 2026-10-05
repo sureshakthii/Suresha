@@ -1368,3 +1368,18 @@ body::after { content: ''; position: fixed; left: 0; right: 0; top: 0; height: v
 .topbar { position: relative !important; top: 0 !important; transform: none !important; }
 body.hdr-hide .topbar { transform: none !important; }
 .sub-head, body.hdr-hide .sub-head, body.large .sub-head { top: var(--sat) !important; }
+/* Tamil date number never breaks (e.g. "19" must not become 1 above 9) */
+.td-day { white-space: nowrap; flex-shrink: 0; word-break: keep-all; overflow-wrap: normal; min-width: max-content; line-height: 1; }
+.tamil-date { flex-wrap: nowrap; }
+.tamil-date > div:last-child { min-width: 0; }
+/* Brand in the header: larger and brighter */
+.brand-mini img, .topbar .brand-mini img { width: 58px !important; height: 58px !important; border-radius: 15px; box-shadow: 0 0 0 2px rgba(255, 217, 138, .75), 0 4px 18px rgba(255, 170, 60, .45); filter: saturate(1.25) brightness(1.08); }
+.bm-ta .bm-name { font-size: 28px !important; letter-spacing: .3px; color: #ffd27a !important; -webkit-text-fill-color: currentColor; background: none !important; text-shadow: 0 0 12px rgba(255, 170, 60, .55), 0 1px 0 rgba(0, 0, 0, .4); }
+[data-theme="light"] .bm-ta .bm-name { color: #a01f48 !important; text-shadow: 0 1px 6px rgba(160, 31, 72, .25); }
+.bm-latin { font-weight: 800 !important; letter-spacing: 2px; color: #f5c26b !important; } [data-theme="light"] .bm-latin { color: #8a5300 !important; }
+.bm-tag { font-size: 13px !important; font-weight: 600; } [data-theme="dark"] .bm-tag { color: #f3e3c4 !important; }
+@media (max-width: 340px) { .brand-mini img, .topbar .brand-mini img { width: 48px !important; height: 48px !important; } .bm-ta .bm-name { font-size: 24px !important; } }
+.dc-welcome { background: linear-gradient(120deg, rgba(56, 189, 248, .12), rgba(245, 184, 61, .12)); border-radius: 12px; padding: 10px 12px; line-height: 1.55; color: var(--text); font-weight: 500; }
+.trip-time { margin: 4px 0; color: var(--text); }
+.trip-warn { font-size: var(--fs-sm); background: rgba(161, 92, 0, .1); border-left: 3px solid #d97706; border-radius: 8px; padding: 6px 8px; margin: 4px 0; line-height: 1.5; color: var(--text); }
+.trav-row { padding: 8px 0; border-bottom: 1px solid var(--line, rgba(0,0,0,.08)); line-height: 1.55; } .trav-row:last-of-type { border-bottom: 0; }

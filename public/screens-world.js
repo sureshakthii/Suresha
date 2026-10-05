@@ -15,6 +15,17 @@ import {
 } from './core.js';
 import { refreshSnap } from './screens-main.js';
 import { fetchForecast, weatherAdvice } from './shared/weather.js';
+import { stationObservation } from './shared/station.js';
+
+// On the phone the native HTTP bridge reaches the airport station service (no browser CORS limits).
+async function getJsonNative(url) {
+  const H = window.Capacitor?.Plugins?.CapacitorHttp;
+  if (H?.get) { const r = await H.get({ url, headers: { Accept: 'application/json' } }); if (r.status >= 400) throw new Error(String(r.status)); return typeof r.data === 'string' ? JSON.parse(r.data) : r.data; }
+  const r = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!r.ok) throw new Error(String(r.status));
+  return r.json();
+}
+const phoneStation = (lat, lon) => stationObservation(lat, lon, getJsonNative);
 import { tamilDay } from './shared/tamilcal.js';
 import { remindBtn } from './remind.js';
 import { upcomingReminders, deleteReminder } from './remind.js';
@@ -30,10 +41,16 @@ export async function fetchWeather(lat, lon) {
   if (hit && Date.now() - hit.at < 10 * 60000) return hit.data;
   // Server: station observation + forecast. No server (offline phone app / test page): straight from Open-Meteo.
   let data;
-  if (STATIC) data = await fetchForecast(lat, lon);
-  else { try { data = await api(`/api/weather?lat=${lat}&lon=${lon}`); } catch { data = await fetchForecast(lat, lon); } }
+  if (STATIC) data = await fetchForecast(lat, lon, fetch, phoneStation);
+  else { try { data = await api(`/api/weather?lat=${lat}&lon=${lon}`); } catch { data = await fetchForecast(lat, lon, fetch, phoneStation); } }
   weatherCache.set(key, { at: Date.now(), data });
   return data;
+}
+/** "Now" = the nearest station's MEASURED reading when it is fresh (< 3 h), else the forecast model. */
+function nowTemp(w) {
+  const o = w.station?.observed;
+  const fresh = o && o.tempC != null && o.time && Date.now() - new Date(o.time).getTime() < 3 * 3600000;
+  return fresh ? { t: Math.round(o.tempC), measured: true, at: o.time, where: w.station.name } : { t: Math.round(w.current.tempC), measured: false, at: w.current.time || w.fetchedAt };
 }
 const wIcon = (code) => (code == null ? '🌡️' : code === 0 ? '☀️' : code <= 2 ? '🌤️' : code === 3 ? '☁️' : code <= 48 ? '🌫️' : code <= 57 ? '🌦️' : code <= 67 ? '🌧️' : code <= 77 ? '🌨️' : code <= 82 ? '🌧️' : '⛈️');
 const travelTag = (lvl) => (lvl === 'good' ? 'good' : lvl === 'caution' ? 'warn' : 'bad');
@@ -61,12 +78,12 @@ export async function fillHomeWeather(td) {
   try {
     const w = await fetchWeather(state.loc.lat, state.loc.lon);
     if (!$('#homeWeather')) return;
-    const obs = w.station?.observed;
-    const t = Math.round(obs?.tempC ?? w.current.tempC);
+    const nt = nowTemp(w);
+    const t = nt.t;
     const today = w.daily[0] || {};
     el.innerHTML = `<div class="wx-top"><div class="w-icon">${wIcon(w.current.weatherCode)}</div>
         <div class="wx-temp">${t}°<small>C</small></div>
-        <div style="flex:1;min-width:0"><div class="mini-label">${L('Weather now', 'இப்போதைய வானிலை')} · ${esc(placeName(state.loc.name))}</div>
+        <div style="flex:1;min-width:0"><div class="mini-label">${nt.measured ? `📡 ${L('Measured', 'அளவிடப்பட்டது')} · ${esc(nt.where)} · ${fmtTime(nt.at, state.loc.tz)}` : `${L('Forecast now', 'கணிப்பு')} · ${esc(placeName(state.loc.name))}`}</div>
           <div class="wx-desc">${esc(bi(w.current.description))}</div>
           <div class="mini-sub">${L('Feels like', 'உணரும் வெப்பம்')} ${Math.round(w.current.feelsLikeC ?? t)}° · ${today.minC != null ? `${Math.round(today.minC)}°–${Math.round(today.maxC)}°` : ''}</div></div></div>
       <div class="wx-stats">
@@ -94,7 +111,9 @@ async function renderWeather(sec, params = {}) {
         ${w.travel.reasons.map((r) => `<p class="small">• ${esc(bi(r))}</p>`).join('')}</div>
       <div class="card glass"><div class="card-title">🧭 ${L('Today\'s weather advice', 'இன்றைய வானிலை ஆலோசனை')}</div>${adviceHtml(adviceFor(w, lat, lon))}</div>
       <div class="card glass w-now"><div class="w-big">${wIcon(w.current.weatherCode)}</div>
-        <div><div class="w-temp">${Math.round(w.current.tempC)}°C</div><div>${esc(bi(w.current.description))}</div>
+        <div><div class="w-temp">${nowTemp(w).t}°C</div>
+        <div class="small">${nowTemp(w).measured ? `📡 ${L('Measured at', 'அளவீடு')} ${esc(w.station.name)} ${L('station', 'நிலையம்')} · ${fmtTime(nowTemp(w).at, state.loc.tz)}` : `${L('Forecast model (Open-Meteo) — local readings may differ by a few degrees', 'முன்னறிவிப்பு மாதிரி (Open-Meteo) — உள்ளூர் அளவீடு சில டிகிரி மாறலாம்')}`}</div>
+        <div>${esc(bi(w.current.description))}</div>
         <div class="muted small">${L('Feels like', 'உணரும் வெப்பம்')} ${Math.round(w.current.feelsLikeC)}°C · 💧 ${w.current.humidity}% · 💨 ${Math.round(w.current.windKph)} km/h</div></div></div>
       ${obs ? `<div class="card glass"><div class="card-title"><span>📡 ${L('Weather station', 'வானிலை நிலையம்')}: ${esc(w.station.name)}</span><span class="pill">${esc(w.station.icao)} · ${Math.round(w.station.distanceKm)} km</span></div>
         <dl class="kv"><dt>${L('Observed', 'பதிவு')}</dt><dd>${fmtTime(obs.time, state.loc.tz)}</dd><dt>${L('Temperature', 'வெப்பநிலை')}</dt><dd>${obs.tempC ?? '—'}°C</dd>
@@ -105,7 +124,7 @@ async function renderWeather(sec, params = {}) {
         <div class="rain-bars">${w.hourly.map((h) => `<div class="rb" title="${fmtTime(h.time, state.loc.tz)} · ${h.rainChance}%"><i style="height:${Math.max(3, (h.rainChance / maxRain) * 100)}%"></i><span>${new Date(new Date(h.time).getTime()).getHours()}</span></div>`).join('')}</div></div>
       <div class="card glass"><div class="card-title">📅 ${L('7-day forecast', '7 நாள் முன்னறிவிப்பு')}</div>
         ${w.daily.map((d) => `<div class="factor"><span>${wIcon(d.weatherCode)} ${fmtIsoDate(d.date)} · ${esc(bi(d.description))}</span><b class="zero">${Math.round(d.minC)}°–${Math.round(d.maxC)}° · 💧${d.rainChance ?? 0}%</b></div>`).join('')}</div>
-      <p class="muted small center">${L('Sources', 'ஆதாரம்')}: ${esc(w.source.station)} · ${esc(w.source.forecast)}</p>`;
+      <p class="muted small center">${L('Sources', 'ஆதாரம்')}: ${[w.source.station, w.source.forecast].filter(Boolean).map(esc).join(' · ')} · ${L('updated', 'புதுப்பிப்பு')} ${fmtTime(w.fetchedAt || Date.now(), state.loc.tz)}</p>`;
   } catch (e) {
     $('#wBody').innerHTML = `<div class="card glass"><p>${L('Weather is unavailable right now. Please try again in a little while.', 'வானிலை தற்போது கிடைக்கவில்லை. சிறிது நேரம் கழித்து முயற்சிக்கவும்.')}</p>${ta() ? '' : `<p class="muted small">${esc(e.message)}</p>`}</div>`;
   }
@@ -161,6 +180,8 @@ function renderTemples(sec) {
           ${templeDetailHtml(t)}
           <div class="btn-row">
             <a class="chip-btn" href="${links.directions}" target="_blank" rel="noopener">🗺️ ${L('Directions', 'வழி')}</a>
+            <a class="chip-btn" href="${links.contact}" target="_blank" rel="noopener">📞 ${L('Phone & timings', 'தொலைபேசி & நேரம்')}</a>
+            ${links.official ? `<a class="chip-btn" href="${links.official}" target="_blank" rel="noopener">🌐 ${L('Official website', 'அதிகாரப்பூர்வ தளம்')}</a>` : `<a class="chip-btn" href="${links.hrce}" target="_blank" rel="noopener">🏛️ HR&CE</a>`}
             <a class="chip-btn" href="${links.hotels}" target="_blank" rel="noopener">🏨 ${L('Hotels', 'தங்குமிடம்')}</a>
             <button class="chip-btn" data-weather="${t.id}">☁️ ${L('Weather', 'வானிலை')}</button>
             <button class="chip-btn" data-trip="${t.id}">⏰ ${L('Plan visit', 'பயணத் திட்டம்')}</button>

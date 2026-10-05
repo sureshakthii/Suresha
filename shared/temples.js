@@ -120,4 +120,15 @@ export const templeLinks = (t) => ({
   directions: `https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lon}`,
   hotels: `https://www.google.com/maps/search/hotels+near+${encodeURIComponent(`${t.name.en}, ${t.town}`)}`,
   hrce: 'https://hrce.tn.gov.in/',
+  // Live phone number, today's timings and reviews from the temple's Google Maps listing (kept current by Google).
+  contact: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${t.name.en} ${t.town}`)}`,
+  official: OFFICIAL[t.id] || null,
 });
+
+// Official websites only where the address is well established; everything else uses the live Maps listing.
+const OFFICIAL = {
+  tirupati: 'https://www.tirumala.org/',
+  tirumala: 'https://www.tirumala.org/',
+  sabarimala: 'https://sabarimalaonline.org/',
+  guruvayur: 'https://guruvayurdevaswom.in/',
+};

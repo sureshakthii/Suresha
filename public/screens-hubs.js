@@ -49,12 +49,12 @@ export const FEATURES = [
   { id: 'ask', hub: 'chat', en: 'Is now a good time? (Prasnam)', ta: 'இப்போது செய்யலாமா? (பிரசன்னம்)', level: 'simple' },
   // Services
   { id: 'journey', hub: 'services', en: 'My Spiritual Journey', ta: 'என் ஆன்மீகப் பயணம்', level: 'simple' },
-  { id: 'temples', hub: 'services', en: 'Temples & traditions', ta: 'கோவில்கள் & மரபுகள்', level: 'simple' },
+  { id: 'temples', hub: 'services', en: 'Temples — timings, phone & directions', ta: 'கோவில்கள் — நேரம், தொலைபேசி, வழி', level: 'simple' },
   { id: 'packages', hub: 'services', en: 'Yatra packages', ta: 'யாத்திரை பேக்கேஜ்', level: 'simple', status: 'server' },
   { id: 'seva', hub: 'services', en: 'Temple seva requests', ta: 'கோவில் சேவை கோரிக்கை', level: 'simple', status: 'server' },
   { id: 'priests', hub: 'services', en: 'Priest requests', ta: 'புரோகிதர் கோரிக்கை', level: 'simple', status: 'server' },
   { id: 'bookings', hub: 'services', en: 'My bookings — status & cancel', ta: 'என் முன்பதிவுகள் — நிலை & ரத்து', level: 'simple', status: 'server' },
-  { id: 'consult', hub: 'services', en: 'Talk to a human astrologer', ta: 'ஜோதிடருடன் நேரில் பேச', level: 'simple', status: 'server' },
+  { id: 'consult', hub: 'services', en: 'Expert astrologer review (premium add-on)', ta: 'நிபுணர் ஜோதிடர் சரிபார்ப்பு (பிரீமியம் கூடுதல்)', level: 'simple', status: 'server' },
   { id: 'store', hub: 'services', en: 'Pooja store', ta: 'பூஜைக் கடை', level: 'advanced', status: 'sample' },
   { id: 'plans', hub: 'services', en: 'Premium & Family plans', ta: 'பிரீமியம் & குடும்பத் திட்டங்கள்', level: 'simple' },
 ];

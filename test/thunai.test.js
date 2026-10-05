@@ -242,3 +242,32 @@ test('daily do\'s and don\'ts change with the day\'s star and weekday', async ()
   const lists = ['2026-10-05', '2026-10-06', '2026-10-07'].map((d) => { const t = new Date(`${d}T04:00:00Z`); return dailyReview(chart, panchang(t, suresh.lat, suresh.lon, suresh.tz), t).dos.map((x) => x.en).join('|'); });
   assert.equal(new Set(lists).size, 3);
 });
+
+test('safety & understanding: Tanglish crisis, love, festivals, going abroad', () => {
+  for (const q of ['naan saga poren', 'I am going to die', 'sethuruven pola irukku']) assert.equal(classify(q).intent, 'crisis', q);
+  assert.equal(classify('I want to fall in love').intent, 'love');
+  assert.equal(classify('kadhal vazhkai eppadi').intent, 'love');
+  assert.equal(classify('vizhaa natkal').intent, 'festival');
+  assert.equal(classify('videsham poga mudiyuma').intent, 'visa');
+  const crisis = ask('naan saga poren', 'ta');
+  assert.match(crisis.text, /14416/);
+  assert.ok(!crisis.sections.some((s) => s.key === 'prayer'));
+});
+
+test('faith: name hint, own choice wins, blessing replaces deity prayer', async () => {
+  const { guessFaith, faithOf } = await import('../shared/faith.js');
+  assert.equal(guessFaith('Mohammed Riyaz'), 'muslim');
+  assert.equal(guessFaith('John Peter'), 'christian');
+  assert.equal(guessFaith('Suresh Babu'), null);
+  assert.equal(faithOf({ name: 'John', faith: 'hindu' }), 'hindu');
+  const a = composeAnswer({ question: 'How is my career?', lang: 'en', facts, life: { faith: 'christian' } });
+  assert.match(a.sections.find((s) => s.key === 'prayer').lines[0], /God bless/);
+});
+
+test('journey: every stop gets arrival / closing times from temple hours', () => {
+  const p = planJourney({ start: { name: 'Madurai', lat: 9.9252, lon: 78.1198 }, days: 2, travellers: 2, transport: 'own_car', planets: ['Saturn'] });
+  for (const o of p.options) for (const d of o.itinerary) for (const s of d.stops) {
+    assert.match(s.arrive, /^\d{1,2}:\d{2}$/);
+    assert.ok(s.closes && typeof s.wait === 'number');
+  }
+});

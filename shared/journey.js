@@ -9,8 +9,9 @@
 //  • Accessibility is "not verified" for every temple until a verified source is added.
 //  • Ranking uses only distance, preferences and chart associations. No payment or partner affects it.
 import { TEMPLES, distanceKm } from './temples.js';
-import { templeInfo } from './temple-info.js';
+import { templeInfo, templeRanges } from './temple-info.js';
 import { NAVAGRAHA } from './remedies.js';
+import { PLANETS } from './astro.js';
 import { verifiedField } from './temple-verified.js';
 
 const B = (en, ta) => ({ en, ta });
@@ -100,6 +101,31 @@ export function estimateCost({ km, days, nights, travellers, transport, tier, te
 }
 
 /** Greedy nearest-neighbour route through chosen temples, split into days by pace. */
+const hm = (min) => { const m = Math.round(min); return `${Math.floor(m / 60) % 24}:${String(m % 60).padStart(2, '0')}`; };
+/**
+ * Clock times for a day's stops against each temple's opening hours (approximate): start 6:00, drive, wait if the
+ * temple is closed (afternoon break), allow darshan time, and warn when a stop would reach after closing.
+ */
+function scheduleDay(stops, pace) {
+  const visit = pace === 'relaxed' ? 90 : pace === 'packed' ? 45 : 60;
+  let clock = 6 * 60;
+  for (const s of stops) {
+    let arrive = clock + s.hours * 60;
+    const ranges = templeRanges(s.temple.id);
+    let open = ranges.find(([a, b]) => arrive < b - 20);
+    let wait = 0;
+    if (open && arrive < open[0]) { wait = open[0] - arrive; arrive = open[0]; }
+    const closedToday = !open;
+    const leave = arrive + visit;
+    s.arrive = hm(arrive); s.leave = hm(leave); s.wait = Math.round(wait);
+    s.opens = open ? hm(open[0]) : null; s.closes = open ? hm(open[1]) : hm(ranges[ranges.length - 1][1]);
+    s.tight = !!open && leave > open[1];
+    s.closedToday = closedToday;
+    s.reachBy = open ? hm(open[1] - visit) : null;
+    clock = closedToday ? arrive : leave;
+  }
+}
+
 function buildDays(start, temples, { days, pace, transport }) {
   const maxH = PACE_HOURS[pace] || 5;
   const perDay = TEMPLES_PER_DAY[pace] || 3;
@@ -120,6 +146,7 @@ function buildDays(start, temples, { days, pace, transport }) {
       stops.push({ temple: next, km, hours: h });
       hours += h; totalKm += km; here = next;
     }
+    scheduleDay(stops, pace);
     out.push({ day: d + 1, stops, driveHours: hours });
   }
   const back = roadKm(here, start);
@@ -192,7 +219,7 @@ export function worshipOptions(planet) {
   return [
     B('Free: darshan, a quiet prayer and walking around the temple (pradakshinam).', 'இலவசம்: தரிசனம், அமைதியான பிரார்த்தனை, பிரதட்சணம்.'),
     B('Simple: light a ghee or sesame-oil lamp; offer flowers.', 'எளியது: நெய் / நல்லெண்ணெய் தீபம்; மலர் சமர்ப்பணம்.'),
-    n ? B(`For ${planet}: ${n.free.en}`, `${planet} கிரகத்திற்கு: ${n.free.ta}`) : null,
+    n ? B(`For ${planet}: ${n.free.en}`, `${PLANETS[planet]?.ta || planet} கிரகத்திற்கு: ${n.free.ta}`) : null,
     B('Optional paid archanai or abhishekam — book only at the temple counter or the official HR&CE site.', 'விருப்பக் கட்டண அர்ச்சனை / அபிஷேகம் — கோவில் கவுண்டரில் அல்லது அதிகாரப்பூர்வ HR&CE தளத்தில் மட்டும்.'),
   ].filter(Boolean);
 }

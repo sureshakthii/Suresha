@@ -347,11 +347,28 @@ export const HUB_OF = {
   more: null, about: 'more', legal: 'more', feedback: 'more', invite: 'more', admin: 'more', privacy: 'more', calc: 'more',
 };
 
-export function go(view, params = {}) {
+// Navigation history: Back (the ‹ button and the phone's back key) returns to the page you came from,
+// at the same scroll position, instead of jumping to the home page.
+const navStack = [];
+export function goBack(fallback = 'home') {
+  const last = navStack.pop();
+  if (last && screens[last.view]) {
+    go(last.view, last.params, { back: true });
+    requestAnimationFrame(() => scrollTo({ top: last.y || 0 }));
+    return true;
+  }
+  if (state.view !== fallback) { go(fallback, {}, { back: true }); return true; }
+  return false;
+}
+export function go(view, params = {}, opts = {}) {
   if (!screens[view]) return;
   document.body.classList.remove('hdr-hide');
   if (screens[view].needsMember && !activeMember()) { view = 'family'; params = { add: true, first: true }; }
   const prev = state.view;
+  if (!opts.back && prev && prev !== view && screens[prev]) {
+    navStack.push({ view: prev, params: state.params || {}, y: window.scrollY });
+    if (navStack.length > 40) navStack.shift();
+  }
   state.view = view;
   state.params = params;
   let sec = $(`#view-${view}`);
@@ -367,7 +384,7 @@ export function go(view, params = {}) {
   $$('.tabbar button').forEach((b) => { const on = b.dataset.tab === tab; b.classList.toggle('active', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   $('#app').classList.toggle('no-tabs', !!screens[view].fullscreen);
   document.dispatchEvent(new CustomEvent('kj:screen', { detail: view }));
-  if (prev !== view) scrollTo({ top: 0 });
+  if (prev !== view && !opts.back) scrollTo({ top: 0 });
   screens[view].render(sec, params);
   // Screen readers / keyboard: move focus to the new screen's heading when the person navigates.
   if (prev !== view && document.activeElement && document.activeElement !== document.body) {
@@ -418,14 +435,33 @@ if (typeof window !== 'undefined') {
   }, { passive: true });
 }
 
+/** Print / Save as PDF: the phone app uses Android's Print service (window.print is ignored in WebViews). */
+export function printPage(title = document.querySelector('.view:not([hidden]) h2')?.textContent || 'Thunai') {
+  if (window.ThunaiNative?.print) { setTimeout(() => window.ThunaiNative.print(`Thunai - ${title}`.slice(0, 80)), 150); return; }
+  window.print();
+}
+
 export function subHeader(title, sub = '', back = HUB_OF[state.view] || screens[state.view]?.parent || 'home') {
   return `<div class="sub-head"><button class="back-btn" data-back="${back}" aria-label="${L('Back', 'பின்செல்')}">‹</button>
     <div><h2>${title}</h2></div></div>${sub ? `<p class="muted small sub-desc">${sub}</p>` : ''}`;
 }
+// Phone back key (Capacitor): close an open dialog first, then go to the previous page; exit only from Today.
+if (typeof window !== 'undefined') {
+  const hookBack = () => {
+    const App = window.Capacitor?.Plugins?.App;
+    if (!App?.addListener) return;
+    App.addListener('backButton', () => {
+      const modal = document.querySelector('.modal');
+      if (modal) { modal.remove(); return; }
+      if (!goBack('home')) App.minimizeApp?.() ?? App.exitApp?.();
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hookBack); else hookBack();
+}
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-back]');
-  if (b) go(b.dataset.back);
-  if (e.target.closest('[data-print]')) { document.querySelectorAll('.view:not([hidden]) details').forEach((d) => { d.open = true; }); window.print(); }
+  if (b) goBack(b.dataset.back);
+  if (e.target.closest('[data-print]')) { document.querySelectorAll('.view:not([hidden]) details').forEach((d) => { d.open = true; }); printPage(); }
   const g = e.target.closest('[data-go]');
   if (g) go(g.dataset.go, g.dataset.param ? JSON.parse(g.dataset.param) : {});
 });

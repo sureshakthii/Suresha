@@ -21,6 +21,7 @@ import { reminderCard } from './remind.js';
 import { iconChip } from './icons.js';
 import { healthGuide } from './shared/health.js';
 import { dailyReview } from './shared/daily.js';
+import { faithOf, faithWelcome, faithBlessing, universalPractice } from './shared/faith.js';
 
 const TARA = [['Janma', 'ஜன்ம', 'warn'], ['Sampat', 'சம்பத்', 'good'], ['Vipat', 'விபத்', 'bad'], ['Kshema', 'க்ஷேம', 'good'], ['Pratyak', 'பிரத்யக்', 'bad'], ['Sadhana', 'சாதக', 'good'], ['Naidhana', 'நைதன', 'bad'], ['Mitra', 'மித்ர', 'good'], ['Parama Mitra', 'பரம மித்ர', 'good']];
 const goodBad = (k) => (k === 'good' ? L('Favourable', 'சாதகம்') : k === 'bad' ? L('Careful', 'கவனம்') : L('Neutral', 'சமம்'));
@@ -70,16 +71,21 @@ function dailyCard(m, snap, loc) {
     : ch ? `<div class="dc-next">🌙 ${L('Next Chandrashtamam', 'அடுத்த சந்திராஷ்டமம்')}: <b>${esc(range(ch))}</b></div>` : '';
   const fam = state.family.filter((x) => x.id !== person.id && x.relation !== 'organization').filter((x) => { try { return ((snap.moonRasi.index - chartOf(x).janmaRasi.index + 12) % 12) === 7; } catch { return false; } });
   const lvCls = { great: 'good', good: 'good', steady: 'warn', care: 'bad' }[r.level];
+  const faith = faithOf(person);
+  const other = faith !== 'hindu';
+  const welcome = faithWelcome(faith, displayName(person));
+  const blessing = other ? faithBlessing(faith) : null;
   return `<section class="card glass daily-card" aria-labelledby="dcTitle">
     <div class="card-title"><span id="dcTitle">🌅 ${L('Today for you', 'இன்று உங்களுக்கு')} · ${esc(displayName(person))}</span><span class="tag ${lvCls}">${esc(bi(r.label))}</span></div>
+    ${welcome ? `<div class="dc-welcome">🌍 ${esc(bi(welcome))}</div>` : ''}
     ${chLine}
     <ul class="dc-why">${r.why.map((w) => `<li>${esc(bi(w))}</li>`).join('')}</ul>
     <div class="dc-cols"><div class="dc-do"><h4>✅ ${L('Do', 'செய்யலாம்')}</h4><ul>${r.dos.map((x) => `<li>${esc(bi(x))}</li>`).join('')}</ul></div>
       <div class="dc-dont"><h4>🚫 ${L('Avoid', 'தவிர்க்கவும்')}</h4><ul>${r.donts.map((x) => `<li>${esc(bi(x))}</li>`).join('')}${snap.rahuKalam ? `<li class="small muted">${L('Rahu Kalam', 'ராகு காலம்')}: ${esc(fmtTime(snap.rahuKalam.start, loc.tz))} – ${esc(fmtTime(snap.rahuKalam.end, loc.tz))}</li>` : ''}</ul></div></div>
-    ${god}
-    ${r.dasaDeity ? `<p class="small">🪔 ${L('Your Dasa deity', 'உங்கள் தசா தெய்வம்')}: <b>${esc(bi(r.dasaDeity.name))}</b> · ${L('Birth-star deity', 'நட்சத்திரத் தெய்வம்')}: <b>${esc(bi(r.starDeity))}</b></p>` : ''}
+    ${other ? `<div class="dc-god"><span class="mini-label">🤝 ${L('For you today', 'இன்று உங்களுக்கு')}</span><b>${esc(bi(universalPractice(r.dasaDeity?.planet || r.dayLord)))}</b></div>` : god}
+    ${!other && r.dasaDeity ? `<p class="small">🪔 ${L('Your Dasa deity', 'உங்கள் தசா தெய்வம்')}: <b>${esc(bi(r.dasaDeity.name))}</b> · ${L('Birth-star deity', 'நட்சத்திரத் தெய்வம்')}: <b>${esc(bi(r.starDeity))}</b></p>` : ''}
     ${fam.length ? `<p class="small dc-fam">🌙 ${L('Chandrashtamam today in the family', 'இன்று குடும்பத்தில் சந்திராஷ்டமம்')}: <b>${fam.map((x) => esc(displayName(x))).join(', ')}</b> — ${L('be gentle with them today', 'இன்று அவர்களிடம் மென்மையாக இருங்கள்')}</p>` : ''}
-    ${r.prayer ? `<div class="dc-prayer">🙏 ${r.prayer.lines.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}
+    ${other ? (blessing ? `<div class="dc-prayer">${esc(bi(blessing))}</div>` : '') : r.prayer ? `<div class="dc-prayer">🙏 ${r.prayer.lines.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}
     <button class="chip-btn" id="dcShare" type="button">📤 ${L('Share my day', 'என் நாளைப் பகிர்')}</button>
   </section>`;
 }
@@ -92,8 +98,8 @@ function shareDaily(m, snap, loc) {
     ...r.why.map((w) => `• ${bi(w)}`),
     `✅ ${r.dos.map((x) => bi(x)).join('; ')}`,
     `🚫 ${r.donts.map((x) => bi(x)).join('; ')}`,
-    `🛕 ${L('God of the day', 'இன்றைய தெய்வம்')}: ${bi(r.deity.god)} — ${bi(r.deity.mantra)}`,
-    r.prayer ? `🙏 ${r.prayer.lines.map((x) => bi(x)).join(' · ')}` : '',
+    faithOf(m) === 'hindu' ? `🛕 ${L('God of the day', 'இன்றைய தெய்வம்')}: ${bi(r.deity.god)} — ${bi(r.deity.mantra)}` : '',
+    faithOf(m) === 'hindu' ? (r.prayer ? `🙏 ${r.prayer.lines.map((x) => bi(x)).join(' · ')}` : '') : (faithBlessing(faithOf(m)) ? bi(faithBlessing(faithOf(m))) : ''),
     '',
     `${L('From', 'வழங்குவது')} ${L('Thunai', 'துணை')} — ${L('Your companion on life’s path', 'உங்கள் வாழ்வின் வழித்துணை')}`,
   ].filter((x) => x !== '').join('\n');

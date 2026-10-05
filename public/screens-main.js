@@ -17,10 +17,11 @@ import {
 import { weatherCardHtml, fillHomeWeather, relationsList, relationRow } from './screens-world.js';
 import { trialBanner, ratePrompt } from './growth.js';
 import { todayColorCard } from './screens-guide.js';
-import { reminderCard } from './remind.js';
+import { reminderCard, remindBtn } from './remind.js';
 import { iconChip } from './icons.js';
 import { healthGuide } from './shared/health.js';
 import { dailyReview } from './shared/daily.js';
+import { todayPlan } from './shared/today-plan.js';
 import { faithOf, faithWelcome, faithBlessing, universalPractice } from './shared/faith.js';
 
 const TARA = [['Janma', 'ஜன்ம', 'warn'], ['Sampat', 'சம்பத்', 'good'], ['Vipat', 'விபத்', 'bad'], ['Kshema', 'க்ஷேம', 'good'], ['Pratyak', 'பிரத்யக்', 'bad'], ['Sadhana', 'சாதக', 'good'], ['Naidhana', 'நைதன', 'bad'], ['Mitra', 'மித்ர', 'good'], ['Parama Mitra', 'பரம மித்ர', 'good']];
@@ -55,6 +56,30 @@ function todayInfo(loc) {
     today = { key, day: tamilDay(noon, loc.lat, loc.lon, loc.tz) };
   }
   return today.day;
+}
+
+// Today's spiritual plan: sacred day + the person's Dasa / Bhukti / Sani transit + the Horai to use, with an
+// encouraging line — the first card after the greeting, so the morning starts with clear, positive actions.
+function todayPlanCard(m, snap, loc, td) {
+  const person = m && m.relation !== 'organization' ? m : null;
+  let plan, review;
+  try {
+    const chart = person ? chartOf(person) : null;
+    review = chart ? dailyReview(chart, snap, new Date()) : null;
+    const age = chart?.date ? Math.floor((Date.now() - new Date(`${chart.date}T00:00:00Z`)) / 31557600000) : 30;
+    plan = todayPlan({ chart, snap, festivals: td.festivals || [], level: review?.level || 'steady', now: new Date(), faith: person ? faithOf(person) : 'hindu', age });
+  } catch { return ''; }
+  const h = plan.horai;
+  const dateLine = `${esc(bi(td.weekday))} · ${esc(bi({ en: td.tamil.monthEn, ta: td.tamil.monthTa }))} ${td.tamil.day}`;
+  if (!plan.items.length && !h && !person) return '';
+  return `<section class="card glass plan-card" aria-labelledby="tpTitle">
+    <div class="card-title"><span id="tpTitle">🌞 ${L('Today’s guidance', 'இன்றைய வழிகாட்டல்')}</span><span class="pill">${dateLine}</span></div>
+    <p class="tp-energy">✨ ${esc(bi(plan.energy))}</p>
+    ${plan.items.map((it) => `<div class="tp-item${it.personal ? ' mine' : ''}"><div class="tp-icon">${it.icon}</div><div><b>${esc(bi(it.title))}</b><div class="small">${esc(bi(it.text))}</div></div></div>`).join('')}
+    ${h && h.start ? `<div class="tp-item tp-horai"><div class="tp-icon">⏰</div><div><b>${esc(fmtTime(h.start, loc.tz))} – ${esc(fmtTime(h.end, loc.tz))} · ${esc(planetName(h.planet))} ${h.planet === 'Rahu' ? L('(Rahu Kalam)', '(ராகு காலம்)') : h.planet === 'Ketu' ? '' : L('Horai', 'ஓரை')}</b>
+      <div class="small">${esc(bi(h.text))}</div><div class="small muted">${esc(bi(h.why))} · ${esc(bi(h.repeat))}</div></div>${remindBtn({ title: `${planetName(h.planet)} ${L('Horai prayer', 'ஓரை வழிபாடு')}`, at: h.start })}</div>` : ''}
+    ${!plan.items.length && person ? `<p class="small muted">${L('No special vratham today — follow your Horai practice and the do’s below.', 'இன்று சிறப்பு விரதம் இல்லை — உங்கள் ஓரை வழிபாட்டையும் கீழே உள்ள செய்யலாம் பட்டியலையும் பின்பற்றுங்கள்.')}</p>` : ''}
+  </section>`;
 }
 
 // Today: personal day review from gochara — Chandrashtamam, Tara / Chandra balam, do's & don'ts, today's god, prayer.
@@ -154,6 +179,7 @@ function renderHome(sec) {
       <div class="guide-sugs">${GUIDE_SUGGESTIONS.map(([en, tx]) => `<button class="sg" type="button">${esc(L(en, tx))}</button>`).join('')}</div>
       <p class="small muted">🎙️ ${L('Type or speak — Tamil, English or Tanglish. You can check the words before sending.', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எழுதலாம் அல்லது பேசலாம். அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
     </section>
+    ${todayPlanCard(m, snap, loc, td)}
     ${dailyCard(m, snap, loc)}
     ${healthTodayCard(m)}
     <button class="card glass cta-card love-cta" data-go="lovematch"><b>💘 ${L('Love Match', 'காதல் பொருத்தம்')}</b><span class="small">${L('Emotional sync, chemistry and the star match — check your love vibe and share it', 'உணர்வு, ஈர்ப்பு, நட்சத்திரப் பொருத்தம் — உங்கள் காதல் அதிர்வைப் பார்த்துப் பகிருங்கள்')}</span></button>

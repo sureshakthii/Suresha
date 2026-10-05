@@ -271,3 +271,22 @@ test('journey: every stop gets arrival / closing times from temple hours', () =>
     assert.ok(s.closes && typeof s.wait === 'number');
   }
 });
+
+test('today plan: sacred day linked to the person, horai with time and 9-week repeat, faith and age aware', async () => {
+  const { todayPlan } = await import('../shared/today-plan.js');
+  const { panchang } = await import('../shared/astro.js');
+  const chart = birthChart(suresh);
+  const now = new Date('2026-10-06T01:00:00Z');
+  const snap = panchang(now, suresh.lat, suresh.lon, suresh.tz);
+  const r = todayPlan({ chart, snap, festivals: [{ en: 'Ekadasi', ta: 'ஏகாதசி' }, { en: 'Pradosham', ta: 'பிரதோஷம்' }], level: 'good', now });
+  assert.ok(r.energy.ta && r.items.length === 2);
+  assert.ok(r.items.some((i) => i.personal));
+  assert.ok(r.horai && r.horai.start && /9/.test(r.horai.repeat.en));
+  const amav = todayPlan({ chart, snap, festivals: [{ en: 'Amavasai', ta: 'அமாவாசை' }, { en: 'Mahalaya Amavasai', ta: 'மகாளய அமாவாசை' }], now });
+  assert.equal(amav.items.length, 1);
+  assert.match(amav.items[0].title.en, /Mahalaya/);
+  const other = todayPlan({ chart, snap, festivals: [{ en: 'Ekadasi', ta: 'ஏகாதசி' }], now, faith: 'christian' });
+  assert.equal(other.items.length, 0);
+  const child = todayPlan({ chart, snap, festivals: [{ en: 'Sashti Viratham', ta: 'சஷ்டி விரதம்' }], now, age: 9 });
+  assert.match(child.items[0].text.en, /children need not fast/);
+});

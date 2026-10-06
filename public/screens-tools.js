@@ -23,10 +23,14 @@ import {
 } from './core.js';
 import { dayOutlook, gauge, animateGauges, refreshSnap, reliabilityOf, setupVoiceInput } from './screens-main.js';
 import { chartFacts, composeAnswer, factsForAI, classify, answerLang } from './shared/guidance.js';
-import { detectTopic, topicAnswer, cleanSharedAnswer, GENERAL_FOLLOWUPS } from './ask-thunai.js';
+import { detectTopic, detectTopics, topicAnswer, cleanSharedAnswer, generalFollowups, guardAnswer, childGeneralAnswer } from './ask-thunai.js';
+import { ageProfile, suggestionsFor, isAdult, MATCH_ADULTS_NOTE } from './shared/age-guard.js';
+import { dailyReview } from './shared/daily.js';
 
 const wait = () => new Promise((r) => setTimeout(r, 40));
 const loader = (msg) => `<div class="loader"><i></i><i></i><i></i></div><p class="muted center">${msg}</p>`;
+/** Age profile of a family member (calendar age on today's date at the selected place). */
+const ageOf = (m) => ageProfile(m, { tz: state.loc?.tz });
 const memberOptions = (sel) => state.family.map((m) => `<option value="${esc(m.id)}"${m.id === sel ? ' selected' : ''}>${esc(displayName(m))}</option>`).join('');
 const padaOptions = (sel = 1) => [1, 2, 3, 4].map((p) => `<option value="${p}"${p === sel ? ' selected' : ''}>${L('Pada', 'பாதம்')} ${p}</option>`).join('');
 
@@ -126,13 +130,17 @@ registerScreen('calendar', { render: renderCalendar, parent: 'home', needsLoc: t
 const porSide = { girl: { mode: 'star', star: 0, pada: 1, memberId: null }, boy: { mode: 'star', star: 0, pada: 1, memberId: null } };
 
 /** Default family member for a side: a woman for the bride (மணமகள்), a man for the groom (மணமகன்). */
-const sideDefault = (who) => (state.family.find((m) => m.relation !== 'organization' && m.gender === (who === 'girl' ? 'female' : 'male')) || state.family[0])?.id;
+// Marriage matching is for adults only: family members under 18 (or without a birth date) are never offered.
+const matchPool = () => state.family.filter((m) => m.relation !== 'organization' && isAdult(m, { tz: state.loc?.tz }));
+const sideDefault = (who) => (matchPool().find((m) => m.gender === (who === 'girl' ? 'female' : 'male')) || matchPool()[0])?.id;
+const adultOptions = (sel) => matchPool().map((m) => `<option value="${esc(m.id)}"${m.id === sel ? ' selected' : ''}>${esc(displayName(m))}</option>`).join('');
+const adultsNote = () => (matchPool().length < state.family.filter((m) => m.relation !== 'organization').length ? `<p class="small muted age-note">🌱 ${esc(bi(MATCH_ADULTS_NOTE))}</p>` : '');
 function sideForm(who) {
   const s = porSide[who];
-  const hasFamily = state.family.length > 0;
+  const hasFamily = matchPool().length > 0;
   return `<div class="por-side"><h3>${who === 'girl' ? `👰 ${L('Bride', 'மணமகள்')}` : `🤵 ${L('Groom', 'மணமகன்')}`}</h3>
     <div class="seg">${hasFamily ? `<button class="${s.mode === 'member' ? 'sel' : ''}" data-who="${who}" data-mode="member">${L('From family', 'குடும்பத்திலிருந்து')}</button>` : ''}<button class="${s.mode === 'star' ? 'sel' : ''}" data-who="${who}" data-mode="star">${L('By star', 'நட்சத்திரம் மூலம்')}</button></div>
-    ${s.mode === 'member' && hasFamily ? `<label>${L('Person', 'நபர்')}<select data-who="${who}" data-f="memberId">${memberOptions(s.memberId || sideDefault(who))}</select></label>`
+    ${s.mode === 'member' && hasFamily ? `<label>${who === 'girl' ? L('Bride', 'மணமகள்') : L('Groom', 'மணமகன்')}<select data-who="${who}" data-f="memberId">${adultOptions(matchPool().some((x) => x.id === s.memberId) ? s.memberId : sideDefault(who))}</select></label>`
     : `<label>${L('Birth star', 'நட்சத்திரம்')}<select data-who="${who}" data-f="star">${starOptions(s.star)}</select></label>
        <label>${L('Pada', 'பாதம்')}<select data-who="${who}" data-f="pada">${padaOptions(s.pada)}</select></label>
        <p class="muted small">${L('Rasi', 'ராசி')}: ${esc(rasiName(rasiOfStarPada(s.star, s.pada)))}</p>`}
@@ -143,7 +151,7 @@ function renderPorutham(sec) {
   sec.innerHTML = `${subHeader(L('Thirumana Porutham', 'திருமணப் பொருத்தம்'), L('Traditional 10 poruthams, doshams and dosha samyam', 'பாரம்பரிய 10 பொருத்தங்கள், தோஷங்கள், தோஷ சாம்யம்'))}
     <div class="card glass"><p class="small">⚠️ ${L('Matching only the 10 poruthams by star is not enough. Before finalising a marriage, check both full horoscopes (birth date, time and place) — long life, papa samyam, dasa sandhi and the marriage houses.', 'நட்சத்திரம் மூலம் 10 பொருத்தம் மட்டும் பார்ப்பது போதாது. திருமணத்தை உறுதி செய்யும் முன் இருவரின் முழு ஜாதகத்தையும் (பிறந்த தேதி, நேரம், இடம்) பாருங்கள் — ஆயுள், பாப சாம்யம், தசா சந்தி, திருமண பாவங்கள்.')}</p>
     <button class="btn-gold big-cta" data-go="couple">💑 ${L('Complete Marriage Porutham — with birth date & place of both', 'முழுமையான திருமணப் பொருத்தம் — இருவரின் பிறந்த தேதி, இடத்துடன்')}</button></div>
-    <div class="card glass"><div class="card-title">${L('Quick check by star', 'நட்சத்திரம் மூலம் விரைவுப் பொருத்தம்')}</div><div class="por-grid">${sideForm('girl')}${sideForm('boy')}</div>
+    <div class="card glass"><div class="card-title">${L('Quick check by star', 'நட்சத்திரம் மூலம் விரைவுப் பொருத்தம்')}</div>${adultsNote()}<div class="por-grid">${sideForm('girl')}${sideForm('boy')}</div>
       <button class="btn-gold" id="porBtn">💞 ${L('Check porutham', 'பொருத்தம் பார்க்கவும்')}</button>
       <p class="muted small">${L('Tip: add both people under Family with full birth details to include the Chevvai and Rahu-Ketu dosham check.', 'குறிப்பு: செவ்வாய், ராகு-கேது தோஷ ஆய்வுக்கு இருவரின் முழு பிறப்பு விவரங்களையும் குடும்பத்தில் சேர்க்கவும்.')}</p></div>
     <div id="porResult"></div>${aiBlock('porAi')}`;
@@ -158,8 +166,8 @@ function renderPorutham(sec) {
 
 function sideData(who) {
   const s = porSide[who];
-  if (s.mode === 'member' && state.family.length) {
-    const m = state.family.find((x) => x.id === (s.memberId || sideDefault(who)));
+  if (s.mode === 'member' && matchPool().length) {
+    const m = matchPool().find((x) => x.id === s.memberId) || matchPool().find((x) => x.id === sideDefault(who));
     const c = chartOf(m);
     return { name: displayName(m), star: c.janmaNakshatra.index, rasi: c.janmaRasi.index, doshams: doshams(c.planets) };
   }
@@ -196,6 +204,8 @@ registerScreen('porutham', { render: renderPorutham, parent: 'home' });
 // ================================================================ MUHURTHAM
 const MU_CATS = ['marriage', 'graha_pravesam', 'vehicle', 'naming', 'ear_piercing', 'annaprasanam', 'vidyarambam', 'business', 'property', 'gold_vehicle', 'contract', 'travel', 'office', 'surgery', 'manjal_neerattu', 'delivery', 'launch', 'tech_partner', 'bhoomi_pooja', 'visa'];
 const muForm = { category: 'marriage', days: 30, persons: null };
+// A wedding muhurtham is never searched for a person under 18 — only adults are offered for that event.
+const muPeople = () => (muForm.category === 'marriage' ? matchPool() : state.family);
 
 function renderMuhurtham(sec, params = {}) {
   if (params.category && MU_CATS.includes(params.category)) muForm.category = params.category;
@@ -205,7 +215,7 @@ function renderMuhurtham(sec, params = {}) {
     <div class="card glass">
       <label>${L('Event', 'நிகழ்வு')}<select id="muCat">${MU_CATS.map((id) => { const c = getCategory(id); return `<option value="${id}"${id === muForm.category ? ' selected' : ''}>${c.icon} ${esc(bi(c))}</option>`; }).join('')}</select></label>
       <label>${L('Search in the next', 'அடுத்த')}<select id="muDays">${[15, 30, 60, 90].map((d) => `<option value="${d}"${d === muForm.days ? ' selected' : ''}>${d} ${L('days', 'நாட்கள்')}</option>`).join('')}</select></label>
-      ${state.family.length ? `<div class="mini-label">${L('Check for these family members', 'இவர்களுக்கு ஏற்றதாக')}</div><div class="member-switch">${state.family.map((m) => `<label class="mchip${muForm.persons.includes(m.id) ? ' sel' : ''}"><input type="checkbox" value="${esc(m.id)}"${muForm.persons.includes(m.id) ? ' checked' : ''}> ${esc(displayName(m))}</label>`).join('')}</div>` : ''}
+      ${state.family.length ? `<div class="mini-label">${L('Check for these family members', 'இவர்களுக்கு ஏற்றதாக')}</div>${muForm.category === 'marriage' ? adultsNote() : ''}<div class="member-switch">${muPeople().map((m) => `<label class="mchip${muForm.persons.includes(m.id) ? ' sel' : ''}"><input type="checkbox" value="${esc(m.id)}"${muForm.persons.includes(m.id) ? ' checked' : ''}> ${esc(displayName(m))}</label>`).join('')}</div>` : ''}
       <p class="muted small">📍 ${esc(placeName(state.loc.name))} · ${L('Rahu Kalam, Yamagandam, Ashtami, Navami, Amavasai and Chandrashtamam are always excluded.', 'ராகு காலம், எமகண்டம், அஷ்டமி, நவமி, அமாவாசை, சந்திராஷ்டமம் எப்போதும் தவிர்க்கப்படும்.')}</p>
       ${muForm.category === 'delivery' ? `<p class="tag warn block">${L('Only for a planned delivery already advised by your doctor — the doctor\'s medical decision always comes first.', 'மருத்துவர் ஏற்கனவே பரிந்துரைத்த திட்டமிட்ட பிரசவத்திற்கு மட்டும் — மருத்துவரின் முடிவே எப்போதும் முதன்மை.')}</p>` : ''}
       ${muForm.category === 'vehicle' ? `<p class="muted small">🚗 ${L('Two-wheeler, auto, car or lorry: only Ashwini, Rohini, Mrigasirisham, Punarpoosam, Poosam, Uthiram, Hastham, Chithirai, Swathi, Anusham, Uthiradam, Thiruvonam, Avittam, Sathayam, Uthirattathi and Revathi stars; no Tuesday / Saturday, Kuligai, Theipirai Prathamai or bad yoga; Venus, Mercury, Moon or Jupiter Horai preferred.', 'இரு சக்கர வாகனம், ஆட்டோ, கார், லாரி: அஸ்வினி, ரோகிணி, மிருகசீரிஷம், புனர்பூசம், பூசம், உத்திரம், அஸ்தம், சித்திரை, சுவாதி, அனுஷம், உத்திராடம், திருவோணம், அவிட்டம், சதயம், உத்திரட்டாதி, ரேவதி நட்சத்திரங்கள் மட்டும்; செவ்வாய், சனிக்கிழமை, குளிகை, தேய்பிறை பிரதமை, தீய யோகம் தவிர்க்கப்படும்; சுக்கிரன், புதன், சந்திரன், குரு ஓரை சிறப்பு.')}</p>` : ''}
@@ -222,7 +232,7 @@ function renderMuhurtham(sec, params = {}) {
   $('#muBtn').addEventListener('click', async () => {
     $('#muResult').innerHTML = `<div class="card glass">${loader(L('Checking every half hour of every day…', 'ஒவ்வொரு நாளின் ஒவ்வொரு அரை மணி நேரமும் ஆராயப்படுகிறது…'))}</div>`;
     await wait();
-    const persons = muForm.persons.map((id) => state.family.find((m) => m.id === id)).filter(Boolean).map((m) => { const c = chartOf(m); return { name: m.name, janmaNakshatra: c.janmaNakshatra.index, janmaRasi: c.janmaRasi.index }; });
+    const persons = muForm.persons.map((id) => muPeople().find((m) => m.id === id)).filter(Boolean).map((m) => { const c = chartOf(m); return { name: m.name, janmaNakshatra: c.janmaNakshatra.index, janmaRasi: c.janmaRasi.index }; });
     const res = findMuhurtham({ category: muForm.category, loc: state.loc, persons, days: muForm.days });
     renderMuResults(res, '#muResult', { showReasons: muForm.category === 'vehicle' });
   });
@@ -586,7 +596,7 @@ function chatContext(question) {
     detectedTopic: classify(question).intent,
     replyLanguage: answerLang(question, state.lang) === 'ta' ? 'Tamil' : 'English',
     today: { date: fmtIsoDate(new Date(Date.now() + loc.tz * 3600000).toISOString().slice(0, 10)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name, ...todayFacts() },
-    person: m ? { name: m.name, relation: m.relation, birthTimeCertainty: rel.certainty, timeSensitiveResultsAllowed: rel.lagna, rasi: rel.rasi ? chartOf(m).janmaRasi.name : 'uncertain', star: rel.nakshatra ? chartOf(m).janmaNakshatra.name : 'uncertain' } : null,
+    person: m ? { name: m.name, relation: m.relation, birth: m.relation === 'organization' ? undefined : { date: m.date }, ageBand: ageOf(m).band, birthTimeCertainty: rel.certainty, timeSensitiveResultsAllowed: rel.lagna, rasi: rel.rasi ? chartOf(m).janmaRasi.name : 'uncertain', star: rel.nakshatra ? chartOf(m).janmaNakshatra.name : 'uncertain' } : null,
     verifiedChartFacts: factsForAI(facts),
     lifeDetails: (() => { const l = lifeOf(m); return m ? { maritalStatus: l.maritalStatus || 'not given', marriedYear: l.marriedYear || null, children: l.children ?? 'not given', firstChildYear: l.firstChildYear || null } : null; })(),
     builtInAnswer: askAnswer(question, m, facts).text,
@@ -613,7 +623,7 @@ function renderChat(sec, params = {}) {
     <div class="chat-head card glass"><div class="avatar big">🪔</div><div><b>${esc(assistantName())}</b>
       <div class="muted small">${m ? L(`Using ${displayName(m)}'s chart${m.private ? ' · private profile — this chat stays on this phone' : ''}`, `${displayName(m)} அவர்களின் ஜாதகப்படி${m.private ? ' · தனிப்பட்ட சுயவிவரம் — இந்த உரையாடல் இந்தக் கைப்பேசியிலேயே' : ''}`) : L('Add birth details for personal answers', 'தனிப்பட்ட பதில்களுக்கு பிறப்பு விவரம் சேர்க்கவும்')}</div></div></div>
     <div id="chatLog" class="chat-log" aria-live="polite">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask anything — in Tamil, English or Tanglish. Answers come in English (change language with the தமிழ் button).', 'வணக்கம்! தமிழ், ஆங்கிலம், தங்கிலீஷ் — எப்படியும் கேளுங்கள். பதில் தமிழில் வரும்.')}</div>`}</div>
-    <div class="suggest-row">${SUGGEST.map(([en, tx]) => `<button class="sg">${esc(L(en, tx))}</button>`).join('')}</div>
+    <div class="suggest-row">${suggestionsFor(ageOf(m), SUGGEST).map((x) => `<button class="sg">${esc(bi(x))}</button>`).join('')}</div>
     <form id="chatForm" class="chat-form"><button type="button" id="micBtn" class="mic" aria-label="${L('Speak', 'பேசுங்கள்')}">🎙️</button>
       <label class="sr-only" for="chatInput">${L('Message', 'செய்தி')}</label><textarea id="chatInput" class="grow-in" rows="1" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai…', 'கேள்வியை இங்கே எழுதுங்கள்…'))}"></textarea>
       <button class="send" aria-label="${L('Send', 'அனுப்பு')}">➤</button></form>
@@ -672,9 +682,13 @@ function addBubble(role, text, meta = {}) {
 function askAnswer(text, m, facts) {
   const life = lifeOf(m);
   const today = todayFacts();
+  // AGE FIRST: the selected person's age decides what may be answered (shared/age-guard.js).
+  const prof = m ? ageOf(m) : ageProfile(null);
   const base = composeAnswer({ question: text, lang: state.lang, facts, name: m ? displayName(m) : '', today, life });
   if (['crisis', 'death', 'pain', 'emotional'].includes(base.intent)) return cleanSharedAnswer(base);
   let topic = detectTopic(text);
+  // For a child's chart, "child / kids" means the child — read the other topic the question names (studies, health …).
+  if (prof.minor && topic === 'child') topic = detectTopics(text).find((t) => t !== 'child') || null;
   if (topic === 'marriage' && life.maritalStatus === 'married') topic = 'harmony';
   if (topic && m) {
     try {
@@ -682,13 +696,20 @@ function askAnswer(text, m, facts) {
       if (a) return a;
     } catch (e) { console.warn('ask', e); }
   }
+  if (prof.minor) {
+    // Children: no dasa reading for open questions — a warm, simple answer with today's prayer and good habits.
+    let deity = null;
+    try { refreshSnap(); deity = dailyReview(chartOf(m), state.snap, new Date()).deity; } catch { /* optional */ }
+    const shared = ['general', 'greeting', 'chart', 'dasa', 'weak', 'goodtime', 'dates'].includes(base.intent) ? null : guardAnswer(cleanSharedAnswer(base), prof, state.lang);
+    return shared?.sections?.some((sx) => sx.key === 'answer') ? shared : childGeneralAnswer({ profile: prof, lang: state.lang, name: displayName(m), deity, question: text });
+  }
   // Unclear question: answer with the closest reading (the running Dasa–Bhukti) and offer three follow-ups.
   if (base.intent === 'general' || base.intent === 'greeting') {
     const near = cleanSharedAnswer(composeAnswer({ question: L('Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'), lang: state.lang, facts, name: m ? displayName(m) : '', today, life }));
-    near.followups = GENERAL_FOLLOWUPS.map((f) => bi(f));
+    near.followups = generalFollowups(prof).map((f) => bi(f));
     return near;
   }
-  return cleanSharedAnswer(base);
+  return guardAnswer(cleanSharedAnswer(base), prof, state.lang);
 }
 
 async function send(text) {
@@ -703,7 +724,10 @@ async function send(text) {
   const answer = askAnswer(text, m, facts);
   // Safety-critical topics are always answered by the built-in rules, never by free AI text.
   // Private profiles never send their questions to the AI service.
-  const rulesOnly = ['crisis', 'death', 'pain'].includes(answer.intent) || Boolean(m?.private);
+  // Age-guarded answers are never handed to free AI text; a minor's chat goes to the AI only through the server,
+  // whose policy re-checks the person's age (no server policy on the phone-only build).
+  const prof = m ? ageOf(m) : null;
+  const rulesOnly = ['crisis', 'death', 'pain', 'age_guard'].includes(answer.intent) || Boolean(m?.private) || Boolean(prof?.minor && STATIC);
   let msg = { role: 'assistant', content: answer.text, answer, source: 'rules' };
   if (!rulesOnly) {
     const thinking = addBubble('assistant', L('Thinking…', 'யோசிக்கிறேன்…'));

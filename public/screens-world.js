@@ -7,6 +7,7 @@ import { MANTRAS, MANTRA_TAGS } from './shared/mantras.js';
 import { NAVAGRAHA, grahaStrength } from './shared/remedies.js';
 import { familyRelations } from './shared/relations.js';
 import { fullAnalysis, BHAVAS } from './shared/analysis.js';
+import { ageProfile, topicAllowed, adultText, childSafe } from './shared/age-guard.js';
 import { PACKAGES, PACKAGE_INCLUDES, packageRoute } from './shared/packages.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtIsoDate, api, store,
@@ -146,7 +147,7 @@ export function templeDetailHtml(t, { open = false } = {}) {
     <p class="small">✈️ ${esc(bi(i.airport))}</p><p class="small">🚆 ${esc(bi(i.rail))}</p>
     <div class="btn-row">
       <a class="chip-btn" href="https://www.google.com/travel/flights?q=${encodeURIComponent(`flights to ${i.airport.en.split(' (')[0].split(' ~')[0]}`)}" target="_blank" rel="noopener">✈️ ${L('Flights', 'விமானம்')}</a>
-      <a class="chip-btn" href="https://www.irctc.co.in/" target="_blank" rel="noopener">🚆 ${L('Train', 'ரயில்')}</a>
+      ${t.abroad ? '' : `<a class="chip-btn" href="https://www.irctc.co.in/" target="_blank" rel="noopener">🚆 ${L('Train', 'ரயில்')}</a>`}
       <a class="chip-btn" href="https://www.google.com/maps/search/hotels+near+${q}" target="_blank" rel="noopener">🏨 ${L('Stay', 'தங்குமிடம்')}</a>
       <a class="chip-btn" href="https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lon}" target="_blank" rel="noopener">🗺️ ${L('Road', 'சாலை')}</a>
     </div></details>`;
@@ -175,13 +176,13 @@ function renderTemples(sec) {
         <div class="pg big" style="color:${t.planet ? COLOR[t.planet] : 'var(--gold)'}">${t.planet ? GLYPH[t.planet] : '🛕'}</div>
         <div style="flex:1;min-width:0"><b>${esc(bi(t.name))}</b>
           <p class="muted small">${esc(bi(t.deity))} · ${esc(placeName(t.town))}</p>
-          <p class="small dist">📏 ${t.km < 1 ? '<1' : `~${Math.round(t.roadKm)}`} km ${L('by road', 'சாலை வழி')} · 🚗 ~${t.driveHours < 1 ? `${Math.round(t.driveHours * 60)} ${L('min', 'நிமி')}` : `${t.driveHours.toFixed(1)} ${L('hr', 'மணி')}`}</p>
+          <p class="small dist">${t.mode === 'flight' ? `✈️ ~${Math.round(t.km).toLocaleString()} km · ${L('flight suggested', 'விமானப் பயணம் பரிந்துரை')} (~${Math.round(t.flightHours)} ${L('hr', 'மணி')})` : `📏 ${t.km < 1 ? '<1' : `~${Math.round(t.roadKm)}`} km ${L('by road', 'சாலை வழி')} · 🚗 ~${t.driveHours < 1 ? `${Math.round(t.driveHours * 60)} ${L('min', 'நிமி')}` : `${t.driveHours.toFixed(1)} ${L('hr', 'மணி')}`}`}</p>
           <p class="small">${esc(bi(t.note))}</p>
           ${templeDetailHtml(t)}
           <div class="btn-row">
             <a class="chip-btn" href="${links.directions}" target="_blank" rel="noopener">🗺️ ${L('Directions', 'வழி')}</a>
             <a class="chip-btn" href="${links.contact}" target="_blank" rel="noopener">📞 ${L('Phone & timings', 'தொலைபேசி & நேரம்')}</a>
-            ${links.official ? `<a class="chip-btn" href="${links.official}" target="_blank" rel="noopener">🌐 ${L('Official website', 'அதிகாரப்பூர்வ தளம்')}</a>` : `<a class="chip-btn" href="${links.hrce}" target="_blank" rel="noopener">🏛️ HR&CE</a>`}
+            ${links.official ? `<a class="chip-btn" href="${links.official}" target="_blank" rel="noopener">🌐 ${L('Official website', 'அதிகாரப்பூர்வ தளம்')}</a>` : links.hrce ? `<a class="chip-btn" href="${links.hrce}" target="_blank" rel="noopener">🏛️ HR&CE</a>` : ''}
             <a class="chip-btn" href="${links.hotels}" target="_blank" rel="noopener">🏨 ${L('Hotels', 'தங்குமிடம்')}</a>
             <button class="chip-btn" data-weather="${t.id}">☁️ ${L('Weather', 'வானிலை')}</button>
             <button class="chip-btn" data-trip="${t.id}">⏰ ${L('Plan visit', 'பயணத் திட்டம்')}</button>
@@ -631,7 +632,19 @@ function renderAnalysis(sec) {
   sec.innerHTML = `${subHeader(L('Full Jathaga Analysis', 'முழு ஜாதக ஆய்வு'), esc(displayName(m)), 'chart')}<div id="anBody">${loader(L('Studying every house and planet…', 'ஒவ்வொரு பாவமும் கிரகமும் ஆராயப்படுகிறது…'))}</div>`;
   setTimeout(() => {
     if (state.view !== 'analysis') return;
-    const a = fullAnalysis(c);
+    const a0 = fullAnalysis(c);
+    // Age first: a child's analysis shows learning / spiritual areas only — no career, wealth, marriage, children,
+    // property scores, no Badhaka / Maraka, and no marriage / money statements in yogas, houses or transits.
+    const prof = ageProfile(m, { tz: state.loc?.tz });
+    const kidAdvice = { en: 'Keep studies, sleep and prayer steady — this passes gently.', ta: 'படிப்பு, உறக்கம், வழிபாட்டைச் சீராக வைத்தால் இது மென்மையாகக் கடக்கும்.' };
+    const a = prof.minor ? {
+      ...a0,
+      areas: a0.areas.filter((x) => topicAllowed(x.id, prof)),
+      yogas: a0.yogas.filter((y) => !adultText(y.desc) && !adultText(y.name)),
+      roles: null,
+      transit: { ...a0.transit, status: a0.transit.status.map((st) => (adultText({ en: st.adviceEn, ta: st.adviceTa }) ? { ...st, adviceEn: kidAdvice.en, adviceTa: kidAdvice.ta } : st)) },
+      bhavas: a0.bhavas.map((b) => ({ ...b, area: adultText(b.area) ? { en: `House ${b.house}`, ta: `${b.house}-ம் பாவம்` } : b.area, notes: childSafe(b.notes, prof) })),
+    } : a0;
     const tz = state.loc.tz;
     const bar = (s, cls) => `<span class="gb-bar"><i class="${cls}" style="width:${s}%"></i></span>`;
     const lvl = (s) => (s >= 66 ? 'strong' : s >= 48 ? 'average' : 'weak');
@@ -667,7 +680,7 @@ function renderAnalysis(sec) {
         planetStrength: a.strength.map((g) => `${g.planet}: ${g.level}`),
       };
       const fallback = [a.dasaOutlook ? L(a.dasaOutlook.en, a.dasaOutlook.ta) : '', ...a.yogas.map((y) => `🌟 ${bi(y.name)} — ${bi(y.desc)}`), ...a.transit.status.map((s) => `🪐 ${L(s.en, s.ta)} — ${L(s.adviceEn, s.adviceTa)}`)].filter(Boolean).join('\n');
-      await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: 'Write my complete life reading from this analysis: personality, career, wealth, marriage and family, health, and the coming years by dasa and transits. Be specific to the data, warm and positive, and end with three simple parigarams. About 350 words.' }], fallbackText: fallback, onText: (tx) => { out.textContent = tx; } });
+      await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: prof.minor ? `This chart belongs to a ${prof.age}-year-old child. Write a warm, simple reading for the parents about the child's nature, studies, health, good habits and character only — no career, money, marriage or relationship predictions — and end with two simple prayers. About 200 words.` : 'Write my complete life reading from this analysis: personality, career, wealth, marriage and family, health, and the coming years by dasa and transits. Be specific to the data, warm and positive, and end with three simple parigarams. About 350 words.' }], fallbackText: fallback, onText: (tx) => { out.textContent = tx; } });
       out.classList.remove('typing');
     });
     $('#anSpeak').addEventListener('click', () => speak($('#anText').textContent));
@@ -685,7 +698,7 @@ function renderPackages(sec, params = {}) {
     ${PACKAGES.map((p) => {
     const r = packageRoute(p, loc);
     const first = r.firstTemple;
-    return `<details class="card glass pkg"${open === p.id ? ' open' : ''}><summary><span class="ti-icon">${p.icon}</span><div><b>${esc(bi(p.name))}</b><div class="muted small">${p.days} ${L('days', 'நாட்கள்')} · ~${Math.round(r.km)} km ${L('from', 'தொலைவு')} ${esc(placeName(loc.name))}</div></div></summary>
+    return `<details class="card glass pkg"${open === p.id ? ' open' : ''}><summary><span class="ti-icon">${p.icon}</span><div><b>${esc(bi(p.name))}</b><div class="muted small">${p.days} ${L('days', 'நாட்கள்')} · ${r.flight ? `✈️ ~${r.flightKm.toLocaleString()} km ${L('flight from', 'விமானம்:')} ${esc(placeName(loc.name))} + ~${Math.round(r.km)} km ${L('by road', 'சாலை வழி')}` : `~${Math.round(r.km)} km ${L('from', 'தொலைவு')} ${esc(placeName(loc.name))}`}</div></div></summary>
       <p class="small">🎯 ${esc(bi(p.for))}</p>
       ${r.days.map((d, i) => `<div class="pkg-day"><b>${L('Day', 'நாள்')} ${i + 1}</b> · ${d.map((t) => esc(bi(t.name))).join(' → ')}</div>`).join('')}
       <div class="mini-label">🛕 ${L('Every temple — highlights, legend and how to reach', 'ஒவ்வொரு கோவிலும் — சிறப்பு, தல வரலாறு, செல்லும் வழி')}</div>

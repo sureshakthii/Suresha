@@ -1,6 +1,9 @@
 // Account: login (mobile OTP, email OTP, Facebook), family profiles and settings.
 import { FAITHS } from './shared/faith.js';
-import { searchLocalPlaces } from './shared/places.js';
+import { searchLocalPlaces, placeLabel, placeText, offsetLabel, fromNominatim, nominatimUrl, zoneOffsetHours, nearestPlace } from './shared/places.js';
+import { zonedToUtc, isValidZone } from './shared/datetime.js';
+import { guessCountry, formatPhone } from './shared/countries.js';
+import { enhancePhone, phoneError, startPhoneInputs } from './phone-input.js';
 import { UNKNOWN_TIME_PLACEHOLDER, certaintyOf } from './shared/birthtime.js';
 import { icon, iconChip } from './icons.js';
 import {
@@ -8,6 +11,8 @@ import {
   toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright, BRAND, supportCard,
   placeName,
 } from './core.js';
+
+startPhoneInputs(); // every mobile-number field in the app gets the country-code picker
 
 // ================================================================ SESSION
 export async function loadSession() {
@@ -58,7 +63,7 @@ function renderLogin(sec) {
       ${fbOk ? '' : `<p class="muted small center">${L('Facebook sign-in will be enabled once the app\'s Facebook ID is configured.', 'Facebook App ID அமைக்கப்பட்டதும் Facebook உள்நுழைவு இயங்கும்.')}</p>`}`;
   } else if (login.step === 'enter') {
     body = `<form id="toForm"><label>${login.channel === 'sms' ? L('Mobile number', 'மொபைல் எண்') : L('Email address', 'மின்னஞ்சல் முகவரி')}
-        ${login.channel === 'sms' ? `<div class="phone-in"><span>+91</span><input id="loginTo" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="15" placeholder="98765 43210" required></div>`
+        ${login.channel === 'sms' ? `<input id="loginTo" name="loginPhone" type="tel" inputmode="tel" value="${esc(login.channel === 'sms' && /^\+/.test(login.to) ? login.to : '')}" required>`
     : '<input id="loginTo" type="email" autocomplete="email" required placeholder="name@example.com">'}</label>
         <button class="btn-gold" id="sendOtp">${L('Send OTP', 'OTP அனுப்பு')}</button>
         <button type="button" class="link-btn center-block" data-step="choose">‹ ${L('Other ways to sign in', 'வேறு வழிகள்')}</button>
@@ -83,6 +88,8 @@ function renderLogin(sec) {
       ${copyright()}
       <p class="muted small center">${L('By continuing you agree to use astrology as guidance, not as a substitute for medical, legal or financial advice.', 'ஜோதிடம் வழிகாட்டுதல் மட்டுமே; மருத்துவ, சட்ட, நிதி ஆலோசனைக்கு மாற்றல்ல என்பதை ஏற்கிறீர்கள்.')}</p>
     </div>`;
+  const phoneEl = $('input[name="loginPhone"]', sec);
+  if (phoneEl) login.phone = enhancePhone(phoneEl);
   $$('[data-ch]', sec).forEach((b) => b.addEventListener('click', () => { login.channel = b.dataset.ch; login.step = 'enter'; renderLogin(sec); $('#loginTo')?.focus(); }));
   $$('[data-step]', sec).forEach((b) => b.addEventListener('click', () => { login.step = b.dataset.step; renderLogin(sec); }));
   $('#fbBtn')?.addEventListener('click', () => {
@@ -123,13 +130,16 @@ function setupOtpBoxes() {
 
 async function requestOtp(resend = false) {
   if (!resend) {
-    const v = $('#loginTo').value.trim();
-    login.to = login.channel === 'sms' && /^\d{10}$/.test(v.replace(/\s/g, '')) ? `+91${v.replace(/\s/g, '')}` : v.replace(/\s/g, '');
+    if (login.channel === 'sms') {
+      const r = login.phone.get();
+      if (!r.ok) { const e = $('#loginErr'); if (e) e.textContent = phoneError(r.country); return; }
+      login.to = r.e164; // E.164, e.g. +94771234567
+    } else login.to = $('#loginTo').value.trim().replace(/\s/g, '');
   }
   const err = $('#loginErr');
   try {
     if (STATIC) {
-      if (login.channel === 'sms' && !/^\+?\d{10,15}$/.test(login.to)) throw new Error(L('Please enter a valid 10-digit mobile number', 'சரியான 10 இலக்க மொபைல் எண்ணை உள்ளிடவும்'));
+      if (login.channel === 'sms' && !/^\+[1-9]\d{7,14}$/.test(login.to)) throw new Error(L('Please enter a valid mobile number', 'சரியான மொபைல் எண்ணை உள்ளிடவும்'));
       if (login.channel === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(login.to)) throw new Error(L('Please enter a valid email address', 'சரியான மின்னஞ்சலை உள்ளிடவும்'));
       login.devCode = String(Math.floor(100000 + Math.random() * 900000));
       login.masked = login.to;
@@ -181,24 +191,70 @@ registerScreen('login', { render: renderLogin, fullscreen: true });
 // ================================================================ FAMILY
 let editing = null;
 
+// Place search: the built-in world list first (offline, instant), then — when online — OpenStreetMap
+// (through our server, or straight from the phone in the offline app). Every result carries an IANA time zone.
+const onlineCache = new Map();
+let lastOnlineAt = 0;
+async function searchOnlinePlaces(q) {
+  const key = q.toLowerCase();
+  if (onlineCache.has(key)) return onlineCache.get(key);
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return [];
+  let out = [];
+  try {
+    if (!STATIC) out = (await api(`/api/places?q=${encodeURIComponent(q)}`)).filter((p) => p.online);
+    else {
+      // Nominatim usage policy: at most one request a second, cached, debounced (the browser sends the Referer).
+      const wait = lastOnlineAt + 1100 - Date.now();
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      lastOnlineAt = Date.now();
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(nominatimUrl(q, { limit: 6 }), { signal: ctrl.signal, headers: { Accept: 'application/json' } }).finally(() => clearTimeout(timer));
+      if (res.ok) out = (await res.json()).map(fromNominatim).filter((p) => p.zone && Number.isFinite(p.lat));
+    }
+  } catch { out = []; }
+  onlineCache.set(key, out);
+  return out;
+}
+
+const userCc = () => guessCountry().cc;
+/** "Asia/Colombo · UTC+5:30" for a result (offset today; birth charts use the offset on the birth date). */
+const zoneText = (p) => (p.zone ? `${p.zone.replace(/_/g, ' ')} · ${offsetLabel(zoneOffsetHours(p.zone))}` : offsetLabel(p.tz));
+
 export function placeSearch(input, list, onPick) {
-  let timer;
+  let timer, onlineTimer, seq = 0;
+  const draw = (places) => {
+    list.innerHTML = places.map((p, i) => `<li tabindex="0" data-i="${i}">${p.online ? '🌐 ' : ''}${esc(placeLabel(p, ta() ? 'ta' : 'en'))}<small>${esc(zoneText(p))}</small></li>`).join('');
+    list.hidden = !places.length;
+    $$('li', list).forEach((li) => {
+      const pick = () => { const p = places[li.dataset.i]; onPick({ ...p, text: placeText(p) }); list.hidden = true; };
+      li.addEventListener('click', pick);
+      li.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); pick(); } });
+    });
+  };
   input.addEventListener('input', () => {
-    clearTimeout(timer);
+    clearTimeout(timer); clearTimeout(onlineTimer);
     const q = input.value.trim();
+    const my = ++seq;
     if (q.length < 2) { list.hidden = true; return; }
-    timer = setTimeout(async () => {
-      let places = searchLocalPlaces(q);
-      if (!STATIC && places.length < 3) { try { places = await api(`/api/places?q=${encodeURIComponent(q)}`); } catch { /* keep local */ } }
-      list.innerHTML = places.map((p, i) => `<li tabindex="0" data-i="${i}">${esc(p.name)} <small>${esc(p.region)} · UTC${p.tz >= 0 ? '+' : ''}${p.tz}</small></li>`).join('');
-      list.hidden = !places.length;
-      $$('li', list).forEach((li) => {
-        const pick = () => { onPick(places[li.dataset.i]); list.hidden = true; };
-        li.addEventListener('click', pick);
-        li.addEventListener('keydown', (e) => { if (e.key === 'Enter') pick(); });
-      });
-    }, 200);
+    timer = setTimeout(() => {
+      const local = searchLocalPlaces(q, 8, { preferCc: userCc() });
+      draw(local);
+      if (local.length >= 4 || q.length < 3) return;
+      onlineTimer = setTimeout(async () => {
+        const online = await searchOnlinePlaces(q);
+        if (my !== seq || !online.length) return;
+        const seen = new Set(local.map((p) => `${p.cc}|${p.name}`.toLowerCase()));
+        draw([...local, ...online.filter((p) => !seen.has(`${p.cc}|${p.name}`.toLowerCase()))].slice(0, 10));
+      }, 650);
+    }, 150);
   });
+}
+
+/** UTC offset (hours) of `zone` at a local birth date/time — the historical one (DST, war time, Sri Lanka 1996…). */
+function birthOffset(zone, date, time) {
+  if (!isValidZone(zone)) return null;
+  try { return date ? zonedToUtc(date, time || '12:00', zone).offsetMinutes / 60 : zoneOffsetHours(zone); } catch { return zoneOffsetHours(zone); }
 }
 
 function memberForm(m, first) {
@@ -232,12 +288,14 @@ function memberForm(m, first) {
       <p class="small muted">${L('Used only on this phone, to check your chart against what has already happened instead of predicting it again.', 'இந்தக் கைப்பேசியில் மட்டும் பயன்படும்; நடந்ததை மீண்டும் கணிக்காமல், அதனுடன் ஜாதகத்தைச் சரிபார்க்க.')}</p>
     </details>
     <label class="set-row"><span>🔒 ${L('Keep this profile private (its chats and concerns are never shared)', 'இந்தச் சுயவிவரம் தனிப்பட்டது (உரையாடல், கவலைகள் பகிரப்படாது)')}</span><input type="checkbox" name="private"${m.private ? ' checked' : ''}></label>
-    <label class="place-wrap">${L('Place of birth', 'பிறந்த இடம்')}<input name="place" required placeholder="Chennai" value="${esc(m.place || '')}"><ul id="placeList" class="suggest" hidden></ul></label>
+    <label class="place-wrap">${L('Place of birth (any town in the world)', 'பிறந்த இடம் (உலகின் எந்த ஊரும்)')}<input name="place" required placeholder="${esc(L('Chennai, Jaffna, Toronto…', 'சென்னை, யாழ்ப்பாணம், டொரன்டோ…'))}" value="${esc(m.place || '')}"><ul id="placeList" class="suggest" hidden></ul></label>
+    <input type="hidden" name="zone" value="${esc(m.zone || '')}">
     <div class="row3">
       <label>${L('Latitude', 'அட்சரேகை')}<input name="lat" type="number" step="0.0001" required value="${m.lat ?? ''}"></label>
       <label>${L('Longitude', 'தீர்க்கரேகை')}<input name="lon" type="number" step="0.0001" required value="${m.lon ?? ''}"></label>
       <label>${L('UTC offset', 'நேர மண்டலம்')}<input name="tz" type="number" step="0.25" required value="${m.tz ?? 5.5}"></label>
     </div>
+    <p class="small muted zone-note" id="zoneNote"></p>
     <button class="btn-gold" type="submit">✨ ${first ? L('Create my Jathagam', 'என் ஜாதகம் உருவாக்கு') : L('Save', 'சேமி')}</button>
     ${m.id && state.family.length > 1 ? `<button type="button" class="link-btn danger center-block" id="delMember">${L('Delete this person', 'இவரை நீக்கு')}</button>` : ''}
     <p class="err" id="formErr"></p></form>`;
@@ -253,7 +311,23 @@ function renderFamily(sec, params = {}) {
       ${editing.id ? '' : `<button type="button" class="card glass cta-card kattam-cta" data-go="kattam"><b>📜 ${L('Only have the written jathagam (Rasi Kattam)?', 'எழுதிய ஜாதகம் (ராசி கட்டம்) மட்டும் உள்ளதா?')}</b><span class="small">${L('No birth time needed — fill the 12 boxes and the birth star, with the photo beside you.', 'பிறந்த நேரம் தேவையில்லை — புகைப்படத்தைப் பார்த்து 12 கட்டங்களையும் நட்சத்திரத்தையும் நிரப்புங்கள்.')}</span></button>`}
       ${memberForm(editing, first)}</div>`;
     const f = $('#memberForm');
-    placeSearch(f.elements.place, $('#placeList'), (p) => { f.elements.place.value = p.name; f.elements.lat.value = p.lat; f.elements.lon.value = p.lon; f.elements.tz.value = p.tz; });
+    // Time zone: picking a place fills its IANA zone; the offset shown is the one in force on the birth date.
+    const showZone = () => {
+      const z = f.elements.zone.value;
+      const off = z ? birthOffset(z, f.elements.date.value, f.elements.time.value) : null;
+      if (off != null) f.elements.tz.value = off;
+      $('#zoneNote').textContent = z
+        ? `🕰 ${L('Time zone', 'நேர மண்டலம்')}: ${z.replace(/_/g, ' ')} · ${offsetLabel(off)} ${L('on the birth date (daylight saving and old rules included)', 'பிறந்த நாளில் (பகல் சேமிப்பு நேரம், பழைய விதிகள் உட்பட)')}`
+        : L('Pick the place from the list to fill the time zone automatically.', 'நேர மண்டலம் தானாக நிரம்ப, பட்டியலிலிருந்து இடத்தைத் தேர்வு செய்யவும்.');
+    };
+    placeSearch(f.elements.place, $('#placeList'), (p) => {
+      f.elements.place.value = p.text || p.name; f.elements.lat.value = p.lat; f.elements.lon.value = p.lon;
+      f.elements.zone.value = p.zone || ''; if (!p.zone && p.tz != null) f.elements.tz.value = p.tz;
+      showZone();
+    });
+    f.elements.tz.addEventListener('input', (e) => { if (e.isTrusted) { f.elements.zone.value = ''; showZone(); } }); // typed by hand: keep the fixed offset
+    for (const k of ['date', 'time']) f.elements[k].addEventListener('change', showZone);
+    showZone();
     f.addEventListener('submit', (e) => { e.preventDefault(); saveMember(f); });
     f.addEventListener('change', (e) => {
       if (e.target.name !== 'timeCertainty') return;
@@ -301,14 +375,16 @@ function saveMember(f) {
     name: f.elements.name.value.trim(), nameTa: f.elements.nameTa.value.trim() || undefined, relation: f.elements.relation.value, gender: f.elements.gender.value,
     date: f.elements.date.value, time, place: f.elements.place.value.trim(),
     lat: Number(f.elements.lat.value), lon: Number(f.elements.lon.value), tz: Number(f.elements.tz.value),
+    zone: isValidZone(f.elements.zone.value) ? f.elements.zone.value : undefined,
   };
+  if (m.zone) m.tz = birthOffset(m.zone, m.date, m.time) ?? m.tz;
   if (!m.lat && !m.lon) { $('#formErr').textContent = L('Please pick the place from the list, or enter latitude and longitude.', 'பட்டியலிலிருந்து இடத்தைத் தேர்வு செய்யவும் அல்லது அட்சரேகை, தீர்க்கரேகை உள்ளிடவும்.'); return; }
   const i = state.family.findIndex((x) => x.id === m.id);
   if (i < 0 && m.relation !== 'organization' && state.family.filter((x) => x.relation !== 'organization').length >= 8) { $('#formErr').textContent = L('The Family plan holds up to 8 profiles.', 'குடும்பத் திட்டத்தில் 8 சுயவிவரங்கள் வரை.'); return; }
   if (i >= 0) state.family[i] = m; else state.family.push(m);
   const firstEver = state.family.length === 1;
   if (firstEver || !state.activeId) state.activeId = m.id;
-  if (firstEver || !state.loc) setLoc({ lat: m.lat, lon: m.lon, tz: m.tz, name: m.place });
+  if (firstEver || !state.loc) setLoc({ lat: m.lat, lon: m.lon, tz: m.zone ? zoneOffsetHours(m.zone) : m.tz, zone: m.zone, name: m.place });
   editing = null;
   saveFamily();
   toast(L('Saved', 'சேமிக்கப்பட்டது'));
@@ -321,7 +397,7 @@ function renderMore(sec) {
   const u = state.user;
   sec.innerHTML = `${subHeader(L('Settings & account', 'அமைப்புகள் & கணக்கு'), '', 'home')}<div class="card glass account-card">
       <span class="avatar big">${esc(u?.name ? [...u.name][0].toUpperCase() : '🙏')}</span>
-      <div style="flex:1">${u ? `<b>${esc(displayName(state.family.find((m) => m.relation === 'self')) || u.name || L('Signed in', 'உள்நுழைந்துள்ளீர்கள்'))}</b><div class="muted small">${esc(u.phone || u.email || (u.hasFacebook ? 'Facebook' : ''))}${u.demo ? ' · demo' : ''}</div>`
+      <div style="flex:1">${u ? `<b>${esc(displayName(state.family.find((m) => m.relation === 'self')) || u.name || L('Signed in', 'உள்நுழைந்துள்ளீர்கள்'))}</b><div class="muted small">${esc(u.phone ? formatPhone(u.phone) : u.email || (u.hasFacebook ? 'Facebook' : ''))}${u.demo ? ' · demo' : ''}</div>`
     : `<b>${L('Not signed in', 'உள்நுழையவில்லை')}</b><div class="muted small">${L('Sign in to back up your family', 'குடும்ப விவரங்களைப் பாதுகாக்க உள்நுழையவும்')}</div>`}</div>
       ${u ? `<button class="chip-btn" id="signOut">${L('Sign out', 'வெளியேறு')}</button>` : `<button class="chip-btn" data-go="login">${L('Sign in', 'உள்நுழை')}</button>`}</div>
     <button class="premium-cta" data-go="plans">${iconChip('plans', { size: 20, cls: 'mi-icon' })}${L(`${BRAND.premiumEn} & ${BRAND.familyEn}`, `${BRAND.premiumTa} & ${BRAND.familyTa}`)} ›</button>
@@ -358,10 +434,17 @@ function renderMore(sec) {
   $('#setVoice').addEventListener('change', (e) => { state.settings.voice = e.target.checked; saveSettings(); });
   $('#setHc').addEventListener('change', (e) => { state.settings.hc = e.target.checked; saveSettings(); });
   $('#setRate').addEventListener('input', (e) => { state.settings.rate = Number(e.target.value); $('#rateVal').textContent = `${state.settings.rate.toFixed(2)}×`; saveSettings(); });
-  placeSearch($('#locSearch'), $('#locList'), (p) => { setLoc({ lat: p.lat, lon: p.lon, tz: p.tz, name: p.name }); toast(`📍 ${p.name}`); renderMore(sec); });
+  placeSearch($('#locSearch'), $('#locList'), (p) => { setLoc({ lat: p.lat, lon: p.lon, tz: p.tz, zone: p.zone, name: p.text || p.name }); toast(`📍 ${placeName(p.text || p.name)}`); renderMore(sec); });
   $('#geoBtn')?.addEventListener('click', () => {
     navigator.geolocation?.getCurrentPosition(
-      (pos) => { setLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude, tz: -new Date().getTimezoneOffset() / 60, name: L('Current location', 'தற்போதைய இருப்பிடம்') }); renderMore(sec); },
+      (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        let zone = null;
+        try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { /* old WebView */ }
+        const near = nearestPlace(lat, lon, { maxKm: 40 });
+        setLoc({ lat, lon, tz: zone ? zoneOffsetHours(zone) : -new Date().getTimezoneOffset() / 60, zone: isValidZone(zone) ? zone : near?.zone, name: near ? placeText(near) : L('Current location', 'தற்போதைய இருப்பிடம்') });
+        renderMore(sec);
+      },
       () => toast(L('Location unavailable', 'இருப்பிடம் கிடைக்கவில்லை')), { timeout: 8000 },
     );
   });

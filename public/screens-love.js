@@ -4,17 +4,19 @@ import { birthChart } from './shared/astro.js';
 import { loveMatch } from './shared/love.js';
 import { closingPrayer } from './shared/daily.js';
 import { state, chartOf, $, L, esc, bi, registerScreen, subHeader, toast, displayName, saveFamily } from './core.js';
-import { personBlock, wirePersonBlocks, forms } from './screens-couple.js';
+import { personBlock, wirePersonBlocks, forms, adultPool } from './screens-couple.js';
+import { isAdult } from './shared/age-guard.js';
 
 let result = null;
 
 function chartFor(slot) {
   const f = forms[slot];
-  if (f.mode === 'family' && state.family.length) {
-    const m = state.family.find((x) => x.id === f.memberId) || state.family.find((x) => x.relation !== 'organization');
+  if (f.mode === 'family' && adultPool().length) {
+    const m = adultPool().find((x) => x.id === f.memberId) || adultPool()[0];
     return { chart: chartOf(m), name: displayName(m), gender: m.gender, timeKnown: m.timeCertainty !== 'unknown' && !m.kattam };
   }
   if (!f.name || !f.date) throw new Error(L('Please enter a name and birth date for both people.', 'இருவருக்கும் பெயர், பிறந்த தேதியை உள்ளிடவும்.'));
+  if (!isAdult(f.date, { tz: state.loc?.tz })) throw new Error(L('Love and marriage matching is only for people aged 18 and over.', 'காதல் / திருமணப் பொருத்தம் 18 வயதுக்கு மேற்பட்டவர்களுக்கு மட்டும்.'));
   const loc = f.lat != null ? { lat: Number(f.lat), lon: Number(f.lon), tz: Number(f.tz) } : { lat: state.loc?.lat ?? 13.08, lon: state.loc?.lon ?? 80.27, tz: state.loc?.tz ?? 5.5 };
   const time = f.time ? (f.time.length === 5 ? `${f.time}:00` : f.time) : '12:00:00';
   const m = { name: f.name.trim(), gender: f.gender, date: f.date, time, place: f.place || '', ...loc };
@@ -62,8 +64,7 @@ function renderLove(sec) {
   $('#lvGo').addEventListener('click', () => {
     try {
       const a = chartFor('loveA'), b = chartFor('loveB');
-      const ageOf = (c) => Math.floor((Date.now() - new Date(`${c.date}T00:00:00Z`)) / 31557600000);
-      if (ageOf(a.chart) < 18 || ageOf(b.chart) < 18) {
+      if (!isAdult(a.chart, { tz: state.loc?.tz }) || !isAdult(b.chart, { tz: state.loc?.tz })) {
         result = null;
         $('#lvOut').innerHTML = `<section class="card glass"><div class="card-title">🌱 ${L('Not for minors', 'சிறு வயதினருக்கு அல்ல')}</div><p>${L('Love and marriage matching is read only when both people are 18 or older. For now, the chart guides studies, health and friendships.', 'காதல் / திருமணப் பொருத்தம் இருவருக்கும் 18 வயது நிறைந்த பிறகே பார்க்கப்படும். இப்போது ஜாதகம் கல்வி, ஆரோக்கியம், நட்புக்கே வழிகாட்டும்.')}</p></section>`;
         return;

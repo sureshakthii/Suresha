@@ -32,9 +32,24 @@ function resolveSecret() {
 
 // ---- providers ----
 
+const twilioOk = () => !!(env('TWILIO_ACCOUNT_SID') && env('TWILIO_AUTH_TOKEN') && env('TWILIO_FROM'));
+const msg91Ok = () => !!(env('MSG91_AUTH_KEY') && env('MSG91_TEMPLATE_ID'));
+
+/**
+ * SMS provider for a number (E.164). MSG91 only delivers to Indian (+91) numbers through a DLT-approved template;
+ * Twilio sends worldwide. With both configured: +91 → MSG91 (cheaper, DLT-compliant), every other country → Twilio.
+ * With only one configured: Twilio sends everywhere; MSG91 sends to +91 only (others get "not available").
+ * Without a number: whether any SMS provider is configured at all.
+ */
+export function smsProviderFor(to) {
+  const india = to == null || String(to).startsWith('+91');
+  if (india && msg91Ok()) return 'msg91';
+  if (twilioOk()) return 'twilio';
+  return null;
+}
 function smsProvider() {
-  if (env('TWILIO_ACCOUNT_SID') && env('TWILIO_AUTH_TOKEN') && env('TWILIO_FROM')) return 'twilio';
-  if (env('MSG91_AUTH_KEY') && env('MSG91_TEMPLATE_ID')) return 'msg91';
+  if (twilioOk()) return 'twilio';
+  if (msg91Ok()) return 'msg91';
   return null;
 }
 const emailProvider = () => (env('SMTP_URL') && env('MAIL_FROM') ? 'smtp' : null);
@@ -49,6 +64,7 @@ function providers() {
   const pick = (ch) => (devModeFor(ch) ? 'dev' : providerFor(ch));
   return {
     sms: pick('sms'),
+    smsWorldwide: devModeFor('sms') || twilioOk(), // false: SMS codes reach Indian (+91) numbers only (MSG91)
     email: pick('email'),
     facebook: facebookConfigured(),
     devMode: devModeFor('sms') || devModeFor('email'),
@@ -58,7 +74,9 @@ function providers() {
 const otpText = (code) => `உங்கள் ${BRAND.nameTa} OTP: ${code} (5 நிமிடங்கள் செல்லும்)\nYour ${BRAND.name} OTP: ${code} (valid for 5 minutes)`;
 
 async function sendSms(to, code) {
-  if (smsProvider() === 'twilio') {
+  const provider = smsProviderFor(to);
+  if (!provider) throw Object.assign(new Error('No SMS provider for this country'), { code: 'NO_SMS_ROUTE' });
+  if (provider === 'twilio') {
     const sid = env('TWILIO_ACCOUNT_SID');
     const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
       method: 'POST',
@@ -185,7 +203,7 @@ function ipLimited(ip) {
 function parseTarget(channel, to) {
   if (channel === 'sms') {
     const id = normalizePhone(to);
-    return id ? { id } : { error: 'Enter a valid mobile number: 10 digits (India) or +<country code><number>' };
+    return id ? { id } : { error: 'Enter a valid mobile number with its country code, e.g. +94 77 123 4567 or +44 7700 900123 (10-digit Indian numbers work without +91)' };
   }
   if (channel === 'email') {
     const id = normalizeEmail(to);
@@ -215,6 +233,9 @@ export function authRouter() {
     const dev = devModeFor(channel);
     if (!dev && !providerFor(channel)) {
       return res.status(503).json({ error: `${channel === 'sms' ? 'SMS' : 'Email'} login is not configured` });
+    }
+    if (!dev && channel === 'sms' && !smsProviderFor(id)) {
+      return res.status(503).json({ error: 'SMS codes cannot be sent to this country yet. Please sign in with email instead.' });
     }
 
     const db = getDb();

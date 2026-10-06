@@ -88,7 +88,7 @@ function wire(sec) {
     photoUrl = URL.createObjectURL(file);
     readForm(f); render(sec);
   });
-  placeSearch(f.elements.place, $('#ktPlaces'), (p) => { Object.assign(draft, { place: p.name, lat: p.lat, lon: p.lon, tz: p.tz }); f.elements.place.value = p.name; });
+  placeSearch(f.elements.place, $('#ktPlaces'), (p) => { Object.assign(draft, { place: p.text || p.name, lat: p.lat, lon: p.lon, tz: p.tz, zone: p.zone }); f.elements.place.value = p.text || p.name; });
   f.elements.star.addEventListener('change', () => { readForm(f); render(sec); });
   f.elements.pada.addEventListener('change', () => { readForm(f); render(sec); });
   $$('[data-box]', sec).forEach((b) => b.addEventListener('click', () => { readForm(f); picker(sec, Number(b.dataset.box)); }));

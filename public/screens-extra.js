@@ -6,6 +6,7 @@ import {
   state, $, $$, L, ta, esc, bi, GLYPH, planetName, nakName, rasiName, starOptions, rasiOfStarPada,
   activeMember, chartOf, registerScreen, subHeader, displayName, toast,
 } from './core.js';
+import { isAdult, MATCH_ADULTS_NOTE } from './shared/age-guard.js';
 
 // ---------------------------------------------------------------- shared bits
 function injectCss() {
@@ -39,9 +40,11 @@ const gmSide = { bride: { mode: null, star: 0, pada: 1, memberId: null }, groom:
 
 function padaOptions(sel) { return [1, 2, 3, 4].map((p) => `<option value="${p}"${p === sel ? ' selected' : ''}>${p}</option>`).join(''); }
 
+// Gunamilan is marriage matching: adults only (shared/age-guard.js).
+const adults = () => people().filter((m) => isAdult(m, { tz: state.loc?.tz }));
 function gmForm(who) {
   const s = gmSide[who];
-  const pool = people();
+  const pool = adults();
   if (!s.mode) s.mode = pool.length ? 'member' : 'star';
   if (s.mode === 'member' && !pool.length) s.mode = 'star';
   if (s.mode === 'member' && !pool.some((m) => m.id === s.memberId)) {
@@ -51,7 +54,7 @@ function gmForm(who) {
   return `<div class="por-side"><h3>${who === 'bride' ? `👰 ${L('Bride', 'மணமகள்')}` : `🤵 ${L('Groom', 'மணமகன்')}`}</h3>
     <div class="seg">${pool.length ? `<button type="button" class="${s.mode === 'member' ? 'sel' : ''}" data-who="${who}" data-mode="member">${L('From family', 'குடும்பத்திலிருந்து')}</button>` : ''}<button type="button" class="${s.mode === 'star' ? 'sel' : ''}" data-who="${who}" data-mode="star">${L('By star', 'நட்சத்திரம் மூலம்')}</button></div>
     ${s.mode === 'member'
-    ? `<label>${L('Person', 'நபர்')}<select data-who="${who}" data-f="memberId">${pool.map((m) => `<option value="${esc(m.id)}"${m.id === s.memberId ? ' selected' : ''}>${esc(displayName(m))}</option>`).join('')}</select></label>`
+    ? `<label>${who === 'bride' ? L('Bride', 'மணமகள்') : L('Groom', 'மணமகன்')}<select data-who="${who}" data-f="memberId">${pool.map((m) => `<option value="${esc(m.id)}"${m.id === s.memberId ? ' selected' : ''}>${esc(displayName(m))}</option>`).join('')}</select></label>`
     : `<label>${L('Birth star', 'நட்சத்திரம்')}<select data-who="${who}" data-f="star">${starOptions(s.star)}</select></label>
        <label>${L('Pada', 'பாதம்')}<select data-who="${who}" data-f="pada">${padaOptions(s.pada)}</select></label>`}
     <p class="muted small" id="gm-${who}-info"></p>
@@ -61,7 +64,7 @@ function gmForm(who) {
 function gmData(who) {
   const s = gmSide[who];
   if (s.mode === 'member') {
-    const m = people().find((x) => x.id === s.memberId);
+    const m = adults().find((x) => x.id === s.memberId);
     const c = m && chartOf(m);
     if (c) return { name: displayName(m), star: c.janmaNakshatra.index, rasi: c.janmaRasi.index };
   }
@@ -72,7 +75,7 @@ function renderGunaMilan(sec) {
   injectCss();
   sec.innerHTML = `${subHeader(L('Guna Milan (36 Gunas)', 'குண மிலன் (36 குணங்கள்)'), L('North-Indian Ashtakoota matching — for NRI and inter-state marriages', 'வட இந்திய அஷ்டகூட பொருத்தம் — வெளிநாடு, பிற மாநிலத் திருமணங்களுக்கு'))}
     <div class="card glass"><div class="card-title">${L('Bride & groom', 'மணமகள் & மணமகன்')}</div>
-      <div class="por-grid">${gmForm('bride')}${gmForm('groom')}</div></div>
+      ${adults().length < people().length ? `<p class="small muted age-note">🌱 ${esc(bi(MATCH_ADULTS_NOTE))}</p>` : ''}<div class="por-grid">${gmForm('bride')}${gmForm('groom')}</div></div>
     <div id="gmResult"></div>
     <div class="card glass"><p class="small">🪔 ${L('Tamil tradition matches by the 10 poruthams (with Rajju and Vedhai as essentials). Guna Milan is the North-Indian system — use it alongside, not instead.', 'தமிழ் மரபில் 10 பொருத்தங்கள் (ரஜ்ஜு, வேதை அவசியம்) பார்க்கப்படுகின்றன. குண மிலன் வட இந்திய முறை — அதற்கு மாற்றாக அல்ல, துணையாகப் பயன்படுத்துங்கள்.')}</p>
       <div class="btn-row"><button type="button" class="btn-gold" data-go="couple">💑 ${L('Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்')}</button>

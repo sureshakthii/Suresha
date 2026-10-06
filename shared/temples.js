@@ -1,9 +1,14 @@
 // Major South Indian temples with approximate (town-level) coordinates for distance and directions.
 // Opening times (nadai thirappu) and booking are linked to official sources rather than guessed.
 // tags: arupadai (Murugan's six abodes), pancha_bhoota, navagraha, divya_desam, amman, shiva, vishnu, murugan, vinayagar
+import { nearestPlace } from './places.js';
+
 const T = (id, en, ta, deityEn, deityTa, town, lat, lon, tags, noteEn, noteTa, planet = null) => ({
   id, name: { en, ta }, deity: { en: deityEn, ta: deityTa }, town, lat, lon, tags, note: { en: noteEn, ta: noteTa }, planet,
 });
+
+// Temples abroad: same shape plus the ISO country code.
+const A = (cc, ...args) => { const t = T(...args); t.tags = [...t.tags, 'abroad']; return { ...t, cc, abroad: true }; };
 
 export const TEMPLES = [
   T('madurai_meenakshi', 'Meenakshi Amman Temple', 'மீனாட்சி அம்மன் கோவில்', 'Meenakshi & Sundareswarar', 'மீனாட்சி – சுந்தரேஸ்வரர்', 'Madurai', 9.9195, 78.1193, ['amman', 'shiva'], 'Grand temple city; Chithirai Thiruvizha is its greatest festival.', 'கோவில் நகரம்; சித்திரைத் திருவிழா பிரசித்தம்.'),
@@ -80,6 +85,37 @@ export const TEMPLES = [
   T('chottanikkara', 'Chottanikkara Bhagavathy Temple', 'சோட்டாணிக்கரை பகவதி கோவில்', 'Goddess Rajarajeswari (Bhagavathy)', 'ராஜராஜேஸ்வரி (பகவதி)', 'Chottanikkara (Kerala)', 9.9340, 76.3910, ['amman'], 'Known for relief from mental distress; Makam Thozhal.', 'மன நோய் நீங்கும் தலம்; மகம் தொழல்.'),
   T('attukal', 'Attukal Bhagavathy Temple', 'ஆற்றுக்கால் பகவதி கோவில்', 'Goddess Attukal Amma (Kannaki)', 'ஆற்றுக்கால் அம்மை (கண்ணகி)', 'Thiruvananthapuram (Kerala)', 8.4695, 76.9573, ['amman'], 'Attukal Pongala draws vast numbers of women devotees.', 'ஆற்றுக்கால் பொங்கலுக்குப் பெருந்திரளான பெண்கள்.'),
   T('padmanabhaswamy', 'Sri Padmanabhaswamy Temple', 'ஸ்ரீ பத்மநாபசுவாமி கோவில்', 'Lord Anantha Padmanabha', 'அனந்த பத்மநாபர்', 'Thiruvananthapuram (Kerala)', 8.4828, 76.9436, ['vishnu', 'divya_desam'], 'Reclining Vishnu seen through three doors; strict dress code.', 'மூன்று வாயில்கள் வழி சயனக் கோலம்; உடைக் கட்டுப்பாடு உண்டு.'),
+  // ---- Abroad: major Hindu / Tamil temples of the diaspora (approximate coordinates; timings and phone not listed —
+  //      always check with the temple). `cc` is the ISO country.
+  A('LK', 'nallur', 'Nallur Kandaswamy Kovil', 'நல்லூர் கந்தசுவாமி கோவில்', 'Lord Murugan (Kandaswamy)', 'கந்தசுவாமி (முருகன்)', 'Nallur, Jaffna', 9.6747, 80.0294, ['murugan'], 'The great Murugan temple of Jaffna; its 25-day annual festival (Aug–Sep) draws devotees from across the world.', 'யாழ்ப்பாணத்தின் பெருமைமிகு முருகன் கோவில்; 25 நாள் மகோற்சவத்திற்கு (ஆவணி–புரட்டாசி) உலகெங்குமிருந்து அடியார்கள் வருவர்.'),
+  A('LK', 'koneswaram', 'Koneswaram Temple (Thirukonamalai)', 'திருக்கோணேச்சரம் (கோணேஸ்வரர் கோவில்)', 'Lord Koneswarar (Shiva) & Mathumai Ambal', 'கோணேஸ்வரர் – மாதுமை அம்பாள்', 'Trincomalee', 8.5826, 81.2450, ['shiva'], 'Clifftop Shiva temple on Swami Rock; one of the Pancha Ishwarams, sung in the Thevaram.', 'சுவாமி மலைப் பாறை மேல் சிவாலயம்; பஞ்ச ஈச்சரங்களில் ஒன்று, தேவாரப் பாடல் பெற்ற தலம்.'),
+  A('LK', 'ketheeswaram', 'Thiruketheeswaram Temple', 'திருக்கேதீச்சரம்', 'Lord Ketheeswarar (Shiva) & Gowri Ambal', 'கேதீஸ்வரர் – கௌரி அம்பாள்', 'Mannar', 8.9733, 79.9378, ['shiva'], 'Ancient Shiva temple near Mannar; one of the Pancha Ishwarams, sung in the Thevaram. Maha Shivaratri is its great day.', 'மன்னார் அருகே தொன்மையான சிவாலயம்; பஞ்ச ஈச்சரங்களில் ஒன்று, தேவாரப் பாடல் பெற்றது. மகா சிவராத்திரி சிறப்பு.'),
+  A('LK', 'munneswaram', 'Munneswaram Temple', 'முன்னேஸ்வரம் கோவில்', 'Lord Munnainathar (Shiva) & Vadivambikai', 'முன்னைநாதர் – வடிவாம்பிகை', 'Chilaw', 7.5795, 79.8217, ['shiva'], 'One of the Pancha Ishwarams on the west coast, linked with Rama in tradition; the annual festival is in Aug–Sep.', 'மேற்குக் கரையில் பஞ்ச ஈச்சரங்களில் ஒன்று; ராமருடன் தொடர்புடைய மரபு. ஆண்டு உற்சவம் ஆவணி–புரட்டாசியில்.'),
+  A('LK', 'kataragama', 'Kataragama (Kathirkamam) Murugan Temple', 'கதிர்காமம் முருகன் கோவில்', 'Lord Kathirkama Kandan (Murugan)', 'கதிர்காமக் கந்தன்', 'Kataragama', 6.4189, 81.3326, ['murugan'], 'Revered by Hindus, Buddhists and others; the Esala festival (Jul–Aug) ends a long Pada Yatra from Jaffna.', 'இந்துக்கள், பௌத்தர்கள் அனைவரும் போற்றும் தலம்; ஆடி எசல விழா, யாழ்ப்பாணத்திலிருந்து பாத யாத்திரை.'),
+  A('LK', 'nainativu', 'Nainativu Sri Nagapooshani Amman Kovil', 'நயினாதீவு ஸ்ரீ நாகபூஷணி அம்மன் கோவில்', 'Goddess Nagapooshani (Parvati)', 'நாகபூஷணி அம்மன்', 'Nainativu, Jaffna', 9.6116, 79.7740, ['amman'], 'Island Shakti peetham reached by boat from Kurikadduwan; the Aani festival (Jun–Jul) is the biggest.', 'குறிகட்டுவானிலிருந்து படகில் செல்லும் தீவுச் சக்தி பீடம்; ஆனித் திருவிழா பெரியது.'),
+  A('MY', 'batu_caves', 'Batu Caves Sri Subramaniar Temple', 'பத்துமலை ஸ்ரீ சுப்பிரமணியர் கோவில்', 'Lord Subramaniar (Murugan)', 'ஸ்ரீ சுப்பிரமணியர் (முருகன்)', 'Batu Caves, Selangor', 3.2379, 101.6840, ['murugan'], 'Limestone cave temple up 272 steps beside a giant golden Murugan statue; Thaipusam draws vast crowds.', '272 படிகள் ஏறும் சுண்ணாம்புக் குகைக் கோவில், பெரிய தங்க முருகன் சிலை; தைப்பூசம் மிகப் பெரிய திருவிழா.'),
+  A('MY', 'kl_mahamariamman', 'Sri Mahamariamman Temple, Kuala Lumpur', 'ஸ்ரீ மகா மாரியம்மன் கோவில், கோலாலம்பூர்', 'Goddess Mahamariamman', 'ஸ்ரீ மகா மாரியம்மன்', 'Kuala Lumpur', 3.1434, 101.6962, ['amman'], 'The oldest Hindu temple in Kuala Lumpur (1873); the Thaipusam silver chariot leaves from here for Batu Caves.', 'கோலாலம்பூரின் மிகப் பழைய இந்துக் கோவில் (1873); தைப்பூச வெள்ளி ரதம் இங்கிருந்து பத்துமலைக்குச் செல்லும்.'),
+  A('MY', 'penang_waterfall', 'Arulmigu Balathandayuthapani Temple (Waterfall Hill), Penang', 'அருள்மிகு பாலதண்டாயுதபாணி கோவில் (தண்ணீர்மலை), பினாங்கு', 'Lord Balathandayuthapani (Murugan)', 'பாலதண்டாயுதபாணி (முருகன்)', 'George Town, Penang', 5.4350, 100.2980, ['murugan'], 'Hilltop Murugan temple reached by over 500 steps; the centre of Penang\'s Thaipusam.', '500-க்கும் மேற்பட்ட படிகள் ஏறும் மலைக் கோவில்; பினாங்கு தைப்பூசத்தின் மையம்.'),
+  A('SG', 'sg_mariamman', 'Sri Mariamman Temple, Singapore', 'ஸ்ரீ மாரியம்மன் கோவில், சிங்கப்பூர்', 'Goddess Mariamman', 'ஸ்ரீ மாரியம்மன்', 'Singapore', 1.2826, 103.8452, ['amman'], 'Singapore\'s oldest Hindu temple (1827) in Chinatown; known for the Theemithi fire-walking festival.', 'சிங்கப்பூரின் மிகப் பழைய இந்துக் கோவில் (1827); தீமிதித் திருவிழா பிரசித்தம்.'),
+  A('SG', 'sg_srinivasa_perumal', 'Sri Srinivasa Perumal Temple, Singapore', 'ஸ்ரீ சீனிவாசப் பெருமாள் கோவில், சிங்கப்பூர்', 'Lord Srinivasa Perumal', 'ஸ்ரீ சீனிவாசப் பெருமாள்', 'Singapore', 1.3116, 103.8560, ['vishnu'], 'Perumal temple on Serangoon Road in Little India; the Thaipusam procession begins here.', 'லிட்டில் இந்தியா சிராங்கூன் சாலையில் பெருமாள் கோவில்; தைப்பூச ஊர்வலம் இங்கிருந்து தொடங்கும்.'),
+  A('SG', 'sg_thendayuthapani', 'Sri Thendayuthapani Temple, Singapore', 'ஸ்ரீ தெண்டாயுதபாணி கோவில், சிங்கப்பூர்', 'Lord Thendayuthapani (Murugan)', 'ஸ்ரீ தெண்டாயுதபாணி (முருகன்)', 'Singapore', 1.2944, 103.8433, ['murugan'], 'Tank Road Murugan temple built by the Nattukottai Chettiar community; the Thaipusam kavadis end here.', 'நகரத்தார் கட்டிய டேங்க் ரோடு முருகன் கோவில்; தைப்பூசக் காவடிகள் இங்கு நிறைவடையும்.'),
+  A('MU', 'grand_bassin', 'Grand Bassin (Ganga Talao)', 'கிராண்ட் பாசின் (கங்கா தலாவ்)', 'Lord Shiva (Mangal Mahadev)', 'சிவபெருமான் (மங்கள் மகாதேவ்)', 'Grand Bassin', -20.4178, 57.4925, ['shiva'], 'Sacred crater lake in the hills of Mauritius; the island-wide Maha Shivaratri pilgrimage walks here.', 'மொரீஷியஸ் மலைகளில் புனித ஏரி; மகா சிவராத்திரிக்கு நாடு முழுவதிலிருந்தும் பாத யாத்திரை.'),
+  A('GB', 'uk_balaji_tividale', 'Shri Venkateswara (Balaji) Temple, Tividale', 'ஸ்ரீ வெங்கடேஸ்வரா (பாலாஜி) கோவில், டிவிடேல்', 'Lord Venkateswara (Balaji)', 'ஸ்ரீ வெங்கடேஸ்வரர் (பாலாஜி)', 'Tividale', 52.5132, -2.0472, ['vishnu'], 'A large South Indian–style Balaji temple in the West Midlands.', 'மேற்கு மிட்லாண்ட்ஸில் தென்னிந்தியப் பாணி பெரிய பாலாஜி கோவில்.'),
+  A('GB', 'uk_highgate_murugan', 'Highgate Hill Murugan Temple, London', 'ஹைகேட் ஹில் முருகன் கோவில், லண்டன்', 'Lord Murugan', 'முருகன்', 'Highgate, London', 51.5735, -0.1430, ['murugan'], 'One of the oldest Tamil Murugan temples in Britain; its chariot festival fills the street.', 'பிரிட்டனின் பழமையான தமிழ் முருகன் கோவில்களில் ஒன்று; தேர்த் திருவிழா சிறப்பு.'),
+  A('GB', 'uk_ealing_kanaga_thurkkai', 'Shri Kanaga Thurkkai Amman Temple, Ealing', 'ஸ்ரீ கனக துர்க்கை அம்மன் கோவில், ஈலிங்', 'Goddess Kanaga Thurkkai', 'ஸ்ரீ கனக துர்க்கை அம்மன்', 'Ealing, London', 51.5114, -0.3175, ['amman'], 'Durga temple of the West London Tamil community.', 'மேற்கு லண்டன் தமிழ் மக்களின் துர்க்கை அம்மன் கோவில்.'),
+  A('GB', 'uk_london_murugan', 'London Sri Murugan Temple, Manor Park', 'லண்டன் ஸ்ரீ முருகன் கோவில், மனோர் பார்க்', 'Lord Murugan', 'முருகன்', 'East Ham, London', 51.5466, 0.0476, ['murugan'], 'Granite South Indian–style Murugan temple in East London.', 'கிழக்கு லண்டனில் கருங்கல் தென்னிந்தியப் பாணி முருகன் கோவில்.'),
+  A('US', 'us_pittsburgh_venkateswara', 'Sri Venkateswara Temple, Pittsburgh', 'ஸ்ரீ வெங்கடேஸ்வரா கோவில், பிட்ஸ்பர்க்', 'Lord Venkateswara (Balaji)', 'ஸ்ரீ வெங்கடேஸ்வரர் (பாலாஜி)', 'Penn Hills, Pittsburgh', 40.4622, -79.7966, ['vishnu'], 'One of the first traditional Hindu temples in the USA (1976), modelled on Tirumala.', 'அமெரிக்காவின் முதல் பாரம்பரிய இந்துக் கோவில்களில் ஒன்று (1976); திருமலை மாதிரி.'),
+  A('US', 'us_flushing_ganesha', 'Ganesha Temple (Maha Vallabha Ganapati), Flushing', 'கணேசர் கோவில் (மகா வல்லப கணபதி), ஃபிளஷிங்', 'Lord Maha Vallabha Ganapati', 'மகா வல்லப கணபதி', 'Flushing, New York', 40.7516, -73.8207, ['vinayagar'], 'The Hindu Temple Society of North America\'s Ganesha temple in Queens, consecrated in 1977.', 'நியூயார்க் குயின்ஸில் 1977-ல் கும்பாபிஷேகம் செய்யப்பட்ட கணேசர் கோவில்.'),
+  A('US', 'us_malibu_venkateswara', 'Malibu Hindu Temple (Sri Venkateswara)', 'மாலிபு இந்துக் கோவில் (ஸ்ரீ வெங்கடேஸ்வரா)', 'Lord Venkateswara', 'ஸ்ரீ வெங்கடேஸ்வரர்', 'Calabasas, near Malibu', 34.0963, -118.7086, ['vishnu'], 'Hill-country Venkateswara temple near Malibu in Los Angeles county.', 'லாஸ் ஏஞ்சலஸ் அருகே மாலிபு மலைப் பகுதியில் வெங்கடேஸ்வரர் கோவில்.'),
+  A('US', 'us_pearland_meenakshi', 'Sri Meenakshi Temple, Pearland (Houston)', 'ஸ்ரீ மீனாட்சி கோவில், பேர்லேண்ட் (ஹூஸ்டன்)', 'Goddess Meenakshi & Sundareswarar', 'மீனாட்சி – சுந்தரேஸ்வரர்', 'Pearland, Houston', 29.5580, -95.3190, ['amman', 'shiva'], 'Meenakshi temple in the Madurai tradition near Houston.', 'ஹூஸ்டன் அருகே மதுரை மரபில் மீனாட்சி கோவில்.'),
+  A('CA', 'ca_richmond_hill_ganesha', 'Richmond Hill Hindu Temple (Ganesha)', 'ரிச்மண்ட் ஹில் இந்துக் கோவில் (கணேசர்)', 'Lord Ganesha', 'கணேசர்', 'Richmond Hill, Ontario', 43.8905, -79.4005, ['vinayagar'], 'Large Ganesha temple in the Greater Toronto Area.', 'டொரன்டோ பெருநகரப் பகுதியில் பெரிய கணேசர் கோவில்.'),
+  A('AU', 'au_helensburgh_venkateswara', 'Sri Venkateswara Temple, Helensburgh', 'ஸ்ரீ வெங்கடேஸ்வரா கோவில், ஹெலன்ஸ்பர்க்', 'Lord Venkateswara', 'ஸ்ரீ வெங்கடேஸ்வரர்', 'Helensburgh, NSW', -34.1894, 150.9940, ['vishnu'], 'Bushland Venkateswara temple south of Sydney.', 'சிட்னிக்குத் தெற்கே வனப்பகுதியில் வெங்கடேஸ்வரர் கோவில்.'),
+  A('AU', 'au_sydney_murugan', 'Sydney Murugan Temple, Mays Hill', 'சிட்னி முருகன் கோவில், மேஸ் ஹில்', 'Lord Murugan', 'முருகன்', 'Mays Hill, Sydney', -33.8205, 150.9963, ['murugan'], 'Murugan temple of Sydney\'s Tamil community in western Sydney.', 'மேற்கு சிட்னித் தமிழ் மக்களின் முருகன் கோவில்.'),
+  A('AU', 'au_melbourne_vinayagar', 'Sri Vakrathunda Vinayagar Temple, The Basin', 'ஸ்ரீ வக்ரதுண்ட விநாயகர் கோவில், தி பேசின்', 'Lord Vinayagar', 'விநாயகர்', 'The Basin, Melbourne', -37.8530, 145.3130, ['vinayagar'], 'Vinayagar temple in the Dandenong foothills of Melbourne.', 'மெல்போர்ன் டாண்டினாங் மலையடிவாரத்தில் விநாயகர் கோவில்.'),
+  A('ZA', 'za_durban_ambalavanar', 'Shri Ambalavanar Alayam (Second River Temple), Durban', 'ஸ்ரீ அம்பலவாணர் ஆலயம் (செகண்ட் ரிவர் கோவில்), டர்பன்', 'Lord Shiva (Ambalavanar)', 'அம்பலவாணர் (சிவன்)', 'Cato Manor, Durban', -29.8560, 30.9805, ['shiva'], 'Historic Tamil temple of Durban, a national monument.', 'டர்பனின் வரலாற்றுச் சிறப்புமிக்க தமிழ்க் கோவில்; தேசியச் சின்னம்.'),
+  A('AE', 'ae_dubai_hindu_temple', 'Hindu Temple Dubai (Jebel Ali)', 'இந்துக் கோவில் துபாய் (ஜெபல் அலி)', 'Shiva, Krishna and other deities', 'சிவன், கிருஷ்ணர் உள்ளிட்ட தெய்வங்கள்', 'Jebel Ali, Dubai', 25.0050, 55.1150, ['shiva', 'vishnu'], 'Opened in 2022 for Dubai\'s Hindu community, continuing the worship of the old Bur Dubai Shiva and Krishna shrines.', '2022-ல் திறக்கப்பட்டது; பழைய பர் துபாய் சிவன், கிருஷ்ணர் சன்னதிகளின் வழிபாட்டைத் தொடர்கிறது.'),
+  A('FJ', 'fj_nadi_murugan', 'Sri Siva Subramaniya Swami Temple, Nadi', 'ஸ்ரீ சிவ சுப்பிரமணிய சுவாமி கோவில், நாடி', 'Lord Murugan', 'முருகன்', 'Nadi', -17.8037, 177.4171, ['murugan'], 'The largest Hindu temple in Fiji, in Dravidian style.', 'பிஜியின் மிகப் பெரிய இந்துக் கோவில், திராவிடப் பாணி.'),
+  A('DE', 'de_hamm_kamadchi', 'Sri Kamadchi Ampal Temple, Hamm', 'ஸ்ரீ காமாட்சி அம்பாள் கோவில், ஹாம்', 'Goddess Kamadchi', 'ஸ்ரீ காமாட்சி அம்பாள்', 'Hamm', 51.6720, 7.9475, ['amman'], 'Large Tamil temple in Germany; its yearly chariot festival draws Tamils from across Europe.', 'ஜெர்மனியில் பெரிய தமிழ்க் கோவில்; ஆண்டுத் தேர்த் திருவிழாவுக்கு ஐரோப்பா முழுவதிலிருந்தும் வருவர்.'),
 ];
 
 export const TEMPLE_TAGS = [
@@ -92,6 +128,7 @@ export const TEMPLE_TAGS = [
   { id: 'amman', en: 'Amman', ta: 'அம்மன்' },
   { id: 'murugan', en: 'Murugan', ta: 'முருகன்' },
   { id: 'vishnu', en: 'Perumal', ta: 'பெருமாள்' },
+  { id: 'abroad', en: 'Abroad', ta: 'வெளிநாடு' },
 ];
 
 /** Great-circle distance in km. */
@@ -102,16 +139,33 @@ export function distanceKm(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-/** Temples sorted by distance from a point, with an estimated road distance and drive time. */
+for (const t of TEMPLES) t.cc ||= 'IN';
+
+/** Country of a point: the nearest built-in place (within 400 km), else null. */
+export function countryAt(lat, lon) {
+  return nearestPlace(lat, lon, { maxKm: 400 })?.cc || null;
+}
+
+/**
+ * How to get from a point in country `fromCc` to a temple `km` away (straight line): by road, or — when it is far
+ * or across a border/sea — a flight suggestion. Flight time ≈ 3 h at the airports + km / 700 km/h.
+ */
+export function travelMode(km, fromCc, toCc) {
+  const flight = km > 700 || (fromCc && toCc && fromCc !== toCc && km > 120);
+  return flight ? { mode: 'flight', flightHours: 3 + km / 700 } : { mode: 'road' };
+}
+
+/** Temples sorted by distance from a point, with an estimated road distance and drive time (or a flight hint). */
 export function templesNear(lat, lon, { tag = 'all', query = '' } = {}) {
   const q = query.trim().toLowerCase();
+  const fromCc = countryAt(lat, lon);
   return TEMPLES
     .filter((t) => tag === 'all' || t.tags.includes(tag))
     .filter((t) => !q || `${t.name.en} ${t.name.ta} ${t.town} ${t.deity.en} ${t.deity.ta}`.toLowerCase().includes(q))
     .map((t) => {
       const km = distanceKm(lat, lon, t.lat, t.lon);
       const roadKm = km * 1.3;
-      return { ...t, km, roadKm, driveHours: roadKm / 45 };
+      return { ...t, km, roadKm, driveHours: roadKm / 45, ...travelMode(km, fromCc, t.cc) };
     })
     .sort((a, b) => a.km - b.km);
 }
@@ -119,7 +173,7 @@ export function templesNear(lat, lon, { tag = 'all', query = '' } = {}) {
 export const templeLinks = (t) => ({
   directions: `https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lon}`,
   hotels: `https://www.google.com/maps/search/hotels+near+${encodeURIComponent(`${t.name.en}, ${t.town}`)}`,
-  hrce: 'https://hrce.tn.gov.in/',
+  hrce: t.cc && t.cc !== 'IN' ? null : 'https://hrce.tn.gov.in/',
   // Live phone number, today's timings and reviews from the temple's Google Maps listing (kept current by Google).
   contact: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${t.name.en} ${t.town}`)}`,
   official: OFFICIAL[t.id] || null,

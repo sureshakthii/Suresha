@@ -76,7 +76,7 @@ The tests cover:
 |---|---|---|
 | GET | `/api/health` | returns `{ ok, ai }` |
 | GET | `/api/categories` | list of question categories |
-| GET | `/api/places?q=madurai` | built-in gazetteer, plus an OpenStreetMap fallback |
+| GET | `/api/places?q=madurai` | built-in world gazetteer, plus an OpenStreetMap (Nominatim) fallback; every result has an IANA `zone` |
 | POST | `/api/chart` | `{ name, date:"YYYY-MM-DD", time:"HH:MM:SS", lat, lon, tz, place }` |
 | GET | `/api/panchang?lat=&lon=&tz=&at=` | live Panchangam snapshot |
 | GET | `/api/calendar?year=&month=&lat=&lon=&tz=` | Tamil calendar month (month 1–12) |
@@ -106,21 +106,27 @@ test/     node:test suites
 
 > Astrology gives guidance on timing only. For surgery, legal and financial decisions, the professional's advice always comes first. The AI is instructed to say so.
 
+## Places & time zones (worldwide)
+
+Every place field (birth place, current location, journey start, kattam, matching) searches `shared/world-places.js`, an offline gazetteer of ~3,700 places in 240+ countries (GeoNames, CC BY 4.0 — all capitals, major cities everywhere, every Sri Lankan district, Malaysian / Singapore / Gulf towns, UK / US / Canada / Australia metros), with Tamil names and Tamil-script search for the main Tamil places. When the phone is online and the built-in list has few matches, OpenStreetMap Nominatim is asked too (through `/api/places` on the server, or directly from the offline app — debounced, one request a second, cached). Each place carries its **IANA time zone**; for online results the zone comes from the country (single-zone countries) or the nearest built-in city in the same country (US, CA, AU, RU, BR …) — never from the longitude. Charts use the offset in force on the birth date (`birthChart({ zone })`, daylight saving and historical changes included). Old profiles with only a numeric `tz` keep working; when their place is in the list the zone is attached quietly. Regenerate the data with `scripts/build-world-data.mjs` (instructions inside). Rupee estimates (journeys) also show an approximate amount in the user's currency (`shared/currency.js`); payments stay in INR.
+
 ## Login
 
 Users sign in with a one-time code (OTP) sent by **SMS** or **email**, or with **Facebook**. Accounts, sessions and each user's saved data (family birth profiles, settings) live in SQLite (`node:sqlite`, file at `DB_PATH`, default `data/kaippesi.db`). Sessions are 30-day `httpOnly` cookies (`kj_session`).
 
-| Channel | Provider (first configured wins) |
+| Channel | Provider |
 |---|---|
-| SMS | Twilio (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`), else MSG91 (`MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`) |
+| SMS | Chosen per number: Indian numbers (`+91`) go through MSG91 (`MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`) when it is configured, every other country through Twilio (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`). With only Twilio, Twilio sends everywhere (India too). With only MSG91, SMS login works for `+91` numbers only — other countries get a clear "use email" message (MSG91 is India-only; Twilio is international). |
 | Email | SMTP via nodemailer (`SMTP_URL`, `MAIL_FROM`) |
 | Facebook | `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, `PUBLIC_URL` |
+
+**Mobile numbers worldwide.** The login screen and every other mobile-number field (priest registration, bookings, contact numbers) have a searchable country-code picker (flag, Tamil / English country name, dialling code; all ITU calling regions from Google's libphonenumber metadata in `shared/country-data.js`). It defaults to the country of the phone's locale / time zone (India when unknown), checks the length loosely per country and sends the number in E.164 (`+94771234567`). The server also still accepts a bare 10-digit Indian mobile.
 
 **Dev mode** (`AUTH_DEV_MODE=1`, or automatically outside production for any channel with no provider): nothing is sent; the code is printed to the server console and returned as `devCode` in the response, so you can log in locally with no accounts set up. In production a channel without a provider returns 503. Set `AUTH_SECRET` in production.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/auth/providers` | `{ sms, email, facebook, devMode }` |
+| GET | `/api/auth/providers` | `{ sms, smsWorldwide, email, facebook, devMode }` |
 | POST | `/api/auth/otp/request` | `{ channel:"sms"\|"email", to }`: 5 per number/email and 30 per IP per hour |
 | POST | `/api/auth/otp/verify` | `{ channel, to, code, name? }` → `{ user }` + session cookie (5 tries per code) |
 | GET | `/api/auth/facebook/start` | redirects to Facebook; callback returns to `/#welcome` or `/#login-failed` |

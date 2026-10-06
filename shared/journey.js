@@ -8,7 +8,7 @@
 //    in COST_ASSUMPTIONS — always shown next to the numbers.
 //  • Accessibility is "not verified" for every temple until a verified source is added.
 //  • Ranking uses only distance, preferences and chart associations. No payment or partner affects it.
-import { TEMPLES, distanceKm } from './temples.js';
+import { TEMPLES, distanceKm, countryAt } from './temples.js';
 import { templeInfo, templeRanges } from './temple-info.js';
 import { NAVAGRAHA } from './remedies.js';
 import { PLANETS } from './astro.js';
@@ -171,10 +171,23 @@ export function planJourney(p) {
   const tier = p.tier || 'economy';
   const pace = p.mobility && p.mobility !== 'none' ? 'relaxed' : p.pace || 'moderate';
   const ctx = { prefs: p.prefs || [], planets: p.planets || [] };
-  const scored = TEMPLES.map((t) => {
+  // Road trips stay in the start's country (Colombo → Sri Lankan temples, London → UK temples). If that country has
+  // no temples in the list, the plan uses the nearest ones and says a flight is needed first (not costed).
+  const startCc = p.start.cc || countryAt(p.start.lat, p.start.lon);
+  const all = TEMPLES.map((t) => {
     const r = relevance(t, ctx);
     return { t, km: roadKm(p.start, t), ...r };
   });
+  const domestic = startCc ? all.filter((x) => x.t.cc === startCc) : all;
+  if (!domestic.length && !p.flightFrom) {
+    // e.g. Oslo: plan the road trip from the town of the nearest listed temple, reached by air first (not costed).
+    const near = [...all].sort((a, b) => a.km - b.km)[0].t;
+    const inner = planJourney({ ...p, start: { lat: near.lat, lon: near.lon, name: near.town, cc: near.cc }, flightFrom: p.start });
+    return { ...inner, inputs: { ...inner.inputs, start: p.start }, flightFirst: true, flightTo: { town: near.town, cc: near.cc, km: Math.round(distanceKm(p.start.lat, p.start.lon, near.lat, near.lon)) } };
+  }
+  const focusIds = new Set(p.focus || []);
+  const scored = domestic.length ? [...domestic, ...all.filter((x) => focusIds.has(x.t.id) && !domestic.includes(x))] : all;
+  const flightFirst = false;
   const make = (key, title, picked, d, extra = {}) => {
     const route = buildDays(p.start, picked.map((x) => x.t), { days: d, pace, transport });
     const nights = Math.max(0, route.days.length - 1);
@@ -204,7 +217,7 @@ export function planJourney(p) {
     const local0 = [...scored].sort((a, b) => a.km - b.km);
     const localPick0 = local0.filter((x) => x.km <= 30).slice(0, 2);
     const C0 = make('C', B('Minimal travel or worship close to home', 'குறைந்த பயணம் அல்லது வீட்டருகே வழிபாடு'), localPick0.length ? localPick0 : local0.slice(0, 1), 1, { homeWorship: true });
-    return { options: [A0, C0], inputs: { ...p, days, travellers, transport, tier, pace }, review: REVIEW, assumptions: COST_ASSUMPTIONS, focus };
+    return { options: [A0, C0], inputs: { ...p, days, travellers, transport, tier, pace }, review: REVIEW, assumptions: COST_ASSUMPTIONS, focus, startCc, flightFirst };
   }
   // A. Nearby and economical: within ~150 km road, at most 2 days, cheapest transport.
   const nearPool = rank(scored.filter((x) => x.km <= 150));
@@ -222,7 +235,7 @@ export function planJourney(p) {
   const local = [...scored].sort((a, b) => a.km - b.km);
   const localPick = local.filter((x) => x.km <= 30).slice(0, 2);
   const C = make('C', B('Minimal travel or worship close to home', 'குறைந்த பயணம் அல்லது வீட்டருகே வழிபாடு'), localPick.length ? localPick : local.slice(0, 1), 1, { homeWorship: true });
-  return { options: [A, Bplan, C], inputs: { ...p, days, travellers, transport, tier, pace }, review: REVIEW, assumptions: COST_ASSUMPTIONS };
+  return { options: [A, Bplan, C], inputs: { ...p, days, travellers, transport, tier, pace }, review: REVIEW, assumptions: COST_ASSUMPTIONS, startCc, flightFirst };
 }
 
 // National / state public holidays with fixed dates (month-day). Festival holidays come from the Tamil calendar.

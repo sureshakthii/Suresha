@@ -12,7 +12,7 @@ export const CONVENTIONS = {
   lagna: 'Ascendant from local sidereal time and true obliquity at the birth place coordinates',
   sunrise: 'Upper limb of the Sun at the apparent horizon with standard refraction, at the chosen place',
   vedicDay: 'Panchangam day runs sunrise to next sunrise; tithi/nakshatra end times are instants',
-  timezone: 'Fixed UTC offset entered per profile; no automatic historical daylight-saving rules (India has used IST, UTC+5:30, since 1955 except brief war-time adjustments — enter the historical offset manually for births abroad or before 1955)',
+  timezone: 'IANA time zone of the birth place (filled automatically from the built-in world list or the online place search) with the offset in force on the birth date — daylight saving and historical changes included (e.g. India +6:30 in 1942–45, Sri Lanka +6:30/+6:00 in 1996–2006, Singapore +7:30 before 1982). Profiles saved earlier with only a fixed UTC offset keep that offset unless their place is found in the world list',
   dasa: 'Vimshottari, 120-year cycle, balance from the Moon’s position in its nakshatra; year = 365.25 days',
   horai: 'Tamil practice: equal 60-minute horai from sunrise, first ruled by the weekday lord',
   rahuKalam: 'Day length (sunrise→sunset) divided into 8 equal parts, weekday sequence',

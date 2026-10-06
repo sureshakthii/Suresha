@@ -5,6 +5,9 @@ import {
   state, $, $$, L, esc, bi, GLYPH, COLOR, planetName, fmtIsoDate, activeMember, chartOf, registerScreen, subHeader, aiTask, speak, displayName,
 } from './core.js';
 import { isLocked, lockCard } from './growth.js';
+import { ageProfile, lifeQuestionAllowed, stageLabel } from './shared/age-guard.js';
+
+const ageOf = (m) => ageProfile(m, { tz: state.loc?.tz });
 
 const EXTRA = [
   { id: 'compass', icon: '🧭', en: 'Which study & career suits me? (talent compass)', ta: 'எந்தப் படிப்பு, தொழில் பொருந்தும்? (திறமை வழிகாட்டி)' },
@@ -20,9 +23,14 @@ function renderLife(sec, params = {}) {
   if (params.memberId) ui.memberId = params.memberId;
   const people = state.family.filter((m) => m.relation !== 'organization');
   const m = people.find((x) => x.id === ui.memberId) || activeMember();
+  // Age first: a child sees only the questions that suit the age (studies, Kula Deivam) — never marriage, job, money or court.
+  const prof = ageOf(m);
+  const qs = [...QUESTIONS, ...EXTRA].filter((q) => lifeQuestionAllowed(q.id, prof));
+  if (ui.q && !qs.some((q) => q.id === ui.q)) ui.q = null;
   sec.innerHTML = `${subHeader(L('Life Questions', 'வாழ்க்கைக் கேள்விகள்'), L('Traditional timing indicators from dasa, bhukti and Guru–Sani transits — not guarantees', 'தசை, புக்தி, குரு–சனி கோசார அடிப்படையிலான பாரம்பரியக் கால அறிகுறிகள் — உத்தரவாதம் அல்ல'))}
     ${people.length > 1 ? `<label>${L('For', 'யாருக்கு')}<select id="lifeFor">${people.map((x) => `<option value="${esc(x.id)}"${x.id === m.id ? ' selected' : ''}>${esc(displayName(x))}</option>`).join('')}</select></label>` : ''}
-    <div class="q-grid">${[...QUESTIONS, ...EXTRA].map((q) => `<button class="q-card${ui.q === q.id ? ' sel' : ''}" data-q="${q.id}"><span class="ti-icon">${q.icon}</span><span>${esc(bi(q))}</span></button>`).join('')}</div>
+    ${prof.minor ? `<div class="note-box age-note" role="note">🌱 ${esc(L(`${displayName(m)} is ${prof.age} (${bi(stageLabel(prof))}). Marriage, job, money and court questions are read only after 18 — here are the questions that suit this age.`, `${displayName(m)} — வயது ${prof.age} (${bi(stageLabel(prof))}). திருமணம், வேலை, பணம், வழக்கு பற்றிய கேள்விகள் 18 வயதுக்குப் பிறகே — இந்த வயதிற்கு ஏற்ற கேள்விகள் இங்கே.`))}</div>` : ''}
+    <div class="q-grid">${qs.map((q) => `<button class="q-card${ui.q === q.id ? ' sel' : ''}" data-q="${q.id}"><span class="ti-icon">${q.icon}</span><span>${esc(bi(q))}</span></button>`).join('')}</div>
     <div id="lifeOut"></div>`;
   $('#lifeFor')?.addEventListener('change', (e) => { ui.memberId = e.target.value; renderLife(sec); });
   $$('[data-q]', sec).forEach((b) => b.addEventListener('click', () => { ui.q = b.dataset.q; $$('[data-q]', sec).forEach((x) => x.classList.toggle('sel', x === b)); answer(m); }));
@@ -32,7 +40,8 @@ function renderLife(sec, params = {}) {
 function answer(m, scroll = true) {
   const c = chartOf(m);
   const out = $('#lifeOut');
-  if (isLocked('predictions')) { out.innerHTML = lockCard(L('Life-timing predictions for marriage, job, PR, house and children are part of Premium. Start with a free trial.', 'திருமணம், வேலை, PR, வீடு, குழந்தை — வாழ்க்கை நேரக் கணிப்புகள் பிரீமியத்தில் உள்ளன. இலவசச் சோதனையுடன் தொடங்குங்கள்.')); return; }
+  if (!lifeQuestionAllowed(ui.q, ageOf(m))) { out.innerHTML = ''; return; }
+  if (isLocked('predictions')) { out.innerHTML = lockCard(ageOf(m).minor ? L('Detailed readings are part of Premium. Start with a free trial.', 'விரிவான பலன்கள் பிரீமியத்தில் உள்ளன. இலவசச் சோதனையுடன் தொடங்குங்கள்.') : L('Life-timing predictions for marriage, job, PR, house and children are part of Premium. Start with a free trial.', 'திருமணம், வேலை, PR, வீடு, குழந்தை — வாழ்க்கை நேரக் கணிப்புகள் பிரீமியத்தில் உள்ளன. இலவசச் சோதனையுடன் தொடங்குங்கள்.')); return; }
   out.innerHTML = '<div class="loader"><i></i><i></i><i></i></div>';
   setTimeout(() => {
     if (ui.q === 'kula') renderKula(c, m);
@@ -109,7 +118,7 @@ function renderCompass(c, m) {
     ${r.top.map((f, i) => `<div class="card glass window${i === 0 ? ' first' : ''}"><div class="win-dates">${i + 1}. ${esc(bi(f))} <span class="pill">${f.score}</span></div>
       <p class="small">🎓 ${esc(bi(f.study))}</p>${f.reasons.map((x) => `<div class="small">• ${esc(bi(x))}</div>`).join('')}</div>`).join('')}
     <div class="card glass"><div class="card-title">${L('All fields', 'அனைத்துத் துறைகளும்')}</div>${r.all.map((f) => `<div class="gb-row static"><span class="gb-name">${esc(bi(f))}</span><span class="gb-bar"><i class="${f.score >= 66 ? 'strong' : f.score >= 50 ? 'average' : 'weak'}" style="width:${f.score}%"></i></span><span class="muted small">${f.score}</span></div>`).join('')}</div>
-    <p class="muted small center">${L('The chart shows natural talent; interest, hard work and good guidance decide success. Also see "Cinema / serial acting" and "Politics" timing above.', 'ஜாதகம் இயல்பான திறமையைக் காட்டும்; ஆர்வம், கடின உழைப்பு, நல்ல வழிகாட்டுதலே வெற்றியைத் தீர்மானிக்கும். மேலே "சினிமா / சீரியல் நடிப்பு", "அரசியல்" நேரத்தையும் பார்க்கவும்.')}</p>`;
+    ${ageOf(m).minor ? `<p class="muted small center">${L('These are interests and natural strengths to explore in studies — not a job prediction. Try what you enjoy, talk to teachers, and choose step by step.', 'இவை படிப்பில் ஆராய வேண்டிய ஆர்வங்களும் இயல்பான திறமைகளும் — வேலைக் கணிப்பு அல்ல. விரும்புவதை முயன்று பாருங்கள், ஆசிரியர்களிடம் பேசுங்கள், படிப்படியாகத் தேர்வு செய்யுங்கள்.')}</p>` : `<p class="muted small center">${L('The chart shows natural talent; interest, hard work and good guidance decide success. Also see "Cinema / serial acting" and "Politics" timing above.', 'ஜாதகம் இயல்பான திறமையைக் காட்டும்; ஆர்வம், கடின உழைப்பு, நல்ல வழிகாட்டுதலே வெற்றியைத் தீர்மானிக்கும். மேலே "சினிமா / சீரியல் நடிப்பு", "அரசியல்" நேரத்தையும் பார்க்கவும்.')}</p>`}`;
 }
 
 function renderHabits(c, m) {

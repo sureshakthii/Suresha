@@ -17,6 +17,7 @@ import { closingPrayer } from './daily.js';
 import { faithBlessing, universalPractice } from './faith.js';
 import { tamilDay } from './tamilcal.js';
 import { TEMPLES } from './temples.js';
+import { ageProfile, topicAllowed, ageGuardAnswer } from './age-guard.js';
 
 export { RULES_VERSION } from './version.js';
 
@@ -280,24 +281,16 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
 
   // Age & life-stage control: a child's chart is never read for marriage, children, career, money,
   // property or court matters — tradition reads those only after the person is mature (18+).
-  const age = f?.birthDate ? Math.floor((Date.now() - new Date(`${f.birthDate}T00:00:00Z`).getTime()) / 31557600000) : null;
+  // AGE FIRST (shared/age-guard.js): the chart owner's calendar age decides whether this topic is read at all.
+  const ageP = f?.birthDate ? ageProfile(f.birthDate, { now: f.now ? new Date(f.now) : new Date(), tz: f.chart?.tz }) : null;
+  const age = ageP ? ageP.age : null;
+  const GUARD_TOPIC = { marriage: 'marriage', marriage_when: 'marriage', child_when: 'child', pregnancy: 'child', career: 'career', finance: 'money', property: 'property', legal: 'court', vehicle: 'vehicle', love: 'love' };
   const ageGate = () => {
     if (age == null || !f) return false;
-    const TOPIC = {
-      marriage: T('marriage', 'திருமணம்'), marriage_when: T('marriage', 'திருமணம்'), child_when: T('children', 'குழந்தைப் பேறு'),
-      pregnancy: T('children', 'குழந்தைப் பேறு'), career: T('career and job', 'வேலை, தொழில்'), finance: T('money and earnings', 'பணம், வருமானம்'),
-      property: T('property', 'சொத்து'), legal: T('court and disputes', 'வழக்கு, தகராறு'), vehicle: T('buying a vehicle', 'வாகனம் வாங்குதல்'), love: T('love and relationships', 'காதல், உறவு'),
-    }[intent];
-    if (age < 18 && TOPIC) {
-      add('answer', L(`This is a minor's chart (age ${age}). Future results such as ${TOPIC.en} are not read for a child — tradition studies them only after 18, when the person is mature. For now this chart is read for studies, health and good habits.`,
-        `இது சிறு வயது ஜாதகம் (வயது ${age}). ${TOPIC.ta} போன்ற எதிர்காலப் பலன்கள் குழந்தைக்குப் பார்க்கப்படுவதில்லை — 18 வயது நிறைந்து முதிர்ச்சி வந்த பிறகே பார்க்கப்படும். இப்போது கல்வி, ஆரோக்கியம், நல்ல பழக்கங்களுக்காக மட்டுமே இந்த ஜாதகம் பார்க்கப்படுகிறது.`));
-      const fifth = f.houseInfo(5);
-      setMeter(0.5 * f.strength.Mercury.score + 0.3 * f.strength[fifth.lord].score + 0.2 * (f.dasa ? f.strength[f.dasa.lord].score : 50), T('studies', 'கல்வி'));
-      add('factors', houseLine(f, 4, lang), houseLine(f, 5, lang), planetLine(f, 'Mercury', lang), dasaLine(f, lang));
-      add('interpretation', L(`For a child, the 4th house (learning), 5th house (intelligence) and Mercury (memory and speech) are what matter now.`, `குழந்தைக்கு இப்போது முக்கியமானவை: 4-ம் வீடு (கல்வி), 5-ம் வீடு (அறிவு), புதன் (நினைவாற்றல், பேச்சு).`),
-        f.dasa && L(`Current ${f.dasa.lord} dasa: ${DASA_NATURE[f.dasa.lord].en}.`, `நடப்பு ${pName(f.dasa.lord, 'ta')} தசை: ${DASA_NATURE[f.dasa.lord].ta}.`));
-      add('practice', L('Simple prayer for studies: “Saraswathi Namasthubhyam” before study time; Vinayagar prayer on Wednesdays.', 'கல்விக்கு எளிய வழிபாடு: படிக்கும் முன் “சரஸ்வதி நமஸ்துப்யம்”; புதன்தோறும் விநாயகர் வழிபாடு.'));
-      add('next', L('You can ask about this child’s studies, health, a good day to start school or classes, or a temple for learning.', 'இந்தக் குழந்தையின் கல்வி, ஆரோக்கியம், பள்ளி / வகுப்பு தொடங்க நல்ல நாள், கல்விக்கான கோவில் பற்றிக் கேட்கலாம்.'));
+    const gTopic = GUARD_TOPIC[intent];
+    if (gTopic && !topicAllowed(gTopic, ageP)) {
+      const g = ageGuardAnswer({ topic: gTopic, profile: ageP, lang, name });
+      for (const sx of g.sections) add(sx.key === 'dos' ? 'practice' : sx.key === 'prayer' ? 'next' : sx.key === 'note' ? 'support' : 'answer', ...sx.lines);
       return true;
     }
     if (age >= 50 && (intent === 'child_when' || intent === 'pregnancy') && !Number(life.children)) {

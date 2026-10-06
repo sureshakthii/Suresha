@@ -9,6 +9,16 @@ import {
   activeMember, chartOf, registerScreen, subHeader, speak, displayName, placeName,
 } from './core.js';
 import { remindBtn } from './remind.js';
+import { ageProfile, adultText } from './shared/age-guard.js';
+
+// Age first: when the selected person is a child and this is their own rasi, keep only child-appropriate sentences
+// (no marriage, spouse, business, money) and hide the career / money bars.
+const kidView = () => { const m = activeMember(); return Boolean(m && pyRasi === defaultRasi() && ageProfile(m, { tz: state.loc?.tz }).minor); };
+const kidText = (o) => {
+  if (!o || !kidView()) return o;
+  const keep = (t) => String(t || '').split(/(?<=[.;।])\s+/).filter((x) => !adultText(x)).join(' ');
+  return { en: keep(o.en), ta: keep(o.ta) };
+};
 
 const localAt = (date, time) => { const [y, mo, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(Date.UTC(y, mo - 1, d, h, mi) - (state.loc?.tz ?? 5.5) * 3600000); };
 const LOADER = '<div class="loader"><i></i><i></i><i></i></div>';
@@ -125,7 +135,7 @@ function fillPalan(cur) {
     ${lastPalans.map(({ p, rasi, x }) => `<div class="py-palan">
       <div class="hd"><b style="color:${COLOR[p]}">${GLYPH[p]} ${esc(planetName(p))} · ${esc(rasiName(rasi))} <span class="muted small">(${houseLabel(x.house)})</span></b><span class="tag ${TAG[x.level]}">${levelLabel(x.level)}</span></div>
       ${x.special ? `<span class="pill">${esc(bi(x.special))}</span>` : ''}
-      <p>${esc(bi(x.text))}</p>
+      <p>${esc(bi(kidText(x.text)))}</p>
       <p class="rem">🙏 ${esc(bi(x.remedy))}</p>
     </div>`).join('')}
   </div>`;
@@ -157,13 +167,13 @@ function fillPeriod() {
     <p class="muted small">${fmtD(r.from)} – ${fmtD(r.to)}</p>
     <div class="py-area"><div class="row"><b>${L('Overall', 'மொத்தம்')}</b><span class="tag ${TAG[r.level]}">${levelLabel(r.level)} · ${r.score}</span></div>
       <div class="gb-bar"><i class="${BAR[r.level]}" style="width:${r.score}%"></i></div></div>
-    <p>${esc(bi(r.summary))}</p>
+    <p>${esc(bi(kidText(r.summary)))}</p>
     <div class="factor"><span>☉ ${L('Sun', 'சூரியன்')} · ${houseLabel(r.sun.house)}</span><b class="${r.sun.level === 'good' ? 'pos' : r.sun.level === 'care' ? 'neg' : 'zero'}">${levelLabel(r.sun.level)}</b></div>
     <div class="factor"><span>♂ ${L('Mars', 'செவ்வாய்')} · ${houseLabel(r.mars.house)}</span><b class="${r.mars.level === 'good' ? 'pos' : r.mars.level === 'care' ? 'neg' : 'zero'}">${levelLabel(r.mars.level)}</b></div>
     ${changes.length ? `<div class="mini-label" style="margin-top:12px">${L('Transits in this period', 'இந்தக் காலத்தில் பெயர்ச்சிகள்')}</div>
       ${changes.map((c) => `<div class="factor"><span>${GLYPH[c.p]} ${esc(planetName(c.p))}: ${esc(rasiName(c.fromRasi))} → ${esc(rasiName(c.toRasi))}</span><b>${fmtD(c.date)}</b></div>`).join('')}` : ''}
-    ${area('career', 'Career', 'தொழில்', '💼')}
-    ${area('money', 'Money', 'பணம்', '💰')}
+    ${kidView() ? '' : `${area('career', 'Career', 'தொழில்', '💼')}
+    ${area('money', 'Money', 'பணம்', '💰')}`}
     ${area('family', 'Family', 'குடும்பம்', '🏠')}
     ${area('health', 'Health', 'உடல்நலம்', '🌿')}
     ${months}

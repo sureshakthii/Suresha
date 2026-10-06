@@ -5,6 +5,9 @@
 // native-Tamil reviewers before launch (reviewStatus: 'draft'). Do not add phone numbers here; contacts come
 // from resource-directory.js. Never shame, frighten or ask for explicit details.
 
+// Child / teen wording shared with the on-device age guard (shared/age-guard.js) — one reviewed source.
+import { REVIEWED_TEXT } from '../../shared/age-guard.js';
+
 export const TEMPLATE_VERSION = 'templates-0.1.0-draft';
 
 const T = (id, route, en, ta, extra = {}) => ({ id, route, en, ta, reviewStatus: 'draft', ...extra });
@@ -12,11 +15,11 @@ const T = (id, route, en, ta, extra = {}) => ({ id, route, en, ta, reviewStatus:
 export const TEMPLATES = Object.fromEntries([
   // ------------------------------------------------------------ children (Brief §18 0–5, 6–12; §21 seven-year-old)
   T('child_crush', 'child_guidance',
-    'It is okay to like someone and enjoy being friends. You do not need to hurry into a relationship. Be kind, respect their feelings, and enjoy playing and learning. If someone makes you uncomfortable or asks you to keep an unsafe secret, tell a trusted grown-up.',
-    'ஒருவரைப் பிடிப்பதும், அவர்களுடன் நண்பராக மகிழ்ச்சியாக இருப்பதும் சரிதான். காதல் உறவுக்கு அவசரப்பட வேண்டியதில்லை. அன்பாக இருங்கள், அவர்களின் உணர்வுகளை மதியுங்கள், விளையாடுவதையும் கற்றுக்கொள்வதையும் மகிழ்ச்சியாகச் செய்யுங்கள். யாராவது உங்களுக்குச் சங்கடம் தந்தாலோ, பாதுகாப்பில்லாத ரகசியத்தை மறைக்கச் சொன்னாலோ, நம்பிக்கையான ஒரு பெரியவரிடம் சொல்லுங்கள்.'),
+    REVIEWED_TEXT.child_crush.en,
+    REVIEWED_TEXT.child_crush.ta),
   T('child_caregiver', 'child_guidance',
-    'Hello! Let\'s explore together with a grown-up — today\'s festival, a story about the stars, or a little prayer. Please ask Amma, Appa or another grown-up you trust to help you use the app.',
-    'வணக்கம்! ஒரு பெரியவருடன் சேர்ந்து பார்க்கலாம் — இன்றைய பண்டிகை, நட்சத்திரக் கதை, அல்லது ஒரு சிறிய பிரார்த்தனை. இந்தச் செயலியைப் பயன்படுத்த அம்மா, அப்பா அல்லது நம்பிக்கையான பெரியவரின் உதவியைக் கேளுங்கள்.'),
+    REVIEWED_TEXT.child_caregiver.en,
+    REVIEWED_TEXT.child_caregiver.ta),
   T('child_sensitive', 'child_guidance',
     'That is a big question. The grown-ups who care about you can help with it — talk to a parent, a teacher or another trusted grown-up. If anything feels scary or unsafe, tell them right away. I can share a fun fact about today\'s star or festival if you like.',
     'இது ஒரு பெரிய கேள்வி. உங்கள் மீது அக்கறை உள்ள பெரியவர்கள் இதற்கு உதவுவார்கள் — அம்மா, அப்பா, ஆசிரியர் அல்லது நம்பிக்கையான ஒரு பெரியவரிடம் பேசுங்கள். ஏதாவது பயமாகவோ பாதுகாப்பில்லாததாகவோ தோன்றினால், உடனே அவர்களிடம் சொல்லுங்கள். விரும்பினால், இன்றைய நட்சத்திரம் அல்லது பண்டிகை பற்றி ஒரு சுவாரசியமான தகவல் சொல்கிறேன்.'),
@@ -26,11 +29,11 @@ export const TEMPLATES = Object.fromEntries([
     'A dasa cannot tell you whether sexual activity is safe or appropriate. Feelings can be strong at your age. You deserve clear information about boundaries and health, and freedom from pressure. A trusted adult or qualified health professional can help. If someone is pressuring you, I can help you think about staying safe.',
     'ஒரு தசை, பாலியல் உறவு பாதுகாப்பானதா அல்லது பொருத்தமானதா என்று சொல்ல முடியாது. உங்கள் வயதில் உணர்வுகள் வலுவாக இருப்பது இயல்பு. உடல் எல்லைகள், உடல்நலம் பற்றிய தெளிவான தகவலும், யாருடைய அழுத்தமும் இல்லாத சுதந்திரமும் உங்கள் உரிமை. நம்பிக்கையான ஒரு பெரியவர் அல்லது தகுதியான மருத்துவர்/சுகாதாரப் பணியாளர் உதவ முடியும். யாராவது உங்களுக்கு அழுத்தம் கொடுத்தால், பாதுகாப்பாக இருப்பது பற்றி யோசிக்க நான் உதவுகிறேன்.'),
   T('teen_romance', 'teen_guidance',
-    'Having feelings for someone is a normal part of growing up. A chart cannot tell you whether a relationship will work or when love will come. What matters is respect, kindness and that nobody feels pressured. Take your time, keep up with your studies and friends, and talk to a trusted adult if anything feels confusing or unsafe. Online, be careful about sharing photos or personal details.',
-    'ஒருவர் மீது ஈர்ப்பு வருவது வளரும் பருவத்தில் இயல்பானது. ஒரு உறவு வெற்றியடையுமா, காதல் எப்போது வரும் என்று ஜாதகம் சொல்ல முடியாது. மரியாதை, அன்பு, யாருக்கும் அழுத்தம் இல்லாமல் இருப்பது — இவைதான் முக்கியம். நிதானமாக இருங்கள், படிப்பையும் நண்பர்களையும் கவனியுங்கள்; ஏதாவது குழப்பமாகவோ பாதுகாப்பில்லாததாகவோ தோன்றினால் நம்பிக்கையான பெரியவரிடம் பேசுங்கள். இணையத்தில் புகைப்படங்களையும் தனிப்பட்ட விவரங்களையும் பகிர்வதில் கவனமாக இருங்கள்.'),
+    REVIEWED_TEXT.teen_romance.en,
+    REVIEWED_TEXT.teen_romance.ta),
   T('minor_marriage', 'teen_guidance',
-    'I do not give marriage timings or matching for anyone under 18. Marriage is an adult decision, and the law sets a minimum age for it. For now, the focus can be on education, health and growing confidence. If anyone is pressuring a young person to marry, that is a safety concern — please reach out to the help listed below.',
-    '18 வயதுக்குக் குறைவானவர்களுக்கு நான் திருமண நேரமோ பொருத்தமோ பார்ப்பதில்லை. திருமணம் பெரியவர்கள் எடுக்கும் முடிவு; அதற்குச் சட்டம் குறைந்தபட்ச வயதை நிர்ணயித்துள்ளது. இப்போது கல்வி, உடல்நலம், தன்னம்பிக்கை வளர்ச்சி ஆகியவற்றில் கவனம் செலுத்தலாம். ஒரு இளம் வயதினரைத் திருமணம் செய்யுமாறு யாராவது அழுத்தம் கொடுத்தால், அது பாதுகாப்புப் பிரச்சினை — கீழே உள்ள உதவி எண்களைத் தொடர்புகொள்ளுங்கள்.',
+    REVIEWED_TEXT.minor_marriage.en,
+    REVIEWED_TEXT.minor_marriage.ta,
     { resources: ['child'] }),
   T('teen_adult_partner', 'safety_support',
     'Thank you for sharing this. When an adult seeks a romantic or sexual relationship with someone under 18, that is not okay — even if it feels special. Keeping that boundary is the adult\'s responsibility, not yours. You deserve to feel safe and never pressured. Please talk to a trusted adult who is not involved, or contact the help listed below.',
@@ -39,8 +42,8 @@ export const TEMPLATES = Object.fromEntries([
 
   // ------------------------------------------------------------ guardians asking about a child
   T('guardian_minor_romance', 'teen_guidance',
-    'Feelings and crushes are a normal part of growing up. A horoscope cannot tell you whom your child likes or whether a relationship will happen, and I do not make romance or marriage predictions for children. A calm, respectful conversation usually helps more than checking up on them: listen without judging, talk about kindness, consent, online safety and trusted adults, and let them know they can always come to you if something feels wrong.',
-    'ஈர்ப்பும் உணர்வுகளும் வளரும் பருவத்தில் இயல்பானவை. உங்கள் பிள்ளை யாரை விரும்புகிறார், உறவு அமையுமா என்று ஜாதகம் சொல்ல முடியாது; குழந்தைகளுக்கு நான் காதல் அல்லது திருமணக் கணிப்புகள் சொல்வதில்லை. கண்காணிப்பதை விட, அமைதியான, மரியாதையான உரையாடலே அதிகம் உதவும்: தீர்ப்பு சொல்லாமல் கேளுங்கள்; அன்பு, ஒப்புதல், இணையப் பாதுகாப்பு, நம்பிக்கையான பெரியவர்கள் பற்றிப் பேசுங்கள்; ஏதாவது தவறாகத் தோன்றினால் எப்போதும் உங்களிடம் வரலாம் என்று உறுதியளியுங்கள்.'),
+    REVIEWED_TEXT.guardian_minor_romance.en,
+    REVIEWED_TEXT.guardian_minor_romance.ta),
   T('guardian_child_at_risk', 'safety_support',
     'What you describe — an adult seeking a romantic or sexual relationship with someone under 18 — is a child-safety concern, and astrology does not change that. Please focus on keeping the child safe. Avoid confronting the adult alone if that could be dangerous, and contact the child helpline or police listed below. A counsellor or school counsellor can also help the child.',
     'நீங்கள் சொல்வது — 18 வயதுக்குக் குறைவான ஒருவருடன் ஒரு பெரியவர் காதல் அல்லது பாலியல் உறவை நாடுவது — குழந்தைப் பாதுகாப்புப் பிரச்சினை; ஜோதிடம் அதை மாற்றாது. குழந்தையைப் பாதுகாப்பாக வைப்பதில் கவனம் செலுத்துங்கள். ஆபத்து இருக்கக்கூடும் என்றால் அந்தப் பெரியவரைத் தனியாக எதிர்கொள்ள வேண்டாம்; கீழே உள்ள குழந்தைகள் உதவி எண் அல்லது காவல் துறையைத் தொடர்புகொள்ளுங்கள். ஒரு ஆலோசகர் அல்லது பள்ளி ஆலோசகரும் குழந்தைக்கு உதவ முடியும்.',

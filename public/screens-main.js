@@ -24,6 +24,10 @@ import { dailyReview } from './shared/daily.js';
 import { todayPlan } from './shared/today-plan.js';
 import { faithOf, faithWelcome, faithBlessing, universalPractice } from './shared/faith.js';
 import { todayLines } from './today-lines.js';
+import { ageProfile, suggestionsFor, categoryAllowed, childSafe } from './shared/age-guard.js';
+
+/** Age profile of a family member (calendar age today at the selected place) — the top-most filter on every card. */
+export const ageOf = (m) => ageProfile(m, { tz: state.loc?.tz });
 
 const TARA = [['Janma', 'ஜன்ம', 'warn'], ['Sampat', 'சம்பத்', 'good'], ['Vipat', 'விபத்', 'bad'], ['Kshema', 'க்ஷேம', 'good'], ['Pratyak', 'பிரத்யக்', 'bad'], ['Sadhana', 'சாதக', 'good'], ['Naidhana', 'நைதன', 'bad'], ['Mitra', 'மித்ர', 'good'], ['Parama Mitra', 'பரம மித்ர', 'good']];
 const goodBad = (k) => (k === 'good' ? L('Favourable', 'சாதகம்') : k === 'bad' ? L('Careful', 'கவனம்') : L('Neutral', 'சமம்'));
@@ -67,7 +71,7 @@ function todayPlanCard(m, snap, loc, td) {
   try {
     const chart = person ? chartOf(person) : null;
     review = chart ? dailyReview(chart, snap, new Date()) : null;
-    const age = chart?.date ? Math.floor((Date.now() - new Date(`${chart.date}T00:00:00Z`)) / 31557600000) : 30;
+    const age = person ? (ageOf(person).age ?? 30) : 30;
     plan = todayPlan({ chart, snap, festivals: td.festivals || [], level: review?.level || 'steady', now: new Date(), faith: person ? faithOf(person) : 'hindu', age });
   } catch { return ''; }
   const h = plan.horai;
@@ -88,12 +92,13 @@ function dailyCard(m, snap, loc) {
   const person = m && m.relation !== 'organization' ? m : null;
   let r;
   try { r = dailyReview(person ? chartOf(person) : null, snap, new Date()); } catch { return ''; }
+  if (person) r = minorDay(r, ageOf(person));
   const god = `<div class="dc-god"><span class="mini-label">🛕 ${L('God of the day', 'இன்றைய தெய்வம்')}</span><b>${esc(bi(r.deity.god))}</b><span class="dc-mantra">${esc(bi(r.deity.mantra))}</span><span class="small muted">${esc(bi(r.deity.act))}</span></div>`;
   if (!r.personal) return `<section class="card glass daily-card">${god}</section>`;
   const range = (w) => `${fmtDate(w.start, loc.tz)} ${fmtTime(w.start, loc.tz)} – ${fmtDate(w.end, loc.tz)} ${fmtTime(w.end, loc.tz)}`;
   const ch = r.nextChandrashtamam;
   const chLine = r.chandrashtamam
-    ? `<div class="dc-alert">⚠️ <b>${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}</b>${ch ? ` · ${L('till', 'வரை')} ${esc(fmtDate(ch.end, loc.tz))} ${esc(fmtTime(ch.end, loc.tz))}` : ''}<br><span class="small">${L('Stay patient; postpone big decisions, signatures and new starts.', 'பொறுமை காக்கவும்; பெரிய முடிவு, கையெழுத்து, புதிய தொடக்கத்தை ஒத்திவையுங்கள்.')}</span></div>`
+    ? `<div class="dc-alert">⚠️ <b>${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}</b>${ch ? ` · ${L('till', 'வரை')} ${esc(fmtDate(ch.end, loc.tz))} ${esc(fmtTime(ch.end, loc.tz))}` : ''}<br><span class="small">${ageOf(person).adult ? L('Stay patient; postpone big decisions, signatures and new starts.', 'பொறுமை காக்கவும்; பெரிய முடிவு, கையெழுத்து, புதிய தொடக்கத்தை ஒத்திவையுங்கள்.') : L('Stay calm and gentle today — rest well and keep to your routine.', 'இன்று அமைதியாக, மென்மையாக இருங்கள் — நன்கு ஓய்வெடுத்து வழக்கத்தைப் பின்பற்றுங்கள்.')}</span></div>`
     : ch ? `<div class="dc-next">🌙 ${L('Next Chandrashtamam', 'அடுத்த சந்திராஷ்டமம்')}: <b>${esc(range(ch))}</b></div>` : '';
   const fam = state.family.filter((x) => x.id !== person.id && x.relation !== 'organization').filter((x) => { try { return ((snap.moonRasi.index - chartOf(x).janmaRasi.index + 12) % 12) === 7; } catch { return false; } });
   const lvCls = { great: 'good', good: 'good', steady: 'warn', care: 'bad' }[r.level];
@@ -103,7 +108,7 @@ function dailyCard(m, snap, loc) {
   const blessing = other ? faithBlessing(faith) : null;
   return `<section class="card glass daily-card" aria-labelledby="dcTitle">
     <div class="card-title"><span id="dcTitle">🌅 ${L('Your day — Gochara, do’s & don’ts', 'உங்கள் இன்றைய பலன் — கோசாரம், செய்யலாம் / தவிர்க்கவும்')} · ${esc(displayName(person))}</span><span class="tag ${lvCls}">${esc(bi(r.label))}</span></div>
-    ${(() => { try { const tl = todayLines(chartOf(person), snap); return `<div class="dc-star"><span class="dc-star-k">⭐ ${esc(nakName(chartOf(person).janmaNakshatra.index))} · ${esc(rasiName(chartOf(person).janmaRasi.index))}</span><b>${esc(bi(tl.star))}</b><span>🌙 ${esc(bi(tl.moon))}</span></div>`; } catch { return ''; } })()}
+    ${(() => { try { const tl = todayLines(chartOf(person), snap); if (!ageOf(person).adult && childSafe([tl.star, tl.moon], ageOf(person)).length < 2) return ''; return `<div class="dc-star"><span class="dc-star-k">⭐ ${esc(nakName(chartOf(person).janmaNakshatra.index))} · ${esc(rasiName(chartOf(person).janmaRasi.index))}</span><b>${esc(bi(tl.star))}</b><span>🌙 ${esc(bi(tl.moon))}</span></div>`; } catch { return ''; } })()}
     ${welcome ? `<div class="dc-welcome">🌍 ${esc(bi(welcome))}</div>` : ''}
     ${chLine}
     <ul class="dc-why">${r.why.map((w) => `<li>${esc(bi(w))}</li>`).join('')}</ul>
@@ -117,8 +122,14 @@ function dailyCard(m, snap, loc) {
   </section>`;
 }
 
+/** A minor's day card keeps only child-appropriate lines (no money, signatures, business …). */
+function minorDay(r, prof) {
+  if (!prof || prof.adult || !r?.personal) return r;
+  return { ...r, why: childSafe(r.why, prof), dos: childSafe(r.dos, prof), donts: childSafe(r.donts, prof) };
+}
+
 function shareDaily(m, snap, loc) {
-  const r = dailyReview(chartOf(m), snap, new Date());
+  const r = minorDay(dailyReview(chartOf(m), snap, new Date()), ageOf(m));
   const text = [
     `🌅 ${L('Today for', 'இன்று')} ${displayName(m)} — ${bi(r.label)}`,
     r.chandrashtamam ? `⚠️ ${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}` : '',
@@ -187,10 +198,10 @@ function renderHome(sec) {
         <textarea id="guideInput" class="grow-in" rows="2" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai your question…', 'உங்கள் கேள்வியைத் துணையிடம் கேளுங்கள்…'))}"></textarea>
         <button class="send" aria-label="${L('Ask', 'கேள்')}">➤</button>
       </form>
-      <div class="guide-sugs">${GUIDE_SUGGESTIONS.map(([en, tx]) => `<button class="sg" type="button">${esc(L(en, tx))}</button>`).join('')}</div>
+      <div class="guide-sugs">${suggestionsFor(m ? ageOf(m) : ageProfile(null), GUIDE_SUGGESTIONS, { count: 4 }).map((x) => `<button class="sg" type="button">${esc(bi(x))}</button>`).join('')}</div>
       <p class="small muted">🎙️ ${L('Type or speak — Tamil, English or Tanglish. You can check the words before sending.', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எழுதலாம் அல்லது பேசலாம். அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
     </section>
-    <button class="card glass cta-card love-cta" data-go="lovematch"><b>💘 ${L('Love Match', 'காதல் பொருத்தம்')}</b><span class="small">${L('Emotional sync, chemistry and the star match — check your love vibe and share it', 'உணர்வு, ஈர்ப்பு, நட்சத்திரப் பொருத்தம் — உங்கள் காதல் அதிர்வைப் பார்த்துப் பகிருங்கள்')}</span></button>
+    ${m && !ageOf(m).adult ? '' : `<button class="card glass cta-card love-cta" data-go="lovematch"><b>💘 ${L('Love Match', 'காதல் பொருத்தம்')}</b><span class="small">${L('Emotional sync, chemistry and the star match — check your love vibe and share it', 'உணர்வு, ஈர்ப்பு, நட்சத்திரப் பொருத்தம் — உங்கள் காதல் அதிர்வைப் பார்த்துப் பகிருங்கள்')}</span></button>`}
 
     <div class="hero">
       <div class="hero-top">
@@ -556,12 +567,12 @@ function renderChart(sec) {
           <p class="muted small">${esc(bi(NAVAGRAHA[g.planet].governs))}</p>
           ${g.level === 'weak' ? `<p>🪔 ${esc(bi(NAVAGRAHA[g.planet].free))}</p><p>🛕 ${esc(bi(NAVAGRAHA[g.planet].temple))}</p>` : ''}
         </div>`).join('')}</div>
-    <div class="card glass"><div class="card-title">${L('Doshams', 'தோஷங்கள்')}</div>
+    ${ageOf(m).minor ? `<div class="card glass"><div class="card-title">${L('Doshams', 'தோஷங்கள்')}</div><p class="small">🌱 ${L('Doshams are looked at only for marriage matching, after 18. For a child, the chart is read for studies, health and good habits.', 'தோஷங்கள் 18 வயதுக்குப் பிறகு திருமணப் பொருத்தத்திற்கு மட்டுமே பார்க்கப்படும். குழந்தைக்கு ஜாதகம் கல்வி, ஆரோக்கியம், நல்ல பழக்கங்களுக்காக மட்டுமே பார்க்கப்படுகிறது.')}</p></div>` : `<div class="card glass"><div class="card-title">${L('Doshams', 'தோஷங்கள்')}</div>
       <div class="factor"><span>${L('Chevvai (Mars) dosham', 'செவ்வாய் தோஷம்')}</span><b class="${d.chevvai.present ? 'neg' : 'pos'}">${d.chevvai.present ? L('Present', 'உண்டு') : d.chevvai.raw ? L('Cancelled', 'நிவர்த்தி') : L('None', 'இல்லை')}</b></div>
       ${d.chevvai.exceptions.map((e) => `<p class="muted small">✓ ${esc(bi(e))}</p>`).join('')}
       <div class="factor"><span>${L('Rahu-Ketu dosham', 'ராகு-கேது தோஷம்')}</span><b class="${d.rahuKetu.present ? 'neg' : 'pos'}">${d.rahuKetu.present ? L('Present', 'உண்டு') : L('None', 'இல்லை')}</b></div>
       <p class="muted small">${L('A dosham is common and is balanced by a partner with a similar dosham (dosha samyam). It is not a cause for fear.', 'தோஷம் பொதுவானது; இதே தோஷம் உள்ள வரனுடன் சமமாகும் (தோஷ சாம்யம்). பயப்பட வேண்டியதில்லை.')}</p>
-    </div>
+    </div>`}
     ${rel.nakshatra ? `<div class="card glass"><div class="card-title">${L('Vimshottari Dasa', 'விம்சோத்தரி தசை')}${rel.dasa ? '' : ` <span class="badge est">${L(`approx. ± ${rel.dasaShiftDays} days`, `தோராயம் ± ${rel.dasaShiftDays} நாள்`)}</span>`}</div>
       <p class="muted small">${L('Dasa balance at birth', 'பிறப்பு தசா இருப்பு')}: ${esc(planetName(c.dasa.balance.lord))} ${c.dasa.balance.years.toFixed(2)} ${L('yrs', 'ஆண்டு')}</p>
       <div class="table-wrap"><table><tr><th>${L('Dasa', 'தசை')}</th><th>${L('From', 'தொடக்கம்')}</th><th>${L('To', 'முடிவு')}</th></tr>
@@ -590,7 +601,11 @@ let askForId = null;
 const askMember = () => state.family.find((m) => m.id === askForId) || activeMember();
 
 function renderAsk(sec) {
-  const cats = CATEGORIES.filter((c) => !c.event);
+  // Age first: a child's Prasnam offers only study / exam / health / family-travel matters.
+  const prof = askMember() ? ageOf(askMember()) : ageProfile(null);
+  const cats = CATEGORIES.filter((c) => !c.event && categoryAllowed(c.id, prof));
+  if (prasnaCategory && !cats.some((c) => c.id === prasnaCategory)) { prasnaCategory = null; lastAnswer = null; }
+  if (lastAnswer && !cats.some((c) => c.id === lastAnswer.category)) lastAnswer = null;
   sec.innerHTML = `<div class="seg ask-switch" role="tablist"><button role="tab" aria-selected="false" data-go="chat">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button class="sel" role="tab" aria-selected="true">🔮 ${L('Is now a good time?', 'இப்போது செய்யலாமா?')}</button></div>
     <div class="card glass">
       <h2>${L('Is now a good time?', 'இப்போது செய்யலாமா?')}</h2>
@@ -598,7 +613,8 @@ function renderAsk(sec) {
       ${state.family.length > 1 ? `<label>${L('Asking for', 'யாருக்காக')}<select id="askFor">${state.family.map((m) => `<option value="${esc(m.id)}"${m.id === askMember()?.id ? ' selected' : ''}>${esc(displayName(m))}${m.relation === 'organization' ? ` (${L('company', 'நிறுவனம்')})` : ''}</option>`).join('')}</select></label>` : ''}
       <div class="cat-grid">${cats.map((c) => `<button class="cat${prasnaCategory === c.id ? ' sel' : ''}" data-id="${c.id}"><span class="ci">${c.icon}</span>${esc(bi(c))}</button>`).join('')}</div>
       <label class="sr-only" for="question">${L('Your question', 'உங்கள் கேள்வி')}</label>
-      <textarea id="question" rows="2" maxlength="400" placeholder="${esc(L('Your question (optional) — e.g. Can I sign the flat agreement today?', 'உங்கள் கேள்வி (விருப்பம்) — உ.தா. இன்று ஒப்பந்தம் கையெழுத்திடலாமா?'))}"></textarea>
+      ${prof.minor ? `<p class="small muted age-note">🌱 ${L('Showing what suits this age — studies, exams, health and family travel.', 'இந்த வயதிற்கு ஏற்றவை மட்டும் — படிப்பு, தேர்வு, ஆரோக்கியம், குடும்பப் பயணம்.')}</p>` : ''}
+      <textarea id="question" rows="2" maxlength="400" placeholder="${esc(prof.minor ? L('Your question (optional) — e.g. Is today good to start revision for the exam?', 'உங்கள் கேள்வி (விருப்பம்) — உ.தா. தேர்வுக்கான படிப்பை இன்று தொடங்கலாமா?') : L('Your question (optional) — e.g. Can I sign the flat agreement today?', 'உங்கள் கேள்வி (விருப்பம்) — உ.தா. இன்று ஒப்பந்தம் கையெழுத்திடலாமா?'))}"></textarea>
       <button id="askBtn" class="btn-gold">🔮 ${L('Ask now', 'இப்போது கேளுங்கள்')}</button>
     </div>
     <div id="answer"${lastAnswer ? '' : ' hidden'}>
@@ -613,7 +629,7 @@ function renderAsk(sec) {
     $('#askBtn').disabled = false;
   }));
   $('#askBtn').addEventListener('click', ask);
-  $('#askFor')?.addEventListener('change', (e) => { askForId = e.target.value; });
+  $('#askFor')?.addEventListener('change', (e) => { askForId = e.target.value; renderAsk(sec); });
   $('#speakReply').addEventListener('click', () => { if (!speak($('#reply').textContent)) toast(L('Read-aloud is not available on this device', 'இந்தச் சாதனத்தில் வாசித்துக்காட்டும் வசதி இல்லை')); });
   if (lastAnswer) { renderAnswer(lastAnswer); $('#reply').textContent = lastAnswer.reply || ''; $('#aiSource').textContent = lastAnswer.source || ''; }
 }

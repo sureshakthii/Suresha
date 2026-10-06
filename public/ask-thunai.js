@@ -8,6 +8,7 @@ import { bhavaAnalysis, transitStatus } from './shared/analysis.js';
 import { grahaStrength, NAVAGRAHA } from './shared/remedies.js';
 import { significations, planetScore } from './shared/predict.js';
 import { healthGuide } from './shared/health.js';
+import { ageProfile, topicAllowed, ageGuardAnswer, guardAnswer, suggestionsFor } from './shared/age-guard.js';
 
 const DAY = 86400000;
 const T = (en, ta) => ({ en, ta });
@@ -30,7 +31,7 @@ export const TOPICS = [
   { id: 'loan', re: /loan|debt|\bemi\b|kadan|kadana|கடன்|கடனை|கடன|அடைக்க|வட்டி/i },
   { id: 'money', re: /money|finance|financial|saving|invest|wealth|stock|share market|income|rich|\bpanam\b|\bpanum\b|\bkasu\b|kaasu|semippu|varumanam|selvam|dhanam|பணம்|பணத்|சேமிப்பு|முதலீடு|செல்வ|வருமான|பொருளாதார|தனம்/i },
   { id: 'health', re: /health|\bill(ness)?\b|\bsick|disease|fever|\bsugar\b|diabet|\bbp\b|blood pressure|surgery|operation|hospital|doctor|medicine|weight|diet|\bfood\b|udambu|udal ?nal|udal ?nala|\bnoi\b|kaichal|arokiyam|aarokkiyam|aarogyam|ஆரோக்கிய|நோய்|உடல்நல|உடல் நல|காய்ச்சல்|சர்க்கரை|மருத்துவ|அறுவை|மருந்து|உணவு/i },
-  { id: 'education', re: /exam|study|studies|education|college|school|degree|neet|jee|upsc|tnpsc|result|padipp?u|padikk|parikshai|kalvi|மேல் படிப்பு|கல்வி|தேர்வு|படிப்பு|கல்லூரி|பள்ளி|பரீட்சை/i },
+  { id: 'education', re: /exam|study|studies|subjects?\b|education|college|school|degree|neet|jee|upsc|tnpsc|result|padipp?u|padikk|parikshai|kalvi|மேல் படிப்பு|கல்வி|தேர்வு|படிப்பு|கல்லூரி|பள்ளி|பரீட்சை/i },
   { id: 'travel', re: /visa|abroad|foreign|onsite|overseas|immigra|\bpr\b|green card|velinaa?du|velinattu|videsh|videsa|videsam|videsham|vegu dhooram|travel|payanam|பயணம்|வெளிநாடு|வெளிநாட்ட|விசா|அயல்நாடு|விதேச/i },
   { id: 'property', re: /\bhouse\b|\bhome\b|\bland\b|property|\bflat\b|\bplot\b|apartment|construct|\bveedu\b|\bveetu\b|sontha? ?veedu|\bnilam\b|\bmanai\b|sothu|soththu|வீடு|நிலம்|சொத்து|மனை|பிளாட்|வீடு கட்ட/i },
   { id: 'vehicle', re: /\bcar\b|bike|vehicle|scooter|\bvandi\b|vaaganam|vaganam|கார்|வாகன|பைக்|ஸ்கூட்டர்|வண்டி/i },
@@ -43,6 +44,11 @@ export function detectTopic(text) {
   const q = String(text || '').toLowerCase();
   for (const t of TOPICS) if (t.re.test(q)) return t.id;
   return null;
+}
+/** Every topic a question touches, most specific first. */
+export function detectTopics(text) {
+  const q = String(text || '').toLowerCase();
+  return TOPICS.filter((t) => t.re.test(q)).map((t) => t.id);
 }
 
 // ------------------------------------------------------------------ topic definitions
@@ -223,6 +229,10 @@ export function topicAnswer({ topic, question, chart, rel = {}, lang = 'ta', nam
   const def = TOPIC[topic];
   const L = (en, ta) => (lang === 'ta' ? ta : en);
   if (!def || !chart) return null;
+  // AGE FIRST: the chart owner's age decides whether this topic is read at all. A child's chart is never
+  // scored, timed or given a meter for marriage, job, money, court …: it gets a warm, age-appropriate reply.
+  const profile = ageProfile(life.birthDate || chart, { now, tz: chart.tz });
+  if (!topicAllowed(topic, profile)) return ageGuardAnswer({ topic, profile, lang, name, question });
   const useLagna = rel.lagna !== false;
   const c = useLagna ? chart : fromMoonChart(chart);
   const q = { houses: def.houses, negate: def.negate, key: def.key, karakas: def.karakas };
@@ -318,15 +328,20 @@ export function topicAnswer({ topic, question, chart, rel = {}, lang = 'ta', nam
   if (['second_marriage', 'marriage', 'business', 'property', 'vehicle', 'court'].includes(topic) && !actions.some((a) => a.go === 'muhurtham')) actions.push({ go: 'muhurtham', label: L('Good dates', 'நல்ல நாள்') });
   actions.push({ go: 'parigaram', label: L('Parigaram & temple', 'பரிகாரம் & கோவில்') });
   const text = sections.map((s) => `${s.title}:\n${s.lines.map((l) => `• ${l}`).join('\n')}`).join('\n\n');
-  return { intent: topic, topic, question, text, sections, meter, actions, followups: def.follow.map((f) => pick(f, lang)) };
+  const out = { intent: topic, topic, question, text, sections, meter, actions, followups: def.follow.map((f) => pick(f, lang)) };
+  return guardAnswer(out, profile, lang);
 }
 
-/** Follow-up suggestions when a question is unclear: the three most-asked life topics. */
+/** Follow-up suggestions when a question is unclear: the three most-asked life topics (adults only). */
 export const GENERAL_FOLLOWUPS = [
   T('When will I get married?', 'எனக்கு எப்போது திருமணம் நடக்கும்?'),
   T('How is my career this year?', 'இந்த ஆண்டு என் தொழில் எப்படி?'),
   T('When will my money situation improve?', 'என் பண நிலை எப்போது மேம்படும்?'),
 ];
+/** Follow-ups for an unclear question, chosen by the chart owner's age band (children never see marriage / job / money). */
+export const generalFollowups = (profile) => suggestionsFor(profile, GENERAL_FOLLOWUPS).slice(0, 3);
+export { ageProfile, guardAnswer, ageGuardAnswer, topicAllowed };
+export { childGeneralAnswer, suggestionsFor } from './shared/age-guard.js';
 
 /** Lines that must never reach the user (referrals away from the app, review labels, evidence ids). */
 const HIDE = /astrologer|jothidar|ஜோதிடர|expert review|awaiting|proposed rule|not a prediction|முன்னறிவிப்பு அல்ல|rule id|ruleId|engine|இயந்திர|evidence|ஆதாரம்|source:|reviewer|மதிப்பாய்வு/i;

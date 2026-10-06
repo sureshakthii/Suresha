@@ -886,7 +886,7 @@ img, svg, video, canvas { max-width: 100%; }
   --surface-strong: #ffffff; --surface-soft: #fdfaf5;
   --brand: #6e1a35; --brand-ink: #ffffff; --accent: #c5631a; --accent-soft: #fcefe0; --line: #ece3d6;
 }
-:root, [data-theme="dark"] {
+:root:not([data-theme="light"]), [data-theme="dark"] {
   --brand: #f0c27a; --brand-ink: #2a1306; --accent: #f29a52; --accent-soft: rgba(242, 154, 82, .12); --line: rgba(240, 194, 122, .16);
 }
 [data-theme="dark"] {
@@ -1557,3 +1557,43 @@ body.large .bm-tag { font-size: 12px !important; }
 .account-card > div { flex: 1 1 calc(100% - 90px) !important; }
 .account-card > .chip-btn { margin-left: auto; }
 .brand-mini { overflow: visible !important; padding: 2px !important; }
+/* ---- Age-guard notes + layout fixes (day/month/year pickers, chat chips) ---- */
+.age-note { line-height: 1.5; }
+/* Easy date: the month name gets the room it needs ("அக்டோபர்", "செப்டம்பர்") and the row wraps on narrow phones */
+.easy-dt:not(.easy-tm) { display: flex !important; flex-wrap: wrap; gap: 6px; }
+.easy-dt:not(.easy-tm) .ed-d { flex: 0 0 76px; width: 76px; }
+.easy-dt:not(.easy-tm) .ed-m { flex: 1 1 140px; width: auto; }
+.easy-dt:not(.easy-tm) .ed-y { flex: 1 0 84px; width: auto; }
+.easy-dt select { text-overflow: clip; white-space: nowrap; }
+/* Chat suggestion chips: one scrolling row that starts aligned with padding and snaps whole chips into view */
+.suggest-row { scroll-snap-type: x mandatory; scroll-padding-inline: 2px; padding: 2px 2px 8px; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.suggest-row .sg { scroll-snap-align: start; flex: 0 0 auto; max-width: min(260px, 78vw); }
+
+/* ---------- International phone numbers (phone-input.js) & place search ---------- */
+.phone-in.intl { display: flex; align-items: stretch; gap: 6px; margin-top: 4px; }
+.phone-in.intl .cc-btn { order: -1; flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 10px; min-height: 46px; border-radius: 12px; border: 1px solid rgba(var(--gold-rgb), .25); background: rgba(var(--gold-rgb), .12); color: var(--text); font: inherit; font-size: 15px; cursor: pointer; white-space: nowrap; }
+.phone-in.intl .cc-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.phone-in.intl .cc-btn span { padding: 0; margin: 0; border-radius: 0; background: none; color: inherit; }
+.phone-in.intl .cc-flag { font-size: 20px; line-height: 1; }
+.phone-in.intl .cc-caret { font-size: 11px; color: var(--muted); }
+.phone-in.intl .phone-national { flex: 1; min-width: 0; margin-top: 0; }
+.cc-sheet { position: fixed; inset: 0; z-index: 1000; background: rgba(var(--shadow-rgb), .55); display: flex; align-items: flex-end; justify-content: center; }
+.cc-panel { width: 100%; max-width: 520px; max-height: 86vh; display: flex; flex-direction: column; gap: 8px; padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); background: var(--surface-pop); color: var(--text); border: 1px solid var(--glass-b); border-radius: 18px 18px 0 0; box-shadow: var(--card-shadow); }
+@media (min-width: 640px) { .cc-sheet { align-items: center; } .cc-panel { border-radius: 18px; } }
+.cc-head { display: flex; align-items: center; justify-content: space-between; font-size: 17px; }
+.cc-close { border: 0; background: none; color: var(--muted); font-size: 20px; padding: 6px 10px; cursor: pointer; }
+.cc-search { margin-top: 0; }
+.cc-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; flex: 1; min-height: 200px; }
+.cc-list li[data-cc] { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: 10px; cursor: pointer; line-height: 1.45; }
+.cc-list li[data-cc]:hover, .cc-list li[data-cc]:focus, .cc-list li[aria-selected="true"] { background: rgba(var(--gold-rgb), .14); outline: none; }
+.cc-list .cc-flag { font-size: 22px; line-height: 1; flex: none; }
+.cc-list .cc-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cc-list .cc-name small { display: block; color: var(--muted); font-size: 12px; }
+.cc-list .cc-code { color: var(--gold2); font-variant-numeric: tabular-nums; flex: none; }
+.cc-list .cc-sep { padding: 8px 8px 4px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.suggest li { line-height: 1.45; }
+.suggest li small { display: block; margin-top: 2px; }
+.zone-note { margin: -4px 0 10px; line-height: 1.5; }
+.set-row.col > span { flex: 0 0 auto; } /* a column row: the 160px flex-basis above would become an empty gap */
+/* Prasnam tiles: long Tamil words ("மருத்துவமனை") need ≥ 120px — two columns on narrow phones */
+@media (max-width: 400px) { body.ta .cat-grid, html[lang="ta"] .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

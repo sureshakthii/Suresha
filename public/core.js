@@ -2,7 +2,7 @@
 import { chartFromKattam } from './shared/kattam.js';
 import { birthChart, RASIS, NAKSHATRAS, PLANETS } from './shared/astro.js';
 import { buildTaskPrompt } from './shared/narrator.js';
-import { placeTa } from './shared/places.js';
+import { placeTa, attachZone, zoneOffsetHours } from './shared/places.js';
 import { BRAND } from './shared/brand.js';
 
 export { BRAND };
@@ -22,14 +22,18 @@ export const store = {
 
 // Migrate the single profile of earlier versions into the family list.
 const legacy = store.get('kj_profile', null);
-const initialFamily = store.get('kj_family', legacy ? [{ id: 'me', relation: 'self', ...legacy }] : []);
+// Old profiles saved only a UTC offset: attach the IANA zone when the place is in the built-in list (historical offsets).
+const initialFamily = store.get('kj_family', legacy ? [{ id: 'me', relation: 'self', ...legacy }] : []).map((m) => attachZone(m));
+// A saved location with an IANA zone gets today's offset (daylight saving changes since it was saved).
+const savedLoc = store.get('kj_loc', null);
+if (savedLoc?.zone && zoneOffsetHours(savedLoc.zone) != null) savedLoc.tz = zoneOffsetHours(savedLoc.zone);
 
 export const state = {
   lang: store.get('kj_lang', 'ta'),
   family: initialFamily,
   activeId: store.get('kj_active', initialFamily[0]?.id || null),
   ancestors: store.get('kj_ancestors', []),
-  loc: store.get('kj_loc', null),
+  loc: savedLoc,
   settings: { large: false, voice: true, view: 'simple', rate: 0.92, hc: true, theme: 'dark', ...store.get('kj_settings', {}) },
   user: null,
   providers: null,
@@ -89,7 +93,8 @@ export const activeMember = () => state.family.find((m) => m.id === state.active
 const chartCache = new Map();
 export function chartOf(m) {
   if (!m) return null;
-  const key = `${m.id}|${m.date}|${m.time}|${m.lat}|${m.lon}|${m.tz}|${m.kattam ? JSON.stringify(m.kattam) : ''}`;
+  if (!m.zone && !m.kattam) m = attachZone({ ...m });
+  const key = `${m.id}|${m.date}|${m.time}|${m.lat}|${m.lon}|${m.tz}|${m.zone || ''}|${m.kattam ? JSON.stringify(m.kattam) : ''}`;
   if (!chartCache.has(key)) chartCache.set(key, m.kattam ? chartFromKattam(m) : birthChart(m));
   return chartCache.get(key);
 }

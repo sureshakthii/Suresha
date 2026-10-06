@@ -20,6 +20,7 @@ import './screens-journey.js';
 import './screens-trust.js';
 import './easy-date.js';
 import { loadSession } from './account.js';
+import { devicePlace, zoneOffsetHours, placeText } from './shared/places.js';
 import { startAnalytics, loadBilling } from './growth.js';
 
 function startSky() {
@@ -107,7 +108,8 @@ async function boot() {
   await Promise.all([splash(), loadSession().then(loadBilling)]);
   if (!state.loc) {
     const m = activeMember();
-    setLoc(m ? { lat: m.lat, lon: m.lon, tz: m.tz, name: m.place } : { lat: 13.0827, lon: 80.2707, tz: 5.5, name: 'Chennai' });
+    const d = devicePlace(); // no profile yet: the main city of the phone's time zone (Chennai in India / unknown)
+    setLoc(m ? { lat: m.lat, lon: m.lon, tz: m.zone ? zoneOffsetHours(m.zone) : m.tz, zone: m.zone, name: m.place } : { lat: d.lat, lon: d.lon, tz: d.tz, zone: d.zone, name: placeText(d) });
   }
   refreshSnap(true);
   $('#app').hidden = false;

@@ -5,6 +5,7 @@
 import { planetPositions, PLANETS } from './astro.js';
 import { significations, planetScore, predictEvent } from './predict.js';
 import { NAVAGRAHA } from './remedies.js';
+import { ageProfile, topicAllowed } from './age-guard.js';
 
 const DAY = 86400000;
 const YEAR = 365.25 * DAY;
@@ -19,6 +20,20 @@ export const ROAD_AREAS = [
   { id: 'health', icon: '🌿', ...T('Wellbeing (traditional view)', 'நலம் (மரபுப் பார்வை)'), traditionalOnly: true, houses: [1, 5, 11], negate: [6, 8, 12], karakas: ['Sun', 'Moon'] },
   { id: 'learning', icon: '🎓', ...T('Learning & growth', 'கல்வி & வளர்ச்சி'), houses: [4, 5, 9], negate: [3, 8], karakas: ['Mercury', 'Jupiter'] },
 ];
+
+// Under 18 (shared/age-guard.js): no career, wealth or marriage scores — only learning, family & home and
+// wellbeing, with the child's own stage and goals.
+const byId = (id) => ROAD_AREAS.find((a) => a.id === id);
+export const CHILD_AREAS = [
+  byId('learning'),
+  { ...byId('family'), ...T('Family & home', 'குடும்பம் & வீடு'), houses: [2, 4, 11], negate: [6, 8, 12], karakas: ['Moon', 'Jupiter'] },
+  byId('health'),
+];
+const CHILD_STAGES = {
+  '0-5': { id: 'early', ...T('Early childhood', 'சிறு குழந்தைப் பருவம்'), goals: [T('Play, stories and songs with the family every day', 'தினமும் குடும்பத்துடன் விளையாட்டு, கதை, பாடல்'), T('Nutritious food, good sleep and timely vaccinations', 'சத்தான உணவு, நல்ல உறக்கம், உரிய நேரத் தடுப்பூசி'), T('Simple prayers and festivals together', 'சேர்ந்து எளிய பிரார்த்தனை, பண்டிகைகள்')] },
+  '6-12': { id: 'school', ...T('School years', 'பள்ளிப் பருவம்'), goals: [T('A daily study habit and joy in reading', 'தினசரி படிப்புப் பழக்கமும் வாசிப்பில் மகிழ்ச்சியும்'), T('Outdoor play, healthy food and early sleep', 'வெளி விளையாட்டு, ஆரோக்கிய உணவு, சீக்கிரம் உறக்கம்'), T('Kindness, sharing and respect for parents and teachers', 'அன்பு, பகிர்தல், பெற்றோர் ஆசிரியருக்கு மரியாதை')] },
+  '13-17': { id: 'teen', ...T('Teen years', 'பதின்பருவம்'), goals: [T('Strong exam preparation with a steady timetable', 'சீரான அட்டவணையுடன் தேர்வுக்கு நல்ல தயாரிப்பு'), T('Discover your interests and strengths for the study choice (see the talent compass)', 'படிப்புத் தேர்வுக்கு ஆர்வமும் திறமையும் கண்டறியுங்கள் (திறமை வழிகாட்டி பாருங்கள்)'), T('Sleep, exercise, good friends and safe use of the phone', 'உறக்கம், உடற்பயிற்சி, நல்ல நண்பர்கள், கைப்பேசியைப் பாதுகாப்பாகப் பயன்படுத்துதல்')] },
+};
 
 const STAGES = [
   { max: 22, id: 'student', ...T('Learning years', 'கற்கும் பருவம்'),
@@ -57,8 +72,11 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
   const sig = significations(chart);
   const end = new Date(from.getTime() + years * YEAR);
   const age = ageAt(chart, from);
-  const stage = STAGES.find((s) => age < s.max);
-  const nextStage = STAGES[STAGES.indexOf(stage) + 1] || null;
+  const profile = ageProfile(chart, { now: from });
+  const minor = profile.minor;
+  const AREAS = minor ? CHILD_AREAS : ROAD_AREAS;
+  const stage = minor ? CHILD_STAGES[profile.band] : STAGES.find((s) => age < s.max);
+  const nextStage = minor ? (profile.band === '0-5' ? CHILD_STAGES['6-12'] : profile.band === '6-12' ? CHILD_STAGES['13-17'] : STAGES[0]) : STAGES[STAGES.indexOf(stage) + 1] || null;
 
   // Every Dasa–Bhukti period ahead, scored per area.
   const periods = [];
@@ -69,12 +87,12 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
       const s = new Date(Math.max(ad.start, from)), e = new Date(Math.min(ad.end, end));
       const g = gochara(chart, new Date((s.getTime() + e.getTime()) / 2));
       const scores = {};
-      for (const a of ROAD_AREAS) {
+      for (const a of AREAS) {
         const raw = planetScore(sig, md.lord, a) * 0.4 + planetScore(sig, ad.lord, a) * 0.6;
         scores[a.id] = clamp(46 + 5 * Math.max(-4, Math.min(5, raw)) + g.adj[a.id]);
       }
-      const overall = Math.round(Object.values(scores).reduce((x, y) => x + y, 0) / ROAD_AREAS.length);
-      const ranked = [...ROAD_AREAS].sort((x, y) => scores[y.id] - scores[x.id]);
+      const overall = Math.round(Object.values(scores).reduce((x, y) => x + y, 0) / AREAS.length);
+      const ranked = [...AREAS].sort((x, y) => scores[y.id] - scores[x.id]);
       periods.push({
         md: md.lord, ad: ad.lord, start: s, end: e, scores, overall,
         level: overall >= 62 ? 'good' : overall >= 50 ? 'steady' : 'care',
@@ -90,25 +108,25 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
   const y0 = new Date(from).getUTCFullYear();
   for (let y = y0; y < y0 + years; y++) {
     const ys = Date.UTC(y, 0, 1), ye = Date.UTC(y + 1, 0, 1);
-    const acc = Object.fromEntries(ROAD_AREAS.map((a) => [a.id, 0]));
+    const acc = Object.fromEntries(AREAS.map((a) => [a.id, 0]));
     let w = 0;
     for (const p of periods) {
       const ov = Math.min(ye, p.end.getTime()) - Math.max(ys, p.start.getTime());
       if (ov <= 0) continue;
       w += ov;
-      for (const a of ROAD_AREAS) acc[a.id] += p.scores[a.id] * ov;
+      for (const a of AREAS) acc[a.id] += p.scores[a.id] * ov;
     }
     if (!w) continue;
-    const scores = Object.fromEntries(ROAD_AREAS.map((a) => [a.id, Math.round(acc[a.id] / w)]));
-    const overall = Math.round(Object.values(scores).reduce((x, z) => x + z, 0) / ROAD_AREAS.length);
-    const best = [...ROAD_AREAS].sort((a, b) => scores[b.id] - scores[a.id])[0];
+    const scores = Object.fromEntries(AREAS.map((a) => [a.id, Math.round(acc[a.id] / w)]));
+    const overall = Math.round(Object.values(scores).reduce((x, z) => x + z, 0) / AREAS.length);
+    const best = [...AREAS].sort((a, b) => scores[b.id] - scores[a.id])[0];
     yearsOut.push({ year: y, scores, overall, level: overall >= 62 ? 'good' : overall >= 50 ? 'steady' : 'care', best: best.id, age: Math.floor(ageAt(chart, new Date(Date.UTC(y, 6, 1)))) });
   }
 
   // Next best windows for the big life events that fit this age.
   const wanted = [
     ['career', 18, 70], ['house', 22, 75], ['business', 21, 70], ['marriage', 20, 40], ['education', 15, 30], ['child', 22, 42], ['visa', 18, 60],
-  ].filter(([, a, b]) => age >= a - 2 && age <= b);
+  ].filter(([id, a, b]) => age >= a - 2 && age <= b && (!minor || topicAllowed(id, profile)) && (!minor || (id === 'education' && profile.band === '13-17')));
   const milestones = wanted.map(([id]) => {
     const p = predictEvent(chart, id, { from, years: Math.min(years, 12) });
     const w = p.earliest || p.windows[0];
@@ -120,19 +138,29 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
   const nextCare = periods.find((p) => !p.current && p.level === 'care') || null;
   const now = [];
   if (current) {
-    const focus = ROAD_AREAS.find((a) => a.id === current.focus);
+    const focus = AREAS.find((a) => a.id === current.focus);
     now.push(T(`Your strongest area now is ${focus.en.toLowerCase()} — put your energy here.`, `இப்போது உங்கள் வலுவான துறை ${focus.ta} — இதில் முழு கவனம் செலுத்துங்கள்.`));
     if (current.careArea) {
-      const c = ROAD_AREAS.find((a) => a.id === current.careArea);
+      const c = AREAS.find((a) => a.id === current.careArea);
       now.push(T(`Give extra care to ${c.en.toLowerCase()} in this period.`, `இக்காலத்தில் ${c.ta} மீது கூடுதல் கவனம் தேவை.`));
     }
     now.push(T(`Period lord ${current.ad}: ${current.remedy.free.en}`, `புக்தி அதிபதி ${PLANETS[current.ad].ta}: ${current.remedy.free.ta}`));
   }
-  if (nextGood) now.push(T(`Plan big moves for the ${nextGood.md}–${nextGood.ad} period starting ${nextGood.start.toISOString().slice(0, 7)}.`, `பெரிய முடிவுகளை ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலத்திற்குத் (${nextGood.start.toISOString().slice(0, 7)} முதல்) திட்டமிடுங்கள்.`));
-  if (nextCare) now.push(T(`Prepare savings and health before ${nextCare.start.toISOString().slice(0, 7)} (a period needing care).`, `${nextCare.start.toISOString().slice(0, 7)} முன் சேமிப்பையும் ஆரோக்கியத்தையும் தயார் செய்யுங்கள் (கவனம் தேவைப்படும் காலம்).`));
+  if (nextGood && !minor) now.push(T(`Plan big moves for the ${nextGood.md}–${nextGood.ad} period starting ${nextGood.start.toISOString().slice(0, 7)}.`, `பெரிய முடிவுகளை ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலத்திற்குத் (${nextGood.start.toISOString().slice(0, 7)} முதல்) திட்டமிடுங்கள்.`));
+  if (minor) {
+    // A child's "what to do now" is about learning, health and family — never money or big decisions.
+    now.length = 0;
+    if (current) {
+      const focus = AREAS.find((a) => a.id === current.focus);
+      now.push(T(`Strongest support now: ${focus.en.toLowerCase()} — encourage it with time and praise.`, `இப்போது வலுவான ஆதரவு: ${focus.ta} — நேரமும் பாராட்டும் தந்து ஊக்குவியுங்கள்.`));
+      now.push(T(`Simple practice for the ${current.ad} period: ${current.remedy.free.en}`, `${PLANETS[current.ad].ta} புக்திக்கு எளிய வழிபாடு: ${current.remedy.free.ta}`));
+    }
+    for (const g of stage.goals) now.push(g);
+  }
+  if (nextCare && !minor) now.push(T(`Prepare savings and health before ${nextCare.start.toISOString().slice(0, 7)} (a period needing care).`, `${nextCare.start.toISOString().slice(0, 7)} முன் சேமிப்பையும் ஆரோக்கியத்தையும் தயார் செய்யுங்கள் (கவனம் தேவைப்படும் காலம்).`));
 
   return {
-    age: Math.floor(age), stage, nextStage, periods, years: yearsOut, milestones, current, nextGood, nextCare, now,
+    age: profile.age ?? Math.floor(age), minor, band: profile.band, areas: AREAS, stage, nextStage, periods, years: yearsOut, milestones, current, nextGood, nextCare, now,
     needsBirthTime: !sig,
     birthTimeNote: sig ? null : T('Birth time unknown — area scores use Moon-based transits only; house-based period readings need a known birth time.', 'பிறந்த நேரம் தெரியவில்லை — சந்திரன் சார்ந்த கோசாரம் மட்டுமே; பாவம் சார்ந்த கால பலன்களுக்குப் பிறந்த நேரம் தேவை.'),
     disclaimerId: 'roadmap.traditional-periods.v1',

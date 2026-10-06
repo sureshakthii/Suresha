@@ -3,6 +3,7 @@
 // the running Dasa–Bhukti and the weekday lord. Runs on device and server.
 import { RASIS, NAKSHATRAS, PLANETS, moonSidereal } from './astro.js';
 import { PLANET_DEITY, DEITY_MANTRA, STAR_DEITY } from './personal.js';
+import { ageProfile } from './age-guard.js';
 
 const T = (en, ta) => ({ en, ta });
 const WEEKDAY_LORD = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
@@ -143,7 +144,8 @@ export function dailyReview(chart, snap, now = new Date()) {
     T('Share and help a friend', 'நண்பருடன் பகிர்ந்து உதவுங்கள்'),
   ];
   const cls = NAK_CLASS[snap.nakshatra.index] || 'mishra';
-  const childAge = chart.date ? Math.floor((now - new Date(`${chart.date}T00:00:00Z`)) / 31557600000) : 30;
+  // Age first (shared/age-guard.js): calendar age of the chart owner; unknown age keeps the general list.
+  const childAge = ageProfile(chart, { now }).age ?? 30;
   if (childAge < 18) {
     dos.length = 0; donts.length = 0;
     dos.push(STUDY_DO[wd], chandrashtamam ? T('Stay calm and gentle with family today', 'இன்று குடும்பத்தினரிடம் அமைதியாக இருங்கள்') : T('A good day to learn something new', 'புதிதாக ஒன்று கற்க நல்ல நாள்'));

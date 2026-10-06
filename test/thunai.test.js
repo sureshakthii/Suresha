@@ -224,10 +224,13 @@ test('age control: a child is never read for marriage, career or money; elders g
   const fk = chartFacts(birthChart(kid), timeReliability(kid));
   for (const q of ['When will I get married?', 'How is my career?', 'kalyanam eppo', 'panam eppo varum']) {
     const a = composeAnswer({ question: q, lang: 'en', facts: fk });
-    assert.match(a.sections.find((s) => s.key === 'answer').lines[0], /minor's chart/, q);
+    // shared/age-guard.js: a 6-year-old gets the warm "when you grow up" reply — no meter, no percentage.
+    assert.match(a.sections.find((s) => s.key === 'answer').lines[0], /when you grow up/, q);
+    assert.equal(a.meter, null, q);
+    assert.doesNotMatch(a.text, /\d+\s*%/, q);
   }
   const study = composeAnswer({ question: 'How are my studies?', lang: 'en', facts: fk });
-  assert.doesNotMatch(study.text, /minor's chart/);
+  assert.doesNotMatch(study.text, /when you grow up/);
   const { dailyReview } = await import('../shared/daily.js');
   const { panchang } = await import('../shared/astro.js');
   const now = new Date('2026-10-05T04:00:00Z');

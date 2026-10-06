@@ -9,19 +9,28 @@ import {
 } from './core.js';
 import { placeSearch } from './account.js';
 import { isLocked, lockCard } from './growth.js';
+import { ageProfile, isAdult, MATCH_ADULTS_NOTE, PARTNER_ADULTS_NOTE } from './shared/age-guard.js';
+
+// Marriage, love and partner matching are for adults only (shared/age-guard.js): people under 18 — or without a
+// birth date — are never offered in the pickers, and entered birth dates under 18 are refused gently.
+export const adultPool = () => state.family.filter((m) => m.relation !== 'organization' && isAdult(m, { tz: state.loc?.tz }));
+const hiddenMinors = () => state.family.filter((m) => m.relation !== 'organization').length > adultPool().length;
+export const adultsNote = (business = false) => (hiddenMinors() ? `<p class="small muted age-note">🌱 ${esc(bi(business ? PARTNER_ADULTS_NOTE : MATCH_ADULTS_NOTE))}</p>` : '');
 
 const iso = (d) => new Date(d.getTime() + (state.loc?.tz ?? 5.5) * 3600000).toISOString().slice(0, 10);
 const monthYear = (d) => new Date(d).toLocaleDateString(ta() ? 'ta-IN' : 'en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 export const forms = {}; // per-slot entered data, kept while the app is open
 
 /** Person input: pick a family member or enter full birth details. */
-export function personBlock(slot, title, { gender, nth = 0 } = {}) {
-  const pool = state.family.filter((m) => m.relation !== 'organization');
+export function personBlock(slot, title, { gender, nth = 0, business = false } = {}) {
+  const pool = adultPool();
   const f = forms[slot] ||= { mode: pool.length ? 'family' : 'new', memberId: (gender ? pool.find((m) => m.gender === gender) || pool[0] : pool[nth] || pool[0])?.id || null, gender: gender || 'male' };
-  return `<div class="card glass person-block" data-slot="${slot}"><div class="card-title">${title}</div>
+  if (f.mode === 'family' && !pool.length) f.mode = 'new';
+  if (f.mode === 'family' && !pool.some((m) => m.id === f.memberId)) f.memberId = (gender ? pool.find((m) => m.gender === gender) || pool[0] : pool[nth] || pool[0])?.id || null;
+  return `<div class="card glass person-block" data-slot="${slot}"><div class="card-title">${title}</div>${adultsNote(business)}
     ${pool.length ? `<div class="seg"><button type="button" data-mode="family" class="${f.mode === 'family' ? 'sel' : ''}">${L('From family', 'குடும்பத்திலிருந்து')}</button><button type="button" data-mode="new" class="${f.mode === 'new' ? 'sel' : ''}">${L('Enter details', 'விவரம் உள்ளிடு')}</button></div>` : ''}
     ${f.mode === 'family' && pool.length
-    ? `<label>${L('Person', 'நபர்')}<select data-f="memberId">${pool.map((m) => `<option value="${esc(m.id)}"${m.id === f.memberId ? ' selected' : ''}>${esc(displayName(m))}</option>`).join('')}</select></label>`
+    ? `<label>${gender === 'female' ? L('Bride', 'மணமகள்') : gender === 'male' ? L('Groom', 'மணமகன்') : business ? L('Partner', 'கூட்டாளி') : L('Name', 'பெயர்')}<select data-f="memberId">${pool.map((m) => `<option value="${esc(m.id)}"${m.id === f.memberId ? ' selected' : ''}>${esc(displayName(m))}</option>`).join('')}</select></label>`
     : `<div class="row2"><label>${L('Name', 'பெயர்')}<input data-f="name" value="${esc(f.name || '')}" maxlength="60"></label>
         <label>${L('Gender', 'பாலினம்')}<select data-f="gender">${[['male', 'Male', 'ஆண்'], ['female', 'Female', 'பெண்']].map(([id, en, tx]) => `<option value="${id}"${(f.gender || gender) === id ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label></div>
       <div class="row2"><label>${L('Date of birth', 'பிறந்த தேதி')}<input type="date" data-f="date" value="${esc(f.date || '')}"></label>
@@ -43,19 +52,20 @@ export function wirePersonBlocks(sec, rerender) {
       el.addEventListener('input', set);
     });
     const place = $('[data-f="place"]', blk);
-    if (place) placeSearch(place, $('.suggest', blk), (p) => { Object.assign(f, { place: p.name, lat: p.lat, lon: p.lon, tz: p.tz }); rerender(); });
+    if (place) placeSearch(place, $('.suggest', blk), (p) => { Object.assign(f, { place: p.text || p.name, lat: p.lat, lon: p.lon, tz: p.tz, zone: p.zone }); rerender(); });
   });
 }
 
 /** Resolve a slot into { chart, member, name } or throw a friendly error. */
 function resolve(slot, label) {
   const f = forms[slot];
-  if (f.mode === 'family' && state.family.length) {
-    const m = state.family.find((x) => x.id === f.memberId) || state.family.find((x) => x.relation !== 'organization');
+  if (f.mode === 'family' && adultPool().length) {
+    const m = adultPool().find((x) => x.id === f.memberId) || adultPool()[0];
     return { member: m, chart: chartOf(m), name: { en: m.name, ta: displayName(m) } };
   }
   if (!f.name || !f.date || !f.time || f.lat == null) throw new Error(L(`Please enter ${label}'s name, birth date, time and place (pick the city from the list).`, `${label} — பெயர், பிறந்த தேதி, நேரம், இடம் (பட்டியலிலிருந்து நகரம்) உள்ளிடவும்.`));
-  const m = { id: `${slot}_${f.date}_${f.time}`, name: f.name.trim(), gender: f.gender, date: f.date, time: f.time.length === 5 ? `${f.time}:00` : f.time, place: f.place, lat: Number(f.lat), lon: Number(f.lon), tz: Number(f.tz), relation: 'other' };
+  if (!isAdult(f.date, { tz: state.loc?.tz })) throw new Error(L(`${label}: matching is only for people aged 18 and over.`, `${label}: பொருத்தம் 18 வயதுக்கு மேற்பட்டவர்களுக்கு மட்டும்.`));
+  const m = { id: `${slot}_${f.date}_${f.time}`, name: f.name.trim(), gender: f.gender, date: f.date, time: f.time.length === 5 ? `${f.time}:00` : f.time, place: f.place, lat: Number(f.lat), lon: Number(f.lon), tz: Number(f.tz), zone: f.zone || undefined, relation: 'other' };
   if (f.save && !state.family.some((x) => x.date === m.date && x.time === m.time && x.name === m.name)) {
     state.family.push({ ...m, id: Math.random().toString(36).slice(2, 10) });
     saveFamily();
@@ -156,8 +166,8 @@ function renderPartners(sec) {
   const rerender = () => renderPartners(sec);
   const orgs = state.family.filter((m) => m.relation === 'organization');
   sec.innerHTML = `${subHeader(L('Business Partner Porutham', 'வணிகக் கூட்டாளி பொருத்தம்'), L('Before you invest together — trust, roles, money luck and the next 15 years', 'சேர்ந்து முதலீடு செய்யும் முன் — நம்பிக்கை, பொறுப்புகள், பண பாக்கியம், அடுத்த 15 ஆண்டுகள்'))}
-    ${personBlock('p1', `🤝 ${L('Partner 1', 'கூட்டாளி 1')}`)}
-    ${personBlock('p2', `🤝 ${L('Partner 2', 'கூட்டாளி 2')}`, { nth: 1 })}
+    ${personBlock('p1', `🤝 ${L('Partner 1', 'கூட்டாளி 1')}`, { business: true })}
+    ${personBlock('p2', `🤝 ${L('Partner 2', 'கூட்டாளி 2')}`, { nth: 1, business: true })}
     <div class="card glass">
       ${orgs.length ? `<label>${L('Company (optional)', 'நிறுவனம் (விருப்பம்)')}<select id="bizCo"><option value="">—</option>${orgs.map((o) => `<option value="${esc(o.id)}"${o.id === bizUi.companyId ? ' selected' : ''}>${esc(displayName(o))}</option>`).join('')}</select></label>` : `<p class="muted small">${L('Tip: add the company under Family as "Company / Team" with its founding date to include it.', 'குறிப்பு: நிறுவனத்தை "நிறுவனம் / குழு" ஆக அதன் தொடக்கத் தேதியுடன் குடும்பத்தில் சேர்த்தால் அதுவும் கணக்கில் வரும்.')}</p>`}
       <label>${L('Partnership start (done or planned)', 'கூட்டுத் தொடக்கம் (நடந்தது அல்லது திட்டமிட்டது)')}<input type="date" id="bizStart" value="${esc(bizUi.start)}"></label>

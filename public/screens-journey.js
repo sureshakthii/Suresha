@@ -5,9 +5,10 @@ import { fetchWeather } from './screens-world.js';
 import { NAVAGRAHA } from './shared/remedies.js';
 import { templeLinks, TEMPLES } from './shared/temples.js';
 import { templeInfo } from './shared/temple-info.js';
-import { searchLocalPlaces } from './shared/places.js';
+import { searchLocalPlaces, placeText } from './shared/places.js';
+import { money, userCurrency, toInr } from './shared/currency.js';
 import {
-  state, $, $$, L, esc, bi, store, go, registerScreen, subHeader, toast, activeMember, chartOf, displayName, planetName, fmtIsoDate,
+  state, $, $$, L, esc, bi, store, go, registerScreen, subHeader, toast, activeMember, chartOf, displayName, planetName, fmtIsoDate, placeName,
 } from './core.js';
 import { reliabilityOf, setupVoiceInput } from './screens-main.js';
 import { placeSearch } from './account.js';
@@ -22,7 +23,8 @@ const form = {
 let plan = null;
 
 const nextMonthFirst = () => { const d = new Date(); d.setMonth(d.getMonth() + 1, 1); return d.toISOString().slice(0, 10); };
-const money = (n) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+// Estimates are in rupees; people abroad also see an approximate amount in their own currency (shared/currency.js).
+const cur = () => userCurrency();
 const hrs = (h) => (h < 1 ? `~${Math.max(5, Math.round(h * 60 / 5) * 5)} ${L('min', 'நிமி')}` : `~${(Math.round(h * 2) / 2).toString()} ${L('h', 'மணி')}`);
 
 function savedPlans() { return store.get('kj_plans', []); }
@@ -83,7 +85,7 @@ function renderJourney(sec, params = {}) {
       </div>
       <div class="row2">
         <label class="${form.confirmed.travellers === false ? 'check' : ''}">${L('Travellers', 'பயணிகள்')}<select name="travellers">${['', 1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((d) => `<option value="${d}"${Number(form.travellers) === d ? ' selected' : ''}>${d || '—'}</option>`).join('')}</select></label>
-        <label class="${form.confirmed.budget === false ? 'check' : ''}">${L('Budget (₹, optional)', 'பட்ஜெட் (₹, விருப்பம்)')}<input name="budget" inputmode="numeric" value="${esc(form.budget)}" placeholder="15000"></label>
+        <label class="${form.confirmed.budget === false ? 'check' : ''}">${L(`Budget (${cur() === 'INR' ? '₹' : cur()}, optional)`, `பட்ஜெட் (${cur() === 'INR' ? '₹' : cur()}, விருப்பம்)`)}<input name="budget" inputmode="numeric" value="${esc(form.budget)}" placeholder="15000"></label>
       </div>
       ${fam.length ? `<div class="mini-label">${L('Who is going? (only names are used)', 'யார் செல்கிறார்கள்? (பெயர் மட்டும்)')}</div><div class="member-switch">${fam.map((x) => `<label class="mchip${form.who.includes(x.id) ? ' sel' : ''}"><input type="checkbox" name="who" value="${esc(x.id)}"${form.who.includes(x.id) ? ' checked' : ''}> ${esc(displayName(x))}</label>`).join('')}</div>` : ''}
       <div class="row2">
@@ -102,7 +104,7 @@ function renderJourney(sec, params = {}) {
     </form>
     <div id="tripResult"></div>`;
   const f = $('#tripForm');
-  placeSearch(f.elements.start, $('#tripPlaces'), (p) => { form.startName = p.name; form.lat = p.lat; form.lon = p.lon; f.elements.start.value = p.name; form.confirmed.start = true; f.elements.start.closest('label').classList.remove('check'); });
+  placeSearch(f.elements.start, $('#tripPlaces'), (p) => { form.startName = p.text || p.name; form.lat = p.lat; form.lon = p.lon; form.startCc = p.cc; f.elements.start.value = p.text || p.name; form.confirmed.start = true; f.elements.start.closest('label').classList.remove('check'); });
   f.elements.start.addEventListener('input', () => { form.lat = null; });
   f.addEventListener('change', (e) => { e.target.closest('label')?.classList.remove('check'); if (e.target.name) form.confirmed[e.target.name] = true; });
   f.addEventListener('submit', (e) => { e.preventDefault(); readForm(f); submit(); });
@@ -122,7 +124,7 @@ function applyParsed(p, fromQuestion) {
   if (p.when === 'next_month' && !form.date) { form.date = nextMonthFirst(); form.confirmed.date = false; }
   if (p.fromText) {
     const hit = searchLocalPlaces(p.fromText, 1)[0];
-    if (hit) { form.startName = hit.name; form.lat = hit.lat; form.lon = hit.lon; form.confirmed.start = false; }
+    if (hit) { form.startName = placeText(hit); form.lat = hit.lat; form.lon = hit.lon; form.startCc = hit.cc; form.confirmed.start = false; }
   }
   if (fromQuestion) form.confirmed.fromQuestion = true;
 }
@@ -151,7 +153,7 @@ function submit() {
   if (unchecked.length && !confirm(L('Some values came from your words. Are the highlighted city, dates and numbers correct?', 'சில மதிப்புகள் உங்கள் சொற்களிலிருந்து எடுக்கப்பட்டன. ஒளிரும் ஊர், தேதி, எண்கள் சரியா?'))) return;
   unchecked.forEach((k) => { form.confirmed[k] = true; });
   const { planets, note } = chartPlanets();
-  plan = planJourney({ start: { lat: form.lat, lon: form.lon, name: form.startName }, days: form.days, travellers: form.travellers, transport: form.transport, tier: form.tier, budget: Number(form.budget) || null, pace: form.pace, mobility: form.mobility, prefs: form.prefs, planets, focus: form.focus });
+  plan = planJourney({ start: { lat: form.lat, lon: form.lon, name: form.startName, cc: form.startCc }, days: form.days, travellers: form.travellers, transport: form.transport, tier: form.tier, budget: Number(form.budget) ? toInr(Number(form.budget)) : null, pace: form.pace, mobility: form.mobility, prefs: form.prefs, planets, focus: form.focus });
   plan.chartNote = note;
   plan.date = form.date;
   showPlan(plan);
@@ -278,6 +280,8 @@ function showPlan(p) {
   plan = p;
   $('#tripResult').innerHTML = `
     <div class="note-box" role="note">🙏 ${L('Your journey plan — temples, route, timings, weather and stay for each day. Go with faith and a calm mind.', 'உங்கள் பயணத் திட்டம் — ஒவ்வொரு நாளுக்கும் கோவில், வழி, நேரம், வானிலை, தங்குமிடம். நம்பிக்கையுடனும் அமைதியான மனதுடனும் செல்லுங்கள்.')}${p.chartNote ? `<br>${esc(p.chartNote)}` : ''}</div>
+    ${p.flightFirst && p.flightTo ? `<div class="note-box" role="note">✈️ ${L(`No listed temple is within road distance of your city. This plan starts at ${p.flightTo.town} (~${p.flightTo.km.toLocaleString()} km away): fly there first — the flight is not included in the estimate.`, `உங்கள் நகரிலிருந்து சாலை வழியில் பட்டியலிட்ட கோவில் இல்லை. இந்தத் திட்டம் ${placeName(p.flightTo.town)} (~${p.flightTo.km.toLocaleString()} கி.மீ) இலிருந்து தொடங்குகிறது: முதலில் விமானத்தில் செல்லவும் — விமானக் கட்டணம் மதிப்பீட்டில் இல்லை.`)}</div>` : ''}
+    ${cur() !== 'INR' ? `<p class="small muted">💱 ${L('Costs are estimated in Indian rupees (₹) with an approximate amount in your currency.', 'செலவுகள் இந்திய ரூபாயில் (₹) மதிப்பிடப்பட்டு, உங்கள் நாணயத்தில் தோராயத் தொகையுடன் காட்டப்படுகின்றன.')}</p>` : ''}
     ${p.options.map((o, i) => optionHtml(o, i)).join('')}`;
   $$('[data-save]').forEach((b) => b.addEventListener('click', () => {
     const o = p.options[Number(b.dataset.save)];

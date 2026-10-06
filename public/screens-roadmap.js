@@ -17,7 +17,61 @@ const bar = (s) => `<span class="gb-bar"><i class="${s >= 62 ? 'strong' : s >= 5
 // Health is not scored from the chart; if the engine picks it, show a neutral marker instead.
 const area = (id) => ROAD_AREAS.find((a) => a.id === id) || { id, icon: '•', en: 'General', ta: 'பொது' };
 
+const lvName = (lv) => (lv === 'good' ? L('Good', 'நன்று') : lv === 'steady' ? L('Steady', 'நிலை') : L('Care', 'கவனம்'));
+function injectCss() {
+  if (document.getElementById('roadmap-css')) return;
+  const st = document.createElement('style');
+  st.id = 'roadmap-css';
+  // Year tiles: 5 per row on wide screens, 3 per row up to 420px (Tamil "வயது 34" always fits); no clipping.
+  st.textContent = `
+  .rmy-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0 0 8px; padding: 0; list-style: none; }
+  @media (max-width: 520px) { .rmy-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 420px) { .rmy-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .rmy-tile { min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 8px 8px 7px; border-radius: 14px;
+    background: var(--glass); border: 1px solid var(--glass-b); border-top: 3px solid var(--warn); }
+  .rmy-tile.good { border-top-color: var(--good); }
+  .rmy-tile.care { border-top-color: var(--bad); }
+  .rmy-year { font-size: 15px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+  .rmy-age { font-size: 12px; line-height: 1.45; opacity: .8; white-space: nowrap; }
+  .rmy-bar { display: block; height: 6px; border-radius: 6px; background: rgba(var(--ink-rgb), .1); overflow: hidden; }
+  .rmy-bar i { display: block; height: 100%; border-radius: 6px; background: var(--warn); }
+  .rmy-tile.good .rmy-bar i { background: var(--good); }
+  .rmy-tile.care .rmy-bar i { background: var(--bad); }
+  .rmy-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 12px; line-height: 1.45; }
+  .rmy-ico { font-size: 15px; line-height: 1.35; }
+  .rmy-lv { white-space: nowrap; overflow-wrap: normal; }
+  .rmy-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 2px 0 10px; padding: 0; list-style: none; font-size: 12px; line-height: 1.5; }
+  .rmy-legend li { white-space: nowrap; }
+  .rmy-key { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: middle; background: var(--warn); }
+  .rmy-key.good { background: var(--good); } .rmy-key.care { background: var(--bad); }
+  body.large .rmy-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 380px) { body.large .rmy-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  `;
+  document.head.appendChild(st);
+}
+/** Year tiles (year, age, overall bar, strongest-area icon) with a legend for icons and colours. */
+function yearTiles(years) {
+  if (!years.length) return '';
+  const bestOf = (y) => [...ROAD_AREAS].sort((p, q) => (y.scores[q.id] ?? 0) - (y.scores[p.id] ?? 0))[0] || area(y.best);
+  const used = [...new Set(years.map(bestOf))];
+  return `<ul class="rmy-grid" aria-label="${esc(L('Year by year outlook', 'ஆண்டுவாரிப் பலன்'))}">${years.map((y) => {
+    // Strongest of the areas shown here (wellbeing is not scored on this screen).
+    const a = bestOf(y);
+    const label = `${y.year} · ${L('age', 'வயது')} ${y.age} · ${lvName(y.level)} · ${L('strongest area', 'வலுவான துறை')}: ${bi(a)}`;
+    return `<li class="rmy-tile ${y.level}" aria-label="${esc(label)}" title="${esc(label)}">
+      <b class="rmy-year">${y.year}</b><span class="rmy-age">${L('Age', 'வயது')} ${y.age}</span>
+      <span class="rmy-bar" aria-hidden="true"><i style="width:${y.overall}%"></i></span>
+      <span class="rmy-foot" aria-hidden="true"><span class="rmy-ico">${a.icon}</span><span class="rmy-lv">${lvName(y.level)}</span></span></li>`;
+  }).join('')}</ul>
+    <ul class="rmy-legend muted" aria-label="${esc(L('Legend', 'விளக்கம்'))}">
+      ${used.map((a) => `<li><span aria-hidden="true">${a.icon}</span> ${esc(bi(a))}</li>`).join('')}
+      <li><span class="rmy-key good" aria-hidden="true"></span>${L('Good', 'நன்று')}</li><li><span class="rmy-key" aria-hidden="true"></span>${L('Steady', 'நிலை')}</li><li><span class="rmy-key care" aria-hidden="true"></span>${L('Care', 'கவனம்')}</li>
+    </ul>
+    <p class="muted small">${L('The icon shows the strongest area of that year; the bar shows the overall outlook.', 'சின்னம் — அந்த ஆண்டின் வலுவான துறை; பட்டை — ஒட்டுமொத்த நிலை.')}</p>`;
+}
+
 function renderRoadmap(sec) {
+  injectCss();
   const m = activeMember()?.relation !== 'organization' ? activeMember() : people()[0];
   if (!m) { sec.innerHTML = `${subHeader(L('Life Road Map', 'வாழ்க்கை வரைபடம்'))}<p class="muted center">${L('Add a family member first.', 'முதலில் குடும்ப உறுப்பினரைச் சேர்க்கவும்.')}</p>`; return; }
   sec.innerHTML = `${subHeader(L('Life Road Map', 'வாழ்க்கை வரைபடம்'), L('Your personal plan for the next 10 years — from your own Jathagam', 'உங்கள் ஜாதகத்திலிருந்து அடுத்த 10 ஆண்டுகளுக்கான தனிப்பட்ட திட்டம்'))}
@@ -61,8 +115,7 @@ function drawRoadmap(m) {
       <button class="chip-btn" data-go="life">🔭 ${L('Details for each question', 'ஒவ்வொரு கேள்விக்கும் விவரம்')}</button></div>` : ''}
 
     <div class="section-title">📅 ${L('Year by year', 'ஆண்டுவாரியாக')}</div>
-    <div class="rm-years">${r.years.map((y) => `<div class="rm-year ${y.level}"><b>${y.year}</b><span class="muted small">${L('age', 'வயது')} ${y.age}</span><div class="rm-meter"><i style="height:${y.overall}%"></i></div><span class="small">${area(y.best).icon}</span></div>`).join('')}</div>
-    <p class="muted small center">${ROAD_AREAS.map((a) => `${a.icon} ${esc(bi(a))}`).join(' · ')}</p>
+    ${yearTiles(r.years)}
 
     <div class="section-title">🛤️ ${L('Period by period', 'காலம் காலமாக')}</div>
     ${r.periods.map((p) => `<details class="card glass rm-period ${p.level}"${p.current ? ' open' : ''}><summary>

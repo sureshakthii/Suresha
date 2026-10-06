@@ -1597,3 +1597,65 @@ body.large .bm-tag { font-size: 12px !important; }
 .set-row.col > span { flex: 0 0 auto; } /* a column row: the 160px flex-basis above would become an empty gap */
 /* Prasnam tiles: long Tamil words ("மருத்துவமனை") need ≥ 120px — two columns on narrow phones */
 @media (max-width: 400px) { body.ta .cat-grid, html[lang="ta"] .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- Temple search autocomplete (temple-search.js) ---------- */
+.ts-wrap { position: relative; margin: 8px 0 10px; }
+.ts-label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; line-height: 1.4; }
+.ts-box { position: relative; }
+.ts-box .ts-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); margin-top: 2px; font-size: 15px; opacity: .7; pointer-events: none; }
+.ts-box .ts-input { padding-left: 38px; padding-right: 12px; min-height: 46px; text-overflow: ellipsis; -webkit-appearance: none; appearance: none; }
+.ts-input::-webkit-search-decoration { -webkit-appearance: none; }
+.ts-list { max-height: min(340px, 55vh); box-shadow: var(--card-shadow); overscroll-behavior: contain; }
+.ts-list .ts-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 10px; min-height: 44px; line-height: 1.4; }
+.ts-list .ts-row[aria-selected="true"] { background: rgba(var(--gold-rgb), .16); }
+.ts-list .ts-ic { flex: none; width: 22px; text-align: center; font-size: 17px; line-height: 1.4; }
+.ts-list .ts-txt { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ts-list .ts-txt b { display: block; font-weight: 600; line-height: 1.4; }
+.ts-list .ts-txt small { display: block; margin-top: 1px; line-height: 1.4; }
+.ts-list .ts-alt { opacity: .85; }
+.ts-list .ts-none { color: var(--muted); cursor: default; line-height: 1.45; }
+.temple.ts-hit, .pkg.ts-hit { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(var(--gold-rgb), .35); }
+.temple { scroll-margin-top: 72px; }
+.pkg { scroll-margin-top: 72px; }
+.ts-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.ts-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 4px 4px 10px; border-radius: 999px; background: rgba(var(--gold-rgb), .12); border: 1px solid var(--glass-b); line-height: 1.4; max-width: 100%; }
+.ts-chip b { font-weight: 600; overflow-wrap: anywhere; }
+.ts-chip .ts-x { flex: none; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; min-width: 32px; min-height: 32px; cursor: pointer; border-radius: 50%; }
+.ts-open { position: relative; z-index: 3; } /* above the next cards, below the sticky header (5) and sub-head (4/6) */
+
+/* ---------- Who suits you — உங்களுக்கு சாதகமானவர்கள் (compat-card.js) ---------- */
+.compat-card { padding-top: 12px; padding-bottom: 12px; }
+.compat-card .cp-det > summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; min-height: 44px; }
+.compat-card .cp-det > summary::-webkit-details-marker { display: none; }
+.compat-card .cp-head { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.compat-card .cp-title { font-weight: 600; color: var(--gold); font-size: 16px; line-height: 1.45; }
+.compat-card .cp-prev { font-size: 13px; color: var(--muted); line-height: 1.45; overflow-wrap: anywhere; }
+.compat-card .cp-more { flex: none; width: 24px; height: 24px; display: inline-grid; place-items: center; overflow: hidden; font-size: 22px; color: var(--muted); transition: transform .2s; line-height: 1; }
+.compat-card .cp-det[open] .cp-more { transform: rotate(90deg); }
+.compat-card .cp-lead, .compat-card .cp-foot { margin: 8px 0; line-height: 1.5; }
+.compat-card .cp-warn { margin: 6px 0; padding: 6px 10px; border-radius: 10px; background: rgba(var(--gold-rgb), .12); line-height: 1.5; }
+.compat-card .cp-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.compat-card .cp-tab { flex: 1 1 auto; min-height: 40px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--glass-b); background: rgba(var(--ink-rgb), .05); color: var(--text); font: inherit; font-size: 13px; line-height: 1.4; cursor: pointer; white-space: nowrap; }
+.compat-card .cp-tab.sel { background: rgba(var(--gold-rgb), .2); border-color: var(--gold); color: var(--gold2); font-weight: 600; }
+.compat-card .cp-sub { font-size: 12px; color: var(--muted); margin: 10px 0 4px; font-weight: 600; letter-spacing: .02em; line-height: 1.45; }
+.compat-card .cp-stars, .compat-card .cp-rasis, .compat-card .cp-planets { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.compat-card .cp-stars { counter-reset: cp; }
+.compat-card .cp-stars li, .compat-card .cp-rasis li { display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; border-radius: 12px; background: rgba(var(--ink-rgb), .04); border: 1px solid var(--glass-b); line-height: 1.45; min-width: 0; }
+.compat-card .cp-stars li b, .compat-card .cp-rasis li b { font-weight: 600; overflow-wrap: anywhere; }
+.compat-card .cp-stars li b::before { counter-increment: cp; content: counter(cp) ". "; color: var(--gold2); }
+.compat-card .cp-stars li span, .compat-card .cp-rasis li span { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.compat-card .cp-r { font-weight: 400; font-size: 13px; color: var(--muted); }
+.compat-card .cp-planets li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 12px; background: rgba(var(--ink-rgb), .04); border: 1px solid var(--glass-b); line-height: 1.45; }
+.compat-card .cp-planets li > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.compat-card .cp-g { flex: none; font-size: 22px; line-height: 1.2; width: 24px; text-align: center; }
+.compat-card .cp-tip { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; }
+.compat-card .cp-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; border: 1px solid rgba(var(--ink-rgb), .25); }
+@media (min-width: 400px) { .compat-card .cp-stars { grid-template-columns: 1fr 1fr; } }
+
+/* Prasnam introduction (below the category tiles) */
+.prasna-intro { margin: 14px 0 6px; padding: 10px 14px; border-radius: 14px; background: rgba(var(--ink-rgb), .05); }
+.prasna-intro summary { cursor: pointer; font-weight: 600; line-height: 1.6; font-size: 15px; margin: 0; }
+.prasna-intro p { margin: 10px 0 0; line-height: 1.65; font-size: .95em; }
+
+/* An empty status pill (e.g. no source yet) never shows as a stray circle */
+.pill:empty { display: none; }

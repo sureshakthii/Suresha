@@ -6,6 +6,7 @@ import { planetPositions, PLANETS } from './astro.js';
 import { significations, planetScore, predictEvent } from './predict.js';
 import { NAVAGRAHA } from './remedies.js';
 import { ageProfile, topicAllowed } from './age-guard.js';
+import { capDate, minCap } from './lifespan-cap.js';
 
 const DAY = 86400000;
 const YEAR = 365.25 * DAY;
@@ -70,8 +71,11 @@ function gochara(chart, date) {
  */
 export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
   const sig = significations(chart);
-  const end = new Date(from.getTime() + years * YEAR);
+  // Listing horizon (shared/lifespan-cap.js): periods and years stay inside age 0–80; straddling periods end at it.
+  const horizon = capDate(chart);
+  const end = minCap(new Date(from.getTime() + years * YEAR), horizon);
   const age = ageAt(chart, from);
+  const senior = age >= 60; // later years: home, health, family and spiritual focus — no new marriage / career pushes
   const profile = ageProfile(chart, { now: from });
   const minor = profile.minor;
   const AREAS = minor ? CHILD_AREAS : ROAD_AREAS;
@@ -85,6 +89,7 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
     for (const ad of md.bhuktis) {
       if (ad.end < from || ad.start > end) continue;
       const s = new Date(Math.max(ad.start, from)), e = new Date(Math.min(ad.end, end));
+      if (e <= s) continue;
       const g = gochara(chart, new Date((s.getTime() + e.getTime()) / 2));
       const scores = {};
       for (const a of AREAS) {
@@ -105,6 +110,8 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
 
   // Year by year (calendar years), weighted by how long each period covers the year.
   const yearsOut = [];
+  // The age the person turns in that calendar year (the age the family says for that year).
+  const birthYear = /^\d{4}-/.test(String(chart.date || '')) ? Number(String(chart.date).slice(0, 4)) : null;
   const y0 = new Date(from).getUTCFullYear();
   for (let y = y0; y < y0 + years; y++) {
     const ys = Date.UTC(y, 0, 1), ye = Date.UTC(y + 1, 0, 1);
@@ -120,13 +127,14 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
     const scores = Object.fromEntries(AREAS.map((a) => [a.id, Math.round(acc[a.id] / w)]));
     const overall = Math.round(Object.values(scores).reduce((x, z) => x + z, 0) / AREAS.length);
     const best = [...AREAS].sort((a, b) => scores[b.id] - scores[a.id])[0];
-    yearsOut.push({ year: y, scores, overall, level: overall >= 62 ? 'good' : overall >= 50 ? 'steady' : 'care', best: best.id, age: Math.floor(ageAt(chart, new Date(Date.UTC(y, 6, 1)))) });
+    yearsOut.push({ year: y, scores, overall, level: overall >= 62 ? 'good' : overall >= 50 ? 'steady' : 'care', best: best.id, age: birthYear != null ? y - birthYear : Math.floor(ageAt(chart, new Date(Date.UTC(y, 6, 1)))) });
   }
 
   // Next best windows for the big life events that fit this age.
   const wanted = [
     ['career', 18, 70], ['house', 22, 75], ['business', 21, 70], ['marriage', 20, 40], ['education', 15, 30], ['child', 22, 42], ['visa', 18, 60],
-  ].filter(([id, a, b]) => age >= a - 2 && age <= b && (!minor || topicAllowed(id, profile)) && (!minor || (id === 'education' && profile.band === '13-17')));
+  ].filter(([id, a, b]) => age >= a - 2 && age <= b && (!minor || topicAllowed(id, profile)) && (!minor || (id === 'education' && profile.band === '13-17'))
+    && (!senior || id === 'house'));
   const milestones = wanted.map(([id]) => {
     const p = predictEvent(chart, id, { from, years: Math.min(years, 12) });
     const w = p.earliest || p.windows[0];
@@ -146,7 +154,12 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
     }
     now.push(T(`Period lord ${current.ad}: ${current.remedy.free.en}`, `புக்தி அதிபதி ${PLANETS[current.ad].ta}: ${current.remedy.free.ta}`));
   }
-  if (nextGood && !minor) now.push(T(`Plan big moves for the ${nextGood.md}–${nextGood.ad} period starting ${nextGood.start.toISOString().slice(0, 7)}.`, `பெரிய முடிவுகளை ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலத்திற்குத் (${nextGood.start.toISOString().slice(0, 7)} முதல்) திட்டமிடுங்கள்.`));
+  if (senior) {
+    now.push(T('This stage is for peace, health and family: a yearly full check-up, gentle daily walks and good sleep keep you strong.', 'இது அமைதி, ஆரோக்கியம், குடும்பத்திற்கான பருவம்: ஆண்டுதோறும் முழுப் பரிசோதனை, தினசரி மென்மையான நடை, நல்ல உறக்கம் உங்களைப் பலமாக வைக்கும்.'));
+    now.push(T('Keep savings simple and safe, and share your family traditions and stories with the next generation.', 'சேமிப்பை எளிமையாகவும் பாதுகாப்பாகவும் வையுங்கள்; குடும்பப் பாரம்பரியங்களையும் அனுபவங்களையும் அடுத்த தலைமுறைக்குப் பகிருங்கள்.'));
+  }
+  if (nextGood && !minor && senior) now.push(T(`The ${nextGood.md}–${nextGood.ad} period from ${nextGood.start.toISOString().slice(0, 7)} suits family functions, temple yatras and home comforts.`, `${nextGood.start.toISOString().slice(0, 7)} முதல் ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலம் குடும்ப விழாக்கள், கோவில் யாத்திரை, வீட்டு வசதிகளுக்கு ஏற்றது.`));
+  if (nextGood && !minor && !senior) now.push(T(`Plan big moves for the ${nextGood.md}–${nextGood.ad} period starting ${nextGood.start.toISOString().slice(0, 7)}.`, `பெரிய முடிவுகளை ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலத்திற்குத் (${nextGood.start.toISOString().slice(0, 7)} முதல்) திட்டமிடுங்கள்.`));
   if (minor) {
     // A child's "what to do now" is about learning, health and family — never money or big decisions.
     now.length = 0;
@@ -157,10 +170,10 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
     }
     for (const g of stage.goals) now.push(g);
   }
-  if (nextCare && !minor) now.push(T(`Prepare savings and health before ${nextCare.start.toISOString().slice(0, 7)} (a period needing care).`, `${nextCare.start.toISOString().slice(0, 7)} முன் சேமிப்பையும் ஆரோக்கியத்தையும் தயார் செய்யுங்கள் (கவனம் தேவைப்படும் காலம்).`));
+  if (nextCare && !minor && !senior) now.push(T(`Prepare savings and health before ${nextCare.start.toISOString().slice(0, 7)} (a period needing care).`, `${nextCare.start.toISOString().slice(0, 7)} முன் சேமிப்பையும் ஆரோக்கியத்தையும் தயார் செய்யுங்கள் (கவனம் தேவைப்படும் காலம்).`));
 
   return {
-    age: profile.age ?? Math.floor(age), minor, band: profile.band, areas: AREAS, stage, nextStage, periods, years: yearsOut, milestones, current, nextGood, nextCare, now,
+    age: profile.age ?? Math.floor(age), minor, senior, horizon, band: profile.band, areas: AREAS, stage, nextStage, periods, years: yearsOut, milestones, current, nextGood, nextCare, now,
     needsBirthTime: !sig,
     birthTimeNote: sig ? null : T('Birth time unknown — area scores use Moon-based transits only; house-based period readings need a known birth time.', 'பிறந்த நேரம் தெரியவில்லை — சந்திரன் சார்ந்த கோசாரம் மட்டுமே; பாவம் சார்ந்த கால பலன்களுக்குப் பிறந்த நேரம் தேவை.'),
     disclaimerId: 'roadmap.traditional-periods.v1',

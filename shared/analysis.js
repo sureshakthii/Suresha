@@ -6,6 +6,7 @@ import { planetPositions, RASIS, PLANETS } from './astro.js';
 import { grahaStrength } from './remedies.js';
 import { evaluateRules, resolveProfile } from './rules/registry.js';
 import { houseRoles as computeHouseRoles } from './rules/roles.js';
+import { capDate, minCap } from './lifespan-cap.js';
 
 const KENDRA = [1, 4, 7, 10];
 const TRIKONA = [1, 5, 9];
@@ -82,18 +83,40 @@ export function bhavaAnalysis(chart) {
 /** Visible label for the custom 0–100 planet score (it is not Shadbala and not a probability). */
 export const STRENGTH_INDEX_LABEL = { en: 'Traditional strength index', ta: 'பாரம்பரிய பலக் குறியீடு' };
 
+const lcFirst = (x) => (/^[A-Z]/.test(x) && !/^(Moon|Sun|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu|Lagna|Guru|Sani)\b/.test(x) ? x[0].toLowerCase() + x.slice(1) : x);
+/**
+ * A crisp, personal reading of a registry explanation ("In your chart, … — this supports …" /
+ * "உங்கள் ஜாதகத்தில் … — இது … தரும் அமைப்பு."). The registry text stays the authority; this only rephrases it.
+ */
+export function personalReading(d) {
+  const en0 = String(d?.en || '').trim(), ta0 = String(d?.ta || '').trim();
+  let en = en0, ta = ta0;
+  const me = en0.match(/^(.*?):\s*traditionally (?:linked|associated) with\s+(.*?)\.?$/i);
+  if (me) en = `In your chart, ${lcFirst(me[1])} — this supports ${me[2]}.`;
+  else if (en0 && !/^(in )?your\b/i.test(en0)) en = `In your chart, ${lcFirst(en0)}`;
+  const mt = ta0.match(/^(.*?):\s*(.*?)\s*—\s*பாரம்பரியக் கருத்து\.?$/);
+  if (mt) ta = `உங்கள் ஜாதகத்தில் ${mt[1]} — இது ${mt[2]} தரும் அமைப்பு.`;
+  else if (ta0 && !ta0.startsWith('உங்கள்')) ta = `உங்கள் ஜாதகத்தில் ${ta0}`;
+  return { en, ta };
+}
+
 /** Legacy-compatible view of one registry evaluation (id/name/desc/kind kept for the existing UI). */
 function yogaView(r) {
   let desc = r.explanation;
+  // Name the planet where the registry text says "this planet" (e.g. the Yogakaraka) — crisper and personal.
+  const k = r.data?.planet && PLANETS[r.data.planet] ? r.data.planet : null;
+  const named = k ? { en: r.explanation.en.replace(/\bThis planet\b/, k).replace(/\bthis planet\b/, k), ta: r.explanation.ta.replace('இந்தக் கிரகம்', PLANETS[k].ta) } : r.explanation;
+  let reading = personalReading(named);
   const sat = r.cancellation?.conditions?.filter((c) => c.satisfied) || [];
   if (sat.length) {
     desc = {
       en: `${desc.en} Traditional cancellation also present: ${sat.map((c) => c.text.en).join('; ')}.`,
       ta: `${desc.ta} பாரம்பரிய நிவர்த்தியும் உண்டு: ${sat.map((c) => c.text.ta).join('; ')}.`,
     };
+    reading = { en: `${reading.en} Also present: ${sat.map((c) => c.text.en).join('; ')}.`, ta: `${reading.ta} உடன் உள்ளது: ${sat.map((c) => c.text.ta).join('; ')}.` };
   }
   return {
-    id: r.legacyId, name: r.title, desc, kind: r.tone,
+    id: r.legacyId, name: r.title, desc, reading, kind: r.tone,
     rule: r.ruleId, version: r.version, status: r.status, profile: r.profile, reference: r.reference, stability: r.stability,
     facts: r.facts, variants: r.variants, enabledVariants: r.enabledPresent,
     strength: r.strength, periods: r.periods, cancellation: r.cancellation, source: r.source,
@@ -199,10 +222,12 @@ export function fullAnalysis(chart, now = new Date(), { profile } = {}) {
     const ruled = hasLagna && k in OWN ? housesRuled(chart.planets.Lagna.rasi, k) : [];
     const good = sMap[k] >= 55 && !DUSTHANA.includes(house);
     const where = house ? { en: ` sits in house ${house}`, ta: `: ${house}-ம் வீட்டில்` } : { en: ' (house needs birth time)', ta: ': (பாவத்திற்கு பிறந்த நேரம் தேவை)' };
+    const until = minCap(dasa.end, capDate(chart));
+    const uy = until ? new Date(until).getUTCFullYear() : null;
     dasaOutlook = {
-      lord: k, house, ruled, strength: sMap[k], tone: good ? 'favourable' : 'growth through effort',
-      en: `${k} Mahadasa: ${k}${where.en}${ruled.length ? ` and rules ${ruled.join(' & ')}` : ''}. ${good ? 'A supportive period — use it to build.' : 'Results come through patience and steady effort; its parigaram helps.'}`,
-      ta: `${PLANETS[k].ta} மகா தசை${where.ta}${ruled.length ? `, ${ruled.join(' & ')}-ம் வீடுகளின் அதிபதி` : ''}. ${good ? 'ஆதரவான காலம் — வளர்ச்சிக்குப் பயன்படுத்தவும்.' : 'பொறுமையும் தொடர் முயற்சியும் பலன் தரும்; அதன் பரிகாரம் உதவும்.'}`,
+      lord: k, house, ruled, strength: sMap[k], tone: good ? 'favourable' : 'growth through effort', until,
+      en: `You are in ${k} Mahadasa${uy ? ` (until ${uy})` : ''}. In your chart ${k}${where.en}${ruled.length ? ` and rules your ${ruled.join(' & ')} house${ruled.length > 1 ? 's' : ''}` : ''}. ${good ? 'A supportive period — use it to build.' : 'Results come through patience and steady effort; its parigaram helps.'}`,
+      ta: `நீங்கள் இப்போது ${PLANETS[k].ta} மகா தசையில்${uy ? ` (${uy} வரை)` : ''}. உங்கள் ஜாதகத்தில் ${PLANETS[k].ta}${where.ta}${ruled.length ? `, ${ruled.join(' & ')}-ம் வீடுகளின் அதிபதி` : ''}. ${good ? 'ஆதரவான காலம் — வளர்ச்சிக்குப் பயன்படுத்துங்கள்.' : 'பொறுமையும் தொடர் முயற்சியும் பலன் தரும்; அதன் பரிகாரம் உதவும்.'}`,
     };
   }
   const needsBirthTime = hasLagna ? [] : rulesNeedingBirthTime(chart, { profile: pr });

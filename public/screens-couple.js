@@ -3,6 +3,7 @@
 import { birthChart } from './shared/astro.js';
 import { marriageReport, partnershipReport } from './shared/couple.js';
 import { VERDICTS } from './shared/porutham.js';
+import { CAP_LINES } from './shared/lifespan-cap.js';
 import {
   state, chartOf, $, $$, L, ta, esc, bi, GLYPH, planetName, nakName, rasiName, fmtIsoDate, registerScreen, subHeader, aiTask, speak, toast,
   displayName, saveFamily, placeName,
@@ -78,8 +79,34 @@ const bar = (s) => `<span class="gb-bar"><i class="${s >= 66 ? 'strong' : s >= 5
 const areaRows = (areas) => areas.map((x) => `<details class="area-row"><summary><span class="gb-name">${esc(bi(x.name))}</span>${bar(x.score)}<b>${x.score}</b></summary>${x.reasons.map((r) => `<div class="small">• ${esc(bi(r))}</div>`).join('')}</details>`).join('');
 const dasaPair = (y, names) => `${esc(bi(names[0]))}: ${GLYPH[y.a.md]}${esc(planetName(y.a.md))}/${esc(planetName(y.a.ad))} · ${esc(bi(names[1]))}: ${GLYPH[y.b.md]}${esc(planetName(y.b.md))}/${esc(planetName(y.b.ad))}`;
 function timelineHtml(rows, names) {
+  if (!rows.length) return `<div class="card glass"><p class="small">🌿 ${esc(bi(CAP_LINES.timeline))}</p></div>`;
   return `<div class="tl">${rows.map((y) => `<details class="tl-year ${y.level}"><summary><b>${y.year}</b><span class="tl-bar"><i style="width:${y.score}%"></i></span><span class="tag ${y.level === 'good' ? 'good' : y.level === 'steady' ? 'warn' : 'bad'}">${y.level === 'good' ? L('Good', 'நன்று') : y.level === 'steady' ? L('Steady', 'நிலை') : L('Care', 'கவனம்')}</span></summary>
     <div class="small muted">${dasaPair(y, names)}</div>${y.themes.map((t) => `<div class="small">${t.kind === 'good' ? '🌟' : '🤍'} ${esc(bi(t))}</div>`).join('') || `<div class="small">${L('An ordinary, steady year.', 'சாதாரணமான, நிலையான ஆண்டு.')}</div>`}</details>`).join('')}</div>`;
+}
+
+/** One consistent row per key moment: a month range, a list of year ranges (care) or a gentle line — never a bare dash. */
+const yearSpan = (x) => (x.years.length > 1 ? `${x.years[0]}–${x.years[x.years.length - 1]}` : `${x.years[0]}`);
+function momentsCss() {
+  if (document.getElementById('couple-css')) return;
+  const st = document.createElement('style');
+  st.id = 'couple-css';
+  st.textContent = `
+  .moment-row { padding: 9px 0; border-bottom: 1px solid var(--glass-b); }
+  .moment-row:last-child { border-bottom: 0; }
+  .moment-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; line-height: 1.5; }
+  .moment-head b { font-variant-numeric: tabular-nums; text-align: right; margin-left: auto; }
+  .moment-row p { margin: 3px 0 0; line-height: 1.5; }
+  `;
+  document.head.appendChild(st);
+}
+function momentsHtml(moments) {
+  momentsCss();
+  return (moments || []).map((x) => {
+    const value = x.kind === 'range' ? `${monthYear(x.from)} – ${monthYear(x.to)}`
+      : x.kind === 'years' ? x.ranges.map(yearSpan).join(' · ') : '';
+    return `<div class="moment-row"><div class="moment-head"><span>${x.icon} ${esc(bi(x.label))}</span>${value ? `<b class="${x.id === 'care' ? 'zero' : 'pos'}">${esc(value)}</b>` : ''}</div>
+      ${x.kind !== 'range' && x.line ? `<p class="small muted">${esc(bi(x.line))}</p>` : ''}${x.kind === 'range' && x.note ? `<p class="small muted">${esc(bi(x.note))}</p>` : ''}</div>`;
+  }).join('');
 }
 
 // ================================================================ MARRIED LIFE
@@ -129,10 +156,7 @@ function showCouple(bride, groom) {
       ${r.deep.houses.bride.map((h, i) => { const g = r.deep.houses.groom[i]; return `<details class="area-row"><summary><span class="gb-name">${esc(bi(h.name))}</span><small>👰 ${h.score} · 🤵 ${g.score}</small></summary><div class="small"><b>${esc(bi(names[0]))}</b></div>${h.notes.map((x) => `<div class="small">• ${esc(bi(x))}</div>`).join('')}<div class="small"><b>${esc(bi(names[1]))}</b></div>${g.notes.map((x) => `<div class="small">• ${esc(bi(x))}</div>`).join('')}</details>`; }).join('')}
       <p class="small">⚖️ ${L('Papa samyam points', 'பாப சாம்யப் புள்ளிகள்')}: 👰 ${r.deep.papa.bride.total} · 🤵 ${r.deep.papa.groom.total}</p></div>
     <div class="card glass"><div class="card-title">🌟 ${L('Key moments of married life', 'திருமண வாழ்க்கையின் முக்கிய தருணங்கள்')}</div>
-      <div class="factor"><span>👶 ${L('Children blessing', 'குழந்தை பாக்கியம்')}</span><b class="zero">${r.children.length ? r.children.slice(0, 2).map((w) => `${monthYear(w.from)} – ${monthYear(w.to)}`).join(', ') : r.childFallback ? monthYear(r.childFallback.peakFrom) : L('with prayer & care', 'வழிபாடு, கவனத்துடன்')}</b></div>
-      <div class="factor"><span>🏡 ${L('Own home together', 'சொந்த வீடு')}</span><b class="zero">${r.home.length ? `${monthYear(r.home[0].from)} – ${monthYear(r.home[0].to)}` : (r.goodYears[0] ? `${r.goodYears.find((x) => x.themes.some((t) => /Wealth/.test(t.en)))?.year || r.goodYears[0].year}` : '—')}</b></div>
-      <div class="factor"><span>💰 ${L('Best years for wealth', 'செல்வ வளர்ச்சி ஆண்டுகள்')}</span><b class="zero">${r.timeline.filter((x) => x.themes.some((t) => /Wealth grows/.test(t.en))).slice(0, 4).map((x) => x.year).join(', ') || '—'}</b></div>
-      <div class="factor"><span>🤍 ${L('Years needing extra care', 'கூடுதல் கவனம் தேவைப்படும் ஆண்டுகள்')}</span><b class="${r.careYears.length ? 'neg' : 'pos'}">${r.careYears.map((x) => x.year).join(', ') || L('None major', 'பெரிதாக இல்லை')}</b></div></div>
+      ${momentsHtml(r.moments)}</div>
     ${r.strengths.length || r.challenges.length ? `<div class="card glass">${r.strengths.length ? `<p>💪 <b>${L('Strengths', 'பலங்கள்')}:</b> ${r.strengths.map((x) => esc(bi(x))).join(', ')}</p>` : ''}${r.challenges.length ? `<p>🌱 <b>${L('Grow together in', 'சேர்ந்து வளர வேண்டியவை')}:</b> ${r.challenges.map((x) => esc(bi(x))).join(', ')}</p>` : ''}</div>` : ''}
     <div class="section-title">📅 ${L('Year by year from the wedding', 'திருமணத்திலிருந்து ஆண்டுவாரியாக')}</div>${timelineHtml(r.timeline, names)}
     <div class="card glass"><div class="card-title">🪔 ${L('Parigaram for the couple', 'தம்பதியருக்கான பரிகாரம்')}</div>${r.remedies.map((x) => `<p class="small">• ${esc(bi(x))}</p>`).join('')}</div>
@@ -144,8 +168,8 @@ function showCouple(bride, groom) {
     const t = $('#coupleText');
     t.classList.add('typing');
     const context = {
-      bride: { name: names[0].en, star: bride.chart.janmaNakshatra.name, rasi: bride.chart.janmaRasi.name, lagna: bride.chart.lagna.rasiName },
-      groom: { name: names[1].en, star: groom.chart.janmaNakshatra.name, rasi: groom.chart.janmaRasi.name, lagna: groom.chart.lagna.rasiName },
+      bride: { name: names[0].en, star: bride.chart.janmaNakshatra.name, rasi: bride.chart.janmaRasi.name, lagna: bride.chart.lagna?.rasiName },
+      groom: { name: names[1].en, star: groom.chart.janmaNakshatra.name, rasi: groom.chart.janmaRasi.name, lagna: groom.chart.lagna?.rasiName },
       weddingDate: coupleUi.wedding, porutham: `${r.porutham.score}/10`, manaPorutham: r.mana.areas.map((x) => `${x.name.en}: ${x.score}`),
       doshaSamyam: r.samyam.map((n) => n.en), deepChecks: r.deep.checks.map((c) => `${c.name.en}: ${c.ok ? 'ok' : 'care'} — ${c.note.en}`), childrenWindows: r.children.map((w) => `${iso(w.from)}..${iso(w.to)}`),
       goodYears: r.goodYears.map((x) => x.year), careYears: r.careYears.map((x) => ({ year: x.year, why: x.themes.filter((th) => th.kind === 'care').map((th) => th.en) })),
@@ -202,7 +226,7 @@ function showPartners(a, b) {
       ${r.roles.map((x) => `<div class="factor"><span>${esc(bi(x))}<br><small class="muted">${esc(bi(names[0]))} ${x.a} · ${esc(bi(names[1]))} ${x.b}</small></span><b class="pos">${who(x.best)}</b></div>`).join('')}</div>
     ${locked ? lockCard(L('The 15-year partnership timeline and growth periods are part of Premium.', '15 ஆண்டு கூட்டுக் காலவரிசையும் வளர்ச்சிக் காலங்களும் பிரீமியத்தில் உள்ளன.')) : `
     <div class="card glass"><div class="card-title">🚀 ${L('Growth periods both charts agree on', 'இரு ஜாதகமும் ஒப்புக்கொள்ளும் வளர்ச்சிக் காலம்')}</div>
-      ${r.growth.length ? r.growth.slice(0, 4).map((w) => `<div class="best">🌟 ${monthYear(w.from)} – ${monthYear(w.to)}</div>`).join('') : `<p class="small">${L('Best years from the timeline below', 'கீழே உள்ள காலவரிசையின் சிறந்த ஆண்டுகள்')}: ${r.timeline.filter((x) => x.level === 'good').map((x) => x.year).join(', ') || '—'}</p>`}
+      ${r.growth.length ? r.growth.slice(0, 4).map((w) => `<div class="best">🌟 ${monthYear(w.from)} – ${monthYear(w.to)}</div>`).join('') : `<p class="small">${r.timeline.some((x) => x.level === 'good') ? `${L('Best years from the timeline below', 'கீழே உள்ள காலவரிசையின் சிறந்த ஆண்டுகள்')}: ${r.timeline.filter((x) => x.level === 'good').map((x) => x.year).join(', ')}` : esc(bi(CAP_LINES.windows))}</p>`}
       ${r.companyNote ? `<p class="small">🏢 ${L('Company chart: 10th house', 'நிறுவன ஜாதகம்: 10-ம் பாவம்')} ${r.companyNote.tenth}, ${L('11th (profits)', '11-ம் (லாபம்)')} ${r.companyNote.eleventh}</p>` : ''}</div>
     <div class="section-title">📅 ${L('Year by year', 'ஆண்டுவாரியாக')}</div>${timelineHtml(r.timeline, names)}`}
     <div class="card glass"><div class="card-title">📜 ${L('Guidance for a lasting partnership', 'நீடித்த கூட்டுக்கான வழிகாட்டல்')}</div>${r.guidance.map((x) => `<p class="small">• ${esc(bi(x))}</p>`).join('')}

@@ -10,6 +10,7 @@ import {
 } from './core.js';
 import { remindBtn } from './remind.js';
 import { ageProfile, adultText } from './shared/age-guard.js';
+import { capDate, withinCap } from './shared/lifespan-cap.js';
 
 // Age first: when the selected person is a child and this is their own rasi, keep only child-appropriate sentences
 // (no marriage, spouse, business, money) and hide the career / money bars.
@@ -115,13 +116,17 @@ function renderPeyarchi(sec) {
 }
 
 function fillNow(cur) {
+  // Personal view (own ★ rasi): transit changes are listed only inside the member's age 0–80 (shared/lifespan-cap.js).
+  const m = activeMember();
+  const horizon = m && pyRasi === defaultRasi() && m.relation !== 'organization' ? capDate(m) : null;
   $('#pyNow').innerHTML = `<div class="py-grid">${PEYARCHI_PLANETS.map((p) => {
-    const c = cur[p];
+    const c0 = cur[p];
+    const c = c0.next && !withinCap(c0.next, horizon) ? { ...c0, next: null, nextRasi: null } : c0;
     return `<div class="card glass rp">
       <span class="gl" style="color:${COLOR[p]}">${GLYPH[p]}</span>
       <b>${esc(planetName(p))} · ${esc(rasiName(c.rasi))}${c.retrograde && p !== 'Rahu' && p !== 'Ketu' ? ` <span class="pill">${L('retro', 'வக்ரம்')}</span>` : ''}</b>
       <small>${L('Since', 'முதல்')}: ${fmtD(c.since)}</small>
-      <small>${L('Next', 'அடுத்து')}: ${c.next ? `${esc(rasiName(c.nextRasi))} · ${fmtD(c.next)}${c.nextRetro && p !== 'Rahu' && p !== 'Ketu' ? ` (${L('retro', 'வக்ரம்')})` : ''}` : '—'}</small>
+      ${c.next ? `<small>${L('Next', 'அடுத்து')}: ${esc(rasiName(c.nextRasi))} · ${fmtD(c.next)}${c.nextRetro && p !== 'Rahu' && p !== 'Ketu' ? ` (${L('retro', 'வக்ரம்')})` : ''}</small>` : ''}
       ${c.next ? remindBtn({ title: L(`${p} peyarchi to ${RASIS[c.nextRasi].en}`, `${planetName(p)} பெயர்ச்சி — ${RASIS[c.nextRasi].ta}`), at: c.next, label: L('Remind', 'நினைவூட்டு') }) : ''}
     </div>`;
   }).join('')}</div>`;

@@ -13,12 +13,13 @@ import {
 import { reliabilityOf, setupVoiceInput } from './screens-main.js';
 import { placeSearch } from './account.js';
 import { remindBtn } from './remind.js';
+import { templeSearchField, attachTempleSearch } from './temple-search.js';
 import { sharePreview } from './screens-hubs.js';
 import { chartFacts } from './shared/guidance.js';
 
 const form = {
   startName: '', lat: null, lon: null, date: '', days: null, travellers: null, who: [], transport: 'bus', tier: 'economy',
-  budget: '', pace: 'moderate', mobility: 'none', prefs: [], useChart: true, confirmed: {}, focus: [],
+  budget: '', pace: 'moderate', mobility: 'none', prefs: [], useChart: true, confirmed: {}, focus: [], picked: [],
 };
 let plan = null;
 
@@ -55,7 +56,7 @@ function renderJourney(sec, params = {}) {
     if (p) { plan = p.plan; Object.assign(form, p.form); }
   }
   if (params.temples?.length) {
-    form.focus = params.temples; plan = null;
+    form.focus = [...params.temples]; form.picked = []; plan = null;
     if (params.date) { form.date = params.date; form.confirmed.date = true; }
     if (params.travellers) { form.travellers = params.travellers; form.confirmed.travellers = true; }
     if (params.days) { form.days = params.days; form.confirmed.days = true; }
@@ -65,8 +66,8 @@ function renderJourney(sec, params = {}) {
   const fam = state.family.filter((m) => m.relation !== 'organization');
   const m = activeMember();
   sec.innerHTML = `${subHeader(L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்'), L('Your chart, the temple database and your trip — together', 'உங்கள் ஜாதகம், கோவில் தகவல், உங்கள் பயணம் — ஒன்றாக'))}
-    ${form.focus.length ? `<div class="card glass focus-card"><div class="card-title">🛕 ${L('Recommended for you from your chart', 'உங்கள் ஜாதகப்படி உங்களுக்குப் பரிந்துரை')}</div>
-      <p><b>${form.focus.map((id) => esc(bi(TEMPLES.find((t) => t.id === id)?.name || { en: id, ta: id }))).join(' · ')}</b></p>
+    ${form.focus.length ? `<div class="card glass focus-card"><div class="card-title">🛕 ${form.focus.every((id) => form.picked.includes(id)) ? L('Temples you chose', 'நீங்கள் தேர்ந்தெடுத்த கோவில்கள்') : L('Recommended for you from your chart', 'உங்கள் ஜாதகப்படி உங்களுக்குப் பரிந்துரை')}</div>
+      <div class="ts-chips">${form.focus.map((id) => `<span class="ts-chip"><b>${esc(bi(TEMPLES.find((t) => t.id === id)?.name || { en: id, ta: id }))}</b><button type="button" class="ts-x" data-unfocus="${esc(id)}" aria-label="${esc(L('Remove', 'நீக்கு'))}">✕</button></span>`).join('')}</div>
       <p class="small">${L('The temple is already chosen — just pick the date and who is going, then tap “Show options”. We add weather, festival crowd and opening times for that day.', 'கோவில் ஏற்கனவே தேர்வு செய்யப்பட்டது — தேதியும் உடன் வருபவர்களையும் மட்டும் தேர்வு செய்து “வழிகளைக் காட்டு” அழுத்துங்கள். அன்றைய வானிலை, விழாக் கூட்டம், நடை நேரம் சேர்த்துத் தருவோம்.')}</p>
       <button type="button" class="link-btn" id="clearFocus">${L('Choose other temples instead', 'வேறு கோவில்களைத் தேர்வு செய்ய')}</button></div>` : ''}
     <div class="card glass">
@@ -96,6 +97,7 @@ function renderJourney(sec, params = {}) {
         <label>${L('Pace', 'வேகம்')}<select name="pace">${[['relaxed', 'Relaxed', 'நிதானம்'], ['moderate', 'Moderate', 'மிதமான'], ['packed', 'Packed', 'அதிகம்']].map(([id, en, tx]) => `<option value="${id}"${form.pace === id ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label>
         <label>${L('Mobility needs', 'நடமாட்டத் தேவை')}<select name="mobility">${[['none', 'None', 'இல்லை'], ['limited', 'Limited walking / elders', 'குறைந்த நடை / முதியோர்'], ['wheelchair', 'Wheelchair user', 'சக்கர நாற்காலி']].map(([id, en, tx]) => `<option value="${id}"${form.mobility === id ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label>
       </div>
+      ${templeSearchField({ id: 'tripTemple', label: L('Temples to visit (optional) — type to search', 'செல்ல வேண்டிய கோவில்கள் (விருப்பம்) — தட்டச்சு செய்து தேடுங்கள்') })}
       <div class="mini-label">${L('Devotional preference (optional)', 'வழிபாட்டு விருப்பம் (விருப்பம்)')}</div>
       <div class="member-switch">${[['shiva', 'Shiva', 'சிவன்'], ['vishnu', 'Perumal', 'பெருமாள்'], ['amman', 'Amman', 'அம்மன்'], ['murugan', 'Murugan', 'முருகன்'], ['navagraha', 'Navagraha', 'நவகிரகம்'], ['divya_desam', 'Divya Desam', 'திவ்ய தேசம்']].map(([id, en, tx]) => `<label class="mchip${form.prefs.includes(id) ? ' sel' : ''}"><input type="checkbox" name="prefs" value="${id}"${form.prefs.includes(id) ? ' checked' : ''}> ${L(en, tx)}</label>`).join('')}</div>
       ${m ? `<label class="set-row"><span>${L(`Use ${displayName(m)}'s chart (current dasa, planets needing care)`, `${displayName(m)} அவர்களின் ஜாதகத்தைப் பயன்படுத்து (நடப்பு தசை, கவனம் தேவையான கிரகம்)`)}</span><input type="checkbox" name="useChart"${form.useChart ? ' checked' : ''}></label>` : `<p class="small muted">${L('No birth details saved — suggestions use only your preferences and distance.', 'பிறப்பு விவரம் இல்லை — விருப்பம், தூரம் மட்டும் பயன்படும்.')}</p>`}
@@ -108,7 +110,15 @@ function renderJourney(sec, params = {}) {
   f.elements.start.addEventListener('input', () => { form.lat = null; });
   f.addEventListener('change', (e) => { e.target.closest('label')?.classList.remove('check'); if (e.target.name) form.confirmed[e.target.name] = true; });
   f.addEventListener('submit', (e) => { e.preventDefault(); readForm(f); submit(); });
-  $('#clearFocus')?.addEventListener('click', () => { form.focus = []; plan = null; renderJourney(sec); });
+  $('#clearFocus')?.addEventListener('click', () => { readForm(f); form.focus = []; form.picked = []; plan = null; renderJourney(sec); });
+  $$('[data-unfocus]', sec).forEach((b) => b.addEventListener('click', () => { readForm(f); form.focus = form.focus.filter((id) => id !== b.dataset.unfocus); plan = null; renderJourney(sec); }));
+  // Temple picker: typed search with live suggestions; each pick is added to the trip (shown in the card above).
+  attachTempleSearch($('#tripTemple'), { keepText: false, onPick: (t) => {
+    readForm(f);
+    if (!form.focus.includes(t.id)) { form.focus = [...form.focus, t.id]; form.picked = [...form.picked, t.id]; }
+    plan = null; renderJourney(sec);
+    toast(L(`${t.name.en} added to your trip`, `${t.name.ta} பயணத்தில் சேர்க்கப்பட்டது`));
+  } });
   setupVoiceInput($('#tripMic'), $('#tripText'));
   $('#tripParse').addEventListener('click', () => { readForm(f); applyParsed(parseTripText($('#tripText').value), false); renderJourney(sec); });
   if (plan) showPlan(plan);
@@ -153,7 +163,7 @@ function submit() {
   if (unchecked.length && !confirm(L('Some values came from your words. Are the highlighted city, dates and numbers correct?', 'சில மதிப்புகள் உங்கள் சொற்களிலிருந்து எடுக்கப்பட்டன. ஒளிரும் ஊர், தேதி, எண்கள் சரியா?'))) return;
   unchecked.forEach((k) => { form.confirmed[k] = true; });
   const { planets, note } = chartPlanets();
-  plan = planJourney({ start: { lat: form.lat, lon: form.lon, name: form.startName, cc: form.startCc }, days: form.days, travellers: form.travellers, transport: form.transport, tier: form.tier, budget: Number(form.budget) ? toInr(Number(form.budget)) : null, pace: form.pace, mobility: form.mobility, prefs: form.prefs, planets, focus: form.focus });
+  plan = planJourney({ start: { lat: form.lat, lon: form.lon, name: form.startName, cc: form.startCc }, days: form.days, travellers: form.travellers, transport: form.transport, tier: form.tier, budget: Number(form.budget) ? toInr(Number(form.budget)) : null, pace: form.pace, mobility: form.mobility, prefs: form.prefs, planets, focus: form.focus, picked: form.picked });
   plan.chartNote = note;
   plan.date = form.date;
   showPlan(plan);

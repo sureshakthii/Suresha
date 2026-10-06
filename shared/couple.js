@@ -10,6 +10,8 @@ import { grahaStrength, NAVAGRAHA } from './remedies.js';
 import { bhavaAnalysis } from './analysis.js';
 import { significations, planetScore, predictEvent } from './predict.js';
 import { deepMarriageChecks } from './lifecheck.js';
+import { pairCapDate, minCap, CAP_LINES } from './lifespan-cap.js';
+import { ageOn } from './datetime.js';
 
 const DAY = 86400000;
 const YEAR = 365.25 * DAY;
@@ -122,12 +124,13 @@ function transitAt(chart, positions) {
   return { sat, jup, sadeSati: [12, 1, 2].includes(sat), ashtama: sat === 8, guruBalam: [2, 5, 7, 9, 11].includes(jup) };
 }
 
-/** Year-by-year timeline for two people from a start date. */
-function timeline(a, b, start, years, focusQ, names) {
+/** Year-by-year timeline for two people from a start date (ends at the pair's listing horizon, `cap`). */
+function timeline(a, b, start, years, focusQ, names, cap = pairCapDate(a, b)) {
   const sigA = significations(a), sigB = significations(b);
   const rows = [];
   for (let i = 0; i < years; i++) {
     const s = new Date(start.getTime() + i * YEAR);
+    if (cap && s >= cap) break;
     const mid = new Date(s.getTime() + YEAR / 2);
     const pos = planetPositions(mid).planets;
     const ra = runningAt(a, mid), rb = runningAt(b, mid);
@@ -149,7 +152,7 @@ function timeline(a, b, start, years, focusQ, names) {
     if (wA + wB > 4) { score += 4; themes.push({ kind: 'good', ...T('Tradition sees a supportive time for saving together', 'மரபுப்படி சேர்ந்து சேமிக்க ஆதரவான காலம்') }); }
     if (wA + wB < -2) themes.push({ kind: 'care', ...T('Control expenses and avoid lending', 'செலவைக் கட்டுப்படுத்தி, கடன் கொடுப்பதைத் தவிர்க்கவும்') });
     score = clamp(score);
-    rows.push({ year: s.getUTCFullYear(), from: s, to: new Date(s.getTime() + YEAR), score, level: score >= 66 ? 'good' : score >= 48 ? 'steady' : 'care', a: ra, b: rb, themes });
+    rows.push({ year: s.getUTCFullYear(), from: s, to: minCap(new Date(s.getTime() + YEAR), cap), score, level: score >= 66 ? 'good' : score >= 48 ? 'steady' : 'care', a: ra, b: rb, themes, wealth: Math.round((wA + wB) * 10) / 10 });
   }
   return rows;
 }
@@ -173,12 +176,14 @@ export function marriageReport(bride, groom, { weddingDate = new Date(), years =
   const dB = doshams(bride.planets), dG = doshams(groom.planets);
   const samyam = doshaSamyam(dB, dG);
   const mana = manaPorutham(bride, groom);
-  const rows = timeline(bride, groom, weddingDate, years, MARRIAGE_Q, nm);
+  // Listing horizon for the couple: the earlier of the two 80th birthdays (shared/lifespan-cap.js).
+  const cap = pairCapDate(bride, groom);
+  const rows = timeline(bride, groom, weddingDate, years, MARRIAGE_Q, nm, cap);
   const conceive = new Date(weddingDate.getTime() + 270 * DAY); // a child arrives at least ~9 months after the wedding
-  const childA = predictEvent(bride, 'child', { from: conceive, years: 15 });
-  const childB = predictEvent(groom, 'child', { from: conceive, years: 15 });
-  const houseA = predictEvent(bride, 'house', { from: weddingDate, years: 20 });
-  const houseB = predictEvent(groom, 'house', { from: weddingDate, years: 20 });
+  const childA = predictEvent(bride, 'child', { from: conceive, years: 15, until: cap });
+  const childB = predictEvent(groom, 'child', { from: conceive, years: 15, until: cap });
+  const houseA = predictEvent(bride, 'house', { from: weddingDate, years: 20, until: cap });
+  const houseB = predictEvent(groom, 'house', { from: weddingDate, years: 20, until: cap });
   const children = agree(childA.windows, childB.windows);
   const home = agree(houseA.windows, houseB.windows);
   const careYears = rows.filter((r) => r.level === 'care');
@@ -197,8 +202,9 @@ export function marriageReport(bride, groom, { weddingDate = new Date(), years =
     ...(!dB.chevvai.present !== !dG.chevvai.present ? [T('Optional, if your tradition suggests it: Murugan worship together on Tuesdays.', 'விருப்பமெனில், உங்கள் மரபு சொன்னால்: செவ்வாய்தோறும் சேர்ந்து முருகன் வழிபாடு.')] : []),
   ];
   if (!deep.papaOk) remedies.push(T('Optional: a Navagraha prayer together before the wedding.', 'விருப்பமெனில்: திருமணத்திற்கு முன் சேர்ந்து நவகிரக வழிபாடு.'));
+  const moments = keyMoments({ bride, groom, weddingDate, cap, rows, children, home, childA, childB, houseA, houseB });
   return {
-    porutham, doshams: { bride: dB, groom: dG }, samyam, mana, deep, total, verdict, strengths, challenges, timeline: rows, children, home, careYears, goodYears,
+    porutham, doshams: { bride: dB, groom: dG }, samyam, mana, deep, total, verdict, strengths, challenges, timeline: rows, children, home, careYears, goodYears, moments, horizon: cap,
     remedies: remedies.map((r) => ({ ...r, optional: true })),
     childFallback: childA.windows[0] || childB.windows[0] || null,
     childrenNote: T('Periods your tradition associates with family expansion — not a fertility assessment and not a promise.', 'உங்கள் மரபு குடும்ப விரிவுடன் தொடர்புபடுத்தும் காலங்கள் — கருவுறுதல் மதிப்பீடோ வாக்குறுதியோ அல்ல.'),
@@ -207,6 +213,76 @@ export function marriageReport(bride, groom, { weddingDate = new Date(), years =
     birthTimeNote: mana.birthTimeNote,
     verdictNote: T('A traditional summary to support your family conversation — the decision is yours.', 'குடும்பக் கலந்துரையாடலுக்கு உதவும் மரபுச் சுருக்கம் — முடிவு உங்களுடையது.'),
   };
+}
+
+const MONTH = 30.44 * DAY;
+const monthStart = (d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+/** A { from, to } range of whole months (to ≥ from + 1 month), kept inside the horizon. */
+function monthRange(from, to, cap) {
+  const f = monthStart(new Date(from));
+  let t = minCap(new Date(to), cap);
+  if (t - f < MONTH) t = minCap(new Date(f.getTime() + 2 * MONTH), cap);
+  return { from: f, to: t };
+}
+/** First window (earliest start) from a list of predictEvent windows, as a month range. */
+const firstWindow = (ws, cap) => {
+  const w = [...ws].filter((x) => x && x.peakTo > x.peakFrom).sort((p, q) => p.peakFrom - q.peakFrom)[0];
+  return w ? monthRange(w.peakFrom, w.peakTo, cap) : null;
+};
+/** Consecutive timeline rows that pass `test`, merged into ranges [{ from, to, years:[y…] }]. */
+function rowRanges(rows, test) {
+  const out = [];
+  for (const r of rows) {
+    const last = out[out.length - 1];
+    if (!test(r)) continue;
+    if (last && last.lastYear === r.year - 1) { last.to = r.to; last.lastYear = r.year; last.years.push(r.year); } else out.push({ from: r.from, to: r.to, lastYear: r.year, years: [r.year] });
+  }
+  return out.map(({ lastYear: _l, ...x }) => x);
+}
+
+/**
+ * Key moments of married life — one consistent row each: a favourable month range (start–end) for the couple, from both
+ * charts' Dasa–Bhukti and Jupiter/Saturn transits, never past the couple's listing horizon. When no range appears in
+ * the next 20 years, the nearest supportive window of either chart is used, else a gentle line (never a bare dash).
+ * The santhana bhagyam row is a traditional supportive period only (no fertility assessment) and appears only when
+ * both are adults in the usual family-building years.
+ */
+function keyMoments({ bride, groom, weddingDate, cap, rows, children, home, childA, childB, houseA, houseB }) {
+  const limit = minCap(new Date(weddingDate.getTime() + 20 * YEAR), cap);
+  const inLimit = (r) => r && r.from < limit;
+  const wedIso = weddingDate.toISOString().slice(0, 10);
+  const ages = [bride, groom].map((c) => (c?.date ? ageOn(c.date, wedIso) : null));
+  const out = [];
+  const row = (id, icon, label, range, line, extra = {}) => out.push({ id, icon, label, kind: range ? 'range' : 'line', from: range?.from || null, to: range?.to || null, line: range ? null : line, ...extra });
+
+  if (ages.every((a) => a != null && a >= 18 && a <= 45)) {
+    const both = children[0] ? monthRange(children[0].from, children[0].to, cap) : null;
+    const near = both || firstWindow([...childA.windows, ...childB.windows], cap);
+    row('children', '👶', T('Santhana bhagyam — supportive period', 'சந்தான பாக்கியம் — சாதகமான காலம்'), inLimit(near) ? near : null,
+      T('Blessings come in their own time — a shared prayer on Thursdays supports the family wish.', 'இறையருளால் உரிய காலத்தில் கைகூடும் — வியாழன்தோறும் சேர்ந்து வழிபடுவது குடும்ப விருப்பத்திற்கு ஆதரவு.'),
+      { agreed: !!both, note: T('A traditional supportive period — not a medical assessment.', 'மரபுப்படி சாதகமான காலம் — மருத்துவ மதிப்பீடு அல்ல.') });
+  }
+  {
+    const both = home[0] ? monthRange(home[0].from, home[0].to, cap) : null;
+    const good = rows.find((r) => r.level === 'good');
+    const near = both || firstWindow([...houseA.windows, ...houseB.windows], cap) || (good ? monthRange(good.from, good.to, cap) : null);
+    row('home', '🏡', T('Own home together', 'சொந்த வீடு'), inLimit(near) ? near : null, CAP_LINES.windows, { agreed: !!both });
+  }
+  {
+    const ranges = rowRanges(rows, (r) => r.wealth > 4);
+    const best = [...rows].filter((r) => r.wealth > 0).sort((p, q) => q.wealth - p.wealth || p.from - q.from)[0];
+    const near = ranges[0] ? monthRange(ranges[0].from, ranges[0].to, cap) : best ? monthRange(best.from, best.to, cap) : null;
+    row('wealth', '💰', T('Wealth growth period', 'செல்வ வளர்ச்சிக் காலம்'), inLimit(near) ? near : null,
+      T('Steady effort brings gradual growth — save a little every month together.', 'தொடர் முயற்சியால் படிப்படியான வளர்ச்சி — மாதந்தோறும் சேர்ந்து சிறிது சேமியுங்கள்.'), { agreed: !!ranges[0] });
+  }
+  {
+    const care = rowRanges(rows, (r) => r.level === 'care').filter((r) => r.from < limit).map((r) => ({ from: r.from, to: r.to, years: r.years }));
+    out.push({ id: 'care', icon: '🤍', label: T('Years needing extra care', 'கூடுதல் கவனம் தேவைப்படும் ஆண்டுகள்'), kind: care.length ? 'years' : 'line', ranges: care,
+      line: care.length ? T('Plan together calmly and keep time for each other in these years.', 'இந்த ஆண்டுகளில் நிதானமாகச் சேர்ந்து திட்டமிட்டு, ஒருவருக்கொருவர் நேரம் ஒதுக்குங்கள்.')
+        : T('Steady years — keep up the good routines together.', 'சீரான ஆண்டுகள் — நல்ல பழக்கங்களைச் சேர்ந்து தொடருங்கள்.'),
+      from: null, to: null });
+  }
+  return out;
 }
 
 /**
@@ -264,8 +340,9 @@ export function partnershipReport(a, b, { startDate = new Date(), years = 15, co
     const x = roleScore(sa, ba, f), y = roleScore(sb, bb, f);
     return { ...f, a: Math.round(x), b: Math.round(y), best: Math.abs(x - y) < 3 ? 'both' : x > y ? 'a' : 'b' };
   });
-  const rows = timeline(a, b, startDate, years, BUSINESS_Q, nm);
-  const bizA = predictEvent(a, 'business', { from: startDate, years }), bizB = predictEvent(b, 'business', { from: startDate, years });
+  const cap = pairCapDate(a, b);
+  const rows = timeline(a, b, startDate, years, BUSINESS_Q, nm, cap);
+  const bizA = predictEvent(a, 'business', { from: startDate, years, until: cap }), bizB = predictEvent(b, 'business', { from: startDate, years, until: cap });
   const growth = agree(bizA.windows, bizB.windows);
   let companyNote = null;
   if (company) {
@@ -280,7 +357,7 @@ export function partnershipReport(a, b, { startDate = new Date(), years = 15, co
     ...(rows.some((r) => r.level === 'care') ? [T('In care years avoid big loans and expansion; protect cash flow.', 'கவனக் காலங்களில் பெரிய கடன், விரிவாக்கம் தவிர்த்து பணப்புழக்கத்தைப் பாதுகாக்கவும்.')] : []),
     T('Pray to Lord Vinayagar and Mahalakshmi before opening the business each day.', 'தினமும் தொழில் தொடங்கும் முன் விநாயகர், மகாலட்சுமி வழிபாடு.'),
   ];
-  return { areas, overall, verdict, roles, timeline: rows, growth, companyNote, guidance, deception: false, remedyPlanets: ['Mercury', 'Jupiter'].map((k) => ({ planet: k, ...NAVAGRAHA[k] })) };
+  return { areas, overall, verdict, roles, timeline: rows, growth, horizon: cap, companyNote, guidance, deception: false, remedyPlanets: ['Mercury', 'Jupiter'].map((k) => ({ planet: k, ...NAVAGRAHA[k] })) };
 }
 
 export { PLANETS };

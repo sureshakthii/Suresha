@@ -1,6 +1,7 @@
 // Life Questions (வாழ்க்கைக் கேள்விகள்): marriage, job, PR / visa, own house, child, court case,
 // husband–wife harmony, Kula Deivam and habits — timed by Dasa–Bhukti and Guru–Sani double transit.
-import { QUESTIONS, predictEvent, kulaDeivam, habitGuard, careerCompass } from './shared/predict.js';
+import { QUESTIONS, predictEvent, kulaDeivam, habitGuard, careerCompass, questionFor, questionFitsAge } from './shared/predict.js';
+import { capDate, minCap, CAP_LINES } from './shared/lifespan-cap.js';
 import {
   state, $, $$, L, esc, bi, GLYPH, COLOR, planetName, fmtIsoDate, activeMember, chartOf, registerScreen, subHeader, aiTask, speak, displayName,
 } from './core.js';
@@ -25,7 +26,9 @@ function renderLife(sec, params = {}) {
   const m = people.find((x) => x.id === ui.memberId) || activeMember();
   // Age first: a child sees only the questions that suit the age (studies, Kula Deivam) — never marriage, job, money or court.
   const prof = ageOf(m);
-  const qs = [...QUESTIONS, ...EXTRA].filter((q) => lifeQuestionAllowed(q.id, prof));
+  // …and each timing question only within its own age range (no marriage / child timing for an elder).
+  const qs = [...QUESTIONS, ...EXTRA].filter((q) => lifeQuestionAllowed(q.id, prof) && questionFitsAge(q, prof.age))
+    .map((q) => ({ ...q, ...(QUESTIONS.includes(q) ? questionFor(q, m.gender) : {}) }));
   if (ui.q && !qs.some((q) => q.id === ui.q)) ui.q = null;
   sec.innerHTML = `${subHeader(L('Life Questions', 'வாழ்க்கைக் கேள்விகள்'), L('Traditional timing indicators from dasa, bhukti and Guru–Sani transits — not guarantees', 'தசை, புக்தி, குரு–சனி கோசார அடிப்படையிலான பாரம்பரியக் கால அறிகுறிகள் — உத்தரவாதம் அல்ல'))}
     ${people.length > 1 ? `<label>${L('For', 'யாருக்கு')}<select id="lifeFor">${people.map((x) => `<option value="${esc(x.id)}"${x.id === m.id ? ' selected' : ''}>${esc(displayName(x))}</option>`).join('')}</select></label>` : ''}
@@ -53,8 +56,11 @@ function answer(m, scroll = true) {
 }
 
 function renderPrediction(c, m) {
-  const r = predictEvent(c, ui.q);
-  const q = r.question;
+  const r0 = predictEvent(c, ui.q);
+  const qg = questionFor(r0.question, m.gender);
+  const r = { ...r0, remedy: qg.remedy || r0.remedy };
+  const q = { ...r0.question, en: qg.en, ta: qg.ta };
+  const horizon = capDate(c);
   const best = r.windows[0];
   const headline = !r.windows.length
     ? L('Steady effort and sincere parigaram open the way — keep going with faith; every Thursday and Friday morning is good for steps on this.', 'தொடர் முயற்சியும் மனமார்ந்த பரிகாரமும் வழி திறக்கும் — நம்பிக்கையுடன் தொடருங்கள்; ஒவ்வொரு வியாழன், வெள்ளி காலையும் இதற்கான முயற்சிக்கு நல்லது.')
@@ -68,12 +74,12 @@ function renderPrediction(c, m) {
       ${r.promise.level === 'not-assessed' || r.promise.score == null
     ? `<p class="small">🤍 ${L('Every family’s path to a child is its own. Keep both partners’ health routines gentle and regular, follow your doctor’s care, and let the prayer below support you with hope.', 'ஒவ்வொரு குடும்பத்திற்கும் குழந்தை பாக்கியத்திற்கான பாதை தனித்துவமானது. இருவரின் உடல்நல வழக்கத்தையும் மென்மையாகச் சீராக வைத்து, மருத்துவர் வழிகாட்டலைப் பின்பற்றி, கீழே உள்ள வழிபாட்டை நம்பிக்கையுடன் செய்யுங்கள்.')}</p>`
     : `<span class="tag ${r.promise.level === 'strong' || r.promise.level === 'good' ? 'good' : 'warn'}">${L('Promise in chart', 'ஜாதக வாக்குறுதி')}: ${r.promise.level === 'strong' ? L('Strong', 'வலுவானது') : r.promise.level === 'good' ? L('Good', 'நன்று') : L('Comes with effort', 'முயற்சியால் கிடைக்கும்')}</span>`}</div>
-    ${r.current ? `<div class="card glass"><div class="mini-label">${L('Running now', 'தற்போது நடப்பது')}</div><div class="mini-value">${esc(dasaLabel(r.current))}</div><div class="muted small">${L('until', 'வரை')} ${fmtIsoDate(iso(r.current.end))}</div></div>` : ''}
+    ${r.current ? `<div class="card glass"><div class="mini-label">${L('Running now', 'தற்போது நடப்பது')}</div><div class="mini-value">${esc(dasaLabel(r.current))}</div><div class="muted small">${L(`until ${fmtIsoDate(iso(minCap(r.current.end, horizon)))}`, `${fmtIsoDate(iso(minCap(r.current.end, horizon)))} வரை`)}</div></div>` : ''}
     <div class="section-title">🌟 ${q.harmony ? L('Best periods for togetherness', 'ஒற்றுமைக்கு சிறந்த காலங்கள்') : L('Best periods', 'சிறந்த காலங்கள்')}</div>
     ${r.windows.map((w) => `<div class="card glass window${w === r.earliest ? ' first' : ''}">
       <div class="win-dates">${monthYear(w.peakFrom)} – ${monthYear(w.peakTo)}${w.doubleTransit ? ` <span class="pill dt">${L('Guru + Sani support', 'குரு + சனி ஆதரவு')}</span>` : ''}</div>
       <div class="small">${esc(dasaLabel(w))} <span class="muted">(${fmtIsoDate(iso(w.start))} → ${fmtIsoDate(iso(w.end))})</span></div>
-      ${w.reasons.length ? `<div class="small muted">${w.reasons.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}</div>`).join('') || ''}
+      ${w.reasons.length ? `<div class="small muted">${w.reasons.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}</div>`).join('') || `<div class="card glass window"><p class="small">🌱 ${esc(bi(CAP_LINES.windows))}</p></div>`}
     ${r.careful.length ? `<div class="section-title">🤍 ${L('Periods to be extra caring with each other', 'ஒருவருக்கொருவர் கூடுதல் அன்பு காட்ட வேண்டிய காலங்கள்')}</div>
       ${r.careful.map((w) => `<div class="card glass window care"><div class="win-dates">${monthYear(w.start)} – ${monthYear(w.end)}</div><div class="small">${esc(dasaLabel(w))}</div><p class="small">${L('Patience, shared prayer and open talks keep the bond strong in this period.', 'இந்தக் காலத்தில் பொறுமை, சேர்ந்த வழிபாடு, மனம் திறந்த பேச்சு உறவை வலுப்படுத்தும்.')}</p></div>`).join('')}` : ''}
     <div class="card glass"><div class="card-title">🔍 ${L('What the chart shows', 'ஜாதகம் காட்டுவது')}</div>${r.promise.notes.map((n) => `<div class="small">• ${esc(bi(n))}</div>`).join('')}</div>
@@ -89,7 +95,7 @@ function renderPrediction(c, m) {
     const context = {
       person: { name: m.name, relation: m.relation, gender: m.gender, birth: `${m.date} ${m.time} ${m.place}`, lagna: c.lagna.rasiName, rasi: c.janmaRasi.name, star: c.janmaNakshatra.name },
       question: q.en, promise: { level: r.promise.level, notes: r.promise.notes.map((n) => n.en) },
-      runningNow: r.current && `${r.current.md} Dasa / ${r.current.ad} Bhukti until ${iso(r.current.end)}`,
+      runningNow: r.current && `${r.current.md} Dasa / ${r.current.ad} Bhukti until ${iso(minCap(r.current.end, horizon))}`,
       bestPeriods: r.windows.map((w) => ({ from: iso(w.peakFrom), to: iso(w.peakTo), dasa: `${w.md}/${w.ad}`, doubleTransit: w.doubleTransit, why: w.reasons.map((x) => x.en) })),
       periodsNeedingCare: r.careful.map((w) => `${iso(w.start)}..${iso(w.end)} ${w.md}/${w.ad}`),
       remedy: r.remedy.en,

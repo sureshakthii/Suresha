@@ -6,6 +6,7 @@
 import { RASIS, PLANETS } from './astro.js';
 import { grahaStrength } from './remedies.js';
 import { bhavaAnalysis } from './analysis.js';
+import { pairCapDate } from './lifespan-cap.js';
 
 const T = (en, ta) => ({ en, ta });
 const DAY = 86400000;
@@ -56,7 +57,9 @@ export function papaPoints(chart, { useLagna = true } = {}) {
 
 /** Dasa Sandhi: Maha Dasa changes of both falling close together (or close to the wedding). */
 export function dasaSandhi(a, b, weddingDate, years = 20) {
-  const end = weddingDate.getTime() + years * 365.25 * DAY;
+  // Listing horizon: only dasa changes inside both people's age 0–80 (shared/lifespan-cap.js).
+  const cap = pairCapDate(a, b);
+  const end = Math.min(weddingDate.getTime() + years * 365.25 * DAY, cap ? cap.getTime() : Infinity);
   const changes = (c) => c.dasa.periods.map((p) => p.start.getTime()).filter((t) => t > weddingDate.getTime() - 180 * DAY && t < end);
   const ca = changes(a), cb = changes(b);
   const clashes = [];

@@ -1,5 +1,5 @@
 // Main screens: Today (home dashboard), Live Sky, Jathagam, Prasnam.
-import { panchang, planetPositions, buildCharts, RASIS, NAKSHATRAS, PLANETS } from './shared/astro.js';
+import { panchang, planetPositions, buildCharts, RASIS, NAKSHATRAS, PLANETS, listedDasaPeriods } from './shared/astro.js';
 import { CATEGORIES, evaluatePrasna } from './shared/prasna.js';
 import { buildContext, ruleBasedReply } from './shared/narrator.js';
 import { tamilDay } from './shared/tamilcal.js';
@@ -25,6 +25,7 @@ import { todayPlan } from './shared/today-plan.js';
 import { faithOf, faithWelcome, faithBlessing, universalPractice } from './shared/faith.js';
 import { todayLines } from './today-lines.js';
 import { ageProfile, suggestionsFor, categoryAllowed, childSafe } from './shared/age-guard.js';
+import { compatCardHtml, bindCompatCard } from './compat-card.js';
 
 /** Age profile of a family member (calendar age today at the selected place) — the top-most filter on every card. */
 export const ageOf = (m) => ageProfile(m, { tz: state.loc?.tz });
@@ -190,6 +191,7 @@ function renderHome(sec) {
 
     ${dailyCard(m, snap, loc)}
     ${healthTodayCard(m)}
+    ${m && m.relation !== 'organization' ? compatCardHtml(m, { uncertain: (() => { try { return !reliabilityOf(m).nakshatra; } catch { return false; } })(), idPrefix: 'cpHome' }) : ''}
     <section class="guide-box card" aria-labelledby="guideQ">
       <h2 id="guideQ" class="guide-q">${L('What would you like guidance on?', 'எதற்கு வழிகாட்டல் வேண்டும்?')}</h2>
       <form id="guideForm" class="chat-form guide-form">
@@ -251,6 +253,7 @@ function renderHome(sec) {
     ${copyright()}`;
   fillHomeWeather(td);
   $('#dcShare')?.addEventListener('click', () => shareDaily(m, snap, loc));
+  bindCompatCard(sec);
   $('#shareToday').addEventListener('click', () => import('./screens-tools.js').then((mod) => mod.shareToday(td, snap)));
   $$('.fam-row', sec).forEach((r) => r.addEventListener('click', () => { state.activeId = r.dataset.id; saveFamily(); renderHome(sec); }));
   const ask = (q) => { q = (q || '').trim(); if (q) go('chat', { q }); };
@@ -557,6 +560,7 @@ function renderChart(sec) {
         <dt>${L('Name letters', 'பெயர் எழுத்து')}</dt><dd>${esc(nl.primary.ta)} (${esc(nl.primary.en)})</dd>
         <dt>${L('Ayanamsa', 'அயனாம்சம்')}</dt><dd>${c.ayanamsa.toFixed(4)}° ${L('Lahiri', 'லாஹிரி')}</dd>
       </dl></div>
+    ${compatCardHtml(m, { uncertain: !rel.nakshatra, idPrefix: 'cpChart' })}
     <div class="card glass"><div class="card-title">💪 ${L('Planet strength (Graha Balam)', 'கிரக பலம்')}</div>
       ${strength.map((g) => `<button class="gb-row" data-planet="${g.planet}">
         <span class="gb-name" style="color:${COLOR[g.planet]}">${GLYPH[g.planet]} ${esc(planetName(g.planet))}</span>
@@ -576,7 +580,7 @@ function renderChart(sec) {
     ${rel.nakshatra ? `<div class="card glass"><div class="card-title">${L('Vimshottari Dasa', 'விம்சோத்தரி தசை')}${rel.dasa ? '' : ` <span class="badge est">${L(`approx. ± ${rel.dasaShiftDays} days`, `தோராயம் ± ${rel.dasaShiftDays} நாள்`)}</span>`}</div>
       <p class="muted small">${L('Dasa balance at birth', 'பிறப்பு தசா இருப்பு')}: ${esc(planetName(c.dasa.balance.lord))} ${c.dasa.balance.years.toFixed(2)} ${L('yrs', 'ஆண்டு')}</p>
       <div class="table-wrap"><table><tr><th>${L('Dasa', 'தசை')}</th><th>${L('From', 'தொடக்கம்')}</th><th>${L('To', 'முடிவு')}</th></tr>
-      ${c.dasa.periods.map((p) => {
+      ${listedDasaPeriods(c).map((p) => {
     const cur = now >= p.start && now < p.end;
     const bh = cur ? p.bhuktis.map((b) => `<tr class="${now >= b.start && now < b.end ? 'current' : ''}"><td style="padding-left:22px">↳ ${esc(planetName(b.lord))} ${L('Bhukti', 'புக்தி')}</td><td>${fmtDate(b.start, c.tz)}</td><td>${fmtDate(b.end, c.tz)}</td></tr>`).join('') : '';
     return `<tr class="${cur ? 'current' : ''}"><td class="pl">${GLYPH[p.lord]} ${esc(planetName(p.lord))}${cur ? ` · ${L('now', 'நடப்பு')}` : ''}</td><td>${fmtDate(p.start, c.tz)}</td><td>${fmtDate(p.end, c.tz)}</td></tr>${bh}`;
@@ -590,6 +594,7 @@ function renderChart(sec) {
   renderSI($('#rasiChart'), noLagna(c.charts.rasi), c.planets, rel.lagna ? c.lagna.rasi : -1, L('Rasi', 'ராசி'), sub, true);
   if (rel.navamsa) renderSI($('#navamsaChart'), c.charts.navamsa, c.planets, c.lagna.navamsaRasi, L('Navamsa', 'நவாம்சம்'), sub, false);
   $$('.gb-row', sec).forEach((b) => b.addEventListener('click', () => { const d2 = $(`#gb-${b.dataset.planet}`); d2.hidden = !d2.hidden; }));
+  bindCompatCard(sec);
   $$('.mchip', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.mid; saveFamily(); renderChart(sec); }));
 }
 registerScreen('chart', { render: renderChart, needsMember: true });
@@ -606,12 +611,18 @@ function renderAsk(sec) {
   const cats = CATEGORIES.filter((c) => !c.event && categoryAllowed(c.id, prof));
   if (prasnaCategory && !cats.some((c) => c.id === prasnaCategory)) { prasnaCategory = null; lastAnswer = null; }
   if (lastAnswer && !cats.some((c) => c.id === lastAnswer.category)) lastAnswer = null;
-  sec.innerHTML = `<div class="seg ask-switch" role="tablist"><button role="tab" aria-selected="false" data-go="chat">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button class="sel" role="tab" aria-selected="true">🔮 ${L('Is now a good time?', 'இப்போது செய்யலாமா?')}</button></div>
+  sec.innerHTML = `<div class="seg ask-switch" role="tablist"><button role="tab" aria-selected="false" data-go="chat">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button class="sel" role="tab" aria-selected="true">🔮 ${L('Is now a good time? (Prasnam)', 'இப்போது செய்யலாமா? (பிரசன்னம்)')}</button></div>
     <div class="card glass">
-      <h2>${L('Is now a good time?', 'இப்போது செய்யலாமா?')}</h2>
+      <h2>${L('Is now a good time? (Prasnam)', 'இப்போது செய்யலாமா? (பிரசன்னம்)')}</h2>
       <p class="muted">${L('Choose what you are about to do. The Prasnam is cast for this exact second.', 'செய்யப்போகும் காரியத்தைத் தேர்வு செய்யுங்கள். இந்த நொடிக்கான பிரசன்னம் கணிக்கப்படும்.')}</p>
       ${state.family.length > 1 ? `<label>${L('Asking for', 'யாருக்காக')}<select id="askFor">${state.family.map((m) => `<option value="${esc(m.id)}"${m.id === askMember()?.id ? ' selected' : ''}>${esc(displayName(m))}${m.relation === 'organization' ? ` (${L('company', 'நிறுவனம்')})` : ''}</option>`).join('')}</select></label>` : ''}
       <div class="cat-grid">${cats.map((c) => `<button class="cat${prasnaCategory === c.id ? ' sel' : ''}" data-id="${c.id}"><span class="ci">${c.icon}</span>${esc(bi(c))}</button>`).join('')}</div>
+      <details class="prasna-intro">
+        <summary>📖 ${L('What is Prasnam?', 'பிரசன்னம் என்றால் என்ன?')}</summary>
+        <p>${L('Prasnam (horary astrology) answers a question from the sky at the very moment it is asked — no birth time is needed. It is a long-standing Tamil and Kerala tradition for everyday decisions.', 'பிரசன்னம் என்பது கேள்வி கேட்கப்படும் அந்த நொடியின் கிரக நிலையைக் கொண்டு பதில் சொல்லும் ஜோதிட முறை — பிறந்த நேரம் தேவையில்லை. அன்றாட முடிவுகளுக்காகத் தமிழகத்திலும் கேரளத்திலும் நெடுங்காலமாகப் பின்பற்றப்படும் மரபு.')}</p>
+        <p><b>${L('How Thunai works it out', 'துணை எப்படிக் கணிக்கிறது')}</b><br>${L('For this exact second and your location it checks the Horai lord for your task, Rahu Kalam, Yamagandam and Guligai, the star, tithi and yoga of the moment, the Prasna Lagna, and — from your birth star — Tara Bala and Chandrashtamam. Each factor adds or removes points, giving a clear Do / Take care / Wait for a better time answer, with the best times in the next 24 hours.', 'இந்த நொடிக்கும் உங்கள் இடத்திற்கும் — உங்கள் காரியத்திற்கான ஓரை அதிபதி, ராகு காலம், எமகண்டம், குளிகை, அந்நேர நட்சத்திரம், திதி, யோகம், பிரசன்ன லக்னம், உங்கள் ஜன்ம நட்சத்திரப்படி தாரா பலம், சந்திராஷ்டமம் ஆகியவற்றைப் பார்க்கிறது. ஒவ்வொன்றும் புள்ளிகளைக் கூட்டி அல்லது குறைத்து, "செய்யலாம் / கவனத்துடன் / நல்ல நேரம் பார்த்து" என்ற தெளிவான பதிலையும், அடுத்த 24 மணி நேரத்தின் சிறந்த நேரங்களையும் தருகிறது.')}</p>
+        <p><b>${L('How accurate is it?', 'எவ்வளவு துல்லியம்?')}</b><br>${L('Planet positions, times and panchangam are calculated precisely for your place. The verdict follows traditional Prasna rules, so treat it as guidance on timing — your real deadlines, a doctor, lawyer or bank always come first.', 'கிரக நிலை, நேரங்கள், பஞ்சாங்கம் ஆகியவை உங்கள் இடத்திற்குத் துல்லியமாகக் கணிக்கப்படுகின்றன. முடிவு பாரம்பரிய பிரசன்ன விதிகளின்படி அமைகிறது — இதை நேரம் பற்றிய வழிகாட்டலாகக் கொள்ளுங்கள்; உண்மையான கெடு தேதிகள், மருத்துவர், வழக்கறிஞர், வங்கி ஆலோசனை எப்போதும் முதன்மை.')}</p>
+      </details>
       <label class="sr-only" for="question">${L('Your question', 'உங்கள் கேள்வி')}</label>
       ${prof.minor ? `<p class="small muted age-note">🌱 ${L('Showing what suits this age — studies, exams, health and family travel.', 'இந்த வயதிற்கு ஏற்றவை மட்டும் — படிப்பு, தேர்வு, ஆரோக்கியம், குடும்பப் பயணம்.')}</p>` : ''}
       <textarea id="question" rows="2" maxlength="400" placeholder="${esc(prof.minor ? L('Your question (optional) — e.g. Is today good to start revision for the exam?', 'உங்கள் கேள்வி (விருப்பம்) — உ.தா. தேர்வுக்கான படிப்பை இன்று தொடங்கலாமா?') : L('Your question (optional) — e.g. Can I sign the flat agreement today?', 'உங்கள் கேள்வி (விருப்பம்) — உ.தா. இன்று ஒப்பந்தம் கையெழுத்திடலாமா?'))}"></textarea>

@@ -7,6 +7,7 @@ import { planetPositions, PLANETS, RASIS } from './shared/astro.js';
 import { bhavaAnalysis, transitStatus } from './shared/analysis.js';
 import { grahaStrength, NAVAGRAHA } from './shared/remedies.js';
 import { significations, planetScore } from './shared/predict.js';
+import { capDate, minCap } from './shared/lifespan-cap.js';
 import { healthGuide } from './shared/health.js';
 import { ageProfile, topicAllowed, ageGuardAnswer, guardAnswer, suggestionsFor } from './shared/age-guard.js';
 
@@ -80,8 +81,8 @@ const TOPIC = {
     dos: [T('Follow your doctor’s guidance first — prayer supports it', 'மருத்துவர் ஆலோசனையே முதன்மை — வழிபாடு துணை நிற்கும்'), T('Keep both partners’ health routines regular and stress low', 'இருவரும் உடல்நல வழக்கத்தைச் சீராக வைத்து மன அழுத்தம் குறையுங்கள்'), T('Pray on Thursdays to Guru / Dakshinamurthy', 'வியாழன்தோறும் குரு / தட்சிணாமூர்த்தி வழிபாடு')],
     donts: [T('Do not blame each other — it is a shared journey', 'ஒருவரை ஒருவர் குற்றம் சாட்ட வேண்டாம் — இது இருவரின் பயணம்'), T('Avoid costly remedies sold with fear', 'பயமுறுத்தி விற்கப்படும் விலையுயர்ந்த பரிகாரம் தவிர்க்கவும்')],
     remedy: T('Chant the Santhana Gopala mantra; visit Garbharakshambigai at Thirukkarukavur when convenient.', 'சந்தான கோபால மந்திரம் ஜபியுங்கள்; வசதிப்படும் போது திருக்கருகாவூர் கர்ப்பரக்ஷாம்பிகை தரிசனம்.'),
-    follow: [T('Which months are best?', 'எந்த மாதங்கள் சிறந்தவை?'), T('Baby name letters for the star', 'நட்சத்திரப்படி குழந்தைப் பெயர் எழுத்து'), T('Parigaram for Guru (Jupiter)', 'குருவுக்கான பரிகாரம்')],
-    action: { go: 'names', label: T('Baby name letters', 'குழந்தைப் பெயர் எழுத்து') } },
+    follow: [T('Which months are best?', 'எந்த மாதங்கள் சிறந்தவை?'), T('Baby names for the star', 'நட்சத்திரப்படி குழந்தைப் பெயர்கள்'), T('Parigaram for Guru (Jupiter)', 'குருவுக்கான பரிகாரம்')],
+    action: { go: 'names', label: T('Baby names', 'குழந்தைப் பெயர்கள்') } },
   job: { houses: [2, 6, 10, 11], negate: [5, 8, 12], key: 10, karakas: ['Saturn', 'Sun'],
     name: T('Getting a job', 'வேலை கிடைப்பது'), houseWhy: T('10th (work), 6th (service, competition), 2nd and 11th (income)', '10-ம் வீடு (தொழில்), 6-ம் வீடு (சேவை, போட்டி), 2, 11-ம் வீடுகள் (வருமானம்)'),
     dos: [T('Apply widely in the favourable months; update your résumé this week', 'சாதகமான மாதங்களில் பரவலாக விண்ணப்பியுங்கள்; இந்த வாரம் சுயவிவரத்தைப் புதுப்பியுங்கள்'), T('Attend interviews in the Sun or Jupiter Horai', 'சூரிய / குரு ஓரையில் நேர்காணலுக்குச் செல்லுங்கள்'), T('Learn one new skill each month', 'மாதம் ஒரு புதிய திறன் கற்றுக்கொள்ளுங்கள்')],
@@ -187,7 +188,8 @@ function transitSupport(chart, keyHouse, date) {
 /** Dasa–Bhukti windows in the next `years` years that activate the topic, with Jupiter/Saturn transit months. */
 function windowsFor(chart, q, { from = new Date(), years = 10 } = {}) {
   const sig = significations(chart);
-  const end = new Date(from.getTime() + years * 365.25 * DAY);
+  // Nothing is listed past the person's 80th birthday.
+  const end = minCap(new Date(from.getTime() + years * 365.25 * DAY), capDate(chart));
   const out = [];
   let current = null;
   for (const md of chart.dasa.periods) {

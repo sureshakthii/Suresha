@@ -2,6 +2,7 @@
 import { state, $, $$, L, ta, STATIC, store, go, currentScreen, saveSettings, setLoc, activeMember, toast, BRAND } from './core.js';
 import { refreshSnap } from './screens-main.js';
 import './screens-tools.js';
+import './screens-names.js';
 import './screens-world.js';
 import './screens-life.js';
 import './screens-plans.js';

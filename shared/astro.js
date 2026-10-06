@@ -3,6 +3,7 @@
 import * as A from 'astronomy-engine';
 import { zoneOffsetMinutes, birthInput } from './datetime.js';
 import { vargaRasi, VARGAS } from './varga.js';
+import { cappedDasaPeriods } from './lifespan-cap.js';
 
 export const RASIS = [
   { en: 'Mesha', ta: 'மேஷம்', short: 'மே', lord: 'Mars' },
@@ -613,6 +614,15 @@ export function vimshottari(birthDate, moonLongitude, now = new Date()) {
     currentBhukti,
     currentPratyantara,
   };
+}
+
+/**
+ * Dasa / bhukti periods to LIST for a person: chart.dasa.periods kept inside the person's age 0–80 (the listing
+ * horizon of shared/lifespan-cap.js) — a straddling period ends at it, later ones are left out. The engine's full
+ * 120-year schedule (chart.dasa) is unchanged; use this helper wherever periods are shown to users.
+ */
+export function listedDasaPeriods(chart) {
+  return cappedDasaPeriods(chart);
 }
 
 /** Convert local birth date/time (YYYY-MM-DD, HH:MM[:SS]) + tz offset (hours) into a UTC Date. */

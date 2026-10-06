@@ -8,6 +8,7 @@ import { YOGA_RULES, PRIORITY_20 } from './yogas.js';
 import { DISPUTED_RULES } from './disputed.js';
 import { CHEVVAI_RULES } from './chevvai.js';
 import { ROLE_RULES } from './roles.js';
+import { capDate, clipPeriods } from '../lifespan-cap.js';
 
 export const REGISTRY_VERSION = '0.1.0';
 export const STATUSES = ['approved', 'proposed', 'disputed'];
@@ -58,7 +59,8 @@ export function relevantPeriods(chart, lords) {
   const dasa = d.current?.lord ?? null, bhukti = d.currentBhukti?.lord ?? null;
   return {
     lords,
-    dasas: d.periods.filter((p) => lords.includes(p.lord)).map((p) => ({ lord: p.lord, start: p.start, end: p.end })),
+    // Listing horizon: only periods inside the person's age 0–80 (straddling ones end at it) — shared/lifespan-cap.js.
+    dasas: clipPeriods(d.periods.filter((p) => lords.includes(p.lord)).map((p) => ({ lord: p.lord, start: p.start, end: p.end })), capDate(chart)),
     current: { dasa, bhukti, dasaActivates: lords.includes(dasa), bhuktiActivates: lords.includes(bhukti) },
     note,
   };

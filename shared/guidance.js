@@ -12,6 +12,7 @@ import { grahaStrength, NAVAGRAHA } from './remedies.js';
 import { transitStatus, BHAVAS } from './analysis.js';
 import { luckyNumbers } from './personal.js';
 import { predictEvent } from './predict.js';
+import { capDate, minCap, clipPeriods } from './lifespan-cap.js';
 import { healthGuide } from './health.js';
 import { closingPrayer } from './daily.js';
 import { faithBlessing, universalPractice } from './faith.js';
@@ -103,6 +104,7 @@ export function chartFacts(chart, rel, now = new Date()) {
   const occupants = (h) => Object.keys(P).filter((k) => k !== 'Lagna' && house(from, P[k].rasi) === h);
   const houseInfo = (h) => ({ h, lord: lordOf(from, h), lordHouse: house(from, P[lordOf(from, h)].rasi), occupants: occupants(h) });
   const dasaOk = rel?.nakshatra !== false;
+  const horizon = capDate(chart);
   const cur = dasaOk ? chart.dasa.current : null;
   const bh = dasaOk ? chart.dasa.currentBhukti : null;
   const ruled = (k) => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((h) => lordOf(from, h) === k);
@@ -122,9 +124,10 @@ export function chartFacts(chart, rel, now = new Date()) {
     weakest: Object.values(strength).filter((g) => !['Rahu', 'Ketu'].includes(g.planet)).sort((a, b) => a.score - b.score).slice(0, 2),
     planetHouse: (k) => house(from, P[k].rasi),
     ruled,
-    dasa: cur && { lord: cur.lord, start: iso(cur.start), end: iso(cur.end), approx: rel?.dasa === false, shiftDays: rel?.dasaShiftDays },
-    bhukti: bh && { lord: bh.lord, start: iso(bh.start), end: iso(bh.end) },
-    nextDasa: dasaOk ? chart.dasa.periods.find((p) => p.start > now) : null,
+    // Listed dates stay inside the person's age 0–80 (shared/lifespan-cap.js).
+    dasa: cur && { lord: cur.lord, start: iso(cur.start), end: iso(minCap(cur.end, horizon)), approx: rel?.dasa === false, shiftDays: rel?.dasaShiftDays },
+    bhukti: bh && { lord: bh.lord, start: iso(bh.start), end: iso(minCap(bh.end, horizon)) },
+    nextDasa: dasaOk ? clipPeriods(chart.dasa.periods, horizon).find((p) => p.start > now) || null : null,
     transit,
     birthDate: chart.date,
   };
@@ -550,7 +553,9 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
         if (life.maritalStatus === undefined && isMarriage) add('next', L('Already married? Set it in your profile — Thunai will then check your chart against your marriage year instead of predicting.', 'ஏற்கனவே திருமணம் ஆகிவிட்டதா? சுயவிவரத்தில் குறிப்பிடுங்கள் — கணிப்புக்குப் பதிலாக உங்கள் திருமண ஆண்டுடன் ஜாதகத்தைச் சரிபார்க்கும்.'));
         add('next', isMarriage
           ? L('Use these periods for proposals and meetings, and decide on the person — compatibility is a family conversation, not a verdict.', 'இந்தக் காலங்களை வரன் பார்க்கவும் சந்திப்புகளுக்கும் பயன்படுத்துங்கள்; முடிவு அந்த நபரைப் பொறுத்தது — பொருத்தம் குடும்ப உரையாடல், தீர்ப்பு அல்ல.')
-          : L('Please also consult a gynaecologist; medical guidance is what helps here. Prayer can be a comfort alongside it.', 'மகப்பேறு மருத்துவரையும் அணுகுங்கள்; இங்கு உதவுவது மருத்துவ வழிகாட்டலே. அதனுடன் வழிபாடு ஆறுதலாக இருக்கும்.'));
+          : life.gender === 'female'
+            ? L('Please also consult a gynaecologist; medical guidance is what helps here. Prayer can be a comfort alongside it.', 'மகப்பேறு மருத்துவரையும் அணுகுங்கள்; இங்கு உதவுவது மருத்துவ வழிகாட்டலே. அதனுடன் வழிபாடு ஆறுதலாக இருக்கும்.')
+            : L('Please also consult a doctor — as a couple, together; medical guidance is what helps here. Prayer can be a comfort alongside it.', 'மருத்துவரையும் அணுகுங்கள் — தம்பதியராகச் சேர்ந்து; இங்கு உதவுவது மருத்துவ வழிகாட்டலே. அதனுடன் வழிபாடு ஆறுதலாக இருக்கும்.'));
         if (isMarriage) actions.push({ go: 'couple', label: L('Check a match', 'பொருத்தம் பார்') });
       }
       add('uncertainty', L('These are traditional timing indicators from dasa-bhukti and Jupiter–Saturn transits — not a guarantee of when it will happen.', 'இவை தசா-புக்தி, குரு–சனி கோசார அடிப்படையிலான பாரம்பரியக் கால அறிகுறிகள் — எப்போது நடக்கும் என்பதற்கு உத்தரவாதம் அல்ல.'), ref());

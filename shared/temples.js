@@ -1,7 +1,7 @@
 // Major South Indian temples with approximate (town-level) coordinates for distance and directions.
 // Opening times (nadai thirappu) and booking are linked to official sources rather than guessed.
 // tags: arupadai (Murugan's six abodes), pancha_bhoota, navagraha, divya_desam, amman, shiva, vishnu, murugan, vinayagar
-import { nearestPlace } from './places.js';
+import { nearestPlace, placeTa } from './places.js';
 
 const T = (id, en, ta, deityEn, deityTa, town, lat, lon, tags, noteEn, noteTa, planet = null) => ({
   id, name: { en, ta }, deity: { en: deityEn, ta: deityTa }, town, lat, lon, tags, note: { en: noteEn, ta: noteTa }, planet,
@@ -141,6 +141,162 @@ export function distanceKm(lat1, lon1, lat2, lon2) {
 
 for (const t of TEMPLES) t.cc ||= 'IN';
 
+// Common alternate names and spellings people type (English, Tanglish and Tamil). Used only by search.
+const ALIASES = {
+  madurai_meenakshi: ['Madurai Meenakshi', 'Meenatchi Amman', 'Meenakshi Sundareswarar', 'மதுரை மீனாட்சி', 'மீனாட்சி சுந்தரேஸ்வரர்'],
+  srirangam: ['Srirangam', 'Sreerangam', 'Thiruvarangam', 'Ranganathar', 'Arangan', 'ஸ்ரீரங்கம்', 'திருவரங்கம்', 'அரங்கநாதர்'],
+  thanjavur_big: ['Thanjai Periya Kovil', 'Big Temple Tanjore', 'Brihadisvara', 'Brihadeeswara', 'Tanjore Big Temple', 'தஞ்சை பெரிய கோவில்', 'தஞ்சாவூர்'],
+  rameswaram: ['Rameshwaram', 'Ramanathar', 'ராமேஸ்வரம்', 'ராமநாதர்'],
+  chidambaram: ['Chidambaram Natarajar', 'Thillai', 'சிதம்பரம்', 'தில்லை'],
+  tiruvannamalai: ['Thiruvannamalai', 'Annamalaiyar', 'Arunachala', 'Girivalam', 'திருவண்ணாமலை', 'அண்ணாமலையார்'],
+  kanchi_ekambaram: ['Ekambaranathar', 'Kanchipuram Ekambareswarar', 'காஞ்சி ஏகாம்பரநாதர்'],
+  thiruvanaikaval: ['Thiruvanaikoil', 'Tiruvanaikaval', 'Thiruvanaikka', 'Akilandeswari', 'திருவானைக்காவல்', 'திருவானைக்கோவில்'],
+  kalahasti: ['Srikalahasti', 'Kalahasthi', 'Sri Kalahasthi', 'காளஹஸ்தி', 'ஸ்ரீகாளஹஸ்தி'],
+  kanchi_kamakshi: ['Kanchi Kamakshi', 'Kanchipuram Kamatchi', 'காஞ்சி காமாட்சி'],
+  kanchi_varadaraja: ['Kanchi Varadar', 'Athi Varadar', 'Varadarajar', 'அத்தி வரதர்', 'காஞ்சி வரதர்'],
+  thiruparankundram: ['Thirupparankundram', 'Tiruparankunram', 'திருப்பரங்குன்றம்'],
+  tiruchendur: ['Thiruchendur', 'Tiruchendur Murugan', 'Thiruchenthur', 'Senthil Andavar', 'Chendur', 'திருச்செந்தூர் முருகன்', 'செந்தூர்'],
+  palani: ['Pazhani', 'Palani Murugan', 'Palani Malai', 'Pazhani Andavar', 'பழநி', 'பழனி முருகன்', 'பழனி மலை'],
+  swamimalai: ['Swamimalai Murugan', 'Swaminathar', 'சுவாமிமலை முருகன்'],
+  thiruthani: ['Tiruttani', 'Thiruttani', 'Tiruthani', 'திருத்தணிகை'],
+  pazhamudircholai: ['Palamudircholai', 'Pazhamuthircholai', 'Solaimalai', 'சோலைமலை'],
+  mylapore: ['Kapaleeswarar', 'Mylapore Kapaleeshwarar', 'Mylai', 'மயிலாப்பூர்', 'மயிலை கபாலீஸ்வரர்'],
+  triplicane: ['Thiruvallikeni', 'Parthasarathy Perumal', 'திருவல்லிக்கேணி'],
+  vadapalani: ['Vadapalani Andavar', 'வடபழனி'],
+  samayapuram: ['Samayapuram Amman', 'சமயபுரம்'],
+  trichy_rockfort: ['Malaikottai', 'Trichy Rockfort', 'Uchi Pillaiyar', 'Ucchi Pillaiyar', 'மலைக்கோட்டை', 'உச்சி பிள்ளையார்'],
+  tirunelveli: ['Nellai', 'Nellaiyappar', 'Thirunelveli', 'நெல்லை'],
+  srivilliputhur: ['Srivilliputtur', 'Andal Kovil', 'ஸ்ரீவில்லிபுத்தூர்', 'ஆண்டாள்'],
+  kanyakumari: ['Kumari Amman', 'Cape Comorin', 'Bhagavathi Amman', 'குமரி அம்மன்'],
+  suchindram: ['Sucheendram', 'சுசீந்திரம்'],
+  thiruvarur: ['Tiruvarur', 'Thiyagarajar', 'திருவாரூர்'],
+  kumbakonam_adi: ['Kumbeswarar', 'Kudanthai', 'கும்பகோணம்', 'குடந்தை'],
+  kumbakonam_sarangapani: ['Sarangapani Perumal', 'Kudanthai Sarangapani', 'சாரங்கபாணி'],
+  thirukadaiyur: ['Thirukkadaiyur', 'Abhirami', 'Thirukadaiyur Abirami', 'திருக்கடையூர்', 'அபிராமி'],
+  sankarankovil: ['Sankarankoil', 'Gomathi Amman', 'சங்கரன்கோவில்'],
+  marudhamalai: ['Maruthamalai', 'Marudamalai', 'மருதமலை'],
+  perur: ['Perur Patteeswarar', 'பேரூர்'],
+  tirumala: ['Tirupati', 'Thirupathi', 'Tirupathi Balaji', 'Balaji', 'Venkatachalapathy', 'Ezhumalaiyan', 'Srinivasa', 'திருப்பதி', 'ஏழுமலையான்', 'பாலாஜி', 'வெங்கடாசலபதி'],
+  guruvayur: ['Guruvayoor', 'Guruvayurappan', 'குருவாயூர்'],
+  sabarimala: ['Sabarimalai', 'Ayyappan', 'Swami Ayyappa', 'சபரிமலை', 'ஐயப்பன்'],
+  suriyanar: ['Suriyanar Koil', 'Surya Temple', 'சூரியனார் கோவில்'],
+  thingalur: ['Chandran Temple', 'திங்களூர்'],
+  vaitheeswaran: ['Vaitheeswarankoil', 'Vaideeswaran', 'Angarakan', 'Sevvai Sthalam', 'வைத்தீஸ்வரன்கோவில்', 'செவ்வாய் தலம்'],
+  thiruvenkadu: ['Thiruvengadu', 'Budhan Sthalam', 'திருவெண்காடு', 'புதன் தலம்'],
+  alangudi: ['Guru Sthalam', 'Alangudi Guru', 'ஆலங்குடி', 'குரு தலம்'],
+  kanjanur: ['Sukran Sthalam', 'கஞ்சனூர்', 'சுக்கிரன் தலம்'],
+  thirunallar: ['Thirunallaru', 'Tirunallar', 'Saneeswaran', 'Sani Bhagavan', 'Sani Temple', 'திருநள்ளாறு', 'சனீஸ்வரன்'],
+  thirunageswaram: ['Rahu Sthalam', 'Thirunageshwaram', 'திருநாகேஸ்வரம்', 'ராகு தலம்'],
+  keezhaperumpallam: ['Kizhaperumpallam', 'Ketu Sthalam', 'கீழப்பெரும்பள்ளம்', 'கேது தலம்'],
+  thirumanancheri: ['Thirumanamcheri', 'Kalyanasundarar', 'திருமணஞ்சேரி'],
+  oppiliappan: ['Uppiliappan', 'ஒப்பிலியப்பன்'],
+  patteeswaram_durgai: ['Patteeswaram', 'Pattiswaram Durga', 'பட்டீஸ்வரம்'],
+  kuchanur: ['Kuchanoor', 'Kuchanur Sani', 'குச்சனூர்'],
+  koodal_azhagar: ['Koodalalagar', 'Koodal Alagar', 'கூடலழகர்'],
+  alagar_kovil: ['Azhagar Kovil', 'Alagar Koil', 'Kallalagar', 'அழகர் கோவில்', 'கள்ளழகர்'],
+  pillaiyarpatti: ['Pillayarpatti', 'Karpaga Vinayagar', 'பிள்ளையார்பட்டி'],
+  melmaruvathur: ['Melmaruvathur Amma', 'Adhiparasakthi', 'மேல்மருவத்தூர்'],
+  mangadu_kamakshi: ['Mangadu', 'Maangadu', 'மாங்காடு'],
+  thiruverkadu: ['Karumari Amman', 'Thiruverkadu Karumari', 'திருவேற்காடு', 'கருமாரி'],
+  thiruchanur: ['Tiruchanoor', 'Padmavathi Thayar', 'Alamelu Mangapuram', 'திருச்சானூர்', 'அலமேலு மங்காபுரம்'],
+  chottanikkara: ['Chottanikara', 'சோட்டாணிக்கரை'],
+  attukal: ['Attukal Pongala', 'ஆற்றுக்கால்'],
+  padmanabhaswamy: ['Anantha Padmanabha', 'Trivandrum Padmanabha', 'Thiruvananthapuram Perumal', 'பத்மநாபசுவாமி', 'அனந்த பத்மநாபர்'],
+  nallur: ['Nallur Murugan', 'Nallur Kandasamy', 'Jaffna Nallur', 'நல்லூர் முருகன்', 'நல்லூர் கந்தசாமி', 'யாழ் நல்லூர்'],
+  koneswaram: ['Thirukonamalai', 'Trincomalee Koneswarar', 'Thirukoneswaram', 'கோணேஸ்வரம்', 'திருகோணமலை'],
+  ketheeswaram: ['Thiruketheeswaram', 'Mannar Ketheeswaram', 'கேதீஸ்வரம்'],
+  munneswaram: ['Munneswaram Chilaw', 'முன்னேஸ்வரம்'],
+  kataragama: ['Kathirgamam', 'Kathirkamam', 'Katirkamam', 'Kataragama Devalaya', 'கதிர்காமம்'],
+  nainativu: ['Nainativu Amman', 'Nagadeepa', 'Nainatheevu', 'நயினாதீவு', 'நாகபூசணி'],
+  batu_caves: ['Batu Malai', 'Batumalai', 'Pathumalai', 'Batu Caves Murugan', 'பத்துமலை', 'பத்து மலை', 'பத்து குகை'],
+  kl_mahamariamman: ['KL Mariamman', 'Kuala Lumpur Mariamman', 'கோலாலம்பூர் மாரியம்மன்'],
+  penang_waterfall: ['Thanneer Malai', 'Thanneermalai', 'Penang Murugan', 'Waterfall Hill Temple', 'தண்ணீர்மலை', 'பினாங்கு முருகன்'],
+  sg_mariamman: ['Singapore Mariamman', 'Chinatown Mariamman', 'சிங்கப்பூர் மாரியம்மன்'],
+  sg_srinivasa_perumal: ['Singapore Perumal', 'Serangoon Perumal', 'சிங்கப்பூர் பெருமாள்'],
+  sg_thendayuthapani: ['Tank Road Murugan', 'Chettiar Temple Singapore', 'Singapore Murugan', 'சிங்கப்பூர் முருகன்'],
+  grand_bassin: ['Ganga Talao', 'Mauritius Shiva', 'கங்கா தலாவ்'],
+  uk_balaji_tividale: ['Balaji Temple UK', 'Birmingham Balaji', 'பாலாஜி கோவில்'],
+  uk_highgate_murugan: ['Highgate Murugan', 'London Murugan Highgate'],
+  uk_london_murugan: ['East Ham Murugan', 'Manor Park Murugan'],
+  us_flushing_ganesha: ['Flushing Ganesh', 'New York Ganesha', 'Queens Ganesha'],
+  us_pearland_meenakshi: ['Houston Meenakshi', 'Pearland Meenakshi', 'ஹூஸ்டன் மீனாட்சி'],
+  ca_richmond_hill_ganesha: ['Toronto Ganesha', 'Richmond Hill Ganesh'],
+  au_sydney_murugan: ['Sydney Murugan', 'சிட்னி முருகன்'],
+  ae_dubai_hindu_temple: ['Dubai Temple', 'Jebel Ali Temple', 'துபாய் கோவில்'],
+  de_hamm_kamadchi: ['Hamm Kamatchi', 'Hamm Amman', 'ஹாம் காமாட்சி'],
+};
+for (const t of TEMPLES) t.alt = ALIASES[t.id] || [];
+
+// ---------------------------------------------------------------- search (offline, from the built-in data)
+const ZW = /[​-‍﻿]/g;
+/**
+ * Fold text for forgiving matching. English / Tanglish: lower case, accents removed, the common spelling pairs
+ * merged (th→t, dh→d, zh→l, sh→s, ch→c, e/ee→i, o/oo→u, w→v, double letters → one) and spaces / punctuation dropped,
+ * so "Thiruchendur", "tiruchendur" and "Thiru Chendur" all become "tirucendur". Tamil: spaces and joiners
+ * dropped and the letters people commonly swap merged (ண/ந→ன, ள/ழ→ல, ற→ர).
+ */
+export function foldText(s) {
+  let x = String(s || '').normalize('NFC').toLowerCase().replace(ZW, '');
+  x = x.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  x = x.replace(/[ணந]/g, 'ன').replace(/[ளழ]/g, 'ல').replace(/ற/g, 'ர');
+  // Long / short vowels are merged too (e→i, o→u), so a half-typed "Kapale…" still meets "Kapaleeshwarar".
+  x = x.replace(/zh?/g, 'l').replace(/x/g, 'ks').replace(/q/g, 'k').replace(/w/g, 'v')
+    .replace(/([tdskpbgc])h/g, '$1').replace(/e/g, 'i').replace(/o/g, 'u')
+    .replace(/([a-z])\1+/g, '$1');
+  return x.replace(/[^\p{L}\p{M}\p{N}]+/gu, '');
+}
+const words = (s) => String(s || '').split(/[\s,()–\-/&.]+/).filter(Boolean).map(foldText).filter(Boolean);
+const HONORIFIC = /^(sri|shri|arulmigu|ஸ்ரீ|அருல்மிகு)/;
+
+// Pre-folded search keys per temple: names (both languages) and alternates are "primary"; town and deity "secondary".
+const KEYS = new Map();
+function keysOf(t) {
+  let k = KEYS.get(t.id);
+  if (k) return k;
+  const townTa = placeTa(t.town);
+  const primary = [t.name.en, t.name.ta, t.id.replace(/_/g, ' '), ...t.alt];
+  const secondary = [t.town, townTa, t.deity.en, t.deity.ta, `${t.town.split(',')[0]} ${t.name.en}`, `${townTa.split(',')[0]} ${t.name.ta}`];
+  k = {
+    primary: primary.map(foldText).flatMap((x) => [x, x.replace(HONORIFIC, '')]),
+    secondary: secondary.map(foldText),
+    words: [...primary, ...secondary].flatMap(words),
+  };
+  KEYS.set(t.id, k);
+  return k;
+}
+
+/**
+ * How well a temple matches a query: 0 = a name / alternate name starts with it, 1 = the town or deity starts with
+ * it, 2 = a word starts with it, 3 = it appears inside a name, town or deity (folded query of 4+ letters); -1 = no match.
+ */
+export function templeMatchTier(t, query) {
+  const q = foldText(query);
+  if (!q) return 0;
+  const k = keysOf(t);
+  if (k.primary.some((x) => x.startsWith(q))) return 0;
+  if (k.secondary.some((x) => x.startsWith(q))) return 1;
+  if (k.words.some((x) => x.startsWith(q))) return 2;
+  if (q.length >= 4 && [...k.primary, ...k.secondary].some((x) => x.includes(q))) return 3;
+  return -1;
+}
+
+/**
+ * Live temple suggestions for a search box. Works offline from TEMPLES (India and abroad), on 1+ letters of Tamil,
+ * English or Tanglish. Ranked by match tier (prefix of the name first), then by distance from (lat, lon) when given,
+ * then by English name. Each result: the temple plus { tier, km (straight line, or null) }.
+ */
+export function searchTemples(query, { lat = null, lon = null, limit = 8, tag = 'all' } = {}) {
+  if (!foldText(query)) return [];
+  const hasLoc = Number.isFinite(lat) && Number.isFinite(lon);
+  return TEMPLES
+    .filter((t) => tag === 'all' || t.tags.includes(tag))
+    .map((t) => ({ t, tier: templeMatchTier(t, query) }))
+    .filter((x) => x.tier >= 0)
+    .map(({ t, tier }) => ({ ...t, tier, km: hasLoc ? distanceKm(lat, lon, t.lat, t.lon) : null }))
+    .sort((a, b) => a.tier - b.tier || (hasLoc ? a.km - b.km : 0) || a.name.en.localeCompare(b.name.en))
+    .slice(0, limit);
+}
+
 /** Country of a point: the nearest built-in place (within 400 km), else null. */
 export function countryAt(lat, lon) {
   return nearestPlace(lat, lon, { maxKm: 400 })?.cc || null;
@@ -157,11 +313,11 @@ export function travelMode(km, fromCc, toCc) {
 
 /** Temples sorted by distance from a point, with an estimated road distance and drive time (or a flight hint). */
 export function templesNear(lat, lon, { tag = 'all', query = '' } = {}) {
-  const q = query.trim().toLowerCase();
+  const q = String(query || '').trim();
   const fromCc = countryAt(lat, lon);
   return TEMPLES
     .filter((t) => tag === 'all' || t.tags.includes(tag))
-    .filter((t) => !q || `${t.name.en} ${t.name.ta} ${t.town} ${t.deity.en} ${t.deity.ta}`.toLowerCase().includes(q))
+    .filter((t) => !q || templeMatchTier(t, q) >= 0)
     .map((t) => {
       const km = distanceKm(lat, lon, t.lat, t.lon);
       const roadKm = km * 1.3;

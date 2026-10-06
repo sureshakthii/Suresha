@@ -3,10 +3,12 @@
 import { NAKSHATRAS } from './shared/astro.js';
 import { TEMPLES, TEMPLE_TAGS, templesNear, templeLinks } from './shared/temples.js';
 import { templeInfo } from './shared/temple-info.js';
+import { templeSearchField, attachTempleSearch } from './temple-search.js';
 import { MANTRAS, MANTRA_TAGS } from './shared/mantras.js';
 import { NAVAGRAHA, grahaStrength } from './shared/remedies.js';
 import { familyRelations } from './shared/relations.js';
 import { fullAnalysis, BHAVAS } from './shared/analysis.js';
+import { capDate, clipPeriods, cappedDasaPeriods, CAP_LINES } from './shared/lifespan-cap.js';
 import { ageProfile, topicAllowed, adultText, childSafe } from './shared/age-guard.js';
 import { PACKAGES, PACKAGE_INCLUDES, packageRoute } from './shared/packages.js';
 import {
@@ -155,14 +157,13 @@ export function templeDetailHtml(t, { open = false } = {}) {
 
 // ================================================================ TEMPLES (nearby)
 const templeUi = { tag: 'all', query: '' };
-function renderTemples(sec) {
+function renderTemples(sec, params = {}) {
   const m = activeMember();
   const weak = m ? grahaStrength(chartOf(m).planets).filter((g) => g.level === 'weak').map((g) => g.planet) : [];
   sec.innerHTML = `${subHeader(L('Temples near you', 'அருகிலுள்ள கோவில்கள்'), `${L('Distances from', 'தூரம்')} 📍 ${esc(placeName(state.loc.name))}`)}
     ${weak.length ? `<div class="card glass"><b>🌟 ${L('Parigara sthalams for', 'பரிகாரத் தலங்கள்')} ${esc(displayName(m))}:</b> ${weak.map((k) => `${GLYPH[k]} ${esc(bi(NAVAGRAHA[k].temple))}`).join(' · ')}</div>` : ''}
     <div class="member-switch">${TEMPLE_TAGS.map((t) => `<button class="mchip${templeUi.tag === t.id ? ' sel' : ''}" data-tag="${t.id}">${esc(bi(t))}</button>`).join('')}</div>
-    <label class="sr-only" for="tSearch">${L('Search temples', 'கோவில் தேடல்')}</label>
-    <input id="tSearch" placeholder="${esc(L('Search by temple, deity or town…', 'கோவில், தெய்வம், ஊர் மூலம் தேடுக…'))}" value="${esc(templeUi.query)}">
+    ${templeSearchField({ id: 'tSearch', value: templeUi.query })}
     <div id="tList"></div>
     <div class="card glass coming"><b>🏛️ ${L('Official timings, archanai & donations', 'அதிகாரப்பூர்வ நேரம், அர்ச்சனை, நன்கொடை')}</b>
       <p class="small">${L('Nadai thirappu timings, thala varalaru and e-services for Tamil Nadu temples are published by the Hindu Religious & Charitable Endowments Department.', 'தமிழகக் கோவில்களின் நடை திறப்பு நேரம், தல வரலாறு, இ-சேவைகள் இந்து சமய அறநிலையத் துறையால் வெளியிடப்படுகின்றன.')}</p>
@@ -172,7 +173,7 @@ function renderTemples(sec) {
     $('#tList').innerHTML = list.map((t) => {
       const links = templeLinks(t);
       const hl = t.planet && weak.includes(t.planet);
-      return `<div class="card glass temple${hl ? ' hl' : ''}">
+      return `<div class="card glass temple${hl ? ' hl' : ''}" id="t-${esc(t.id)}">
         <div class="pg big" style="color:${t.planet ? COLOR[t.planet] : 'var(--gold)'}">${t.planet ? GLYPH[t.planet] : '🛕'}</div>
         <div style="flex:1;min-width:0"><b>${esc(bi(t.name))}</b>
           <p class="muted small">${esc(bi(t.deity))} · ${esc(placeName(t.town))}</p>
@@ -194,8 +195,21 @@ function renderTemples(sec) {
     $$('[data-book]', sec).forEach((b) => b.addEventListener('click', () => go('seva', { type: 'temple_booking', templeId: b.dataset.book })));
   };
   $$('[data-tag]', sec).forEach((b) => b.addEventListener('click', () => { templeUi.tag = b.dataset.tag; $$('[data-tag]', sec).forEach((x) => x.classList.toggle('sel', x === b)); draw(); }));
-  $('#tSearch').addEventListener('input', (e) => { templeUi.query = e.target.value; draw(); });
+  // Live suggestions while typing; the list below filters with the same matcher. A pick jumps to that temple's card.
+  const show = (id) => {
+    const card = $(`#t-${CSS.escape(id)}`, sec);
+    if (!card) return;
+    $$('.temple.ts-hit', sec).forEach((x) => x.classList.remove('ts-hit'));
+    card.classList.add('ts-hit');
+    const d = card.querySelector('details.temple-more'); if (d) d.open = true;
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  attachTempleSearch($('#tSearch'), {
+    onQuery: (q) => { templeUi.query = q; draw(); },
+    onPick: (t) => { templeUi.query = $('#tSearch').value; if (!t.tags.includes(templeUi.tag)) { templeUi.tag = 'all'; $$('[data-tag]', sec).forEach((x) => x.classList.toggle('sel', x.dataset.tag === 'all')); } draw(); show(t.id); },
+  });
   draw();
+  if (params.temple) show(params.temple);
 }
 registerScreen('temples', { render: renderTemples, parent: 'home', needsLoc: true });
 
@@ -402,9 +416,10 @@ async function sevaRequestForm(pick, params) {
   let priests = [];
   if (type === 'service') { try { priests = (await api(`/api/priests?service=${encodeURIComponent(pick)}`)).priests; } catch { /* none */ } }
   const near = templesNear(state.loc.lat, state.loc.lon);
+  const chosen = near.find((t) => t.id === params.templeId) || near[0];
   $('#sevaForm').innerHTML = `<form class="card glass" id="reqForm">
     <div class="card-title">${type === 'annadhanam' ? `🍛 ${L('Sponsor Annadhanam', 'அன்னதானம் வழங்க')}` : type === 'temple_booking' ? `🛕 ${L('Archanai / special darshan pre-booking', 'அர்ச்சனை / சிறப்பு தரிசன முன்பதிவு')}` : `🔥 ${L('Book a priest', 'புரோகிதர் முன்பதிவு')}`}</div>
-    ${type !== 'service' ? `<label>${L('Temple', 'கோவில்')}<select name="templeId">${near.map((t) => `<option value="${t.id}"${t.id === params.templeId ? ' selected' : ''}>${esc(bi(t.name))} (~${Math.round(t.roadKm)} km)</option>`).join('')}</select></label>` : ''}
+    ${type !== 'service' ? templeSearchField({ id: 'reqTemple', label: L('Temple', 'கோவில்'), name: 'templeId', selectedId: chosen.id, value: bi(chosen.name) }) : ''}
     ${type === 'service' && priests.length ? `<label>${L('Priest (optional)', 'புரோகிதர் (விருப்பம்)')}<select name="priestId"><option value="">${L('Any available priest', 'கிடைக்கும் எவரும்')}</option>${priests.map((p) => `<option value="${esc(p.id)}">${esc(p.name)} · ${esc(p.city)} · ${p.experience_years} ${L('yrs', 'ஆண்டு')}</option>`).join('')}</select></label>` : ''}
     ${type === 'service' && !priests.length ? `<p class="muted small">${L('Verified priests are being onboarded in your area. Send the request and our team will connect you.', 'உங்கள் பகுதியில் சரிபார்க்கப்பட்ட புரோகிதர்கள் இணைக்கப்படுகின்றனர். கோரிக்கையை அனுப்புங்கள், எங்கள் குழு தொடர்பு கொள்ளும்.')}</p>` : ''}
     <div class="row2"><label>${L('Date', 'தேதி')}<input type="date" name="date" required min="${todayIso()}"></label><label>${L('Time', 'நேரம்')}<input type="time" name="time"></label></div>
@@ -416,8 +431,10 @@ async function sevaRequestForm(pick, params) {
     ${type !== 'service' ? `<p class="muted small">${L('For direct donations and official e-services use the HR&CE portal:', 'நேரடி நன்கொடை, அதிகாரப்பூர்வ இ-சேவைகளுக்கு அறநிலையத் துறை தளம்:')} <a href="https://hrce.tn.gov.in/" target="_blank" rel="noopener">hrce.tn.gov.in</a></p>` : ''}
   </form>`;
   $('#sevaForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  attachTempleSearch($('#reqTemple'));
   $('#reqForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (e.target.elements.templeId && !e.target.elements.templeId.value) { $('#reqErr').textContent = L('Please choose the temple from the list', 'பட்டியலிலிருந்து கோவிலைத் தேர்வு செய்யுங்கள்'); $('#reqTemple').focus(); return; }
     if (!state.user) { toast(L('Please sign in to send a request', 'கோரிக்கை அனுப்ப உள்நுழையவும்')); go('login'); return; }
     const f = e.target;
     const val = (k) => f.elements[k]?.value?.trim() || undefined;
@@ -595,20 +612,24 @@ registerScreen('relations', { render: renderRelations, parent: 'home', needsLoc:
 const cleanDesc = (d) => ({ en: String(d.en).replace(/\s*[—-]\s*(traditional (view|belief)|for reflection[^.]*)\.?$/i, '').replace(/Traditional cancellation also present:/, 'Also present:'),
   ta: String(d.ta).replace(/\s*—\s*பாரம்பரியக் கருத்து\.?$/, '').replace('பாரம்பரிய நிவர்த்தியும் உண்டு:', 'உடன் உள்ளது:') });
 const yr = (d) => new Date(d).getUTCFullYear();
-/** Upcoming / running Mahadasa periods of a planet (max two), e.g. "Jupiter Dasa 2019–2035 (now)". */
+/** Upcoming / running Mahadasa periods of a planet (max two), e.g. "Jupiter Dasa 2019–2035 (now)" — only inside the
+ * person's listing horizon (age 0–80, shared/lifespan-cap.js): a straddling period ends at it, later ones are not listed. */
 function lordPeriods(lord, c) {
   const now = new Date();
-  const ps = (c.dasa?.periods || []).filter((p) => p.lord === lord && new Date(p.end) > now).slice(0, 2);
-  const cur = (c.dasa?.periods || []).find((p) => new Date(p.start) <= now && now < new Date(p.end));
+  const cap = capDate(c);
+  const all = cappedDasaPeriods(c, cap);
+  const ps = all.filter((p) => p.lord === lord && new Date(p.end) > now).slice(0, 2);
+  const cur = all.find((p) => new Date(p.start) <= now && now < new Date(p.end));
   const bh = cur && cur.lord !== lord ? cur.bhuktis?.find((b) => b.lord === lord && new Date(b.end) > now) : null;
   const parts = ps.map((p) => `${planetName(lord)} ${L('Dasa', 'தசை')} ${yr(p.start)}–${yr(p.end)}${new Date(p.start) <= now ? ` (${L('now', 'நடப்பு')})` : ''}`);
   if (bh) parts.unshift(`${planetName(cur.lord)} ${L('Dasa', 'தசை')} / ${planetName(lord)} ${L('Bhukti', 'புக்தி')} ${fmtIsoDate(new Date(bh.start).toISOString().slice(0, 10))} – ${fmtIsoDate(new Date(bh.end).toISOString().slice(0, 10))}`);
   return parts;
 }
+/** "Gives results in" line for a yoga; the registry already clips periods to the horizon. Gentle line when none remain. */
 function yogaPeriods(y, c) {
   const now = new Date();
-  const ds = (y.periods?.dasas || []).filter((p) => new Date(p.end) > now).slice(0, 2);
-  if (!ds.length) return '';
+  const ds = clipPeriods(y.periods?.dasas || [], capDate(c)).filter((p) => new Date(p.end) > now).slice(0, 2);
+  if (!ds.length) return `<p class="small">⏳ ${esc(bi(CAP_LINES.periods))}</p>`;
   return `<p class="small">⏳ ${L('Gives results in', 'பலன் தரும் காலம்')}: ${ds.map((p) => `${esc(planetName(p.lord))} ${L('Dasa', 'தசை')} ${yr(p.start)}–${yr(p.end)}${new Date(p.start) <= now ? ` (${L('now', 'நடப்பு')})` : ''}`).join(' · ')}</p>`;
 }
 /** Badhakathipathi and Marakathipathi from houseRoles(chart) — a plain result with periods and a free parigaram. */
@@ -617,7 +638,7 @@ function rolesCard(r, c) {
   const b = r.badhaka, mk = r.maraka;
   const marakas = [...new Set([mk.second.lord, mk.seventh.lord])];
   const row = (lord, title, meaning) => `<div class="pari-row"><span class="pg" style="color:${COLOR[lord]}">${GLYPH[lord]}</span><div><b>${title}</b><p>${meaning}</p>
-    ${lordPeriods(lord, c).length ? `<p class="small">⏳ ${esc(lordPeriods(lord, c).join(' · '))}</p>` : ''}<p class="small">🪔 ${esc(bi(NAVAGRAHA[lord].free))}</p></div></div>`;
+    <p class="small">⏳ ${esc(lordPeriods(lord, c).join(' · ') || bi(CAP_LINES.periods))}</p><p class="small">🪔 ${esc(bi(NAVAGRAHA[lord].free))}</p></div></div>`;
   return `<div class="card glass"><div class="card-title">🧭 ${L('Badhakathipathi & Marakathipathi', 'பாதகாதிபதி & மாரகாதிபதி')}</div>
     ${row(b.lord, `${L('Badhakathipathi', 'பாதகாதிபதி')}: ${esc(planetName(b.lord))} · ${L(`lord of the ${b.house}th house`, `${b.house}-ம் வீட்டு அதிபதி`)}`,
     esc(L('The planet tradition links with delays and unexpected hurdles. In its periods, plan early, stay patient and do its parigaram — hurdles turn into lessons and growth.', 'தாமதம், எதிர்பாராத தடைகளுடன் மரபு இணைக்கும் கிரகம். அதன் காலங்களில் முன்கூட்டியே திட்டமிட்டு, பொறுமையுடன், அதன் பரிகாரம் செய்தால் தடைகள் பாடமாகவும் வளர்ச்சியாகவும் மாறும்.')))}
@@ -652,7 +673,7 @@ function renderAnalysis(sec) {
       <div class="card glass"><div class="card-title">🌟 ${L('Life areas', 'வாழ்க்கைத் துறைகள்')}</div>
         ${a.areas.filter((x) => x.id !== 'health').map((x) => `<div class="gb-row static"><span class="gb-name">${esc(L(x.en, x.ta))}</span>${bar(x.score, lvl(x.score))}<span class="tag ${x.level === 'strong' ? 'good' : x.level === 'steady' ? 'warn' : 'bad'}">${x.level === 'strong' ? L('Strong', 'பலம்') : x.level === 'steady' ? L('Steady', 'நிலையானது') : L('Needs care', 'கவனம் தேவை')}</span></div>`).join('')}</div>
       <div class="card glass"><div class="card-title">✨ ${L('Yogas in your chart', 'உங்கள் ஜாதக யோகங்கள்')}</div>
-        ${a.yogas.length ? a.yogas.map((y) => `<div class="pari-row"><span class="pg">${y.kind === 'good' ? '🌟' : '🌙'}</span><div><b>${esc(bi(y.name))}</b><p>${esc(bi(cleanDesc(y.desc)))}</p>${yogaPeriods(y, c)}</div></div>`).join('') : `<p class="small">${L('Your strength comes from steady planetary balance rather than a single yoga.', 'ஒரு யோகத்தை விட கிரகங்களின் சமநிலையே உங்கள் பலம்.')}</p>`}</div>
+        ${a.yogas.length ? a.yogas.map((y) => `<div class="pari-row"><span class="pg">${y.kind === 'good' ? '🌟' : '🌙'}</span><div><b>${esc(bi(y.name))}</b><p>${esc(bi(cleanDesc(y.reading || y.desc)))}</p>${yogaPeriods(y, c)}</div></div>`).join('') : `<p class="small">${L('Your strength comes from steady planetary balance rather than a single yoga.', 'ஒரு யோகத்தை விட கிரகங்களின் சமநிலையே உங்கள் பலம்.')}</p>`}</div>
       ${rolesCard(a.roles, c)}
       <div class="card glass"><div class="card-title">🪐 ${L('Current transits (Gochara)', 'தற்போதைய கோசாரம்')}</div>
         ${a.transit.status.map((s) => `<div class="pari-row"><span class="pg">${s.kind === 'good' ? '✅' : s.kind === 'care' ? '🪔' : '🌙'}</span><div><b>${esc(L(s.en, s.ta))}</b><p>${esc(L(s.adviceEn, s.adviceTa))}</p></div></div>`).join('')}
@@ -693,12 +714,14 @@ function renderPackages(sec, params = {}) {
   const loc = state.loc;
   const open = params.id || null;
   sec.innerHTML = `${subHeader(L('Yatra & Parigaram Packages', 'யாத்திரை & பரிகார பேக்கேஜ்கள்'), L('Temples, priest, pooja items, stay and travel — arranged together', 'கோவில், புரோகிதர், பூஜைப் பொருள், தங்குமிடம், பயணம் — ஒன்றாக ஏற்பாடு'))}
+    <div class="card glass pkg-find"><div class="card-title">🔍 ${L('Find a temple', 'கோவிலைத் தேடுங்கள்')}</div>
+      ${templeSearchField({ id: 'pkgSearch' })}<div id="pkgHit" aria-live="polite"></div></div>
     <div class="card glass"><div class="card-title">✅ ${L('Every package includes', 'ஒவ்வொரு பேக்கேஜிலும்')}</div>${PACKAGE_INCLUDES.map((i) => `<div class="small">• ${esc(bi(i))}</div>`).join('')}
       <p class="muted small">${L('Coming from abroad? We arrange airport pickup and plan around your flight dates.', 'வெளிநாட்டிலிருந்து வருகிறீர்களா? விமான நிலைய வரவேற்பும், உங்கள் விமான தேதிக்கு ஏற்ப திட்டமும் செய்வோம்.')}</p></div>
     ${PACKAGES.map((p) => {
     const r = packageRoute(p, loc);
     const first = r.firstTemple;
-    return `<details class="card glass pkg"${open === p.id ? ' open' : ''}><summary><span class="ti-icon">${p.icon}</span><div><b>${esc(bi(p.name))}</b><div class="muted small">${p.days} ${L('days', 'நாட்கள்')} · ${r.flight ? `✈️ ~${r.flightKm.toLocaleString()} km ${L('flight from', 'விமானம்:')} ${esc(placeName(loc.name))} + ~${Math.round(r.km)} km ${L('by road', 'சாலை வழி')}` : `~${Math.round(r.km)} km ${L('from', 'தொலைவு')} ${esc(placeName(loc.name))}`}</div></div></summary>
+    return `<details class="card glass pkg" id="pkg-${p.id}"${open === p.id ? ' open' : ''}><summary><span class="ti-icon">${p.icon}</span><div><b>${esc(bi(p.name))}</b><div class="muted small">${p.days} ${L('days', 'நாட்கள்')} · ${r.flight ? `✈️ ~${r.flightKm.toLocaleString()} km ${L('flight from', 'விமானம்:')} ${esc(placeName(loc.name))} + ~${Math.round(r.km)} km ${L('by road', 'சாலை வழி')}` : `~${Math.round(r.km)} km ${L('from', 'தொலைவு')} ${esc(placeName(loc.name))}`}</div></div></summary>
       <p class="small">🎯 ${esc(bi(p.for))}</p>
       ${r.days.map((d, i) => `<div class="pkg-day"><b>${L('Day', 'நாள்')} ${i + 1}</b> · ${d.map((t) => esc(bi(t.name))).join(' → ')}</div>`).join('')}
       <div class="mini-label">🛕 ${L('Every temple — highlights, legend and how to reach', 'ஒவ்வொரு கோவிலும் — சிறப்பு, தல வரலாறு, செல்லும் வழி')}</div>
@@ -715,6 +738,20 @@ function renderPackages(sec, params = {}) {
       <div id="pkgForm-${p.id}"></div></details>`;
   }).join('')}`;
   $$('[data-pkg]', sec).forEach((b) => b.addEventListener('click', () => packageForm(b.dataset.pkg)));
+  // Temple search: open the package(s) that include the chosen temple, or offer the temple page / a custom journey.
+  attachTempleSearch($('#pkgSearch'), {
+    onPick: (t) => {
+      const hits = PACKAGES.filter((p) => p.stops.flat().includes(t.id));
+      $$('.pkg', sec).forEach((d) => { d.classList.toggle('ts-hit', hits.some((p) => d.id === `pkg-${p.id}`)); });
+      $('#pkgHit').innerHTML = hits.length
+        ? `<p class="small">🧳 ${L('In these packages', 'இந்தப் பேக்கேஜ்களில் உள்ளது')}: ${hits.map((p) => `<button type="button" class="link-btn" data-open-pkg="${p.id}">${esc(bi(p.name))}</button>`).join(' · ')}</p>`
+        : `<p class="small">${L('Not in a ready package yet — plan your own trip to it.', 'இன்னும் தயாரான பேக்கேஜில் இல்லை — நீங்களே பயணம் திட்டமிடலாம்.')}</p>
+          <div class="btn-row"><button type="button" class="chip-btn" data-go="journey" data-param='${esc(JSON.stringify({ temples: [t.id] }))}'>🧭 ${L('Plan a journey', 'பயணம் திட்டமிடு')}</button><button type="button" class="chip-btn" data-go="temples" data-param='${esc(JSON.stringify({ temple: t.id }))}'>🛕 ${L('Temple details', 'கோவில் விவரம்')}</button></div>`;
+      const openPkg = (id) => { const d = $(`#pkg-${id}`, sec); if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
+      $$('[data-open-pkg]', sec).forEach((b) => b.addEventListener('click', () => openPkg(b.dataset.openPkg)));
+      if (hits.length === 1) openPkg(hits[0].id);
+    },
+  });
 }
 
 function packageForm(id) {

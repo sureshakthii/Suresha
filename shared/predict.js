@@ -7,6 +7,7 @@
 import { planetPositions, RASIS, NAKSHATRAS, PLANETS } from './astro.js';
 import { bhavaAnalysis } from './analysis.js';
 import { grahaStrength, NAVAGRAHA } from './remedies.js';
+import { capDate, minCap, clipPeriods } from './lifespan-cap.js';
 
 const ASPECTS = { Jupiter: [1, 5, 7, 9], Saturn: [1, 3, 7, 10] };
 const DAY = 86400000;
@@ -46,6 +47,34 @@ export const QUESTIONS = [
   { id: 'harmony', icon: '💞', en: 'Husband–wife harmony (and periods needing care)', ta: 'கணவன்–மனைவி ஒற்றுமை (கவனம் தேவைப்படும் காலம்)', houses: [2, 7, 11], negate: [1, 6, 10], key: 7, karakas: ['Venus', 'Jupiter'], ageMin: 18, ageMax: 100, harmony: true,
     remedy: { en: 'Visit Shiva–Parvathi temples together on Mondays; talk daily without blame. A counsellor helps when needed — it is a sign of strength.', ta: 'திங்கள் சேர்ந்து சிவ–பார்வதி தரிசனம்; குற்றம் சாட்டாமல் தினமும் பேசுங்கள். தேவைப்பட்டால் ஆலோசகரை அணுகுவது பலத்தின் அடையாளம்.' } },
 ];
+
+/**
+ * The question as the chart owner should read it — gender-aware wording for partner / harmony questions and the
+ * marriage parigaram (a woman looks for a மணமகன், a man for a மணமகள்). Unknown gender keeps the neutral text.
+ * Returns { en, ta, remedy }.
+ */
+export function questionFor(q, gender) {
+  if (!q) return null;
+  const f = gender === 'female', m = gender === 'male';
+  let en = q.en, ta = q.ta, remedy = q.remedy;
+  if (q.id === 'partner' && (f || m)) {
+    en = f ? 'Will I find the right groom soon?' : 'Will I find the right bride soon?';
+    ta = f ? 'சரியான மணமகன் விரைவில் அமைவாரா?' : 'சரியான மணமகள் விரைவில் அமைவாரா?';
+  }
+  if (q.id === 'harmony') {
+    en = f ? 'Harmony with your husband (and periods needing care)' : m ? 'Harmony with your wife (and periods needing care)' : 'Husband–wife harmony (and periods needing care)';
+    ta = f ? 'கணவருடன் ஒற்றுமை (கவனம் தேவைப்படும் காலம்)' : m ? 'மனைவியுடன் ஒற்றுமை (கவனம் தேவைப்படும் காலம்)' : 'கணவர்–மனைவி ஒற்றுமை (கவனம் தேவைப்படும் காலம்)';
+  }
+  if (q.id === 'marriage' && (f || m)) {
+    remedy = f
+      ? { en: 'Pray to Lord Murugan with Valli–Deivanai on Tuesdays; the Katyayani mantra is a traditional prayer for a good groom.', ta: 'செவ்வாய்தோறும் வள்ளி–தெய்வானை சமேத முருகனை வழிபடுங்கள்; நல்ல மணமகன் அமைய காத்யாயனி மந்திரம் மரபு வழிபாடு.' }
+      : { en: 'Pray to Lord Murugan with Valli–Deivanai on Tuesdays and light a lamp for Mahalakshmi on Fridays — a traditional prayer for a good bride.', ta: 'செவ்வாய்தோறும் வள்ளி–தெய்வானை சமேத முருகனை வழிபடுங்கள்; வெள்ளிதோறும் மகாலட்சுமிக்கு தீபம் — நல்ல மணமகள் அமைய மரபு வழிபாடு.' };
+  }
+  return { en, ta, remedy };
+}
+
+/** Is this timing question meaningful at this age? (Its own age range — e.g. no marriage or child timing at 70.) */
+export const questionFitsAge = (q, age) => !q || age == null || !Number.isFinite(Number(age)) || (Number(age) <= (q.ageMax ?? 200) && Number(age) >= (q.ageMin ?? 0) - 3);
 
 // Short topic names for the "periods your tradition associates with …" framing line.
 const TOPIC = {
@@ -129,7 +158,10 @@ const ageAt = (chart, d) => (d - chart.utc) / (365.25 * DAY);
  * Predict windows for a question. Returns the chart promise, the best dasa–bhukti windows (with
  * double-transit months), the current period, and positive guidance.
  */
-export function predictEvent(chart, questionId, { from = new Date(), years = 15 } = {}) {
+export function predictEvent(chart, questionId, { from = new Date(), years = 15, until = undefined } = {}) {
+  // Listing horizon (shared/lifespan-cap.js): windows stay inside the person's age 0–80 — for a couple the caller
+  // passes the earlier of the two horizons as `until`.
+  const horizon = until === undefined ? capDate(chart) : until;
   const q = QUESTIONS.find((x) => x.id === questionId);
   const sig = significations(chart);
   if (!sig) {
@@ -160,7 +192,7 @@ export function predictEvent(chart, questionId, { from = new Date(), years = 15 
     ],
   };
 
-  const end = new Date(from.getTime() + years * 365.25 * DAY);
+  const end = minCap(new Date(from.getTime() + years * 365.25 * DAY), horizon);
   const windows = [];
   let current = null;
   for (const md of chart.dasa.periods) {
@@ -174,6 +206,7 @@ export function predictEvent(chart, questionId, { from = new Date(), years = 15 
       const midAge = ageAt(chart, new Date((s.getTime() + e.getTime()) / 2));
       const entry = { md: md.lord, ad: ad.lord, start: s, end: e, dasaScore: Math.round(dasaScore * 10) / 10 };
       if (from >= ad.start && from < ad.end) current = entry;
+      if (e <= s) continue; // beyond the listing horizon
       if (midAge < q.ageMin || midAge > q.ageMax) continue;
       if (dasaScore <= 0.5 && !q.harmony) continue;
       // Scan months inside the bhukti for double transit.
@@ -251,8 +284,8 @@ export function kulaDeivam(chart, { recorded = null, now = new Date() } = {}) {
   const lord = RASIS[ninth].lord;
   const occupants = Object.keys(chart.planets).filter((k) => k !== 'Lagna' && chart.planets[k].rasi === ninth);
   const strongest = occupants.length ? occupants[0] : lord;
-  const periods = chart.dasa.periods.flatMap((p) => p.bhuktis.map((b) => ({ md: p.lord, ad: b.lord, start: b.start, end: b.end })))
-    .filter((b) => b.end > now && (b.ad === lord || b.ad === 'Jupiter' || b.ad === 'Ketu')).slice(0, 3);
+  const periods = clipPeriods(chart.dasa.periods.flatMap((p) => p.bhuktis.map((b) => ({ md: p.lord, ad: b.lord, start: b.start, end: b.end })))
+    .filter((b) => b.end > now && (b.ad === lord || b.ad === 'Jupiter' || b.ad === 'Ketu')), capDate(chart)).slice(0, 3);
   const suggestion = {
     deity: DEITY_OF[strongest],
     optional: true,

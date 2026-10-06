@@ -211,9 +211,16 @@ export function planJourney(p) {
   // Temples already recommended from the person's chart come first (the person only picks date and travellers).
   const focus = (p.focus || []).filter((id) => TEMPLES.some((t) => t.id === id));
   if (focus.length) {
-    for (const x of scored) if (focus.includes(x.t.id)) { x.score += 100; x.reasons = [{ kind: 'focus', ...B('Recommended from your chart (Dasa / planet that needs support)', 'உங்கள் ஜாதகப்படி பரிந்துரை (தசை / ஆதரவு தேவைப்படும் கிரகம்)') }, ...x.reasons]; }
+    // `picked`: temples the person chose with the temple search (not from the chart) — worded as their choice.
+    const picked = new Set(p.picked || []);
+    for (const x of scored) {
+      if (!focus.includes(x.t.id)) continue;
+      x.score += 100;
+      x.reasons = [{ kind: 'focus', ...(picked.has(x.t.id) ? B('You chose this temple', 'நீங்கள் தேர்ந்தெடுத்த கோவில்') : B('Recommended from your chart (Dasa / planet that needs support)', 'உங்கள் ஜாதகப்படி பரிந்துரை (தசை / ஆதரவு தேவைப்படும் கிரகம்)')) }, ...x.reasons];
+    }
     const focusPick = rank(scored.filter((x) => focus.includes(x.t.id))).slice(0, days * TEMPLES_PER_DAY[pace]);
-    const A0 = make('A', B('Your recommended temples', 'உங்களுக்குப் பரிந்துரைக்கப்பட்ட கோவில்கள்'), focusPick, days);
+    const allPicked = focus.every((id) => picked.has(id));
+    const A0 = make('A', allPicked ? B('Your chosen temples', 'நீங்கள் தேர்ந்தெடுத்த கோவில்கள்') : B('Your recommended temples', 'உங்களுக்குப் பரிந்துரைக்கப்பட்ட கோவில்கள்'), focusPick, days);
     const local0 = [...scored].sort((a, b) => a.km - b.km);
     const localPick0 = local0.filter((x) => x.km <= 30).slice(0, 2);
     const C0 = make('C', B('Minimal travel or worship close to home', 'குறைந்த பயணம் அல்லது வீட்டருகே வழிபாடு'), localPick0.length ? localPick0 : local0.slice(0, 1), 1, { homeWorship: true });

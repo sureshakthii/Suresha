@@ -1,4 +1,4 @@
-// Feature screens: Tamil calendar, Porutham, Muhurtham, Ruthu, Parigaram, Names, Thivasam,
+// Feature screens: Tamil calendar, Porutham, Muhurtham, Ruthu, Parigaram, Thivasam,
 // Natchathira birthday, Jothidar chat and the shareable daily card.
 import { faithOf } from './shared/faith.js';
 import { panchang, vedicDay, RASIS, NAKSHATRAS } from './shared/astro.js';
@@ -6,12 +6,13 @@ import { CATEGORIES, getCategory } from './shared/prasna.js';
 import { tamilMonth, tamilDay, TAMIL_MONTHS } from './shared/tamilcal.js';
 import { matchPorutham, doshams, doshaSamyam, VERDICTS } from './shared/porutham.js';
 import { grahaStrength, dailyParigaram, NAVAGRAHA } from './shared/remedies.js';
-import { nameLetters, thivasamDates, natchathiraBirthdays, findMuhurtham, milestones } from './shared/special.js';
+import { thivasamDates, natchathiraBirthdays, findMuhurtham, milestones } from './shared/special.js';
 import { remindBtn } from './remind.js';
 import { predictEvent } from './shared/predict.js';
 import { personalGuide } from './shared/personal.js';
 import { TEMPLES, distanceKm, templeLinks } from './shared/temples.js';
 import { templeInfo } from './shared/temple-info.js';
+import { templeSearchField, attachTempleSearch } from './temple-search.js';
 import { dayInfo } from './shared/journey.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtIsoDate,
@@ -371,6 +372,14 @@ function renderParigaram(sec) {
     if (!ids.length) { toast(L('Choose at least one temple', 'குறைந்தது ஒரு கோவிலைத் தேர்வு செய்யுங்கள்')); return; }
     go('journey', { temples: ids, date: $('#stDate').value, travellers: Number($('#stTrav').value) || 1, days: Number($('#stDays').value) || 1, auto: true });
   });
+  // Sthalam picker: search any temple (Tamil / English / Tanglish) and add it, ticked, to the list above.
+  attachTempleSearch($('#stSearch'), { keepText: false, onPick: (t) => {
+    const rows = $('.st-rows', sec);
+    const have = $(`input[name=stTemple][value="${CSS.escape(t.id)}"]`, sec);
+    if (have) { have.checked = true; have.closest('.st-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    rows.insertAdjacentHTML('beforeend', stRow({ temple: t, planet: t.planet, why: L('You chose this temple', 'நீங்கள் தேர்ந்தெடுத்த கோவில்') }, true, $('#stDate').value));
+    $('#stSearch').value = '';
+  } });
 }
 
 // Recommended parigara sthalam(s) from the running Dasa / Bhukti lords and the weakest planet.
@@ -397,24 +406,27 @@ function nextWeekday(wd) {
   d.setUTCDate(d.getUTCDate() + add);
   return d.toISOString().slice(0, 10);
 }
-function sthalamCard(rec, m) {
+/** One sthalam row (tick to include in the journey). r: { temple, planet, why }. */
+function stRow(r, checked, date) {
   const loc = state.loc;
-  const date = nextWeekday(DAY_OF[rec[0].planet] ?? 0);
-  return `<section class="card glass sthalam-card" aria-labelledby="stTitle">
-    <div class="card-title"><span id="stTitle">🛕 ${L('Your parigara sthalam', 'உங்களுக்கான பரிகார ஸ்தலம்')}${m ? ` · ${esc(displayName(m))}` : ''}</span></div>
-    ${rec.map((r, i) => {
-    const t = r.temple; const info = templeInfo(t.id);
-    const km = loc ? Math.round(distanceKm(loc.lat, loc.lon, t.lat, t.lon) * 1.3) : null;
-    const di = dayInfo(date, t);
-    return `<label class="st-row"><input type="checkbox" name="stTemple" value="${esc(t.id)}"${i === 0 ? ' checked' : ''}>
-      <span class="st-body"><span class="st-why"><span style="color:${COLOR[r.planet]}">${GLYPH[r.planet]}</span> ${esc(r.why)}</span>
-      <b>${esc(bi(t.name))}</b><span class="small muted">${esc(bi(t.deity))} · ${esc(placeName(t.town))}${km ? ` · ~${km} ${L('km', 'கி.மீ')}` : ''}</span>
+  const t = r.temple; const info = templeInfo(t.id);
+  const km = loc ? Math.round(distanceKm(loc.lat, loc.lon, t.lat, t.lon) * 1.3) : null;
+  const di = dayInfo(date, t);
+  return `<label class="st-row"><input type="checkbox" name="stTemple" value="${esc(t.id)}"${checked ? ' checked' : ''}>
+      <span class="st-body"><span class="st-why">${r.planet ? `<span style="color:${COLOR[r.planet]}">${GLYPH[r.planet]}</span>` : '🛕'} ${esc(r.why)}</span>
+      <b>${esc(bi(t.name))}</b><span class="small muted">${esc(bi(t.deity))} · ${esc(placeName(t.town))}${km ? ` · ~${km.toLocaleString()} ${L('km', 'கி.மீ')}` : ''}</span>
       <span class="small">🕘 ${L('Darshan', 'தரிசனம்')}: ${esc(info ? bi(info.timings) : '—')}</span>
       <span class="small">📞 ${L('Phone', 'தொலைபேசி')}: — · <a href="${templeLinks(t).contact}" target="_blank" rel="noopener">${L('Maps listing', 'வரைபடப் பட்டியல்')}</a></span>
       ${info?.festival ? `<span class="small">🎉 ${L('Festival', 'திருவிழா')}: ${esc(bi(info.festival))}</span>` : ''}
       <span class="small">👥 ${{ high: L('Heavy crowd on the suggested day', 'பரிந்துரைத்த நாளில் அதிக கூட்டம்'), medium: L('Moderate crowd', 'மிதமான கூட்டம்'), low: L('Usually calm', 'பொதுவாக அமைதி') }[di.crowd]}</span>
-      <span class="small">🪔 ${esc(bi(NAVAGRAHA[r.planet].free))}</span></span></label>`;
-  }).join('')}
+      ${r.planet && NAVAGRAHA[r.planet] ? `<span class="small">🪔 ${esc(bi(NAVAGRAHA[r.planet].free))}</span>` : ''}</span></label>`;
+}
+function sthalamCard(rec, m) {
+  const date = nextWeekday(DAY_OF[rec[0].planet] ?? 0);
+  return `<section class="card glass sthalam-card" aria-labelledby="stTitle">
+    <div class="card-title"><span id="stTitle">🛕 ${L('Your parigara sthalam', 'உங்களுக்கான பரிகார ஸ்தலம்')}${m ? ` · ${esc(displayName(m))}` : ''}</span></div>
+    <div class="st-rows">${rec.map((r, i) => stRow(r, i === 0, date)).join('')}</div>
+    ${templeSearchField({ id: 'stSearch', label: L('Add another temple — type its name', 'வேறு கோவிலைச் சேர்க்க — பெயரைத் தட்டச்சு செய்யுங்கள்') })}
     <div class="st-form">
       <label>${L('Date', 'தேதி')}<input type="date" id="stDate" value="${date}"></label>
       <label>${L('Travellers', 'பயணிகள்')}<select id="stTrav">${[1, 2, 3, 4, 5, 6, 8, 10].map((n) => `<option${n === Math.max(1, Math.min(10, state.family.filter((x) => x.relation !== 'organization').length || 1)) ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
@@ -425,32 +437,7 @@ function sthalamCard(rec, m) {
 }
 registerScreen('parigaram', { render: renderParigaram, parent: 'home', needsLoc: true });
 
-// ================================================================ BABY NAMES
-const nameForm = { star: 0, pada: 1, gender: 'any' };
-function renderNames(sec) {
-  const nl = nameLetters(nameForm.star, nameForm.pada);
-  sec.innerHTML = `${subHeader(L('Baby Names', 'குழந்தை பெயர்கள்'), L('Name letters from the birth star (namakshara)', 'ஜென்ம நட்சத்திரப்படி பெயர் எழுத்துகள்'))}
-    <div class="card glass">
-      ${state.family.length ? `<label>${L('Baby (from family)', 'குழந்தை (குடும்பத்திலிருந்து)')}<select id="nmMember"><option value="">—</option>${memberOptions(null)}</select></label>` : ''}
-      <div class="row2"><label>${L('Birth star', 'நட்சத்திரம்')}<select id="nmStar">${starOptions(nameForm.star)}</select></label><label>${L('Pada', 'பாதம்')}<select id="nmPada">${padaOptions(nameForm.pada)}</select></label></div>
-      <div class="seg" id="nmGender">${[['any', 'Any', 'எதுவும்'], ['boy', 'Boy', 'ஆண்'], ['girl', 'Girl', 'பெண்']].map(([id, en, tx]) => `<button data-g="${id}" class="${nameForm.gender === id ? 'sel' : ''}">${L(en, tx)}</button>`).join('')}</div>
-      <div class="letters"><div class="letter-big">${esc(nl.primary.ta)}</div><div><div class="mini-label">${L('Best first letter', 'சிறந்த முதல் எழுத்து')}</div>${ta() ? '' : `<div class="mini-value">${esc(nl.primary.en)}</div>`}
-        <div class="muted small">${L('All padas', 'அனைத்து பாதங்கள்')}: ${nl.all.map((a) => (ta() ? a.ta : `${a.ta} (${a.en})`)).join(' · ')}</div></div></div>
-      <button class="btn-gold" id="nmBtn">✨ ${L('Suggest names', 'பெயர்கள் பரிந்துரை')}</button>
-    </div>${aiBlock('nmAi')}`;
-  $('#nmMember')?.addEventListener('change', (e) => {
-    const m = state.family.find((x) => x.id === e.target.value);
-    if (m) { const c = chartOf(m); nameForm.star = c.janmaNakshatra.index; nameForm.pada = c.janmaNakshatra.pada; renderNames(sec); }
-  });
-  $('#nmStar').addEventListener('change', (e) => { nameForm.star = Number(e.target.value); renderNames(sec); });
-  $('#nmPada').addEventListener('change', (e) => { nameForm.pada = Number(e.target.value); renderNames(sec); });
-  $$('#nmGender button').forEach((b) => b.addEventListener('click', () => { nameForm.gender = b.dataset.g; renderNames(sec); }));
-  $('#nmBtn').addEventListener('click', () => {
-    const context = { birthStar: nl.star.en, pada: nameForm.pada, startingSounds: [nl.primary, ...nl.all.filter((a) => a.pada !== nameForm.pada)].map((a) => `${a.en} (${a.ta})`), gender: nameForm.gender };
-    runAi('nmAi', 'names', context, `${L('Names starting with', 'இந்த எழுத்தில் தொடங்கும் பெயர்கள்')}: ${nl.primary.ta} (${nl.primary.en}). `);
-  });
-}
-registerScreen('names', { render: renderNames, parent: 'home' });
+// Baby names: see screens-names.js (offline name-suggestion engine).
 
 // ================================================================ THIVASAM / THARPANAM
 function upcomingAmavasai(loc, count = 4) {
@@ -619,7 +606,7 @@ function renderAnswerHtml(ans) {
 function renderChat(sec, params = {}) {
   const m = activeMember();
   if (chat.memberId !== (m?.id || null)) { chat.messages = []; chat.memberId = m?.id || null; }
-  sec.innerHTML = `<div class="seg ask-switch" role="tablist"><button class="sel" role="tab" aria-selected="true">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button role="tab" aria-selected="false" data-go="ask">🔮 ${L('Is now a good time?', 'இப்போது செய்யலாமா?')}</button></div>
+  sec.innerHTML = `<div class="seg ask-switch" role="tablist"><button class="sel" role="tab" aria-selected="true">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button role="tab" aria-selected="false" data-go="ask">🔮 ${L('Is now a good time? (Prasnam)', 'இப்போது செய்யலாமா? (பிரசன்னம்)')}</button></div>
     <div class="chat-head card glass"><div class="avatar big">🪔</div><div><b>${esc(assistantName())}</b>
       <div class="muted small">${m ? L(`Using ${displayName(m)}'s chart${m.private ? ' · private profile — this chat stays on this phone' : ''}`, `${displayName(m)} அவர்களின் ஜாதகப்படி${m.private ? ' · தனிப்பட்ட சுயவிவரம் — இந்த உரையாடல் இந்தக் கைப்பேசியிலேயே' : ''}`) : L('Add birth details for personal answers', 'தனிப்பட்ட பதில்களுக்கு பிறப்பு விவரம் சேர்க்கவும்')}</div></div></div>
     <div id="chatLog" class="chat-log" aria-live="polite">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask anything — in Tamil, English or Tanglish. Answers come in English (change language with the தமிழ் button).', 'வணக்கம்! தமிழ், ஆங்கிலம், தங்கிலீஷ் — எப்படியும் கேளுங்கள். பதில் தமிழில் வரும்.')}</div>`}</div>

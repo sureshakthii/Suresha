@@ -8,8 +8,10 @@ const AE = 'https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/esm/astronomy.j
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(path.join(out, 'shared'), { recursive: true });
 
-for (const f of fs.readdirSync('shared').filter((x) => x.endsWith('.js'))) {
+// shared/ has sub-folders (rules/), so copy it recursively.
+for (const f of fs.readdirSync('shared', { recursive: true }).filter((x) => x.endsWith('.js'))) {
   const src = fs.readFileSync(path.join('shared', f), 'utf8').replace("from 'astronomy-engine'", `from '${AE}'`);
+  fs.mkdirSync(path.dirname(path.join(out, 'shared', f)), { recursive: true });
   fs.writeFileSync(path.join(out, 'shared', f), src);
 }
 for (const f of fs.readdirSync('public').filter((x) => x.endsWith('.js') && x !== 'sw.js')) fs.copyFileSync(path.join('public', f), path.join(out, f));
@@ -26,10 +28,9 @@ const css = fs.readFileSync('public/styles.css', 'utf8');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('</body>'))
   .replace('<script type="module" src="/app.js"></script>', '<script>window.KJ_STATIC = true;</script>\n  <script type="module" src="app.js"></script>');
 const fonts = /<link href="https:\/\/fonts\.googleapis\.com[^>]+>/.exec(html)[0];
-const page = `<title>கைப்பேசி ஜோதிடர்</title>
+const page = `<title>துணை Thunai</title>
 ${fonts}
 <style>
-:root { color-scheme: dark; }
 ${css}
 .topbar { top: env(safe-area-inset-top, 0px); }
 </style>

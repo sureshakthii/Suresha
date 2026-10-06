@@ -1,7 +1,7 @@
 {
   "name": "kaippesi-jothidar",
   "version": "1.0.0",
-  "description": "Kaippesi Jothidar — AI South Indian astrology mobile app",
+  "description": "Thunai (துணை) — Tamil-first family companion for traditional astrology, calendars and practical planning",
   "main": "index.js",
   "scripts": {
     "test": "node --test test/*.test.js",

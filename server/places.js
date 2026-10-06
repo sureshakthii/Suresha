@@ -8,7 +8,7 @@ export async function searchOnline(q, limit = 5) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 4000);
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'KaippesiJothidar/1.0' }, signal: ctrl.signal });
+    const res = await fetch(url, { headers: { 'User-Agent': 'Thunai/1.0' }, signal: ctrl.signal });
     if (!res.ok) return [];
     const data = await res.json();
     return data.map((d) => {

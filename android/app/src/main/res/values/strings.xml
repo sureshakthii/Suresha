@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">கைப்பேசி ஜோதிடர்</string>
-    <string name="title_activity_main">கைப்பேசி ஜோதிடர்</string>
+    <string name="app_name">துணை Thunai</string>
+    <string name="title_activity_main">துணை Thunai</string>
     <string name="package_name">app.kaippesi.jothidar</string>
     <string name="custom_url_scheme">app.kaippesi.jothidar</string>
 </resources>

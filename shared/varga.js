@@ -28,6 +28,35 @@ const D30_ODD = [[5, 0], [10, 10], [18, 8], [25, 2], [30, 6]];
 const D30_EVEN = [[5, 1], [12, 5], [20, 11], [25, 9], [30, 7]];
 
 /**
+ * Named mapping variant for every D-chart. A chart always records which variant produced it, so a later
+ * change (e.g. a different D60 tradition) is a new id, never a silent edit.
+ * `approved`: enabled as the engineering default; `astrologerSignOff`: independent expert review done.
+ * Boundary rule for ALL vargas: a longitude exactly on a segment boundary belongs to the FOLLOWING segment
+ * (segments are half-open [start, end)); longitudes are never rounded before classification.
+ */
+export const VARGA_VARIANTS = {
+  1: { id: 'd1-rasi', approved: true, astrologerSignOff: false, rule: 'The sign itself.' },
+  2: { id: 'd2-parashara-hora', approved: true, astrologerSignOff: false, rule: 'Odd sign: 0–15° Simha, 15–30° Kataka; even sign: 0–15° Kataka, 15–30° Simha.' },
+  3: { id: 'd3-parashara-drekkana', approved: true, astrologerSignOff: false, rule: '10° parts → 1st, 5th, 9th from the sign.' },
+  4: { id: 'd4-parashara-chaturthamsa', approved: true, astrologerSignOff: false, rule: "7°30' parts → 1st, 4th, 7th, 10th from the sign." },
+  7: { id: 'd7-parashara-saptamsa', approved: true, astrologerSignOff: false, rule: 'Odd sign: from the sign; even sign: from the 7th.' },
+  9: { id: 'd9-parashara-navamsa', approved: true, astrologerSignOff: false, rule: "3°20' parts counted continuously from Mesha." },
+  10: { id: 'd10-parashara-dasamsa', approved: true, astrologerSignOff: false, rule: 'Odd sign: from the sign; even sign: from the 9th.' },
+  12: { id: 'd12-parashara-dwadasamsa', approved: true, astrologerSignOff: false, rule: "2°30' parts from the sign." },
+  16: { id: 'd16-parashara-shodasamsa', approved: true, astrologerSignOff: false, rule: 'Movable from Mesha, fixed from Simha, dual from Dhanusu.' },
+  20: { id: 'd20-parashara-vimsamsa', approved: true, astrologerSignOff: false, rule: 'Movable from Mesha, fixed from Dhanusu, dual from Simha.' },
+  24: { id: 'd24-parashara-chaturvimsamsa', approved: true, astrologerSignOff: false, rule: 'Odd sign from Simha, even sign from Kataka.' },
+  30: { id: 'd30-parashara-trimsamsa-unequal', approved: true, astrologerSignOff: false, rule: 'Unequal 5/5/8/7/5° portions (odd) and reversed (even) — tables D30_ODD / D30_EVEN.' },
+  60: {
+    id: 'd60-from-sign-itself', approved: false, astrologerSignOff: false, note: 'awaiting astrologer review',
+    rule: "30' parts counted from the sign itself for odd and even signs: (floor(deg × 2) + sign) mod 12. Other traditions count even signs differently.",
+  },
+};
+
+/** Segment index of `deg` (0 ≤ deg < 30) when 30° is split into n equal parts; exact boundaries go to the next part. */
+const equalPart = (deg, n) => Math.min(n - 1, Math.floor((deg * n) / 30));
+
+/**
  * Sign (0–11) occupied in divisional chart Dn by a sidereal longitude.
  * Rules (Brihat Parashara Hora Shastra):
  *  D1  Rasi        — the sign itself.
@@ -43,14 +72,15 @@ const D30_EVEN = [[5, 1], [12, 5], [20, 11], [25, 9], [30, 7]];
  *  D24 Chaturvimsamsa — odd sign from Simha, even sign from Kataka.
  *  D30 Trimsamsa   — unequal portions ruled by Mars/Saturn/Jupiter/Mercury/Venus (tables above).
  *  D60 Shashtiamsa — 30' parts counted from the sign itself: (floor(deg × 2) + sign) mod 12
- *                    (same rule for odd and even signs — the common Parashara/Jagannatha Hora convention).
+ *                    (same rule for odd and even signs). NOT approved — see VARGA_VARIANTS[60]; show it
+ *                    only with an 'awaiting astrologer review' label.
  */
 export function vargaRasi(longitude, n) {
   const lon = ((longitude % 360) + 360) % 360;
   const sign = Math.floor(lon / 30);
   const deg = lon - sign * 30;
   const odd = sign % 2 === 0;
-  const part = Math.min(n - 1, Math.floor(deg / (30 / n)));
+  const part = equalPart(deg, n);
   switch (n) {
     case 1: return sign;
     case 2: return odd ? (deg < 15 ? 4 : 3) : (deg < 15 ? 3 : 4);

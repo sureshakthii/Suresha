@@ -78,18 +78,23 @@ export function tamilDate(date, lat, lon, tz) {
   };
 }
 
-/** Gowri Nalla Neram slots for the Vedic day containing `date`. */
+/**
+ * Gowri Nalla Neram slots for the Vedic day containing `date`: sunrise→sunset in 8 equal slots and
+ * sunset→next sunrise in 8. On polar days (vedicDay().polar) sunrise/sunset are approximations, so every
+ * slot is marked `approximate: true` for the UI.
+ */
 export function gowriPanchangam(day, weekday) {
   const slots = [];
+  const approximate = !!day.polar;
   const dayLen = (day.sunset - day.sunrise) / 8;
   const nightLen = (day.nextSunrise - day.sunset) / 8;
   for (let i = 0; i < 8; i++) {
     const g = GOWRI[(GOWRI_DAY_START[weekday] + i) % 8];
-    slots.push({ ...g, part: 'day', start: new Date(day.sunrise.getTime() + i * dayLen), end: new Date(day.sunrise.getTime() + (i + 1) * dayLen) });
+    slots.push({ ...g, part: 'day', approximate, start: new Date(day.sunrise.getTime() + i * dayLen), end: new Date(day.sunrise.getTime() + (i + 1) * dayLen) });
   }
   for (let i = 0; i < 8; i++) {
     const g = GOWRI[(GOWRI_NIGHT_START[weekday] + i) % 8];
-    slots.push({ ...g, part: 'night', start: new Date(day.sunset.getTime() + i * nightLen), end: new Date(day.sunset.getTime() + (i + 1) * nightLen) });
+    slots.push({ ...g, part: 'night', approximate, start: new Date(day.sunset.getTime() + i * nightLen), end: new Date(day.sunset.getTime() + (i + 1) * nightLen) });
   }
   return slots;
 }

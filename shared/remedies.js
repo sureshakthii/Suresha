@@ -88,7 +88,29 @@ export const NAVAGRAHA = {
 
 const EXALT = { Sun: 0, Moon: 1, Mars: 9, Mercury: 5, Jupiter: 3, Venus: 11, Saturn: 6 };
 const OWN = { Sun: [4], Moon: [3], Mars: [0, 7], Mercury: [2, 5], Jupiter: [8, 11], Venus: [1, 6], Saturn: [9, 10] };
-const COMBUST = { Moon: 12, Mars: 17, Mercury: 14, Jupiter: 11, Venus: 10, Saturn: 15 };
+/**
+ * Combustion (Asta / அஸ்தங்கம்) orbs: angular distance from the Sun, in degrees, below which a planet is
+ * combust (Surya Siddhanta / BPHS values; Mercury and Venus use smaller orbs when retrograde).
+ * The Moon is listed for reference but NOT scored as combust: its nearness to the Sun is already scored
+ * once by the waxing/waning (phase) rule, so counting both would double-penalise the same fact.
+ */
+export const COMBUSTION_ORBS = Object.freeze({
+  Moon: { direct: 12, retrograde: 12, scored: false },
+  Mars: { direct: 17, retrograde: 17, scored: true },
+  Mercury: { direct: 14, retrograde: 12, scored: true },
+  Jupiter: { direct: 11, retrograde: 11, scored: true },
+  Venus: { direct: 10, retrograde: 8, scored: true },
+  Saturn: { direct: 15, retrograde: 15, scored: true },
+});
+
+/** Name and caveat shown with every strength score (Brief §2 "Strength"). */
+export const STRENGTH_INDEX = Object.freeze({
+  indexName: { en: 'Traditional strength index', ta: 'பாரம்பரிய பல குறியீடு' },
+  note: {
+    en: 'A custom 0–100 heuristic built from dignity, combustion, retrogression, Moon phase and house placement. It is not Shadbala and not a probability of any event.',
+    ta: 'கண்ணியம், அஸ்தங்கம், வக்கிரம், சந்திர கலை, பாவ நிலை ஆகியவற்றிலிருந்து கணிக்கப்படும் 0–100 தனிப்பட்ட மதிப்பீடு. இது ஷட்பலம் அல்ல; எந்த நிகழ்வின் சாத்தியக்கூறும் அல்ல.',
+  },
+});
 const FRIEND_SIGNS = {
   Sun: ['Moon', 'Mars', 'Jupiter'], Moon: ['Sun', 'Mercury'], Mars: ['Sun', 'Moon', 'Jupiter'], Mercury: ['Sun', 'Venus'],
   Jupiter: ['Sun', 'Moon', 'Mars'], Venus: ['Mercury', 'Saturn'], Saturn: ['Mercury', 'Venus'],
@@ -97,7 +119,16 @@ const ENEMY_SIGNS = {
   Sun: ['Venus', 'Saturn'], Moon: [], Mars: ['Mercury'], Mercury: ['Moon'], Jupiter: ['Mercury', 'Venus'], Venus: ['Sun', 'Moon'], Saturn: ['Sun', 'Moon', 'Mars'],
 };
 
-/** Graha Balam: a simple, explainable strength score (0–100) for each planet in a birth chart. */
+/**
+ * Graha Balam — "Traditional strength index": a simple, explainable 0–100 score for each planet.
+ * Custom heuristic, NOT Shadbala and NOT a probability. Each fact is counted once:
+ *  • dignity: exactly one of exalted / debilitated / own / friend / enemy (first match wins);
+ *  • combustion: COMBUSTION_ORBS (Moon excluded — covered by the phase rule);
+ *  • Moon phase (waxing/waning) only for the Moon;
+ *  • house: grahas get one of dusthana / kendra / trikona (disjoint sets); Rahu/Ketu use only their own
+ *    3-6-11 / 1-7-8-12 rule (no generic kendra bonus on top).
+ * Each row carries `indexName` and `note` for display.
+ */
 export function grahaStrength(planets) {
   const out = [];
   const lagna = planets.Lagna?.rasi;
@@ -106,6 +137,7 @@ export function grahaStrength(planets) {
     let score = 55;
     const reasons = [];
     const r = (pts, en, ta) => { score += pts; reasons.push({ pts, en, ta }); };
+    const node = k === 'Rahu' || k === 'Ketu';
     if (k in EXALT) {
       const lordOfSign = RASIS[p.rasi].lord;
       if (p.rasi === EXALT[k]) r(30, 'Exalted (Uchcham)', 'உச்சம்');
@@ -113,9 +145,11 @@ export function grahaStrength(planets) {
       else if (OWN[k].includes(p.rasi)) r(20, 'In own sign (Aatchi)', 'ஆட்சி');
       else if (FRIEND_SIGNS[k].includes(lordOfSign)) r(8, `In a friend's sign (${lordOfSign})`, 'நட்பு வீடு');
       else if (ENEMY_SIGNS[k].includes(lordOfSign)) r(-12, `In an enemy's sign (${lordOfSign})`, 'பகை வீடு');
-      if (k in COMBUST) {
+      const orb = COMBUSTION_ORBS[k];
+      if (orb?.scored) {
         const d = Math.abs(((p.longitude - planets.Sun.longitude + 540) % 360) - 180);
-        if (d < COMBUST[k]) r(-18, `Combust — too close to the Sun (${d.toFixed(1)}°)`, 'அஸ்தங்கம்');
+        const limit = p.retrograde ? orb.retrograde : orb.direct;
+        if (d < limit) r(-18, `Combust — too close to the Sun (${d.toFixed(1)}° < ${limit}°)`, 'அஸ்தங்கம்');
       }
       if (p.retrograde && k !== 'Sun' && k !== 'Moon') r(6, 'Retrograde (Vakram) — gives strong but delayed results', 'வக்கிரம்');
     }
@@ -126,14 +160,18 @@ export function grahaStrength(planets) {
     }
     if (lagna != null) {
       const house = ((p.rasi - lagna + 12) % 12) + 1;
-      if ([6, 8, 12].includes(house) && !['Rahu', 'Ketu'].includes(k)) r(-10, `In the ${house}th house (dusthana)`, `${house}-ம் வீடு (மறைவு ஸ்தானம்)`);
-      if ([1, 4, 7, 10].includes(house)) r(8, `In a kendra (${house}th house)`, `கேந்திரம் (${house})`);
-      if ([5, 9].includes(house)) r(8, `In a trikona (${house}th house)`, `திரிகோணம் (${house})`);
-      if (['Rahu', 'Ketu'].includes(k) && [3, 6, 11].includes(house)) r(12, `Well placed in the ${house}th house`, `${house}-ம் வீட்டில் நன்று`);
-      if (['Rahu', 'Ketu'].includes(k) && [1, 7, 8, 12].includes(house)) r(-10, `In the ${house}th house`, `${house}-ம் வீடு`);
+      if (node) {
+        if ([3, 6, 11].includes(house)) r(12, `Well placed in the ${house}th house`, `${house}-ம் வீட்டில் நன்று`);
+        else if ([1, 7, 8, 12].includes(house)) r(-10, `In the ${house}th house`, `${house}-ம் வீடு`);
+      } else if ([6, 8, 12].includes(house)) r(-10, `In the ${house}th house (dusthana)`, `${house}-ம் வீடு (மறைவு ஸ்தானம்)`);
+      else if ([1, 4, 7, 10].includes(house)) r(8, `In a kendra (${house}th house)`, `கேந்திரம் (${house})`);
+      else if ([5, 9].includes(house)) r(8, `In a trikona (${house}th house)`, `திரிகோணம் (${house})`);
     }
     score = Math.max(0, Math.min(100, score));
-    out.push({ planet: k, ta: PLANETS[k].ta, score, level: score >= 65 ? 'strong' : score >= 45 ? 'average' : 'weak', reasons });
+    out.push({
+      planet: k, ta: PLANETS[k].ta, score, level: score >= 65 ? 'strong' : score >= 45 ? 'average' : 'weak', reasons,
+      indexName: STRENGTH_INDEX.indexName, note: STRENGTH_INDEX.note,
+    });
   }
   return out;
 }

@@ -12,6 +12,7 @@ import { marketRouter } from './market.js';
 import { billingEnforced, billingRouter, checkAiQuota, recordAiUsage } from './billing.js';
 import { growthRouter } from './growth.js';
 import { tamilMonth } from '../shared/tamilcal.js';
+import { isValidZone, zonedToUtc } from '../shared/datetime.js';
 import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
 import { findMuhurtham } from '../shared/special.js';
 import { AI_TASKS, DEADLINE_FIRST } from '../shared/narrator.js';
@@ -55,15 +56,25 @@ function parseLoc(src) {
   };
 }
 
+const TIME_PRECISIONS = ['exact', 'approximate', 'unknown'];
+
 function parseBirth(b) {
   if (!b || typeof b !== 'object') throw new BadRequest('Missing birth details');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) throw new BadRequest('Invalid date (YYYY-MM-DD)');
-  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(b.time || '')) throw new BadRequest('Invalid time (HH:MM)');
-  const loc = parseLoc(b);
+  const timePrecision = b.timePrecision == null ? 'exact' : String(b.timePrecision);
+  if (!TIME_PRECISIONS.includes(timePrecision)) throw new BadRequest('Invalid timePrecision (exact | approximate | unknown)');
+  // An unknown birth time needs no clock time; the engine computes at noon and gives no Lagna.
+  const time = timePrecision === 'unknown' && !b.time ? '12:00' : b.time;
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time || '')) throw new BadRequest('Invalid time (HH:MM)');
+  if (b.zone != null && !isValidZone(String(b.zone))) throw new BadRequest('Invalid time zone (IANA name such as Asia/Kolkata)');
+  // With a zone, the numeric tz is optional: the zone's offset on the birth date is used.
+  const loc = parseLoc(b.zone != null && b.tz == null ? { ...b, tz: zonedToUtc(b.date, time, String(b.zone)).offsetMinutes / 60 } : b);
   return {
     name: String(b.name || 'Guest').slice(0, 80),
     place: String(b.place || loc.name || '').slice(0, 120),
-    date: b.date, time: b.time, lat: loc.lat, lon: loc.lon, tz: loc.tz,
+    date: b.date, time, lat: loc.lat, lon: loc.lon, tz: loc.tz,
+    ...(b.zone != null ? { zone: String(b.zone) } : {}),
+    timePrecision,
   };
 }
 

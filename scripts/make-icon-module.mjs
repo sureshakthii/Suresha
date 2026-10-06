@@ -27,15 +27,19 @@ const CONCEPTS = {
   moon: 'moon', star: 'star', clock: 'clock', phone: 'phone', search: 'search', check: 'check',
   alert: 'triangle-alert', lock: 'lock', download: 'download', plus: 'plus', invite: 'gift',
   feedback: 'star', legal: 'file-text', admin: 'shield-check', user: 'user',
+  // Thunai navigation (five destinations) and new screens.
+  today: 'sun', mychart: 'layout-grid', plan: 'calendar-range', ask_thunai: 'message-circle',
+  matching: 'heart-handshake', templeplan: 'map', safeguards: 'shield', account: 'circle-user-round',
+  coins: 'coins', sprout: 'sprout', home_icon: 'house-heart', expand: 'chevron-down', close: 'x', map_pin: 'map-pinned',
 };
 // Colour group for each navigation concept -> class ic-<group> on the icon chip (styled in styles.css).
 const GROUPS = {
-  daily: ['panchangam', 'calendar', 'muhurtham', 'vratham', 'live', 'weather', 'reminders'],
+  daily: ['panchangam', 'calendar', 'muhurtham', 'vratham', 'live', 'weather', 'reminders', 'templeplan'],
   personal: ['roadmap', 'health', 'guide', 'life', 'analysis', 'vargas', 'numerology', 'peyarchi', 'starbday', 'family'],
-  match: ['couple', 'porutham', 'gunamilan', 'partners', 'relations'],
+  match: ['couple', 'porutham', 'gunamilan', 'partners', 'relations', 'matching'],
   spiritual: ['parigaram', 'mantras', 'temples', 'thivasam', 'names', 'ruthu'],
   services: ['seva', 'priests', 'store', 'packages', 'plans', 'invite'],
-  help: ['chat', 'ask', 'about', 'feedback', 'legal', 'admin'],
+  help: ['chat', 'ask', 'about', 'feedback', 'legal', 'admin', 'safeguards'],
 };
 const GROUP_OF = Object.fromEntries(Object.entries(GROUPS).flatMap(([g, ids]) => ids.map((id) => [id, g])));
 // Extra raw names to inline even if no concept points at them.

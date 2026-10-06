@@ -4,14 +4,14 @@
 import { healthGuide } from './shared/health.js';
 import {
   state, $, $$, L, esc, bi, GLYPH, COLOR, planetName, monthName, activeMember, chartOf, registerScreen, subHeader,
-  speak, displayName, saveFamily,
+  speak, displayName, saveFamily, memberAge, reportMeta,
 } from './core.js';
 import { isLocked, lockCard } from './growth.js';
 import { remindBtn } from './remind.js';
 
 const people = () => state.family.filter((m) => m.relation !== 'organization');
 const mY = (d) => `${monthName(new Date(d).getUTCMonth())} ${new Date(d).getUTCFullYear()}`;
-const lvTag = (lv) => `<span class="tag ${lv === 'good' ? 'good' : lv === 'steady' ? 'warn' : 'bad'}">${lv === 'good' ? L('Good', 'நன்று') : lv === 'steady' ? L('Steady', 'நிலை') : L('Care', 'கவனம்')}</span>`;
+const lvTag = (lv) => `<span class="tag ${lv === 'good' ? 'good' : lv === 'steady' ? 'warn' : 'neutral'}">${lv === 'good' ? L('Good', 'நன்று') : lv === 'steady' ? L('Steady', 'நிலை') : L('Care', 'கவனம்')}</span>`;
 const DOSHA_BAR = { vata: 'average', pitta: 'weak', kapha: 'strong' };
 const DOSHA_ICON = { vata: '🌬️', pitta: '🔥', kapha: '💧' };
 
@@ -47,7 +47,7 @@ function renderHealth(sec) {
   injectCss();
   const m = activeMember()?.relation !== 'organization' ? activeMember() : people()[0];
   if (!m) { sec.innerHTML = `${subHeader(L('Health Guide', 'ஆரோக்கிய வழிகாட்டி'))}<p class="muted center">${L('Add a family member first.', 'முதலில் குடும்ப உறுப்பினரைச் சேர்க்கவும்.')}</p>`; return; }
-  sec.innerHTML = `${subHeader(L('Health Guide', 'ஆரோக்கிய வழிகாட்டி'), L('Protect your health — from your Jathagam, age, Dasa and transits', 'ஜாதகம், வயது, தசை, கோசாரம் வழியே உங்கள் ஆரோக்கியத்தைப் பாதுகாக்க'))}
+  sec.innerHTML = `${subHeader(L('Wellbeing & traditional context', 'நலம் & மரபுப் பின்னணி'), L('General wellbeing first; astrology only as optional traditional context — never medical advice', 'முதலில் பொது நலம்; ஜோதிடம் விருப்ப மரபுப் பின்னணி மட்டுமே — மருத்துவ ஆலோசனை அல்ல'))}
     ${people().length > 1 ? `<div class="member-switch">${people().map((x) => `<button class="mchip${x.id === m.id ? ' sel' : ''}" data-hid="${esc(x.id)}">${esc(displayName(x))}</button>`).join('')}</div>` : ''}
     <div id="hlBody"><div class="loader"><i></i><i></i><i></i></div></div>`;
   $$('[data-hid]', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.hid; saveFamily(); renderHealth(sec); }));
@@ -62,10 +62,13 @@ function drawHealth(m) {
   const p = h.period;
   const at = nextMonth9am();
   const disclaimer = `<div class="hl-note">⚕️ ${esc(bi(h.disclaimer))}</div>`;
+  const tradLabel = bi(h.traditionalContext?.label || { en: 'Traditional context (not medical advice)', ta: 'மரபுப் பின்னணி (மருத்துவ ஆலோசனை அல்ல)' });
+  const age = memberAge(m) ?? h.age;
+  const checklist = h.wellbeing?.checklist || h.stage.checklist;
   const spoken = [
-    `${displayName(m)}. ${L('Age', 'வயது')} ${h.age}, ${bi(h.stage)}.`,
+    `${displayName(m)}. ${L('Age', 'வயது')} ${age}, ${bi(h.stage)}.`,
     `${L('Body constitution', 'உடல்வாகு')}: ${bi(con.name)}.`,
-    `${L('Areas to protect', 'பாதுகாக்க வேண்டிய பகுதிகள்')}: ${h.bodyAreas.map((a) => bi(a)).join(', ')}.`,
+    h.bodyAreas.length ? `${tradLabel}: ${h.bodyAreas.map((a) => bi(a)).join(', ')}.` : '',
     bi(p.summary),
     `${L('Eat', 'உண்ண வேண்டியவை')}: ${h.diet.eat.slice(0, 3).map((x) => bi(x)).join(', ')}.`,
     `${L('Avoid', 'தவிர்க்க வேண்டியவை')}: ${h.diet.avoid.slice(0, 2).map((x) => bi(x)).join(', ')}.`,
@@ -78,25 +81,29 @@ function drawHealth(m) {
   $('#hlBody').innerHTML = `
     ${disclaimer}
     <div class="card glass"><div class="card-title"><span>🌿 ${esc(displayName(m))}</span><button class="link-btn" id="hlSpeak" aria-label="${esc(L('Read aloud', 'வாசித்துக்காட்டு'))}">🔊</button></div>
-      <div class="mini-label">${L('Age', 'வயது')} ${h.age} · ${L('Life stage', 'வாழ்க்கைப் பருவம்')}</div>
-      <div class="big-line">${esc(bi(h.stage))}</div>
-      <p class="small">${esc(bi(p.summary))}</p>
-      <p class="muted small">💪 ${L('Vitality (Ayul Balam)', 'உயிர்ச்சக்தி (ஆயுள் பலம்)')}: ${esc(bi(h.vitality.text))}</p></div>
+      <div class="mini-label">${L('Age', 'வயது')} ${age ?? '—'} · ${L('Life stage', 'வாழ்க்கைப் பருவம்')}</div>
+      <div class="big-line">${esc(bi(h.stage))}</div></div>
 
-    <div class="card glass"><div class="card-title">🩺 ${L('Check-ups for your age', 'உங்கள் வயதுக்கான பரிசோதனைகள்')}</div>
-      ${h.stage.checklist.map((x) => `<div class="hl-check"><span>✔️ ${esc(bi(x))}${x.forGender === 'female' && !m.gender ? ` <span class="pill">${L('women', 'பெண்கள்')}</span>` : ''}</span>${remindBtn({ title: `${bi(x)} — ${L('yearly check-up', 'ஆண்டுப் பரிசோதனை')}`, at })}</div>`).join('')}
+    <div class="card glass"><div class="card-title">🩺 ${L('General wellbeing checklist', 'பொது நலப் பட்டியல்')} <span class="chip-review">${L('needs medical review', 'மருத்துவ மதிப்பாய்வு தேவை')}</span></div>
+      <p class="muted small">${L('Not from astrology. This list is pending review by qualified doctors — your doctor decides what you need and how often.', 'ஜோதிடத்திலிருந்து அல்ல. இந்தப் பட்டியல் தகுதியான மருத்துவர்களின் மதிப்பாய்வுக்குக் காத்திருக்கிறது — உங்களுக்கு எது, எவ்வளவு அடிக்கடி என்பதை உங்கள் மருத்துவரே முடிவு செய்வார்.')}</p>
+      ${checklist.map((x) => `<div class="hl-check"><span>✔️ ${esc(bi(x))}${x.forGender === 'female' && !m.gender ? ` <span class="pill">${L('women', 'பெண்கள்')}</span>` : ''}</span>${remindBtn({ title: `${bi(x)} — ${L('ask your doctor', 'மருத்துவரிடம் கேளுங்கள்')}`, at })}</div>`).join('')}
       <p class="muted small">👨‍⚕️ ${esc(bi(h.stage.note))}</p></div>
+
+    <h3 class="section-title">${esc(tradLabel)}</h3>
+    <p class="muted small">${L('Optional. It cannot detect illness and must not change any treatment.', 'விருப்பத்திற்குரியது. நோயைக் கண்டறியாது; எந்தச் சிகிச்சையையும் மாற்றக் கூடாது.')}</p>
+    ${h.birthTimeNote ? `<p class="muted small">${esc(bi(h.birthTimeNote))}</p>` : ''}
+    <div class="card glass"><p class="small">${esc(bi(p.summary))}</p></div>
 
     <div class="card glass"><div class="card-title"><span>⚖️ ${L('Body constitution', 'உடல்வாகு')}</span><span class="pill">${esc(bi(con.name))}</span></div>
       ${['vata', 'pitta', 'kapha'].map((d) => `<div class="gb-row static"><span class="gb-name">${DOSHA_ICON[d]} ${esc(bi(con.doshas[d]))}</span><span class="gb-bar"><i class="${DOSHA_BAR[d]}" style="width:${con[d]}%"></i></span><b>${con[d]}%</b></div>`).join('')}
       <p class="small">${esc(bi(con.desc))}</p>
       <p class="muted small">${L('From', 'கணக்கு')}: ${con.why.map((w) => esc(bi(w))).join(' · ')}</p></div>
 
-    <div class="card glass"><div class="card-title">🛡️ ${L('Body areas to protect', 'பாதுகாக்க வேண்டிய உடல் பகுதிகள்')}</div>
+    ${h.bodyAreas.length ? `<div class="card glass"><div class="card-title">🌿 ${esc(tradLabel)} · ${L('body areas in tradition', 'மரபில் உடல் பகுதிகள்')}</div>
       ${h.bodyAreas.map((a) => `<div class="factor hl-area"><span><b>${a.icon} ${esc(bi(a))}</b>
         ${a.reasons.map((r) => `<br><small class="muted">• ${esc(bi(r))}</small>`).join('')}
-        <br><small>💡 ${esc(bi(a.tip))}</small></span>${a.level === 'care' ? `<span class="tag warn">${L('Care', 'கவனம்')}</span>` : `<span class="pill">${L('Watch', 'கவனிக்க')}</span>`}</div>`).join('')}
-      <p class="muted small">${L('These are tendencies to protect, not illnesses.', 'இவை பாதுகாக்க வேண்டிய போக்குகள் மட்டுமே, நோய்கள் அல்ல.')}</p></div>
+        <br><small>💡 ${esc(bi(a.tip))}</small></span></div>`).join('')}
+      <p class="muted small">${L('Traditional associations only — not illnesses and not a diagnosis.', 'மரபுத் தொடர்புகள் மட்டுமே — நோய்களோ நோயறிதலோ அல்ல.')}</p></div>` : ''}
 
     <div class="card glass"><div class="card-title"><span>🪐 ${L('Current period & transits', 'நடப்புக் காலம் & கோசாரம்')}</span>${lvTag(p.level)}</div>
       ${p.md ? `<p><b style="color:${COLOR[p.md.lord]}">${GLYPH[p.md.lord]} ${esc(planetName(p.md.lord))}</b> ${L('Dasa', 'தசை')}${p.ad ? ` · <b style="color:${COLOR[p.ad.lord]}">${GLYPH[p.ad.lord]} ${esc(planetName(p.ad.lord))}</b> ${L('Bhukti', 'புக்தி')} <span class="muted small">(${L('till', 'வரை')} ${mY(p.ad.end)})</span>` : ''}</p>` : ''}
@@ -130,8 +137,9 @@ function drawHealth(m) {
       <p class="muted small">${esc(bi(h.remedies.mantra.how))}</p></div>
 
     <div class="btn-row"><button class="chip-btn" data-go="roadmap">🗺️ ${L('Life Road Map', 'வாழ்க்கை வரைபடம்')}</button><button class="chip-btn" data-go="guide">🧭 ${L('My Guide', 'என் வழிகாட்டி')}</button></div>
-    ${disclaimer}`;
+    ${disclaimer}
+    ${reportMeta()}`;
   $('#hlSpeak').addEventListener('click', () => speak(spoken));
 }
 
-registerScreen('health', { render: renderHealth, parent: 'home', needsMember: true });
+registerScreen('health', { render: renderHealth, parent: 'chart', needsMember: true });

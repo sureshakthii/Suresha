@@ -117,7 +117,7 @@ function showGuna(sec) {
     : (r.doshas.nadi || r.doshas.bhakoot ? `<p class="muted small">${L('No classical cancellation applies — consult your astrologer with both full horoscopes.', 'பாரம்பரிய நிவர்த்தி எதுவும் பொருந்தவில்லை — இருவரின் முழு ஜாதகத்துடன் ஜோதிடரை அணுகவும்.')}</p>` : '')}
     </div>`;
 }
-registerScreen('gunamilan', { render: renderGunaMilan, parent: 'home' });
+registerScreen('gunamilan', { render: renderGunaMilan, parent: 'family' });
 
 // ================================================================ NUMEROLOGY
 const nm = { name: '', memberId: null, date: '', mobile: '', vehicle: '' };
@@ -212,4 +212,4 @@ function updateNumerology(sec, only) {
       : !r ? needDate : `${luckBlock(r)}<p class="muted small">${L('With letters (Chaldean values) the total is', 'எழுத்துகளையும் (கல்தேய மதிப்பு) சேர்த்தால் கூட்டு எண்')} ${r.withLetters.single}.</p>`;
   }
 }
-registerScreen('numerology', { render: renderNumerology, parent: 'home' });
+registerScreen('numerology', { render: renderNumerology, parent: 'chart' });

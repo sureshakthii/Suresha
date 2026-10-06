@@ -3,12 +3,13 @@
 import { QUESTIONS, predictEvent, kulaDeivam, habitGuard, careerCompass } from './shared/predict.js';
 import {
   state, $, $$, L, esc, bi, GLYPH, COLOR, planetName, fmtIsoDate, activeMember, chartOf, registerScreen, subHeader, aiTask, speak, displayName,
+  saveFamily, toast, needsTimeText, showExtras,
 } from './core.js';
 import { isLocked, lockCard } from './growth.js';
 
 const EXTRA = [
   { id: 'compass', icon: '🧭', en: 'Which study & career suits me? (talent compass)', ta: 'எந்தப் படிப்பு, தொழில் பொருந்தும்? (திறமை வழிகாட்டி)' },
-  { id: 'kula', icon: '🛕', en: 'Our Kula Deivam & worship', ta: 'குலதெய்வ வழிபாடு' },
+  { id: 'kula', icon: '🛕', en: 'Our Kula Deivam — record your family\'s own', ta: 'குலதெய்வம் — உங்கள் குடும்பத்தினுடையதைப் பதிவு செய்க' },
   { id: 'habits', icon: '🛡️', en: 'Guard against bad habits (drinking etc.)', ta: 'தீய பழக்கங்களிலிருந்து பாதுகாப்பு' },
 ];
 const ui = { memberId: null, q: null };
@@ -21,7 +22,7 @@ function renderLife(sec, params = {}) {
   if (params.memberId) ui.memberId = params.memberId;
   const people = state.family.filter((m) => m.relation !== 'organization');
   const m = people.find((x) => x.id === ui.memberId) || activeMember();
-  sec.innerHTML = `${subHeader(L('Life Questions', 'வாழ்க்கைக் கேள்விகள்'), L('When will it happen? — answered from the Jathagam by Dasa, Bhukti and Guru–Sani transit', 'எப்போது நடக்கும்? — தசை, புக்தி, குரு–சனி கோசாரப்படி'))}
+  sec.innerHTML = `${subHeader(L('Life Questions', 'வாழ்க்கைக் கேள்விகள்'), L('Periods your tradition associates with each topic — by Dasa, Bhukti and Guru–Sani transit. Not guaranteed dates.', 'ஒவ்வொரு விஷயத்துடனும் மரபு தொடர்புபடுத்தும் காலங்கள் — தசை, புக்தி, குரு–சனி கோசாரப்படி. உறுதியான தேதிகள் அல்ல.'))}
     ${people.length > 1 ? `<label>${L('For', 'யாருக்கு')}<select id="lifeFor">${people.map((x) => `<option value="${esc(x.id)}"${x.id === m.id ? ' selected' : ''}>${esc(displayName(x))}</option>`).join('')}</select></label>` : ''}
     <div class="q-grid">${[...QUESTIONS, ...EXTRA].map((q) => `<button class="q-card${ui.q === q.id ? ' sel' : ''}" data-q="${q.id}"><span class="ti-icon">${q.icon}</span><span>${esc(bi(q))}</span></button>`).join('')}</div>
     <div id="lifeOut"></div>`;
@@ -44,10 +45,26 @@ function answer(m, scroll = true) {
   }, 30);
 }
 
+const promiseLabel = (lv) => ({
+  strong: L('Strong', 'வலுவானது'), good: L('Good', 'நன்று'), 'needs effort': L('Comes with effort', 'முயற்சியால் கிடைக்கும்'),
+  'not-assessed': L('Not assessed — Thunai does not read this from a chart', 'மதிப்பிடப்படவில்லை — துணை இதை ஜாதகத்திலிருந்து கணிப்பதில்லை'),
+  'needs-birth-time': needsTimeText(),
+}[lv] || lv);
+
 function renderPrediction(c, m) {
   const r = predictEvent(c, ui.q);
   const q = r.question;
   const best = r.windows[0];
+  const lv = r.promise.level;
+  if (lv === 'not-assessed' || lv === 'needs-birth-time') {
+    $('#lifeOut').innerHTML = `<div class="card glass verdict-card life-head"><div class="ti-icon">${q.icon}</div><div class="mini-label">${esc(displayName(m))} · ${esc(bi(q))}</div>
+      <div class="life-answer">${esc(promiseLabel(lv))}</div></div>
+      <div class="card glass">${r.promise.notes.map((n) => `<p class="small">${esc(bi(n))}</p>`).join('')}
+        ${lv === 'needs-birth-time' ? `<button class="chip-btn" data-go="family" data-param='${JSON.stringify({ edit: m.id })}'>${L('Add the birth time', 'பிறந்த நேரத்தைச் சேர்')}</button>` : ''}</div>
+      ${r.current ? `<div class="card glass"><div class="mini-label">${L('Running now', 'தற்போது நடப்பது')}</div><div class="mini-value">${esc(dasaLabel(r.current))}</div></div>` : ''}
+      ${r.disclaimer ? `<p class="muted small center">${esc(bi(r.disclaimer))}</p>` : ''}`;
+    return;
+  }
   const headline = !r.windows.length
     ? L('No strong period in the next 15 years by this method — effort and parigaram will open the way; please also consult your family astrologer.', 'இந்த முறைப்படி அடுத்த 15 ஆண்டுகளில் வலுவான காலம் தெரியவில்லை — முயற்சியும் பரிகாரமும் வழி திறக்கும்; குடும்ப ஜோதிடரையும் அணுகவும்.')
     : L(`Most likely from ${monthYear(r.earliest?.peakFrom || best.peakFrom)} — during ${planetName((r.earliest || best).md)} Dasa, ${planetName((r.earliest || best).ad)} Bhukti.`,
@@ -55,7 +72,8 @@ function renderPrediction(c, m) {
   $('#lifeOut').innerHTML = `
     <div class="card glass verdict-card life-head"><div class="ti-icon">${q.icon}</div><div class="mini-label">${esc(displayName(m))} · ${esc(bi(q))}</div>
       <div class="life-answer">${esc(headline)}</div>
-      <span class="tag ${r.promise.level === 'strong' ? 'good' : r.promise.level === 'good' ? 'good' : 'warn'}">${L('Promise in chart', 'ஜாதக வாக்குறுதி')}: ${r.promise.level === 'strong' ? L('Strong', 'வலுவானது') : r.promise.level === 'good' ? L('Good', 'நன்று') : L('Comes with effort', 'முயற்சியால் கிடைக்கும்')}</span></div>
+      <span class="tag ${lv === 'strong' || lv === 'good' ? 'good' : 'neutral'}">${L('Traditional indication', 'மரபுக் குறிப்பு')}: ${esc(promiseLabel(lv))}</span>
+      ${r.framing ? `<p class="muted small">${esc(bi(r.framing))}</p>` : ''}</div>
     ${r.current ? `<div class="card glass"><div class="mini-label">${L('Running now', 'தற்போது நடப்பது')}</div><div class="mini-value">${esc(dasaLabel(r.current))}</div><div class="muted small">${L('until', 'வரை')} ${fmtIsoDate(iso(r.current.end))}</div></div>` : ''}
     <div class="section-title">🌟 ${q.harmony ? L('Best periods for togetherness', 'ஒற்றுமைக்கு சிறந்த காலங்கள்') : L('Best periods', 'சிறந்த காலங்கள்')}</div>
     ${r.windows.map((w) => `<div class="card glass window${w === r.earliest ? ' first' : ''}">
@@ -67,15 +85,16 @@ function renderPrediction(c, m) {
     <div class="card glass"><div class="card-title">🔍 ${L('What the chart shows', 'ஜாதகம் காட்டுவது')}</div>${r.promise.notes.map((n) => `<div class="small">• ${esc(bi(n))}</div>`).join('')}</div>
     <div class="card glass"><div class="card-title">🪔 ${L('Parigaram', 'பரிகாரம்')}</div><p>${esc(bi(r.remedy))}</p>
       ${r.karakaRemedies.map((k) => `<p class="small"><span style="color:${COLOR[k.planet]}">${GLYPH[k.planet]}</span> ${esc(planetName(k.planet))}: ${esc(bi(k.free))}</p>`).join('')}</div>
-    <button class="btn-gold" id="lifeExplain">📜 ${L('Detailed explanation by Kaippesi Jothidar', 'கைப்பேசி ஜோதிடரின் விரிவான விளக்கம்')}</button>
-    <div class="card glass" id="lifeAi" hidden><div class="card-title"><span>📜 ${L('Explanation', 'விளக்கம்')}</span><button class="link-btn" id="lifeSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="lifeText"></div></div>
+    <button class="btn-gold" id="lifeExplain">📜 ${L('Explain with Thunai', 'துணையுடன் விளக்கம்')}</button>
+    <div class="card glass" id="lifeAi" hidden><div class="card-title"><span>📜 ${L('Explanation', 'விளக்கம்')}</span><button class="link-btn" id="lifeSpeak" aria-label="${esc(L('Read aloud', 'வாசித்துக்காட்டு'))}">🔊</button></div><div class="reply" id="lifeText"></div></div>
+    ${r.disclaimer ? `<p class="muted small center">${esc(bi(r.disclaimer))}</p>` : ''}
     <p class="muted small center">${L('Astrology shows favourable timing; effort, family support and the right professional advice make it happen.', 'ஜோதிடம் சாதகமான நேரத்தைக் காட்டும்; முயற்சி, குடும்ப ஆதரவு, சரியான நிபுணர் ஆலோசனையே அதை நிறைவேற்றும்.')}</p>`;
   $('#lifeExplain').addEventListener('click', async () => {
     $('#lifeAi').hidden = false;
     const t = $('#lifeText');
     t.classList.add('typing');
     const context = {
-      person: { name: m.name, relation: m.relation, gender: m.gender, birth: `${m.date} ${m.time} ${m.place}`, lagna: c.lagna.rasiName, rasi: c.janmaRasi.name, star: c.janmaNakshatra.name },
+      person: { name: m.name, relation: m.relation, gender: m.gender, birth: `${m.date} ${c.timePrecision === 'unknown' ? '(time unknown)' : m.time} ${m.place}`, lagna: c.lagna?.rasiName || 'not available', rasi: c.janmaRasi.name, star: c.janmaNakshatra.name },
       question: q.en, promise: { level: r.promise.level, notes: r.promise.notes.map((n) => n.en) },
       runningNow: r.current && `${r.current.md} Dasa / ${r.current.ad} Bhukti until ${iso(r.current.end)}`,
       bestPeriods: r.windows.map((w) => ({ from: iso(w.peakFrom), to: iso(w.peakTo), dasa: `${w.md}/${w.ad}`, doubleTransit: w.doubleTransit, why: w.reasons.map((x) => x.en) })),
@@ -83,18 +102,36 @@ function renderPrediction(c, m) {
       remedy: r.remedy.en,
     };
     const fallback = [$('.life-answer').textContent, ...r.windows.map((w) => `🌟 ${monthYear(w.peakFrom)} – ${monthYear(w.peakTo)}: ${dasaLabel(w)}`), `🪔 ${bi(r.remedy)}`].join('\n');
-    await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: `Answer this life question like an experienced Tamil astrologer: "${q.en}". Use the computed promise, the best dasa-bhukti periods and transits. Give the most likely timing first, then what helps it happen sooner, then a simple parigaram. Be warm, positive and specific. About 200 words.` }], fallbackText: fallback, onText: (tx) => { t.textContent = tx; } });
+    await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: `Explain, as traditional context only, the periods this tradition associates with: "${q.en}". Use the computed indication, the dasa-bhukti periods and transits; say clearly these are not guaranteed dates. Then practical steps that help, then one simple optional practice. Warm and specific. About 200 words.` }], fallbackText: fallback, member: m, channel: 'life', onText: (tx) => { t.textContent = tx; } }).then((r) => showExtras(t, r.meta));
     t.classList.remove('typing');
   });
   $('#lifeSpeak').addEventListener('click', () => speak($('#lifeText').textContent));
 }
 
 function renderKula(c, m) {
-  const k = kulaDeivam(c);
+  const k = kulaDeivam(c, { recorded: m.kulaDeivam || null });
+  const sg = k.suggestion;
   $('#lifeOut').innerHTML = `<div class="card glass verdict-card life-head"><div class="ti-icon">🛕</div><div class="mini-label">${esc(displayName(m))}</div>
-      <div class="life-answer">${L('The 9th house points to', '9-ம் பாவம் காட்டும் தெய்வம்')}: ${esc(bi(k.deity))}</div></div>
-    <div class="card glass"><p>${esc(bi(k.guidance))}</p><p class="small muted">${L('9th house', '9-ம் பாவம்')}: ${esc(bi(k.ninthSign))} · ${L('lord', 'அதிபதி')} ${esc(planetName(k.lord))}${k.occupants.length ? ` · ${L('planets', 'கிரகங்கள்')}: ${k.occupants.map((o) => esc(planetName(o))).join(', ')}` : ''}</p></div>
-    ${k.periods.length ? `<div class="card glass"><div class="card-title">🙏 ${L('Especially good periods for a Kula Deivam visit', 'குலதெய்வ தரிசனத்திற்கு சிறப்பான காலங்கள்')}</div>${k.periods.map((p) => `<div class="factor"><span>${GLYPH[p.ad]} ${esc(planetName(p.md))} / ${esc(planetName(p.ad))}</span><b class="zero">${monthYear(p.start)} – ${monthYear(p.end)}</b></div>`).join('')}</div>` : ''}`;
+      <div class="life-answer">${k.recordedByFamily ? `${L('Your family\'s Kula Deivam', 'உங்கள் குலதெய்வம்')}: ${esc(k.recordedByFamily)}` : L('Not recorded yet — ask your family elders', 'இன்னும் பதிவு செய்யப்படவில்லை — குடும்பப் பெரியோரிடம் கேளுங்கள்')}</div>
+      ${k.recordedByFamily ? `<span class="tag good">${L('Recorded by your family', 'உங்கள் குடும்பம் பதிவு செய்தது')}</span>` : ''}</div>
+    <form class="card glass" id="kulaForm"><div class="card-title">${L('Record your family\'s Kula Deivam', 'உங்கள் குலதெய்வத்தைப் பதிவு செய்க')}</div>
+      <label>${L('Kula Deivam (deity and temple / village)', 'குலதெய்வம் (தெய்வம், கோவில் / ஊர்)')}<input name="kula" maxlength="120" value="${esc(m.kulaDeivam || '')}" placeholder="${esc(L('e.g. Ayyanar, Kovilpatti', 'உ.தா. ஐயனார், கோவில்பட்டி'))}"></label>
+      <button class="btn-gold">${L('Save', 'சேமி')}</button>
+      <p class="muted small">${L('Saved in this family profile only.', 'இந்தக் குடும்ப விவரத்தில் மட்டும் சேமிக்கப்படும்.')}</p></form>
+    <div class="card glass"><p>${esc(bi(k.guidance))}</p></div>
+    ${sg ? `<details class="card glass"><summary><b>${L('Optional suggestion (not a fact about your family)', 'விருப்பப் பரிந்துரை (உங்கள் குடும்பம் பற்றிய உண்மை அல்ல)')}</b></summary>
+      <p>${L('A deity form for prayer', 'வழிபாட்டுக்கான தெய்வ வடிவம்')}: <b>${esc(bi(sg.deity))}</b></p>
+      <p class="muted small">${L('Method', 'முறை')}: ${esc(bi(sg.method))}</p>
+      <p class="muted small">${L('9th house', '9-ம் பாவம்')}: ${esc(bi(k.ninthSign))} · ${L('lord', 'அதிபதி')} ${esc(planetName(k.lord))}${k.occupants.length ? ` · ${L('planets', 'கிரகங்கள்')}: ${k.occupants.map((o) => esc(planetName(o))).join(', ')}` : ''}</p></details>` : ''}
+    ${k.periods.length ? `<div class="card glass"><div class="card-title">🙏 ${L('Periods many families choose for a Kula Deivam visit (optional)', 'குலதெய்வ தரிசனத்திற்குப் பல குடும்பங்கள் தேர்ந்தெடுக்கும் காலங்கள் (விருப்பம்)')}</div>${k.periods.map((p) => `<div class="factor"><span>${GLYPH[p.ad]} ${esc(planetName(p.md))} / ${esc(planetName(p.ad))}</span><b class="zero">${monthYear(p.start)} – ${monthYear(p.end)}</b></div>`).join('')}</div>` : ''}`;
+  $('#kulaForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = e.target.elements.kula.value.trim();
+    const i = state.family.findIndex((x) => x.id === m.id);
+    if (i >= 0) { state.family[i] = { ...state.family[i], kulaDeivam: v || undefined }; saveFamily(); }
+    toast(L('Saved', 'சேமிக்கப்பட்டது'));
+    renderKula(c, state.family[i] || m);
+  });
 }
 
 function renderCompass(c, m) {
@@ -116,4 +153,4 @@ function renderHabits(c, m) {
     <div class="card glass"><div class="card-title">🌿 ${L('What helps', 'உதவுவது')}</div><p>${esc(bi(h.support))}</p></div>`;
 }
 
-registerScreen('life', { render: renderLife, parent: 'home', needsMember: true });
+registerScreen('life', { render: renderLife, parent: 'chart', needsMember: true });

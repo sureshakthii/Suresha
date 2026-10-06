@@ -1,5 +1,6 @@
-// Kaippesi Jothidar — app boot, splash, background sky and the one-second live tick.
-import { state, $, $$, L, ta, STATIC, store, go, currentScreen, saveSettings, setLoc, activeMember, toast } from './core.js';
+// Thunai (துணை) — app boot, splash, background sky, the five-destination tab bar and the one-second live tick.
+import { state, $, $$, L, ta, STATIC, store, go, currentScreen, saveSettings, setLoc, activeMember, toast, TABS } from './core.js';
+import { icon } from './icons.js';
 import { refreshSnap } from './screens-main.js';
 import './screens-tools.js';
 import './screens-world.js';
@@ -13,6 +14,7 @@ import './screens-depth.js';
 import './screens-extra.js';
 import './screens-peyarchi.js';
 import './screens-health.js';
+import './screens-thunai.js';
 import { loadSession } from './account.js';
 import { startAnalytics, loadBilling } from './growth.js';
 
@@ -54,6 +56,23 @@ function startSky() {
   else draw(0);
 }
 
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Five destinations (brief §8): Today, My Chart, Family, Plan, Ask Thunai. */
+const TAB_DEF = {
+  home: ['today', 'Today', 'இன்று'],
+  chart: ['mychart', 'My Chart', 'என் ஜாதகம்'],
+  family: ['family', 'Family', 'குடும்பம்'],
+  plan: ['plan', 'Plan', 'திட்டம்'],
+  chat: ['ask_thunai', 'Ask Thunai', 'துணையிடம் கேள்'],
+};
+function buildTabbar() {
+  $('.tabbar').innerHTML = TABS.map((id) => {
+    const [ic, en, tx] = TAB_DEF[id];
+    return `<button type="button" data-tab="${id}"${id === 'chat' ? ' class="tab-center"' : ''}><span class="ti">${icon(ic, { size: 24 })}</span><span data-i18n-en="${en}" data-i18n-ta="${tx}">${ta() ? tx : en}</span></button>`;
+  }).join('');
+}
+
 function splash() {
   const g = $('#splash-signs');
   const glyphs = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
@@ -64,10 +83,11 @@ function splash() {
     const ix = 100 + 74 * Math.cos(a - Math.PI / 12), iy = 100 + 74 * Math.sin(a - Math.PI / 12);
     return `<line x1="${ix}" y1="${iy}" x2="${lx}" y2="${ly}" stroke="rgba(245,194,107,.4)"/><text x="${x}" y="${y}" fill="#ffdf9e" font-size="13" text-anchor="middle" dominant-baseline="central">${s}</text>`;
   }).join('');
+  const quick = reducedMotion();
   return new Promise((res) => setTimeout(() => {
     $('#splash').classList.add('fade');
-    setTimeout(() => { $('#splash').remove(); res(); }, 800);
-  }, 2600));
+    setTimeout(() => { $('#splash').remove(); res(); }, quick ? 0 : 800);
+  }, quick ? 300 : 2600));
 }
 
 function applyLang() {
@@ -77,6 +97,7 @@ function applyLang() {
 }
 
 async function boot() {
+  buildTabbar();
   startSky();
   applyLang();
   saveSettings();

@@ -68,7 +68,7 @@ export async function addReminder({ title, place = '', eventAt, alarmAt }) {
     try {
       const perm = await LN.requestPermissions();
       if (perm.display === 'granted') {
-        await LN.schedule({ notifications: [{ id: Number.parseInt(id, 36) % 2147483000, title: L('Kaippesi Jothidar', 'கைப்பேசி ஜோதிடர்'), body: `🔔 ${title}`, schedule: { at: new Date(alarmAt), allowWhileIdle: true } }] });
+        await LN.schedule({ notifications: [{ id: Number.parseInt(id, 36) % 2147483000, title: L('Thunai', 'துணை'), body: `🔔 ${title}`, schedule: { at: new Date(alarmAt), allowWhileIdle: true } }] });
         how = L('Alarm set on this phone', 'இந்தக் கைப்பேசியில் அலாரம் அமைக்கப்பட்டது');
       }
     } catch { /* fall back */ }
@@ -130,7 +130,7 @@ export function scheduleInApp() {
     timers.set(r.id, setTimeout(() => {
       const body = `🔔 ${r.title}`;
       if ('Notification' in window && Notification.permission === 'granted') {
-        navigator.serviceWorker?.ready.then((reg) => reg.showNotification(L('Kaippesi Jothidar', 'கைப்பேசி ஜோதிடர்'), { body, tag: `rem-${r.id}` })).catch(() => toast(body, 8000));
+        navigator.serviceWorker?.ready.then((reg) => reg.showNotification(L('Thunai', 'துணை'), { body, tag: `rem-${r.id}` })).catch(() => toast(body, 8000));
       } else toast(body, 8000);
     }, ms));
   }
@@ -141,7 +141,7 @@ export function downloadIcs(events, filename = 'kaippesi.ics') {
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
   const clean = (x) => String(x || '').replace(/[,;\n]/g, ' ');
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Kaippesi Jothidar//TA', 'CALSCALE:GREGORIAN'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Thunai//TA', 'CALSCALE:GREGORIAN'];
   for (const ev of events) {
     const s = new Date(ev.start);
     lines.push('BEGIN:VEVENT', `UID:${Math.random().toString(36).slice(2)}@kaippesi`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(s)}`, `DTEND:${stamp(new Date(s.getTime() + 30 * 60000))}`,

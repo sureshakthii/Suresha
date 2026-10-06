@@ -6,6 +6,7 @@ import { personalGuide, DAY_COLOR } from './shared/personal.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtDate, activeMember, chartOf,
   registerScreen, subHeader, speak, stopSpeaking, toast, displayName, placeName, yogaName, saveSettings, copyright,
+  lagnaText, precisionNote, reportMeta,
 } from './core.js';
 import { dayOutlook } from './screens-main.js';
 import { isLocked, lockCard } from './growth.js';
@@ -17,7 +18,7 @@ const dayName = (i) => (ta() ? WEEK_TA[i] : WEEK_EN[i]);
 const people = () => state.family.filter((m) => m.relation !== 'organization');
 const swatch = (c, big = false) => `<span class="swatch${big ? ' big' : ''}" style="background:${c.hex}" aria-hidden="true"></span>`;
 
-/** "Guru Vakku" — today's personal word from Kaippesi Jothidar for the active member: outlook, colour, number. Used on home. */
+/** "Guru Vakku" — today's personal word from Thunai for the active member: outlook, colour, number. Used on home. */
 export function todayColorCard() {
   const m = activeMember();
   if (!m || m.relation === 'organization') return '';
@@ -28,7 +29,7 @@ export function todayColorCard() {
   const word = {
     good: L('A strong day — begin important work with confidence.', 'நல்ல நாள் — முக்கிய வேலைகளைத் தைரியமாகத் தொடங்குங்கள்.'),
     warn: L('A steady day — plan well and remember your Ishta Theivam.', 'நிதானமான நாள் — திட்டமிட்டுச் செயல்படுங்கள், இஷ்ட தெய்வத்தை நினையுங்கள்.'),
-    bad: L(`A day to stay calm — postpone new starts and chant ${g.ishta.mantra}.`, `அமைதி காக்கும் நாள் — புதிய முயற்சிகளைத் தள்ளிவைத்து "${g.ishta.mantra}" சொல்லுங்கள்.`),
+    bad: L(`A calm day — go gently, and if you wish, chant ${g.ishta.mantra}.`, `அமைதியான நாள் — நிதானமாகச் செயல்படுங்கள்; விரும்பினால் "${g.ishta.mantra}" சொல்லுங்கள்.`),
   }[o.overall];
   return `<div class="card glass color-today guru" data-go="guide">${swatch(g.today, true)}
     <div style="flex:1;min-width:0"><div class="mini-label">🙏 ${L('Guru Vakku for', 'குரு வாக்கு')} · ${esc(displayName(m))}</div>
@@ -54,12 +55,12 @@ function renderGuide(sec) {
   const c = chartOf(m);
   const g = personalGuide(c, { date: m.date });
   const locked = isLocked('predictions');
-  const lvl = { strong: ['good', L('Strong', 'வலுவானது')], medium: ['warn', L('Medium', 'நடுத்தரம்')], care: ['bad', L('Needs care', 'கவனம் தேவை')] }[g.ayul.level];
   sec.innerHTML = `${subHeader(L('My Guide', 'என் வழிகாட்டி'), L('Lucky number, colour, Ishta Theivam, gemstones, Siddhar and your own mantra playlist', 'அதிர்ஷ்ட எண், நிறம், இஷ்ட தெய்வம், ரத்தினம், சித்தர், உங்கள் மந்திரப் பட்டியல்'))}
     ${pool.length > 1 ? `<div class="member-switch">${pool.map((x) => `<button class="mchip${x.id === m.id ? ' sel' : ''}" data-gid="${esc(x.id)}">${esc(displayName(x))}</button>`).join('')}</div>` : ''}
-    <div class="card glass guide-head"><div class="g-avatar">${GLYPH[g.lagnaLord]}</div><div><b>${esc(displayName(m))}</b>
-      <div class="muted small">${L('Lagna', 'லக்னம்')}: ${esc(rasiName(c.lagna.rasi ?? c.planets.Lagna.rasi))} · ${L('Star', 'நட்சத்திரம்')}: ${esc(nakName(c.janmaNakshatra.index))} · ${L('Rasi', 'ராசி')}: ${esc(rasiName(c.janmaRasi.index))}</div></div></div>
+    <div class="card glass guide-head"><div class="g-avatar" aria-hidden="true">${g.lagnaLord ? GLYPH[g.lagnaLord] : '☽'}</div><div><b>${esc(displayName(m))}</b>
+      <div class="muted small">${L('Lagna', 'லக்னம்')}: ${esc(lagnaText(c))} · ${L('Star', 'நட்சத்திரம்')}: ${esc(nakName(c.janmaNakshatra.index))} · ${L('Rasi', 'ராசி')}: ${esc(rasiName(c.janmaRasi.index))}</div></div></div>
 
+    ${precisionNote(c)}${g.birthTimeNote ? `<p class="muted small">${esc(bi(g.birthTimeNote))}</p>` : ''}
     <div class="card glass"><div class="card-title">👕 ${L('Colour to wear today', 'இன்று அணிய வேண்டிய நிறம்')}</div>
       <div class="color-big">${swatch(g.today, true)}<div><b>${esc(bi(g.today))}</b><p class="small">${esc(bi(g.today.note))}</p></div></div>
       <div class="week-colors">${g.week.map((d) => `<div class="wc${d.weekday === new Date().getDay() ? ' now' : ''}">${swatch(d)}<span>${dayName(d.weekday)}</span></div>`).join('')}</div>
@@ -77,7 +78,7 @@ function renderGuide(sec) {
       <p class="small">⭐ ${L('Your birth-star deity', 'உங்கள் நட்சத்திர வழிபாட்டுத் தெய்வம்')}: <b>${esc(bi(g.ishta.starDeity))}</b></p>
       <p class="muted small">${L('How we found it', 'கணக்கு')}: ${esc(bi(g.ishta.why))}</p></div>
 
-    ${locked ? lockCard(L('Gemstones, your Siddhar, ayul balam and your personal mantra playlist are part of Premium.', 'ரத்தினங்கள், உங்கள் சித்தர், ஆயுள் பலம், தனிப்பட்ட மந்திரப் பட்டியல் பிரீமியத்தில் உள்ளன.')) : `
+    ${locked ? lockCard(L('Gemstones, your Siddhar and your personal mantra playlist are part of Premium.', 'ரத்தினங்கள், உங்கள் சித்தர், தனிப்பட்ட மந்திரப் பட்டியல் பிரீமியத்தில் உள்ளன.')) : `
     <div class="card glass"><div class="card-title">💎 ${L('Gemstones', 'ரத்தினங்கள்')}</div>
       <div class="mini-label">✅ ${L('Suitable for you', 'உங்களுக்கு ஏற்றவை')}</div>
       ${g.gems.good.map((x) => `<div class="factor"><span>${GLYPH[x.planet]} <b>${esc(bi(x.gem))}</b>${x.primary ? ` <span class="tag good">${L('Main', 'முதன்மை')}</span>` : ''}<br><small class="muted">${esc(bi(x.role))}</small></span></div>`).join('')}
@@ -91,18 +92,14 @@ function renderGuide(sec) {
       ${g.siddhar.second ? `<p class="small">➕ ${L('Also', 'மேலும்')}: <b>${esc(bi(g.siddhar.second))}</b> (${esc(bi(g.siddhar.second.place))})</p>` : ''}
       <p class="muted small">${esc(bi(g.siddhar.why))}</p><p class="small">${esc(bi(g.siddhar.howTo))}</p></div>
 
-    <div class="card glass"><div class="card-title">🌿 ${L('Ayul Balam (long-life strength)', 'ஆயுள் பலம்')}</div>
-      <div class="factor"><span>${esc(bi(g.ayul.text))}</span><span class="tag ${lvl[0]}">${lvl[1]}</span></div>
-      <details><summary class="small">${L('Why', 'காரணம்')}</summary>${g.ayul.reasons.map((r) => `<div class="small">• ${esc(bi(r))}</div>`).join('')}</details>
-      <p class="muted small">${L('We show strength only — never a number of years. Health is in your hands: good food, sleep and check-ups.', 'பலம் மட்டுமே காட்டப்படும் — ஆண்டுகள் அல்ல. ஆரோக்கியம் உங்கள் கையில்: நல்ல உணவு, உறக்கம், பரிசோதனை.')}</p></div>
-
     <div class="card glass"><div class="card-title"><span>🎧 ${L('My mantra playlist', 'என் மந்திரப் பாடல் பட்டியல்')}</span></div>
       <p class="muted small">${L('Made from your chart — listen in the morning, while travelling or before sleep.', 'உங்கள் ஜாதகத்திலிருந்து உருவானது — காலையில், பயணத்தில், உறங்கும் முன் கேளுங்கள்.')}</p>
       <button class="btn-gold" id="plAll">${guideUi.playing ? `⏹ ${L('Stop', 'நிறுத்து')}` : `▶️ ${L('Play all', 'அனைத்தையும் ஒலி')}`}</button>
       ${g.playlist.map((p, i) => `<div class="pl-item" id="pl-${i}"><button class="play-btn" data-pl="${i}" aria-label="${esc(L('Play', 'ஒலி'))}">▶</button>
         <div style="flex:1;min-width:0"><b>${esc(bi(p.title))}</b><div class="small">${esc(p.text)}</div><div class="muted small">${esc(bi(p.why))} · ×${p.repeat}</div></div><span class="pl-count" id="plc-${i}"></span></div>`).join('')}
       <p class="muted small">${L('Uses your phone\'s Tamil voice. If silent: Settings → Google Text-to-speech → install Tamil.', 'உங்கள் கைப்பேசியின் தமிழ் குரலைப் பயன்படுத்தும். ஒலிக்காவிட்டால்: Settings → Google Text-to-speech → தமிழ் நிறுவவும்.')}</p></div>`}
-    <div class="btn-row"><button class="chip-btn" data-go="parigaram">🪔 ${L('Parigaram', 'பரிகாரம்')}</button><button class="chip-btn" data-go="temples">🛕 ${L('Temples', 'கோவில்கள்')}</button><button class="chip-btn" data-go="analysis">📜 ${L('Full analysis', 'முழு ஆய்வு')}</button></div>`;
+    <div class="btn-row"><button class="chip-btn" data-go="parigaram">🪔 ${L('Parigaram', 'பரிகாரம்')}</button><button class="chip-btn" data-go="temples">🛕 ${L('Temples', 'கோவில்கள்')}</button><button class="chip-btn" data-go="analysis">📜 ${L('Full analysis', 'முழு ஆய்வு')}</button></div>
+    ${reportMeta()}`;
 
   $$('[data-gid]', sec).forEach((b) => b.addEventListener('click', () => { stopPlaylist(); guideUi.id = b.dataset.gid; renderGuide(sec); }));
   const playOne = async (i) => {
@@ -130,7 +127,7 @@ function renderGuide(sec) {
 }
 function stopPlaylist() { guideUi.playing = false; stopSpeaking(); keepAwake(false); $$('.pl-item').forEach((x) => x.classList.remove('playing')); }
 document.addEventListener('kj:screen', (e) => { if (e.detail !== 'guide' && guideUi.playing) stopPlaylist(); });
-registerScreen('guide', { render: renderGuide, parent: 'home', needsMember: true });
+registerScreen('guide', { render: renderGuide, parent: 'chart', needsMember: true });
 
 // ================================================================ PANCHANGAM
 // Soolam: direction to avoid travelling towards on each weekday, and the parigaram if travel is unavoidable.
@@ -147,7 +144,7 @@ const PALAN = {
   5: ['warn', 3, 'Think twice before decisions; children bring news.', 'முடிவுகளை யோசித்து எடுங்கள்; பிள்ளைகளால் செய்தி.'],
   6: ['good', 4, 'Obstacles clear, health improves, debts reduce.', 'தடைகள் விலகும், ஆரோக்கியம் சீராகும், கடன் குறையும்.'],
   7: ['good', 4, 'Good for partnerships, meetings and travel.', 'கூட்டு முயற்சி, சந்திப்பு, பயணம் நன்று.'],
-  8: ['bad', 1, 'Chandrashtamam — avoid new starts and arguments; pray and rest.', 'சந்திராஷ்டமம் — புதிய முயற்சி, வாக்குவாதம் தவிர்க்கவும்; வழிபட்டு ஓய்வெடுங்கள்.'],
+  8: ['warn', 2, 'Chandrashtamam (traditional) — go gently, choose calm words, rest well.', 'சந்திராஷ்டமம் (மரபு) — நிதானமாக, அமைதியான சொற்களுடன், நன்கு ஓய்வெடுங்கள்.'],
   9: ['warn', 4, 'Blessings of elders; a good day for prayer.', 'பெரியோர் ஆசி; வழிபாட்டிற்கு நல்ல நாள்.'],
   10: ['good', 5, 'Progress and praise at work.', 'தொழிலில் முன்னேற்றம், பாராட்டு.'],
   11: ['good', 5, 'Gains and good news.', 'லாபம், நல்ல செய்தி.'],
@@ -226,7 +223,7 @@ function renderPanchangam(sec) {
   $('#panBig').addEventListener('click', () => { state.settings.large = !state.settings.large; saveSettings(); renderPanchangam(sec); });
   $('#panSpeak').addEventListener('click', () => speak(ta() ? spokenTa : spokenEn));
   $('#panShare').addEventListener('click', async () => {
-    const text = `🙏 ${L('Kaippesi Jothidar — Panchangam', 'கைப்பேசி ஜோதிடர் — பஞ்சாங்கம்')}\n${ta() ? spokenTa : spokenEn}`;
+    const text = `🙏 ${L('Thunai — Panchangam', 'துணை — பஞ்சாங்கம்')}\n${ta() ? spokenTa : spokenEn}`;
     try { if (navigator.share) { await navigator.share({ text }); return; } } catch { return; }
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
   });
@@ -246,13 +243,13 @@ function vibeCard(m, snap) {
   const word = o.overall === 'good' ? L('🔥 Main-character day', '🔥 இன்று உங்கள் நாள்') : o.overall === 'warn' ? L('😌 Chill & steady', '😌 நிதானமான நாள்') : L('🧘 Low-key, self-care day', '🧘 அமைதியா இருங்க, ஓய்வு நாள்');
   const now = Date.now();
   const power = (snap.horai || []).find((h) => new Date(h.end).getTime() > now && ['Jupiter', 'Venus', g.lagnaLord].includes(h.lord));
-  const text = `${word} · ${L('Energy', 'ஆற்றல்')} ${energy}% · ${L('Colour', 'நிறம்')}: ${bi(g.today)} · ${L('Lucky no.', 'அதிர்ஷ்ட எண்')} ${g.numbers.birth}${power ? ` · ${L('Power hour', 'சக்தி நேரம்')} ${fmtTime(power.start, state.loc.tz)}` : ''} — ${L('Kaippesi Jothidar', 'கைப்பேசி ஜோதிடர்')}`;
+  const text = `${word} · ${L('Energy', 'ஆற்றல்')} ${energy}% · ${L('Colour', 'நிறம்')}: ${bi(g.today)} · ${L('Lucky no.', 'அதிர்ஷ்ட எண்')} ${g.numbers.birth}${power ? ` · ${L('Power hour', 'சக்தி நேரம்')} ${fmtTime(power.start, state.loc.tz)}` : ''} — ${L('Thunai', 'துணை')}`;
   return `<div class="card vibe" style="--vc:${g.today.hex}"><div class="vibe-top"><span class="mini-label">✨ ${L('Today\'s vibe', 'இன்றைய வைப்')} · ${esc(displayName(m))}</span><button class="link-btn vibe-share" data-text="${esc(text)}" aria-label="${esc(L('Share', 'பகிர்'))}">📤</button></div>
     <div class="vibe-word">${word}</div>
     <div class="vibe-bar"><i style="width:${energy}%"></i></div><div class="muted small">${L('Energy', 'ஆற்றல்')} ${energy}%</div>
     <div class="vibe-grid"><div>${swatch(g.today)}<span>${esc(bi(g.today))}</span></div><div><b>${g.numbers.birth}</b><span>${L('Lucky no.', 'அதிர்ஷ்ட எண்')}</span></div>
       ${power ? `<div><b style="color:${COLOR[power.lord]}">${GLYPH[power.lord]} ${fmtTime(power.start, state.loc.tz)}</b><span>${L('Power hour', 'சக்தி நேரம்')} · ${esc(planetName(power.lord))}</span></div>` : ''}</div></div>`;
 }
-registerScreen('panchangam', { render: renderPanchangam, parent: 'home', needsLoc: true });
+registerScreen('panchangam', { render: renderPanchangam, parent: 'plan', needsLoc: true });
 
 export { DAY_COLOR };

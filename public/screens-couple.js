@@ -5,7 +5,7 @@ import { marriageReport, partnershipReport } from './shared/couple.js';
 import { VERDICTS } from './shared/porutham.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, planetName, nakName, rasiName, fmtIsoDate, registerScreen, subHeader, aiTask, speak, toast,
-  displayName, saveFamily, placeName,
+  displayName, saveFamily, placeName, showExtras, birthArgs,
 } from './core.js';
 import { placeSearch } from './account.js';
 import { isLocked, lockCard } from './growth.js';
@@ -52,7 +52,7 @@ function resolve(slot, label) {
   const f = forms[slot];
   if (f.mode === 'family' && state.family.length) {
     const m = state.family.find((x) => x.id === f.memberId) || state.family.find((x) => x.relation !== 'organization');
-    return { member: m, chart: birthChart(m), name: { en: m.name, ta: displayName(m) } };
+    return { member: m, chart: birthChart(birthArgs(m)), name: { en: m.name, ta: displayName(m) } };
   }
   if (!f.name || !f.date || !f.time || f.lat == null) throw new Error(L(`Please enter ${label}'s name, birth date, time and place (pick the city from the list).`, `${label} — பெயர், பிறந்த தேதி, நேரம், இடம் (பட்டியலிலிருந்து நகரம்) உள்ளிடவும்.`));
   const m = { id: `${slot}_${f.date}_${f.time}`, name: f.name.trim(), gender: f.gender, date: f.date, time: f.time.length === 5 ? `${f.time}:00` : f.time, place: f.place, lat: Number(f.lat), lon: Number(f.lon), tz: Number(f.tz), relation: 'other' };
@@ -68,7 +68,7 @@ const bar = (s) => `<span class="gb-bar"><i class="${s >= 66 ? 'strong' : s >= 5
 const areaRows = (areas) => areas.map((x) => `<details class="area-row"><summary><span class="gb-name">${esc(bi(x.name))}</span>${bar(x.score)}<b>${x.score}</b></summary>${x.reasons.map((r) => `<div class="small">• ${esc(bi(r))}</div>`).join('')}</details>`).join('');
 const dasaPair = (y, names) => `${esc(bi(names[0]))}: ${GLYPH[y.a.md]}${esc(planetName(y.a.md))}/${esc(planetName(y.a.ad))} · ${esc(bi(names[1]))}: ${GLYPH[y.b.md]}${esc(planetName(y.b.md))}/${esc(planetName(y.b.ad))}`;
 function timelineHtml(rows, names) {
-  return `<div class="tl">${rows.map((y) => `<details class="tl-year ${y.level}"><summary><b>${y.year}</b><span class="tl-bar"><i style="width:${y.score}%"></i></span><span class="tag ${y.level === 'good' ? 'good' : y.level === 'steady' ? 'warn' : 'bad'}">${y.level === 'good' ? L('Good', 'நன்று') : y.level === 'steady' ? L('Steady', 'நிலை') : L('Care', 'கவனம்')}</span></summary>
+  return `<div class="tl">${rows.map((y) => `<details class="tl-year ${y.level}"><summary><b>${y.year}</b><span class="tl-bar"><i style="width:${y.score}%"></i></span><span class="tag ${y.level === 'good' ? 'good' : y.level === 'steady' ? 'warn' : 'neutral'}">${y.level === 'good' ? L('Good', 'நன்று') : y.level === 'steady' ? L('Steady', 'நிலை') : L('Care', 'கவனம்')}</span></summary>
     <div class="small muted">${dasaPair(y, names)}</div>${y.themes.map((t) => `<div class="small">${t.kind === 'good' ? '🌟' : '🤍'} ${esc(bi(t))}</div>`).join('') || `<div class="small">${L('An ordinary, steady year.', 'சாதாரணமான, நிலையான ஆண்டு.')}</div>`}</details>`).join('')}</div>`;
 }
 
@@ -77,7 +77,8 @@ const coupleUi = { wedding: null };
 function renderCouple(sec) {
   coupleUi.wedding ||= iso(new Date());
   const rerender = () => renderCouple(sec);
-  sec.innerHTML = `${subHeader(L('Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்'), L('Not only 10 poruthams — birth date, time and place of both: ayul balam, papa samyam, dasa sandhi, lagna, 7th/8th/5th/2nd houses, mana porutham and the years after the wedding', '10 பொருத்தம் மட்டுமல்ல — இருவரின் பிறந்த தேதி, நேரம், இடம்: ஆயுள் பலம், பாப சாம்யம், தசா சந்தி, லக்னம், 7/8/5/2 பாவங்கள், மனப் பொருத்தம், திருமணத்திற்குப் பின் ஆண்டுகள்'), 'home')}
+  sec.innerHTML = `${subHeader(L('Married life — traditional reading', 'திருமண வாழ்க்கை — மரபுப் பார்வை'), L('For couples who are already married or engaged: papa samyam, dasa sandhi, lagna, marriage houses, mana porutham and the years after the wedding — traditional context only', 'திருமணமான அல்லது நிச்சயமான தம்பதியருக்கு: பாப சாம்யம், தசா சந்தி, லக்னம், திருமண பாவங்கள், மனப் பொருத்தம், திருமணத்திற்குப் பின் ஆண்டுகள் — மரபுப் பின்னணி மட்டும்'))}
+    <div class="card glass"><p class="small">${L('Matching two adults before marriage? Use Marriage matching — it asks both people\'s consent first.', 'திருமணத்திற்கு முன் இருவரைப் பொருத்திப் பார்க்கிறீர்களா? திருமணப் பொருத்தத்தைப் பயன்படுத்துங்கள் — அது முதலில் இருவரின் ஒப்புதலைக் கேட்கும்.')}</p><button class="chip-btn" data-go="matching">💞 ${L('Marriage matching', 'திருமணப் பொருத்தம்')}</button></div>
     ${personBlock('bride', `👰 ${L('Bride', 'மணப்பெண்')}`, { gender: 'female' })}
     ${personBlock('groom', `🤵 ${L('Groom', 'மணமகன்')}`, { gender: 'male' })}
     <div class="card glass"><label>${L('Wedding date (done or planned)', 'திருமண தேதி (நடந்தது அல்லது திட்டமிட்டது)')}<input type="date" id="wedDate" value="${esc(coupleUi.wedding)}"></label>
@@ -111,9 +112,7 @@ function showCouple(bride, groom) {
       ${r.samyam.map((n) => `<div class="factor"><span>${esc(bi(n))}</span><b class="${n.ok ? 'pos' : 'neg'}">${n.ok ? '✓' : '!'}</b></div>`).join('')}</details>
     <div class="card glass"><div class="card-title">🛡️ ${L('Beyond the 10 poruthams', '10 பொருத்தத்திற்கும் மேலான ஆய்வு')} <span class="pill">${r.deep.passed}/${r.deep.checks.length}</span></div>
       ${r.deep.checks.map((c) => `<div class="deep-row"><span>${c.ok ? '✅' : '🟡'} <b>${esc(bi(c.name))}</b><br><small class="muted">${esc(bi(c.note))}</small></span></div>`).join('')}
-      <div class="mini-label" style="margin-top:10px">🌿 ${L('Ayul Balam (long-life strength)', 'ஆயுள் பலம்')}</div>
-      <div class="ayul-pair">${[[names[0], r.deep.ayul.bride], [names[1], r.deep.ayul.groom]].map(([n, a]) => `<div><b>${esc(bi(n))}</b><div><span class="tag ${a.level === 'strong' ? 'good' : a.level === 'medium' ? 'warn' : 'bad'}">${a.level === 'strong' ? L('Strong', 'வலுவானது') : a.level === 'medium' ? L('Medium', 'நடுத்தரம்') : L('Needs care', 'கவனம் தேவை')}</span></div><p class="small">${esc(bi(a.text))}</p></div>`).join('')}</div>
-      <p class="muted small">${L('Ayul is shown only as strength — never as years. Please also do a pre-marriage health check-up together.', 'ஆயுள் பலமாக மட்டுமே காட்டப்படும் — ஆண்டுகளாக அல்ல. திருமணத்திற்கு முன் இருவரும் மருத்துவப் பரிசோதனையும் செய்துகொள்ளுங்கள்.')}</p></div>
+      <p class="muted small">${L('Traditional checks only — they describe a tradition\'s view, not how a marriage will turn out.', 'மரபுச் சோதனைகள் மட்டுமே — ஒரு மரபின் பார்வை; திருமணம் எப்படி அமையும் என்பதல்ல.')}</p></div>
     ${locked ? lockCard(L('Mana porutham, children and wealth timing and the 25-year married-life timeline are part of Premium.', 'மனப் பொருத்தம், குழந்தை & செல்வ காலம், 25 ஆண்டு திருமண வாழ்க்கைக் காலவரிசை பிரீமியத்தில் உள்ளன.')) : `
     <div class="card glass"><div class="card-title">💗 ${L('Mana Porutham — mind & life compatibility', 'மனப் பொருத்தம் — மனமும் வாழ்க்கையும்')}</div>${areaRows(r.mana.areas)}
       ${r.mana.karmic ? `<p class="small">✨ ${L('Rahu/Ketu link your charts — a strong karmic bond; keep honesty and shared prayer at the centre.', 'ராகு/கேது உங்கள் ஜாதகங்களை இணைக்கிறது — வலுவான கர்ம பந்தம்; நேர்மையும் சேர்ந்த வழிபாடும் மையமாக இருக்கட்டும்.')}</p>` : ''}</div>
@@ -128,28 +127,28 @@ function showCouple(bride, groom) {
     ${r.strengths.length || r.challenges.length ? `<div class="card glass">${r.strengths.length ? `<p>💪 <b>${L('Strengths', 'பலங்கள்')}:</b> ${r.strengths.map((x) => esc(bi(x))).join(', ')}</p>` : ''}${r.challenges.length ? `<p>🌱 <b>${L('Grow together in', 'சேர்ந்து வளர வேண்டியவை')}:</b> ${r.challenges.map((x) => esc(bi(x))).join(', ')}</p>` : ''}</div>` : ''}
     <div class="section-title">📅 ${L('Year by year from the wedding', 'திருமணத்திலிருந்து ஆண்டுவாரியாக')}</div>${timelineHtml(r.timeline, names)}
     <div class="card glass"><div class="card-title">🪔 ${L('Parigaram for the couple', 'தம்பதியருக்கான பரிகாரம்')}</div>${r.remedies.map((x) => `<p class="small">• ${esc(bi(x))}</p>`).join('')}</div>
-    <button class="btn-gold" id="coupleRead">📜 ${L('Detailed reading by Kaippesi Jothidar', 'கைப்பேசி ஜோதிடரின் விரிவான பலன்')}</button>
-    <div class="card glass" id="coupleAi" hidden><div class="card-title"><span>📜 ${L('Reading', 'பலன்')}</span><button class="link-btn" id="coupleSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="coupleText"></div></div>`}
+    <button class="btn-gold" id="coupleRead">📜 ${L('Explain with Thunai', 'துணையுடன் விளக்கம்')}</button>
+    <div class="card glass" id="coupleAi" hidden><div class="card-title"><span>📜 ${L('Reading', 'பலன்')}</span><button class="link-btn" id="coupleSpeak" aria-label="${esc(L('Read aloud', 'வாசித்துக்காட்டு'))}">🔊</button></div><div class="reply" id="coupleText"></div></div>`}
     <p class="muted small center">${L('Marriage is made by love, respect and effort; astrology shows the seasons so you can prepare together.', 'திருமணம் அன்பு, மரியாதை, முயற்சியால் நிலைக்கிறது; ஜோதிடம் பருவங்களைக் காட்டி சேர்ந்து தயாராக உதவுகிறது.')}</p>`;
   $('#coupleRead')?.addEventListener('click', async () => {
     $('#coupleAi').hidden = false;
     const t = $('#coupleText');
     t.classList.add('typing');
     const context = {
-      bride: { name: names[0].en, star: bride.chart.janmaNakshatra.name, rasi: bride.chart.janmaRasi.name, lagna: bride.chart.lagna.rasiName },
-      groom: { name: names[1].en, star: groom.chart.janmaNakshatra.name, rasi: groom.chart.janmaRasi.name, lagna: groom.chart.lagna.rasiName },
+      bride: { name: names[0].en, star: bride.chart.janmaNakshatra.name, rasi: bride.chart.janmaRasi.name, lagna: bride.chart.lagna?.rasiName || 'not available' },
+      groom: { name: names[1].en, star: groom.chart.janmaNakshatra.name, rasi: groom.chart.janmaRasi.name, lagna: groom.chart.lagna?.rasiName || 'not available' },
       weddingDate: coupleUi.wedding, porutham: `${r.porutham.score}/10`, manaPorutham: r.mana.areas.map((x) => `${x.name.en}: ${x.score}`),
-      doshaSamyam: r.samyam.map((n) => n.en), deepChecks: r.deep.checks.map((c) => `${c.name.en}: ${c.ok ? 'ok' : 'care'} — ${c.note.en}`), ayul: { bride: r.deep.ayul.bride.level, groom: r.deep.ayul.groom.level }, childrenWindows: r.children.map((w) => `${iso(w.from)}..${iso(w.to)}`),
+      doshaSamyam: r.samyam.map((n) => n.en), deepChecks: r.deep.checks.map((c) => `${c.name.en}: ${c.ok ? 'ok' : 'care'} — ${c.note.en}`), childrenWindows: r.children.map((w) => `${iso(w.from)}..${iso(w.to)}`),
       goodYears: r.goodYears.map((x) => x.year), careYears: r.careYears.map((x) => ({ year: x.year, why: x.themes.filter((th) => th.kind === 'care').map((th) => th.en) })),
     };
-    await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: 'Give a warm, honest married-life reading for this couple from the wedding day: how their bond grows, children, wealth and home, the years that need extra care and exactly how to handle them, and simple parigarams. Be positive and practical; never frighten. About 300 words.' }],
-      fallbackText: [verdictText, ...r.timeline.slice(0, 10).map((x) => `${x.year}: ${x.themes.map((th) => bi(th)).join(' · ') || L('steady', 'நிலையானது')}`)].join('\n'), onText: (tx) => { t.textContent = tx; } });
+    await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: 'Give a warm, respectful married-life reflection for this couple as traditional context only: how they can grow together, home and money planning, the years tradition marks for extra care and how to support each other, and one simple optional practice. No predictions about health, lifespan, fertility or divorce. About 300 words.' }],
+      fallbackText: [verdictText, ...r.timeline.slice(0, 10).map((x) => `${x.year}: ${x.themes.map((th) => bi(th)).join(' · ') || L('steady', 'நிலையானது')}`)].join('\n'), member: bride.member, channel: 'couple', participants: [{ role: 'partner', ...(bride.member.date ? { dob: bride.member.date } : {}) }, { role: 'partner', ...(groom.member.date ? { dob: groom.member.date } : {}) }], onText: (tx) => { t.textContent = tx; } }).then((res) => showExtras(t, res.meta));
     t.classList.remove('typing');
   });
   $('#coupleSpeak')?.addEventListener('click', () => speak($('#coupleText').textContent));
   $('#coupleOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-registerScreen('couple', { render: renderCouple, parent: 'home' });
+registerScreen('couple', { render: renderCouple, parent: 'family' });
 
 // ================================================================ BUSINESS PARTNERS
 const bizUi = { start: null, companyId: '' };
@@ -182,7 +181,7 @@ function showPartners(a, b) {
   const start = new Date(Date.UTC(y, mo - 1, d, 6));
   const co = state.family.find((m) => m.id === bizUi.companyId);
   const names = [a.name, b.name];
-  const r = partnershipReport(a.chart, b.chart, { startDate: start, names, company: co ? birthChart(co) : null });
+  const r = partnershipReport(a.chart, b.chart, { startDate: start, names, company: co ? birthChart(birthArgs(co)) : null });
   const verdictText = { excellent: L('Excellent partnership — build boldly together', 'சிறந்த கூட்டு — தைரியமாக சேர்ந்து வளருங்கள்'), good: L('Good partnership — clear roles make it thrive', 'நல்ல கூட்டு — தெளிவான பொறுப்புகள் வளர்ச்சி தரும்'), structure: L('Workable with strong structure — written agreements and clear roles are essential', 'வலுவான அமைப்புடன் இயலும் — எழுத்து ஒப்பந்தமும் தெளிவான பொறுப்பும் அவசியம்') }[r.verdict];
   const locked = isLocked('predictions');
   const who = (x) => (x === 'both' ? L('Both', 'இருவரும்') : esc(bi(names[x === 'a' ? 0 : 1])));
@@ -202,6 +201,6 @@ function showPartners(a, b) {
     <p class="muted small center">${L('Use this with legal and financial advice; astrology guides timing and temperament.', 'சட்ட, நிதி ஆலோசனையுடன் பயன்படுத்தவும்; ஜோதிடம் நேரத்தையும் சுபாவத்தையும் காட்டும்.')}</p>`;
   $('#bizOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-registerScreen('partners', { render: renderPartners, parent: 'home' });
+registerScreen('partners', { render: renderPartners, parent: 'family' });
 
 export { rasiName, fmtIsoDate };

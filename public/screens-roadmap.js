@@ -3,7 +3,7 @@
 import { lifeRoadmap, ROAD_AREAS } from './shared/roadmap.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, monthName, activeMember, chartOf, registerScreen, subHeader,
-  speak, displayName, aiTask, saveFamily,
+  speak, displayName, aiTask, saveFamily, showExtras, reportMeta,
 } from './core.js';
 import { isLocked, lockCard } from './growth.js';
 import { remindBtn } from './remind.js';
@@ -67,6 +67,7 @@ function drawRoadmap(m) {
     <div class="card glass" id="rmAiBox" hidden><div class="reply" id="rmAiText"></div></div>`}
     <div class="btn-row"><button class="chip-btn" id="rmPrint">🖨️ ${L('Print / save as PDF', 'அச்சிடு / PDF ஆக சேமி')}</button><button class="chip-btn" data-go="guide">🧭 ${L('My Guide', 'என் வழிகாட்டி')}</button><button class="chip-btn" data-go="analysis">📜 ${L('Full analysis', 'முழு ஆய்வு')}</button></div>
     <p class="muted small center">${L('A road map shows the seasons of life; your effort, family and faith drive the journey.', 'வரைபடம் வாழ்க்கையின் பருவங்களைக் காட்டுகிறது; பயணத்தை நடத்துவது உங்கள் உழைப்பும் குடும்பமும் நம்பிக்கையும்.')}</p>`;
+  $('#rmBody').insertAdjacentHTML('beforeend', reportMeta());
   $('#rmSpeak').addEventListener('click', () => speak(spoken));
   $('#rmPrint').addEventListener('click', () => { $$('#rmBody details').forEach((d) => { d.open = true; }); window.print(); });
   $('#rmAi')?.addEventListener('click', async () => {
@@ -74,13 +75,13 @@ function drawRoadmap(m) {
     const t = $('#rmAiText');
     t.classList.add('typing');
     const context = {
-      person: { name: m.name, age: r.age, stage: r.stage.en, star: c.janmaNakshatra.name, lagna: c.lagna.rasiName },
+      person: { name: m.name, age: r.age, stage: r.stage.en, star: c.janmaNakshatra.name, lagna: c.lagna?.rasiName || 'not available (birth time unknown)' },
       periods: r.periods.map((p) => ({ dasa: `${p.md}/${p.ad}`, from: p.start.toISOString().slice(0, 7), to: p.end.toISOString().slice(0, 7), level: p.level, focus: p.focus, scores: p.scores, transit: p.notes.map((n) => n.en) })),
       milestones: r.milestones.map((x) => ({ event: x.name.en, from: x.from.toISOString().slice(0, 7), to: x.to.toISOString().slice(0, 7) })),
     };
-    await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: 'Act as my life Guru. From this road map, give me a warm, practical 10-year plan: what to focus on in each period (career, money, family, health, learning), the best windows for big decisions, how to prepare for the care periods, and simple daily habits and parigarams. Positive, no fear. About 300 words.' }],
-      fallbackText: r.now.map((x) => bi(x)).join('\n'), onText: (tx) => { t.textContent = tx; } });
+    await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: 'From this traditional road map, give me a warm, practical 10-year plan: what to focus on in each period (career, money, family, learning), as traditional context only — not guaranteed events. Add simple daily habits and one optional free practice. Positive, no fear, no health or lifespan predictions. About 300 words.' }],
+      fallbackText: r.now.map((x) => bi(x)).join('\n'), member: m, channel: 'roadmap', onText: (tx) => { t.textContent = tx; } }).then((res) => showExtras(t, res.meta));
     t.classList.remove('typing');
   });
 }
-registerScreen('roadmap', { render: renderRoadmap, parent: 'home', needsMember: true });
+registerScreen('roadmap', { render: renderRoadmap, parent: 'chart', needsMember: true });

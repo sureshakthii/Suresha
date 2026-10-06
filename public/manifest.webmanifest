@@ -1,11 +1,11 @@
 {
-  "name": "கைப்பேசி ஜோதிடர் — Kaippesi Jothidar",
-  "short_name": "கைப்பேசி ஜோதிடர்",
-  "description": "உங்கள் வாழ்க்கையின் வழிகாட்டி — Your guide for life: Jathagam, Panchangam, Porutham, Muhurtham, Parigaram.",
+  "name": "துணை — Thunai",
+  "short_name": "துணை",
+  "description": "உங்கள் வாழ்க்கையின் வழிகாட்டி — Your guide for life: today, your chart, family, plans and Ask Thunai.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#06031a",
+  "background_color": "#f6f1e8",
   "theme_color": "#0b0620",
   "icons": [
     {

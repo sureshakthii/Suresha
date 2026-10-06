@@ -15,7 +15,7 @@ async function loadPlans(currency) {
 
 async function renderPlans(sec, params = {}) {
   const currency = params.currency || (inIndia() ? 'INR' : 'USD');
-  sec.innerHTML = `${subHeader(L('Kaippesi Premium', 'கைப்பேசி பிரீமியம்'), L('Unlimited answers, life-timing predictions and full readings for your whole family', 'வரம்பற்ற பதில்கள், வாழ்க்கை நேரக் கணிப்பு, முழு குடும்பத்திற்கும் விரிவான பலன்'), 'more')}
+  sec.innerHTML = `${subHeader(L('Thunai Premium', 'துணை பிரீமியம்'), L('Unlimited answers, life-timing predictions and full readings for your whole family', 'வரம்பற்ற பதில்கள், வாழ்க்கை நேரக் கணிப்பு, முழு குடும்பத்திற்கும் விரிவான பலன்'), 'more')}
     <div class="seg"><button data-cur="INR" class="${currency === 'INR' ? 'sel' : ''}">₹ ${L('India', 'இந்தியா')}</button><button data-cur="USD" class="${currency === 'USD' ? 'sel' : ''}">$ ${L('Abroad', 'வெளிநாடு')}</button></div>
     ${trialBanner()}${params.redeem ? redeemBox() : ''}<div id="myPlan"></div><div id="planList"><div class="loader"><i></i><i></i><i></i></div></div>`;
   $$('[data-cur]', sec).forEach((b) => b.addEventListener('click', () => renderPlans(sec, { ...params, currency: b.dataset.cur })));
@@ -24,7 +24,7 @@ async function renderPlans(sec, params = {}) {
     api('/api/billing/me').then((me) => {
       if (!$('#myPlan')) return;
       $('#myPlan').innerHTML = `<div class="card glass"><b>${L('Your plan', 'உங்கள் திட்டம்')}: ${me.plan === 'free' ? L('Free', 'இலவசம்') : me.plan.startsWith('family') ? L('Family', 'குடும்பம்') : L('Premium', 'பிரீமியம்')}</b>${me.expiresAt ? ` <span class="muted small">${L('until', 'வரை')} ${fmtIsoDate(new Date(me.expiresAt).toISOString().slice(0, 10))}</span>` : ''}
-        ${me.plan === 'free' && me.aiFreeDaily ? `<p class="small muted">${L('Jothidar answers used today', 'இன்று பயன்படுத்திய பதில்கள்')}: ${me.aiUsedToday} / ${me.aiFreeDaily}</p>` : ''}</div>`;
+        ${me.plan === 'free' && me.aiFreeDaily ? `<p class="small muted">${L('Ask Thunai answers used today', 'இன்று பயன்படுத்திய பதில்கள்')}: ${me.aiUsedToday} / ${me.aiFreeDaily}</p>` : ''}</div>`;
     }).catch(() => {});
   }
   try {
@@ -50,7 +50,7 @@ async function buy(plan, currency) {
     if (r.gateway === 'razorpay') {
       await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://checkout.razorpay.com/v1/checkout.js'; s.onload = res; s.onerror = rej; document.head.append(s); });
       new window.Razorpay({
-        key: r.keyId, amount: r.amount, currency: r.currency, order_id: r.razorpayOrderId, name: 'கைப்பேசி ஜோதிடர்', description: plan, theme: { color: '#f5b83d' },
+        key: r.keyId, amount: r.amount, currency: r.currency, order_id: r.razorpayOrderId, name: 'துணை — Thunai', description: plan, theme: { color: '#f5b83d' },
         handler: async (resp) => {
           try { await api('/api/billing/verify', { method: 'POST', body: { subscriptionId: r.subscriptionId, ...resp } }); toast(L('Welcome to Premium 🙏', 'பிரீமியத்திற்கு நல்வரவு 🙏')); go('plans'); } catch (e) { toast(e.message); }
         },

@@ -1,10 +1,20 @@
-// App-shell cache so the Jathagam and live Panchangam work offline. API calls always go to the network.
-const CACHE = 'kj-v12';
-const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/screens-world.js',
-  '/screens-life.js', '/screens-plans.js', '/screens-couple.js', '/screens-guide.js', '/remind.js', '/screens-roadmap.js', '/screens-depth.js', '/screens-extra.js', '/screens-peyarchi.js', '/screens-health.js', '/growth.js', '/legal.js', '/account.js', '/icons.js',
-  '/shared/astro.js', '/shared/prasna.js', '/shared/narrator.js', '/shared/places.js', '/shared/tamilcal.js', '/shared/porutham.js',
-  '/shared/remedies.js', '/shared/special.js', '/shared/analysis.js', '/shared/relations.js', '/shared/temples.js', '/shared/mantras.js',
-  '/shared/predict.js', '/shared/packages.js', '/shared/couple.js', '/shared/lifecheck.js', '/shared/personal.js', '/shared/temple-info.js', '/shared/roadmap.js', '/shared/varga.js', '/shared/ashtakoota.js', '/shared/numerology.js', '/shared/peyarchi.js', '/shared/health.js', '/shared/datetime.js', '/shared/engine-contract.js', '/vendor/astronomy-engine.js', '/icon.svg', '/logo.svg', '/manifest.webmanifest'];
+// Thunai app-shell cache so charts, calendars and planners work offline. API calls always go to the network.
+// SHELL must list every module reachable by import from /app.js (checked by test/ui-precache.test.js).
+const CACHE = 'kj-v13';
+const SHELL = ['/', '/index.html', '/styles.css', '/manifest.webmanifest', '/icon.svg', '/logo.svg', '/icon-192.png',
+  '/account.js', '/app.js', '/core.js', '/growth.js', '/icons.js', '/legal.js',
+  '/remind.js', '/screens-couple.js', '/screens-depth.js', '/screens-extra.js', '/screens-guide.js', '/screens-health.js',
+  '/screens-life.js', '/screens-main.js', '/screens-peyarchi.js', '/screens-plans.js', '/screens-roadmap.js', '/screens-thunai.js',
+  '/screens-tools.js', '/screens-world.js',
+  '/shared/analysis.js', '/shared/ashtakoota.js', '/shared/astro.js', '/shared/couple.js', '/shared/datetime.js',
+  '/shared/engine-contract.js', '/shared/health.js', '/shared/lifecheck.js', '/shared/mantras.js', '/shared/marriage-context.js',
+  '/shared/narrator.js', '/shared/numerology.js', '/shared/packages.js', '/shared/personal.js', '/shared/peyarchi.js',
+  '/shared/places.js', '/shared/porutham.js', '/shared/prasna.js', '/shared/predict.js', '/shared/relations.js',
+  '/shared/remedies.js', '/shared/roadmap.js', '/shared/rules/chevvai.js', '/shared/rules/core.js', '/shared/rules/define.js',
+  '/shared/rules/disputed.js', '/shared/rules/profiles.js', '/shared/rules/registry.js', '/shared/rules/roles.js', '/shared/rules/yogas.js',
+  '/shared/safeguards.js', '/shared/special.js', '/shared/tamilcal.js', '/shared/temple-info.js', '/shared/temple-planner.js',
+  '/shared/temples.js', '/shared/themes.js', '/shared/varga.js', '/shared/weather.js',
+  '/vendor/astronomy-engine.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -29,7 +39,7 @@ self.addEventListener('fetch', (e) => {
 self.addEventListener('push', (e) => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch { data = { body: e.data && e.data.text() }; }
-  e.waitUntil(self.registration.showNotification(data.title || 'கைப்பேசி ஜோதிடர்', {
+  e.waitUntil(self.registration.showNotification(data.title || 'துணை', {
     body: data.body || '',
     icon: '/icon-192.png',
     badge: '/icon-192.png',

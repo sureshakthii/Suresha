@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import express from 'express';
 import { getDb } from './db.js';
+import { requireAdmin as adminRole, audit } from './admin.js';
 import { currentUser } from './auth.js';
 import { PLANS, grantComplimentary, setBillingClock } from './billing.js';
 
@@ -158,14 +159,8 @@ function requireUser(req, res, next) {
   next();
 }
 
-function requireAdmin(req, res, next) {
-  const token = env('ADMIN_TOKEN');
-  if (!token) return res.status(503).json({ error: 'Admin is not configured (set ADMIN_TOKEN)' });
-  const given = req.get('x-admin-token');
-  if (!given) return res.status(401).json({ error: 'Admin token required' });
-  if (!safeEqual(given, token)) return res.status(403).json({ error: 'Invalid admin token' });
-  next();
-}
+// Named, role-based admin tokens with lock-out (server/admin.js).
+const requireAdmin = adminRole('support');
 
 const handle = (fn) => async (req, res, next) => {
   try {
@@ -313,6 +308,7 @@ export function growthRouter() {
     while (d.prepare('SELECT 1 FROM gift_codes WHERE code = ?').get(code));
     d.prepare(`INSERT INTO gift_codes (code, plan, hours, max_uses, uses, note, created_at, expires_at)
       VALUES (?, ?, ?, ?, 0, ?, ?, ?)`).run(code, b.plan, hours, maxUses, note, now(), expiresAt);
+    audit(req, 'giftcode.create', code, { plan: b.plan, hours, maxUses });
     res.status(201).json({ code, giftCode: giftOut(d.prepare('SELECT * FROM gift_codes WHERE code = ?').get(code)) });
   }));
 
@@ -405,6 +401,7 @@ export function growthRouter() {
     if (!row) return res.status(404).json({ error: 'Feedback not found' });
     const reply = b.reply === undefined ? row.reply : text(b.reply, 'reply', { max: 1000 });
     d.prepare('UPDATE feedback SET status = ?, reply = ? WHERE id = ?').run(b.status ?? row.status, reply, row.id);
+    audit(req, 'feedback.update', String(row.id), { status: b.status ?? row.status });
     res.json({ feedback: feedbackOut(d.prepare('SELECT f.*, u.name FROM feedback f LEFT JOIN users u ON u.id = f.user_id WHERE f.id = ?').get(row.id)) });
   }));
 

@@ -161,7 +161,6 @@ export function dasaThemes(chart, { from = new Date(), count = 3, traditionProfi
         optionalPractice: { ...def.practice, optional: true },
         alwaysSensible: ALWAYS_SENSIBLE,
         positiveNote: POSITIVE_NOTE,
-        awaiting: approved?.ruleIds?.length ? null : T('Awaiting a reviewing astrologer\'s cited rule predicates.', 'மதிப்பாய்வு செய்யும் ஜோதிடரின் ஆதாரபூர்வ விதிகளுக்குக் காத்திருக்கிறது.'),
       });
     }
     if (out.length >= count) break;

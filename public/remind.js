@@ -5,7 +5,7 @@
 //   2. Server push (when the morning alarm is on) — the reminder is synced with the push scheduler.
 //   3. In-app: due reminders show on the home screen, and as a browser notification while the app is open.
 //   4. "Add to phone calendar" (.ics with alarm) — works on every phone.
-import { state, $, L, esc, store, toast, fmtTime, monthName, STATIC, api, activeMember, displayName } from './core.js';
+import { state, $, L, esc, store, toast, fmtTime, monthName, STATIC, api, activeMember, displayName, BRAND } from './core.js';
 import { icon } from './icons.js';
 
 const KEY = 'kj_reminders';
@@ -52,7 +52,7 @@ function openSheet(item) {
     await addReminder({ title: item.title, place: item.place, eventAt: at, alarmAt: o.when });
     close();
   }));
-  box.querySelector('[data-ics]').addEventListener('click', () => { downloadIcs([{ title: item.title, start: at, place: item.place, alarm: '-PT60M' }], 'kaippesi-reminder.ics'); });
+  box.querySelector('[data-ics]').addEventListener('click', () => { downloadIcs([{ title: item.title, start: at, place: item.place, alarm: '-PT60M' }], 'thunai-reminder.ics'); });
 }
 
 /** Save a reminder and schedule it everywhere we can. */
@@ -68,7 +68,7 @@ export async function addReminder({ title, place = '', eventAt, alarmAt }) {
     try {
       const perm = await LN.requestPermissions();
       if (perm.display === 'granted') {
-        await LN.schedule({ notifications: [{ id: Number.parseInt(id, 36) % 2147483000, title: L('Thunai', 'துணை'), body: `🔔 ${title}`, schedule: { at: new Date(alarmAt), allowWhileIdle: true } }] });
+        await LN.schedule({ notifications: [{ id: Number.parseInt(id, 36) % 2147483000, title: L(BRAND.name, BRAND.nameTa), body: `🔔 ${title}`, schedule: { at: new Date(alarmAt), allowWhileIdle: true } }] });
         how = L('Alarm set on this phone', 'இந்தக் கைப்பேசியில் அலாரம் அமைக்கப்பட்டது');
       }
     } catch { /* fall back */ }
@@ -130,14 +130,14 @@ export function scheduleInApp() {
     timers.set(r.id, setTimeout(() => {
       const body = `🔔 ${r.title}`;
       if ('Notification' in window && Notification.permission === 'granted') {
-        navigator.serviceWorker?.ready.then((reg) => reg.showNotification(L('Thunai', 'துணை'), { body, tag: `rem-${r.id}` })).catch(() => toast(body, 8000));
+        navigator.serviceWorker?.ready.then((reg) => reg.showNotification(L(BRAND.name, BRAND.nameTa), { body, tag: `rem-${r.id}` })).catch(() => toast(body, 8000));
       } else toast(body, 8000);
     }, ms));
   }
 }
 
 /** Calendar file with alarms — works on every phone. */
-export function downloadIcs(events, filename = 'kaippesi.ics') {
+export function downloadIcs(events, filename = 'thunai.ics') {
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
   const clean = (x) => String(x || '').replace(/[,;\n]/g, ' ');

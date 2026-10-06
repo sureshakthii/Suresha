@@ -1,3 +1,4 @@
+import { BRAND } from '../shared/brand.js';
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import webpush from 'web-push';
@@ -249,7 +250,7 @@ test('push: morning alarm once per local day; trip reminder 60 minutes before', 
   assert.equal((await P.runPushTick(at(3, 0, 29), send)).sent, 0); // 05:59 IST
   assert.equal((await P.runPushTick(at(3, 0, 30), send)).sent, 1); // 06:00 IST
   assert.equal(sent[0].endpoint, sub().endpoint);
-  assert.equal(sent[0].title, 'Thunai · Good morning');
+  assert.equal(sent[0].title, `${BRAND.name} · Good morning`);
   assert.equal(sent[0].tag, 'morning-2026-10-03');
   assert.equal(sent[0].url, '/');
   assert.match(sent[0].body, /^Suresh, Today is \w+ \d+ · Star: \w+ · Rahu Kalam: \d+:\d\d [AP]M – \d+:\d\d [AP]M/);
@@ -272,7 +273,7 @@ test('push: morning alarm once per local day; trip reminder 60 minutes before', 
 test('push: Tamil morning message includes festivals', () => {
   // Deepavali 2025 in Chennai.
   const m = P.morningMessage({ tz: 5.5, lat: 13.0827, lon: 80.2707, lang: 'ta', name: '' }, '2025-10-20');
-  assert.equal(m.title, 'துணை · காலை வணக்கம்');
+  assert.equal(m.title, `${BRAND.nameTa} · காலை வணக்கம்`);
   assert.match(m.body, /ஐப்பசி 4/);
   assert.match(m.body, /நட்சத்திரம்: அஸ்தம்/);
   assert.match(m.body, /ராகு காலம்: 7:28 AM – 8:56 AM/);
@@ -291,7 +292,7 @@ test('push: 410 from the push service removes the subscription', async () => {
   const got = [];
   P.setPushSender(async (_s, p) => { got.push(p); });
   assert.equal((await post('/api/push/test', { endpoint: sub(2).endpoint })).status, 200);
-  assert.deepEqual(got[0], { title: 'துணை', body: 'Notifications are working', url: '/', tag: 'test' });
+  assert.deepEqual(got[0], { title: BRAND.nameTa, body: 'Notifications are working', url: '/', tag: 'test' });
   P.setPushSender(gone);
   assert.equal((await post('/api/push/test', { endpoint: sub(2).endpoint })).status, 410);
   assert.equal(rows().length, 0);

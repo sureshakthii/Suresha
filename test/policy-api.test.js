@@ -133,3 +133,35 @@ test('safety resources endpoint and admin metrics (no raw text)', async () => {
     assert.doesNotMatch(s, /fifteen|saaganum|1946|Chennai|Raman/);
   } finally { delete process.env.ADMIN_TOKEN; }
 });
+
+test('/api/ai/chat with AI: a validated draft is sent whole (SSE policy → delta → done); an unsafe draft falls back to the app answer', async () => {
+  const { setModelCallerForTests } = await import('../server/ai.js');
+  process.env.ANTHROPIC_API_KEY = 'test-key-not-used';
+  const context = { verifiedChartFacts: { dasa: 'Jupiter Mahadasa until 2031' }, builtInAnswer: `Your career grows steadily. ${'Steady effort and learning bring recognition over the coming years. '.repeat(3)}\nJupiter supports learning.` };
+  let usage = 0;
+  try {
+    setModelCallerForTests(async ({ messages, onUsage }) => {
+      usage += 1; onUsage?.({ input_tokens: 10, output_tokens: 5, model: 'test' });
+      assert.match(messages[0].content, /C\.builtInAnswer\.1/, 'long app answers are split into citable facts');
+      assert.match(messages[0].content, /NOW\.date/);
+      return JSON.stringify({ text: 'Your question: career. Jupiter Mahadasa supports learning.', claims: [{ text: 'Jupiter Mahadasa runs until 2031.', evidenceIds: ['C.verifiedChartFacts.dasa'] }], uncertainty: 'Birth time matters.', nextSteps: [], optionalPractice: '', humanReview: false });
+    });
+    const res = await post('/api/ai/chat', { context, messages: [{ role: 'user', content: 'How is my career?' }], lang: 'en', fallbackText: 'fallback' }, { Accept: 'text/event-stream' });
+    const events = sse(await res.text());
+    assert.deepEqual(events.map((e) => e.event), ['policy', 'delta', 'done']);
+    assert.equal(events[1].data.text, 'Your question: career. Jupiter Mahadasa supports learning.');
+    assert.equal(events[2].data.source, 'ai');
+    assert.equal(events[0].data.validation, 'valid');
+    assert.deepEqual(events[0].data.evidence.map((e) => e.id), ['C.verifiedChartFacts.dasa']);
+    assert.equal(usage, 1);
+
+    setModelCallerForTests(async () => JSON.stringify({ text: 'You will die at 70.', claims: [], uncertainty: '', nextSteps: [], optionalPractice: '', humanReview: false }));
+    const bad = await (await post('/api/ai/chat', { context, messages: [{ role: 'user', content: 'How is my career?' }], lang: 'en', fallbackText: 'fallback' })).json();
+    assert.equal(bad.reply, 'fallback');
+    assert.equal(bad.source, 'rules');
+    assert.equal(bad.validation, 'invalid');
+  } finally {
+    setModelCallerForTests(null);
+    delete process.env.ANTHROPIC_API_KEY;
+  }
+});

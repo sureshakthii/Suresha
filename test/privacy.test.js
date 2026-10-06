@@ -1,3 +1,5 @@
+// Privacy: export, clearing saved profiles and account deletion (adapted after the merge to the previous
+// app's API: GET /api/me/export returns { account, savedData, ... } and DELETE /api/me deletes the account).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -33,16 +35,14 @@ test('export returns the saved profiles; requires sign-in', async () => {
   const res = await req('GET', '/api/me/export', undefined, cookie);
   assert.equal(res.status, 200);
   const out = await res.json();
-  assert.equal(out.user.email, 'export@example.com');
-  assert.deepEqual(out.records.profiles, { family: [{ name: 'Amma' }] });
+  assert.equal(out.account.email, 'export@example.com');
+  assert.deepEqual(out.savedData, { family: [{ name: 'Amma' }] });
 });
 
-test('delete-account needs explicit confirmation, then erases the user and ends the session', async () => {
+test('account deletion erases the user and ends the session', async () => {
   const cookie = await login('delete@example.com');
   await req('PUT', '/api/me/data', { data: { family: [{ name: 'Appa' }] } }, cookie);
-  assert.equal((await req('POST', '/api/me/delete-account', {}, cookie)).status, 400);
-  const res = await req('POST', '/api/me/delete-account', { confirm: 'DELETE' }, cookie);
-  assert.equal(res.status, 200);
+  assert.equal((await req('DELETE', '/api/me', undefined, cookie)).status, 200);
   assert.equal((await req('GET', '/api/me/data', undefined, cookie)).status, 401);
   // Signing in again creates a fresh account with no old data.
   const again = await login('delete@example.com');

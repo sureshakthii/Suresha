@@ -1,3 +1,4 @@
+import { BRAND } from '../shared/brand.js';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +12,9 @@ import { pushRouter, startPushScheduler } from './push.js';
 import { marketRouter } from './market.js';
 import { billingEnforced, billingRouter, checkAiQuota, recordAiUsage } from './billing.js';
 import { growthRouter } from './growth.js';
+import { rateLimit, requireAdmin, auditLog } from './admin.js';
+import { businessMetrics, recordAiCost } from './metrics.js';
+import { startBackupSchedule } from './backup.js';
 import { tamilMonth } from '../shared/tamilcal.js';
 import { isValidZone, zonedToUtc } from '../shared/datetime.js';
 import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
@@ -58,17 +62,21 @@ function parseLoc(src) {
 
 const TIME_PRECISIONS = ['exact', 'approximate', 'unknown'];
 
+/**
+ * Birth details. Optional `zone` (IANA name, e.g. Asia/Kolkata): when `tz` is missing the zone's offset on the
+ * birth date is used. Optional `timePrecision` exact | approximate | unknown: an unknown time needs no clock
+ * time (the engine computes at 12:00 and gives no Lagna).
+ */
 function parseBirth(b) {
   if (!b || typeof b !== 'object') throw new BadRequest('Missing birth details');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) throw new BadRequest('Invalid date (YYYY-MM-DD)');
   const timePrecision = b.timePrecision == null ? 'exact' : String(b.timePrecision);
   if (!TIME_PRECISIONS.includes(timePrecision)) throw new BadRequest('Invalid timePrecision (exact | approximate | unknown)');
-  // An unknown birth time needs no clock time; the engine computes at noon and gives no Lagna.
   const time = timePrecision === 'unknown' && !b.time ? '12:00' : b.time;
   if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time || '')) throw new BadRequest('Invalid time (HH:MM)');
   if (b.zone != null && !isValidZone(String(b.zone))) throw new BadRequest('Invalid time zone (IANA name such as Asia/Kolkata)');
-  // With a zone, the numeric tz is optional: the zone's offset on the birth date is used.
-  const loc = parseLoc(b.zone != null && b.tz == null ? { ...b, tz: zonedToUtc(b.date, time, String(b.zone)).offsetMinutes / 60 } : b);
+  const loc = parseLoc(b.zone != null && (b.tz === undefined || b.tz === null || b.tz === '')
+    ? { ...b, tz: zonedToUtc(b.date, time, String(b.zone)).offsetMinutes / 60 } : b);
   return {
     name: String(b.name || 'Guest').slice(0, 80),
     place: String(b.place || loc.name || '').slice(0, 120),
@@ -82,8 +90,16 @@ export function createApp() {
   const app = express();
   if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
   app.use('/api/billing/stripe/webhook', express.raw({ type: '*/*', limit: '256kb' })); // Stripe signs the raw bytes
+  app.use('/api/billing/razorpay/webhook', express.raw({ type: '*/*', limit: '256kb' })); // Razorpay signs the raw bytes
   app.use('/api/me/data', express.json({ limit: '256kb' })); // saved family profiles can be larger
   app.use(express.json({ limit: '64kb' }));
+  // Basic security headers and per-IP rate limits (in-memory; use a shared store with several instances).
+  app.use((_req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin'); res.setHeader('X-Frame-Options', 'SAMEORIGIN'); next(); });
+  if (process.env.RATE_LIMITS !== 'off') {
+    app.use(['/api/chart', '/api/places', '/api/weather', '/api/panchang', '/api/calendar'], rateLimit({ windowMs: 60000, max: Number(process.env.RATE_READ_PER_MIN) || 120 }));
+    const writes = rateLimit({ windowMs: 10 * 60000, max: Number(process.env.RATE_WRITE_PER_10MIN) || 30 });
+    app.use(['/api/store/orders', '/api/requests', '/api/billing/redeem', '/api/billing/checkout', '/api/billing/restore'], (req, res, next) => (req.method === 'POST' ? writes(req, res, next) : next()));
+  }
   app.use('/api', authRouter());
   app.use('/api', weatherRouter());
   app.use('/api', pushRouter());
@@ -93,6 +109,8 @@ export function createApp() {
   app.use('/api', policyRouter());
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, ai: aiEnabled() }));
+  app.get('/api/admin/metrics', requireAdmin('viewer'), (req, res) => res.json(businessMetrics({ days: Math.min(365, Math.max(1, Number(req.query.days) || 30)) })));
+  app.get('/api/admin/audit', requireAdmin('owner'), (req, res) => res.json({ audit: auditLog(Number(req.query.limit) || 200) }));
 
   app.get('/api/categories', (_req, res) => {
     res.json(CATEGORIES.map(({ id, icon, en, ta }) => ({ id, icon, en, ta })));
@@ -121,10 +139,11 @@ export function createApp() {
   });
 
   /**
-   * Ask the Jothidar (Prasnam). Body: { category, question?, lang?, loc:{lat,lon,tz,name}, birth?:{date,time,lat,lon,tz,relation?,...},
+   * Ask the Jothidar (Prasnam). Body: { category, question?, lang?, loc:{lat,lon,tz,name}, birth?:{date,time,lat,lon,tz,...},
    *   speaker?, subject?, participants?, sessionFlags?, sessionId?, country? } — see docs/AI-SAFETY-POLICY.md.
-   * Policy runs FIRST: when astrology is not allowed no chart or Prasna is computed and a reviewed template is returned.
-   * Streams Server-Sent Events when the client accepts text/event-stream (validated text arrives as one delta), else JSON.
+   * Policy runs FIRST: when astrology is not appropriate no chart or Prasna is computed and a reviewed answer
+   * (with help contacts where needed) is returned. Otherwise SSE: evaluation → policy → delta (the whole,
+   * validated reply) → done. JSON without Accept: text/event-stream.
    */
   app.post('/api/ask', async (req, res) => {
     const { category, question = '', lang = 'en' } = req.body || {};
@@ -134,14 +153,14 @@ export function createApp() {
     const q = String(question).slice(0, 500);
     const wantsStream = (req.headers.accept || '').includes('text/event-stream');
     const started = Date.now();
-    const { intent, ctx: pctx, decision } = await evaluatePolicy({ body: req.body, user: currentUser(req), turns: q.trim() ? [q] : [], lang, category });
+    const user = currentUser(req);
+    const { intent, ctx: pctx, decision } = await evaluatePolicy({ body: req.body, user, turns: q.trim() ? [q] : [], lang, category });
 
     if (!decision.allowAstrology) {
       const t = templateAnswer(decision, pctx, lang);
       const policy = publicPolicy(decision, pctx);
       audit('ask', { decision, ctx: pctx, intent, source: 'policy', latencyMs: Date.now() - started });
-      const payload = { category, route: decision.route, reply: t.text, source: 'policy', policy, resources: t.resources };
-      if (!wantsStream) return res.json(payload);
+      if (!wantsStream) return res.json({ category, route: decision.route, reply: t.text, source: 'policy', policy, resources: t.resources });
       const send = openStream(res);
       send('policy', { ...policy, resources: t.resources });
       send('delta', { text: t.text });
@@ -155,7 +174,7 @@ export function createApp() {
     const profile = chart && {
       janmaNakshatraName: chart.janmaNakshatra.name,
       janmaRasiName: chart.janmaRasi.name,
-      lagnaName: chart.lagna.rasiName,
+      lagnaName: chart.lagna?.rasiName ?? null,
       currentDasa: chart.dasa.current && `${chart.dasa.current.lord} Dasa / ${chart.dasa.currentBhukti?.lord} Bhukti`,
     };
     const ctx = buildContext({ evaluation, question: q, category, lang, profile, loc });
@@ -175,7 +194,10 @@ export function createApp() {
 
     const send = wantsStream ? openStream(res) : null;
     send?.('evaluation', summary); // deterministic engine output — safe to show before the explanation
-    const reply = await generateReply({ ctx, evaluation, lang, decision, evidence, practicalNote: note });
+    const reply = await generateReply({
+      ctx, evaluation, lang, decision, evidence, practicalNote: note,
+      onUsage: (u) => recordAiCost({ userId: user?.id || null, task: 'ask', model: u.model, usage: u }),
+    });
     // Deadline-first: the practical note always leads (the rule-based narrator already includes it).
     const narratorHasNote = Boolean(DEADLINE_FIRST[category] || evaluation.practicalFirst);
     const text = note && (reply.source === 'ai' || !narratorHasNote) ? `${note}\n\n${reply.text}` : reply.text;
@@ -233,8 +255,10 @@ export function createApp() {
   /**
    * AI tasks: POST /api/ai/chat | /api/ai/porutham | /api/ai/names
    * Body: { context, messages?:[{role,content}], lang, fallbackText, birth?, speaker?, subject?, participants?,
-   *   sessionFlags?, sessionId?, country?, loc? } — SSE like /api/ask (policy → delta (validated, whole) → done).
-   * Safety/decline/clarify answers are reviewed templates: no chart work, no model call, no login or quota needed.
+   *   sessionFlags?, sessionId?, country?, loc? } — SSE: policy → delta (the whole, validated reply) → done.
+   * Safety / decline / clarify answers are reviewed templates: no chart work, no model call, no login or quota.
+   * Ordinary questions: the model explains the app's own facts (context); its draft is validated before it is
+   * shown, otherwise the app's built-in answer (fallbackText) is sent.
    */
   app.post('/api/ai/:task', async (req, res) => {
     const { task } = req.params;
@@ -271,28 +295,33 @@ export function createApp() {
     if (process.env.AI_REQUIRE_LOGIN === '1' && !user) return res.status(401).json({ error: 'Please sign in to use the AI Jothidar' });
     if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many questions — please wait a few minutes' });
     const metered = billingEnforced();
-    if (metered && !checkAiQuota(req).allowed) return res.status(402).json({ error: 'Free daily limit reached — upgrade to Premium for unlimited answers', upgrade: true });
+    const quota = metered ? checkAiQuota(req) : null;
+    if (quota && !quota.allowed) {
+      return res.status(402).json(quota.period === 'month'
+        ? { error: `Monthly AI allowance of ${quota.limit} answers reached — built-in guidance keeps working`, upgrade: false }
+        : { error: 'Free daily AI limit reached — built-in guidance keeps working; Premium includes a monthly AI allowance', upgrade: true });
+    }
 
-    // Evidence: a server-computed chart when birth details are sent; otherwise the client's deterministic facts
-    // (minimised: names, birth data, places and relations are dropped).
+    // Evidence: a server-computed chart when birth details are sent; otherwise the app's deterministic facts
+    // (minimised: names, birth data, places and relations are dropped). Today's date is added as a fact.
     let chart = null;
     if (req.body?.birth) { try { chart = birthChart(parseBirth(req.body.birth)); } catch { chart = null; } }
     const evidence = buildEvidence({ chart, clientContext: context });
+    const today = pctx.reference?.date;
+    if (today) { evidence.facts.unshift({ id: 'NOW.date', text: `Today's date: ${today}`, source: 'engine', rule: 'server-clock' }); evidence.ids.unshift('NOW.date'); }
     decision.permittedEvidenceIds = evidence.ids;
-    const r = await runTask({ task, evidence, messages: msgs, lang, decision });
+    const r = await runTask({
+      task, evidence, messages: msgs, lang, decision,
+      onUsage: (u) => recordAiCost({ userId: user?.id || null, task, model: u.model, usage: u }),
+    });
     if (metered) recordAiUsage(req);
     let reply = r.text;
     let templateId = null;
     if (!reply) {
-      if (r.validation.status === 'not_run') {
-        // No AI configured: only deterministic app text or an approved template, with a limited-capability notice.
-        const adultLove = intent.flags.romanticOrSexual && pctx.speaker.minor === false;
-        templateId = adultLove ? 'adult_love_any_age' : null;
-        reply = adultLove ? templateText('adult_love_any_age', lang) : (String(fallbackText).slice(0, 4000) || '🙏');
-      } else {
-        templateId = 'validation_fallback';
-        reply = templateText('validation_fallback', lang);
-      }
+      const adultLove = r.validation.status === 'not_run' && intent.flags.romanticOrSexual && pctx.speaker.minor === false;
+      if (adultLove) { templateId = 'adult_love_any_age'; reply = templateText('adult_love_any_age', lang); }
+      // The app's own built-in answer (deterministic, computed on the device) — or a reviewed fallback.
+      else reply = String(fallbackText).slice(0, 4000) || templateText('validation_fallback', lang);
     }
     const cited = r.answer?.claims?.flatMap((c) => c.evidenceIds);
     audit(`ai:${task}`, { decision, ctx: pctx, intent, validation: r.validation.status, validationErrors: r.validation.errors, source: r.source, latencyMs: Date.now() - started });
@@ -326,7 +355,8 @@ export function createApp() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT) || 3000;
   createApp().listen(port, '0.0.0.0', () => {
-    console.log(`🪐 Thunai running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);
+    console.log(`🪔 ${BRAND.name} running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);
     startPushScheduler();
+    startBackupSchedule();
   });
 }

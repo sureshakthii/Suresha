@@ -1,6 +1,6 @@
 {
   "appId": "app.kaippesi.jothidar",
-  "appName": "துணை Thunai",
+  "appName": "துணை",
   "webDir": "mobile/www",
   "android": {
     "allowMixedContent": false
@@ -12,13 +12,13 @@
     "SplashScreen": {
       "launchShowDuration": 1500,
       "launchAutoHide": true,
-      "backgroundColor": "#0b0620",
+      "backgroundColor": "#3d0d1f",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false
     },
     "StatusBar": {
       "style": "DARK",
-      "backgroundColor": "#0b0620",
+      "backgroundColor": "#6e1a35",
       "overlaysWebView": false
     },
     "PushNotifications": {

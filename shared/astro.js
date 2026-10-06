@@ -1,4 +1,4 @@
-// Kaippesi Jothidar — Vedic (sidereal, Lahiri) astronomy core.
+// Thunai — Vedic (sidereal, Lahiri) astronomy core.
 // Runs unchanged in Node (server + tests) and in the browser (live ticking).
 import * as A from 'astronomy-engine';
 import { zoneOffsetMinutes, birthInput } from './datetime.js';

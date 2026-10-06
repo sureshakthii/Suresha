@@ -17,9 +17,11 @@ export function platform() {
 }
 const queue = [];
 let flushTimer;
+// Analytics are opt-in (Settings → Privacy & data). Only event names, screen ids and app version are sent.
+const analyticsAllowed = () => Boolean(store.get('kj_consent', {}).analytics);
 export function track(type, extra = {}) {
-  if (STATIC) return;
-  queue.push({ type, platform: platform(), appVersion: '3.0.0', ...extra });
+  if (STATIC || !analyticsAllowed()) return;
+  queue.push({ type, platform: platform(), appVersion: '4.0.0', ...extra });
   clearTimeout(flushTimer);
   flushTimer = setTimeout(flush, queue.length >= 20 ? 0 : 4000);
 }
@@ -31,6 +33,29 @@ function flush() {
 addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
 addEventListener('appinstalled', () => track('install'));
 document.addEventListener('kj:screen', (e) => track('screen_view', { screen: e.detail }));
+
+/** Business metrics as text with bars (owner dashboard). Definitions come from server/metrics.js. */
+function metricsCard(m) {
+  const row = (label, rate, detail) => `<div class="tb-row"><span class="tb-label">${label}</span><span class="tb-value">${rate == null ? '—' : `${rate}%`}</span><span class="tb-bar"><i class="${rate == null ? '' : rate >= 40 ? 'good' : rate >= 15 ? 'warn' : 'bad'}" style="width:${Math.min(100, rate || 0)}%"></i></span><span class="tb-note">${detail}</span></div>`;
+  const inr = (v) => (v == null ? L('not set', 'அமைக்கப்படவில்லை') : `₹${Number(v).toLocaleString('en-IN')}`);
+  return `<div class="card glass"><div class="card-title">📊 ${L(`Business metrics — last ${m.windowDays} days`, `வணிக அளவீடுகள் — கடந்த ${m.windowDays} நாள்`)}</div><div class="tb-list">
+    ${row(L('Activation', 'செயல்படுத்தல்'), m.activation.rate, L(`${m.activation.activated} of ${m.activation.newDevices} new devices used a personal feature within 24 h`, `${m.activation.newDevices} புதிய சாதனங்களில் ${m.activation.activated} — 24 மணிக்குள் தனிப்பட்ட வசதி`))}
+    ${row(L('Day-7 retention', '7-ம் நாள் தக்கவைப்பு'), m.retention.d7.rate, L(`${m.retention.d7.returned} of ${m.retention.d7.cohort} returned in days 7–13`, `${m.retention.d7.cohort}-ல் ${m.retention.d7.returned} பேர் 7–13 நாளில் திரும்பினர்`))}
+    ${row(L('Day-30 retention', '30-ம் நாள் தக்கவைப்பு'), m.retention.d30.rate, L(`${m.retention.d30.returned} of ${m.retention.d30.cohort} returned in days 30–36`, `${m.retention.d30.cohort}-ல் ${m.retention.d30.returned} பேர் 30–36 நாளில் திரும்பினர்`))}
+    ${row(L('Paid conversion', 'கட்டண மாற்றம்'), m.conversion.rate, L(`${m.conversion.newPayers} of ${m.conversion.newUsers} new accounts paid`, `${m.conversion.newUsers} புதிய கணக்குகளில் ${m.conversion.newPayers} கட்டணம்`))}
+    ${row(L('Subscriber churn', 'சந்தாதாரர் இழப்பு'), m.churn.rate, L(`${m.churn.churned} of ${m.churn.periodsEnded} ended periods not renewed within 7 days`, `${m.churn.periodsEnded}-ல் ${m.churn.churned} — 7 நாளில் புதுப்பிக்கவில்லை`))}
+  </div>
+  <dl class="kv small">
+    <dt>${L('Revenue (payments)', 'வருமானம் (கட்டணங்கள்)')}</dt><dd>${inr(m.money.revenueInr)}</dd>
+    <dt>${L('Refunds', 'பணத்திருப்பம்')}</dt><dd>${inr(m.money.refundsInr)} (${m.money.refundCount})</dd>
+    <dt>${L('Contribution margin', 'பங்களிப்பு லாபம்')}</dt><dd>${inr(m.money.contributionMarginInr)}</dd>
+    <dt>${L('AI cost / per payer', 'AI செலவு / ஒருவருக்கு')}</dt><dd>${m.ai.priced ? `${inr(m.ai.costInr)} / ${inr(m.ai.costPerPayerInr)}` : `${m.ai.calls} ${L('calls', 'அழைப்புகள்')}, ${(m.ai.inputTokens + m.ai.outputTokens).toLocaleString('en-IN')} tokens — ${L('set AI_COST_INR_PER_MTOK_IN/OUT', 'AI_COST_INR_PER_MTOK_IN/OUT அமைக்கவும்')}`}</dd>
+    <dt>${L('Acquisition cost / new user', 'கையகச் செலவு / புதியவர்')}</dt><dd>${inr(m.acquisition.costPerNewUserInr)}</dd>
+    <dt>${L('Fulfilled bookings', 'நிறைவேற்றிய முன்பதிவுகள்')}</dt><dd>${m.bookings.fulfilled} (${L('open', 'நிலுவை')} ${m.bookings.open}, ${L('cancelled', 'ரத்து')} ${m.bookings.cancelled})</dd>
+    <dt>${L('Booking value (gross, not revenue)', 'முன்பதிவு மதிப்பு (மொத்தம், வருமானம் அல்ல)')}</dt><dd>${inr(m.money.bookingValueGrossInr)}</dd>
+  </dl>
+  <ul class="small muted">${m.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></div>`;
+}
 
 export function startAnalytics() {
   if (STATIC) return;
@@ -71,7 +96,7 @@ export function trialBanner() {
 export function redeemBox() {
   if (STATIC) return '';
   return `<form class="card glass" id="redeemForm"><div class="card-title">🎁 ${L('Gift or trial code', 'பரிசு / சோதனைக் குறியீடு')}</div>
-    <div class="phone-in"><input id="redeemCode" placeholder="KJ-XXXX-XXXX" autocapitalize="characters" maxlength="20" required><button class="btn-gold small-btn">${L('Apply', 'பயன்படுத்து')}</button></div><p class="err" id="redeemErr"></p></form>`;
+    <div class="phone-in"><input id="redeemCode" aria-label="${esc(L('Gift or trial code', 'பரிசு / சோதனைக் குறியீடு'))}" placeholder="KJ-XXXX-XXXX" autocapitalize="characters" maxlength="20" required><button class="btn-gold small-btn">${L('Apply', 'பயன்படுத்து')}</button></div><p class="err" id="redeemErr"></p></form>`;
 }
 export function wireRedeem(onDone) {
   $('#redeemForm')?.addEventListener('submit', async (e) => {
@@ -123,7 +148,7 @@ registerScreen('feedback', { render: renderFeedback, parent: 'more' });
 
 // ---------------------------------------------------------------- referral
 function renderInvite(sec) {
-  sec.innerHTML = `${subHeader(L('Invite & get free days', 'அழைத்து இலவச நாட்கள் பெறுங்கள்'), L('Share Thunai with family and friends — you both get free Premium days', 'துணையை குடும்பம், நண்பர்களுடன் பகிருங்கள் — இருவருக்கும் இலவச பிரீமியம் நாட்கள்'), 'more')}<div id="invBody"></div>`;
+  sec.innerHTML = `${subHeader(L('Invite & get free days', 'அழைத்து இலவச நாட்கள் பெறுங்கள்'), L('Share Thunai with family and friends — you both get free Premium days', 'துணையைக் குடும்பம், நண்பர்களுடன் பகிருங்கள் — இருவருக்கும் இலவச பிரீமியம் நாட்கள்'), 'more')}<div id="invBody"></div>`;
   if (STATIC || !state.user) { $('#invBody').innerHTML = `<div class="card glass cta-card" data-go="login">${L('Sign in to get your invite link', 'அழைப்பு இணைப்பைப் பெற உள்நுழையவும்')} ›</div>`; return; }
   api('/api/referral').then((r) => {
     const text = `${L('I use Thunai for daily panchangam and family horoscopes. Join with my link:', 'தினசரி பஞ்சாங்கம், குடும்ப ஜாதகத்திற்கு நான் துணை பயன்படுத்துகிறேன். என் இணைப்பில் சேருங்கள்:')} ${r.link}`;
@@ -159,8 +184,9 @@ async function renderAdmin(sec) {
       const t = o.stats.totals;
       const kpi = (v, en, tx) => `<div class="kpi"><b>${esc(String(v ?? 0))}</b><span>${L(en, tx)}</span></div>`;
       const codes = await adminApi('/api/admin/gift-codes').catch(() => ({ codes: [] }));
+      const mx = await adminApi('/api/admin/metrics?days=30').catch(() => null);
       const codeList = codes.giftCodes || [];
-      body.innerHTML = `<div class="kpis">${kpi(t.devices, 'Devices', 'சாதனங்கள்')}${kpi(t.installs, 'Installs', 'நிறுவல்கள்')}${kpi(t.users, 'Users', 'பயனர்கள்')}${kpi(t.activeToday, 'Active today', 'இன்று செயலில்')}${kpi(t.active7, 'Active 7 days', '7 நாள் செயலில்')}${kpi(t.active30, 'Active 30 days', '30 நாள் செயலில்')}${kpi(t.payingUsers, 'Paying users', 'கட்டணப் பயனர்கள்')}${kpi(`₹${(t.revenueByCurrency?.INR || 0).toLocaleString('en-IN')}`, 'Revenue (INR)', 'வருமானம் (₹)')}${kpi(`$${t.revenueByCurrency?.USD || 0}`, 'Revenue (USD)', 'வருமானம் ($)')}${kpi(t.avgRating ? t.avgRating.toFixed(1) + '★' : '—', 'Avg rating', 'சராசரி மதிப்பீடு')}</div>
+      body.innerHTML = `${mx ? metricsCard(mx) : ''}<div class="kpis">${kpi(t.devices, 'Devices', 'சாதனங்கள்')}${kpi(t.installs, 'Installs', 'நிறுவல்கள்')}${kpi(t.users, 'Users', 'பயனர்கள்')}${kpi(t.activeToday, 'Active today', 'இன்று செயலில்')}${kpi(t.active7, 'Active 7 days', '7 நாள் செயலில்')}${kpi(t.active30, 'Active 30 days', '30 நாள் செயலில்')}${kpi(t.payingUsers, 'Paying users', 'கட்டணப் பயனர்கள்')}${kpi(`₹${(t.revenueByCurrency?.INR || 0).toLocaleString('en-IN')}`, 'Revenue (INR)', 'வருமானம் (₹)')}${kpi(`$${t.revenueByCurrency?.USD || 0}`, 'Revenue (USD)', 'வருமானம் ($)')}${kpi(t.avgRating ? t.avgRating.toFixed(1) + '★' : '—', 'Avg rating', 'சராசரி மதிப்பீடு')}</div>
         <div class="card glass"><div class="card-title">${L('Daily app opens (30 days)', 'தினசரி திறப்புகள் (30 நாள்)')}</div>${bars(o.stats.daily, 'opens', 'opens')}
           <div class="card-title" style="margin-top:10px">${L('New devices per day', 'தினசரி புதிய சாதனங்கள்')}</div>${bars(o.stats.daily, 'newDevices', 'new devices')}</div>
         <div class="card glass"><div class="card-title">${L('Platforms', 'தளங்கள்')}</div>${Object.entries(o.stats.byPlatform || {}).map(([k, v]) => `<div class="factor"><span>${esc(k)}</span><b class="zero">${v}</b></div>`).join('')}</div>

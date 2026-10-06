@@ -42,7 +42,7 @@ const gajakesari = defineRule({
     };
   },
   exceptions: [
-    { id: 'gk.bphs_extra_conditions', status: 'proposed', text: T('Some texts additionally require benefic aspect/association and Jupiter free of debilitation or combustion. Recorded here as strength modifiers, not as an exclusion — reviewer to decide.', 'சில நூல்கள் சுபர் பார்வை, குரு நீசம்/அஸ்தங்கம் இல்லாமை ஆகியவற்றையும் கேட்கின்றன — இங்கு பல மாற்றிகளாக மட்டும் குறிக்கப்பட்டுள்ளது.') },
+    { id: 'gk.bphs_extra_conditions', status: 'proposed', text: T('Some texts additionally require benefic aspect/association and Jupiter free of debilitation or combustion. Recorded here as strength modifiers, not as an exclusion.', 'சில நூல்கள் சுபர் பார்வை, குரு நீசம்/அஸ்தங்கம் இல்லாமை ஆகியவற்றையும் கேட்கின்றன — இங்கு பல மாற்றிகளாக மட்டும் குறிக்கப்பட்டுள்ளது.') },
   ],
   strengthModifiers(ctx) {
     const m = planetModifiers(ctx, 'Jupiter');
@@ -69,7 +69,7 @@ const budhaditya = defineRule({
     };
   },
   exceptions: [
-    { id: 'ba.frequency', status: 'proposed', text: T('Very common: Mercury never moves more than about 28° from the Sun. Whether a combust Mercury still forms the yoga is for the reviewer.', 'மிகப் பொதுவானது: புதன் சூரியனிடமிருந்து சுமார் 28°க்கு மேல் விலகுவதில்லை. அஸ்தங்க புதனுடன் யோகம் உண்டா என்பது ஜோதிடர் முடிவு.') },
+    { id: 'ba.frequency', status: 'proposed', text: T('Very common: Mercury never moves more than about 28° from the Sun. A combust Mercury is reported as a modifier.', 'மிகப் பொதுவானது: புதன் சூரியனிடமிருந்து சுமார் 28°க்கு மேல் விலகுவதில்லை. அஸ்தங்க புதன் ஒரு மாற்றியாகக் குறிக்கப்படுகிறது.') },
   ],
   strengthModifiers(ctx) {
     const m = planetModifiers(ctx, 'Mercury', { dusthana: false });
@@ -124,7 +124,7 @@ const mahapurusha = Object.entries(MAHAPURUSHA).map(([k, [en, ta]]) => defineRul
     return { variants, facts: [], involved: [k] };
   },
   exceptions: [
-    { id: 'pmp.strength_conditions', status: 'proposed', text: T('Texts differ on whether combustion, planetary war or association with the Sun/Moon reduces or removes the yoga. Reported as modifiers; reviewer to decide.', 'அஸ்தங்கம், கிரக யுத்தம், சூரிய/சந்திர சேர்க்கை யோகத்தைக் குறைக்குமா என்பதில் நூல்கள் வேறுபடுகின்றன — ஜோதிடர் முடிவு.') },
+    { id: 'pmp.strength_conditions', status: 'proposed', text: T('Texts differ on whether combustion, planetary war or association with the Sun/Moon reduces or removes the yoga. Reported as modifiers.', 'அஸ்தங்கம், கிரக யுத்தம், சூரிய/சந்திர சேர்க்கை யோகத்தைக் குறைக்குமா என்பதில் நூல்கள் வேறுபடுகின்றன — மாற்றிகளாகக் குறிக்கப்படுகின்றன.') },
   ],
   strengthModifiers(ctx) {
     const m = planetModifiers(ctx, k, { dusthana: false });
@@ -358,7 +358,7 @@ const viparita = VIPARITA.map(([h, id, en, ta]) => defineRule({
     return { present: DUSTHANA.includes(at), facts: [fact(`${ord(h)} lord ${lord} is in the ${ord(at)} house`, `${h}-ம் அதிபதி ${taName(lord)} ${at}-ம் வீட்டில்`)], involved: [lord], data: { lord, house: at } };
   },
   exceptions: [
-    { id: `viparita.${id}.association`, status: 'proposed', text: T('Some authorities require the lord to be free of association with other (non-dusthana) lords. Not applied — reviewer to decide.', 'சில நூல்கள் இந்த அதிபதி மற்ற அதிபதிகளுடன் தொடர்பின்றி இருக்க வேண்டும் என்கின்றன — இங்கு பயன்படுத்தப்படவில்லை.') },
+    { id: `viparita.${id}.association`, status: 'proposed', text: T('Some authorities require the lord to be free of association with other (non-dusthana) lords. Not applied here.', 'சில நூல்கள் இந்த அதிபதி மற்ற அதிபதிகளுடன் தொடர்பின்றி இருக்க வேண்டும் என்கின்றன — இங்கு பயன்படுத்தப்படவில்லை.') },
   ],
   strengthModifiers(ctx, res) {
     const m = planetModifiers(ctx, res.data.lord, { dusthana: false });

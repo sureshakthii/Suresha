@@ -1,37 +1,43 @@
-# Thunai (துணை) — உங்கள் வாழ்க்கையின் வழிகாட்டி
+# 🪔 துணை · THUNAI — Personal Astrology & Spiritual Guidance
 
-Thunai is a Tamil-first family companion for traditional astrology, spiritual practice, Tamil calendars and practical planning. It runs as a PWA and as Android/iOS apps (Capacitor). The development brief it follows is [`docs/THUNAI-BRIEF.md`](docs/THUNAI-BRIEF.md); what is done and what still needs people is in [`docs/HANDOVER.md`](docs/HANDOVER.md).
+**உங்கள் வாழ்வின் வழித்துணை.** A Tamil/English app for daily panchangam, family horoscopes, explainable guidance and temple journeys. It was formerly "Thunai". THUNAI is a *working* brand, configurable in `shared/brand.js`.
 
-## Principles
+> **Start here:** [docs/THUNAI-REVISION.md](docs/THUNAI-REVISION.md) covers what changed, what is still mocked or blocked, the server configuration, validation results, screenshots and the next-release checklist.
 
-- **Guidance, not prediction.** No death, lifespan, disease, fertility, accident or betrayal predictions; no probabilities; no "your job arrives on 17 November".
-- **Practical first.** Prasnam, Rahu Kalam or a muhurtham never tells anyone to delay hospital care, court dates, contracts or necessary payments. Practical safety cards (travel, money, relationship boundaries) are shown whatever the chart says.
-- **Traceable.** Every yoga, role and dosha comes from a versioned rule registry with a tradition profile and review status; every AI statement must cite a calculated fact.
-- **Age-aware and safe.** Ask Thunai identifies the speaker, the chart owner and everyone mentioned, and routes by age and intent before any astrology is done.
-- **Private.** Minimum data to the AI, data export and account deletion, both adults' consent before matching.
-- **Free remedies first.** Prayer, a lamp, charity. Paid services are never presented as protection.
+**Navigation:** Today · My Chart · Family · Ask · Services, with Settings behind the gear icon. The calendar and basic guidance work without signing in. Ask answers from verified chart facts in six parts, and labels each answer as AI-generated or built-in. Birth time can be Exact, Approximate or Unknown. My Spiritual Journey offers three honest options with sources and estimates clearly labelled.
 
-## Main sections
+## What makes it different
 
-| Section | What it holds |
+- **Honest astrology.** The app never uses fear, never predicts death and never pressures anyone into costly poojas or gems. Free parigarams come first: prayer, a lamp, charity, kindness.
+- **You can see the calculation.** Every verdict lists the real factors (Horai, Tara Bala, Rahu Kalam, Prasna Lagna and so on) with their points.
+- **Made for the whole family.** One account holds everyone's charts. It shows who should be careful today, finds muhurthams that suit every person involved, and tracks star birthdays and ancestors' thivasam.
+- **A Jothidar you can talk to.** The AI chat answers in Tamil or English, by voice or text, from *your* chart and today's sky.
+- **Private by design.** Birth details stay on the phone unless you sign in to back them up.
+
+## Features
+
+| Area | What it does |
 |---|---|
-| **Today (இன்று)** | Up to three cards: today's panchangam, a practical tip, one optional free practice. More behind an expander. |
-| **My Chart (என் ஜாதகம்)** | Rasi/Navamsa, divisional charts, yogas with review status, house lords (incl. Badhaka/Maraka as neutral facts), dasa to Sookshma, transits, life road map, health wellbeing guide. |
-| **Family (குடும்பம்)** | Family profiles (birth-time precision and time zone), marriage matching for first marriage and remarriage with two-person consent, star birthdays, thivasam, names. |
-| **Plan (திட்டம்)** | Muhurtham, Prasnam (deadline-first), calendar, vratham, weather, temple trip planner, practical safety cards, parigaram, store, seva, priests, reminders. |
-| **Ask Thunai (துணையிடம் கேள்)** | Age-aware chat; answers are validated against the chart evidence before they are shown. |
+| **Login** | Mobile OTP, email OTP or Facebook. The family's data is saved to the account. You can also continue without signing in. |
+| **Today (இன்று)** | Tamil date and year name, festivals and vratham days, and the Subha Muhurtha day flag. Nakshatra, tithi and yoga with end times, sunrise and sunset. Gowri Nalla Neram, Rahu Kalam, Yamagandam and Guligai. The live Horai countdown, each family member's day, today's parigaram, and a WhatsApp share card. |
+| **Tamil calendar** | Month view with Tamil dates and festivals: Pongal, Tamil New Year, Vinayagar Chathurthi, Deepavali, Karthigai Deepam, Thai Poosam and more. Also Pradosham, Ekadasi, Sashti, Sankatahara, Amavasai and Pournami, muhurtha days, and your Chandrashtamam days. |
+| **Jathagam** | South Indian Rasi and Navamsa charts, the planet table, and Graha Balam (why each planet is strong or weak, with its parigaram). Chevvai and Rahu-Ketu dosham, Vimshottari Dasa/Bhukti, and name letters. |
+| **Prasnam** | "Do or Don't?" for 14 everyday situations (hospital, cheque, court, contract and so on), cast for the exact second, with the best times in the next 24 hours. |
+| **Thirumana Porutham** | All 10 poruthams (Rajju and Vedhai treated as essential), plus Chevvai and Rahu-Ketu dosham and dosha samyam. The AI explains the result. |
+| **Muhurtham finder** | Marriage, graha pravesam, naming, ear piercing, annaprasanam, vidyarambam, business, property, vehicle, Manjal Neerattu and more. It checks every family member's Tara Bala and Chandrashtamam, and always excludes Rahu Kalam, Yamagandam, Ashtami, Navami and Amavasai (plus Aadi, Purattasi and Margazhi for marriage and graha pravesam). |
+| **Ruthu / Manjal Neerattu** | The panchangam at the moment of Ruthu, the best first-bath (thanneer oothuthal) times, and ceremony dates. |
+| **Parigaram and temples** | Personal daily remedies (weekday lord, weak planets, running dasa, Chandrashtamam), all nine Navagraha remedies, and the nine parigara sthalams with directions. |
+| **Family traditions** | Natchathira (star) birthday, Thivasam/Sraddham dates for ancestors, upcoming Amavasai for tharpanam, and baby-name letters with AI name ideas. |
+| **AI Jothidar chat** | Answers grounded in the person's chart, dasa, Graha Balam and today's panchangam. It has Tamil voice input and reads answers aloud. |
+| **Comfort** | Tamil/English, a large-text mode for elders, and read-aloud. It is an installable PWA and works offline for charts and the calendar. |
 
 ## How the calculations work
 
-Full contract: [`docs/ENGINE-CONTRACT.md`](docs/ENGINE-CONTRACT.md).
-
-- Planet positions: [`astronomy-engine`](https://github.com/cosinekitty/astronomy) 2.1.19, geocentric apparent; documented target **±1 arcminute** (not arc-seconds). An independent benchmark (Swiss Ephemeris / JPL) is still to be done.
-- Sidereal zodiac with the **Lahiri (Chitrapaksha) ayanamsa** defined at the 1956 epoch and advanced by IAU 2006 precession plus nutation. Rahu/Ketu: mean node. Houses: whole sign.
-- Birth time is converted with the historical IANA time zone; approximate or unknown times are supported without inventing a Lagna, and unstable chart items are marked.
-- Tithi, nakshatra, yoga and karana end times are found by root-finding to within one second. Horai: Tamil 60-minute method by default, unequal planetary hours as a labelled option.
-- Vimshottari dasa down to Sookshma with exact partitions (365.25-day year).
-- Yogas, house-lord roles and doshas: [`docs/RULE-REGISTRY.md`](docs/RULE-REGISTRY.md). All rules are **proposed** until the master astrologer signs them off.
-- Ask Thunai safety and evidence contract: [`docs/AI-SAFETY-POLICY.md`](docs/AI-SAFETY-POLICY.md).
+- Planet positions come from [`astronomy-engine`](https://github.com/cosinekitty/astronomy) (accurate to arc-seconds). They are converted to sidereal using the **Lahiri (Chitrapaksha) ayanamsa**. Rahu/Ketu use the mean node.
+- The Lagna comes from local sidereal time. The sunrise-based Vedic day uses real sunrise and sunset for the chosen place.
+- Horai follows Tamil practice: 60-minute periods from sunrise, the first one ruled by the weekday lord.
+- The Prasna score combines: Horai lord for the category, Rahu Kalam / Yamagandam / Guligai, the nature of the Nakshatra, Tithi (Rikta, Ashtami, Amavasai), Paksha, Yoga, weekday, Prasna Lagna (benefics or malefics in it, and where the Lagna lord sits), Tara Bala and Chandra Bala / Chandrashtamam. The rules live in `shared/prasna.js` and are easy to tune.
+- The same code (`shared/`) runs on the server and in the phone's browser. That is how the Live screen can recompute every second without network calls.
 
 ## Run it
 
@@ -122,14 +128,6 @@ Users sign in with a one-time code (OTP) sent by **SMS** or **email**, or with *
 | POST | `/api/auth/logout` | `{ ok: true }` |
 | GET / PUT | `/api/me/data` | the user's JSON blob: `{ data, updatedAt }` / body `{ data }` |
 
-## Privacy
-
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/api/me/export` | Everything held about the signed-in user, as a JSON download |
-| DELETE | `/api/me/data` | Clears saved family profiles |
-| POST | `/api/me/delete-account` | Body `{ "confirm": "DELETE" }`. Erases the account; payment and order rows are kept only as de-identified accounting records |
-
 ## Marketplace
 
 Pooja store, priest (Iyer / Purohit / Vadhyar) directory and service bookings — `server/market.js`, tables created on first use. The catalogue in `server/data/products.json` is **sample data** (`"sample": true`); replace it with real stock and prices. Prices and totals are always computed on the server. Online payment uses Razorpay when `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` are set; otherwise orders wait in `awaiting_payment_setup`. No priests are seeded: people register themselves and appear publicly only after an admin verifies them (phone numbers are never shown publicly).
@@ -163,7 +161,7 @@ Pooja store, priest (Iyer / Purohit / Vadhyar) directory and service bookings �
 
 ## Subscriptions
 
-`server/billing.js` — plans, payments and entitlements (tables `subscriptions` and `ai_usage`, created on first use). Plans: **Free** (panchangam, charts, calendar, porutham table, 5 Ask Thunai answers a day), **Premium** ₹199 / $4.99 a month or ₹1,999 / $49 a year (unlimited chat, life-timing predictions, full analysis, porutham explanation, priority seva booking) and **Family** ₹399 / $9.99 a month or ₹3,999 / $99 a year (Premium for up to 8 family profiles). INR is paid through Razorpay (`RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`), USD through Stripe Checkout (`STRIPE_SECRET_KEY`, webhook secret `STRIPE_WEBHOOK_SECRET`). Without a gateway, checkout returns `payment_setup_pending`. Buying while a plan is active extends it from the current expiry. The free AI quota (`AI_FREE_DAILY`, default 5 a day per user or per IP when signed out, India time) is enforced only when `BILLING_ENFORCE=1`: once it is used up, `/api/ai/:task` returns 402 `{ error, upgrade: true }`. Only successful answers count.
+`server/billing.js` — plans, payments and entitlements (tables `subscriptions` and `ai_usage`, created on first use). Plans: **Free** (panchangam, charts, calendar, porutham table, 5 Jothidar answers a day), **Premium** ₹199 / $4.99 a month or ₹1,999 / $49 a year (unlimited chat, life-timing predictions, full analysis, porutham explanation, priority seva booking) and **Family** ₹399 / $9.99 a month or ₹3,999 / $99 a year (Premium for up to 8 family profiles). INR is paid through Razorpay (`RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`), USD through Stripe Checkout (`STRIPE_SECRET_KEY`, webhook secret `STRIPE_WEBHOOK_SECRET`). Without a gateway, checkout returns `payment_setup_pending`. Buying while a plan is active extends it from the current expiry. The free AI quota (`AI_FREE_DAILY`, default 5 a day per user or per IP when signed out, India time) is enforced only when `BILLING_ENFORCE=1`: once it is used up, `/api/ai/:task` returns 402 `{ error, upgrade: true }`. Only successful answers count.
 
 | Method | Path | Notes |
 |---|---|---|

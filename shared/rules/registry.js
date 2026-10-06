@@ -52,7 +52,7 @@ export function ruleEnabled(rule, profile) {
 
 /** Dasa / bhukti periods ruled by the activating lords (from chart.dasa — Vimshottari). */
 export function relevantPeriods(chart, lords) {
-  const note = T('Periods traditionally associated with this configuration — for reflection, not a prediction.', 'இந்த அமைப்புடன் பாரம்பரியமாகத் தொடர்புடைய காலங்கள் — சிந்தனைக்கு மட்டும், முன்னறிவிப்பு அல்ல.');
+  const note = T('Periods traditionally associated with this configuration.', 'இந்த அமைப்புடன் பாரம்பரியமாகத் தொடர்புடைய காலங்கள்.');
   const d = chart.dasa;
   if (!d || !Array.isArray(d.periods)) return { lords, dasas: [], current: null, note };
   const dasa = d.current?.lord ?? null, bhukti = d.currentBhukti?.lord ?? null;

@@ -97,11 +97,7 @@ export function manaPorutham(a, b) {
       T('A traditional factor only — not a fertility or health assessment. Talk together about your wishes for children.', 'மரபுக் காரணி மட்டுமே — கருவுறுதல் அல்லது உடல்நல மதிப்பீடு அல்ல. குழந்தைகள் பற்றிய விருப்பங்களைச் சேர்ந்து பேசுங்கள்.'),
     ]);
   }
-  // Daily rhythm together: Lagna of both (no lifespan inference).
-  {
-    const s = (ba[0].score + bb[0].score) / 2;
-    area('health', 'Daily rhythm together (Lagna, traditional)', 'சேர்ந்த அன்றாட வழக்கம் (லக்னம், மரபு)', s, [T('Based on the Lagna of both — a traditional view, not a health or lifespan assessment', 'இருவரின் லக்னம் அடிப்படையில் — மரபுப் பார்வை, உடல்நல அல்லது ஆயுள் மதிப்பீடு அல்ல')]);
-  }
+  // Health / longevity is intentionally not scored: Thunai never judges health or lifespan from charts.
   // Karmic intensity: Rahu/Ketu on the other's Moon or Venus.
   const karmic = ['Rahu', 'Ketu'].some((n) => A[n].rasi === B.Moon.rasi || A[n].rasi === B.Venus.rasi || B[n].rasi === A.Moon.rasi || B[n].rasi === A.Venus.rasi);
   const overall = clamp(areas.reduce((s, x) => s + x.score, 0) / areas.length);
@@ -209,15 +205,13 @@ export function marriageReport(bride, groom, { weddingDate = new Date(), years =
     legacy: true,
     needsBirthTime: mana.needsBirthTime,
     birthTimeNote: mana.birthTimeNote,
-    verdictNote: T('A traditional summary only — not a decision. Discuss these factors and seek expert review if this tradition matters to you.', 'மரபுச் சுருக்கம் மட்டுமே — முடிவு அல்ல. இந்த மரபு உங்களுக்கு முக்கியமானதென்றால், கலந்துபேசி நிபுணர் மதிப்பாய்வைப் பெறுங்கள்.'),
+    verdictNote: T('A traditional summary to support your family conversation — the decision is yours.', 'குடும்பக் கலந்துரையாடலுக்கு உதவும் மரபுச் சுருக்கம் — முடிவு உங்களுடையது.'),
   };
 }
 
-const NOT_ASSESSED = { level: 'not-assessed', score: null, text: T('Not assessed — Thunai does not estimate lifespan from a horoscope.', 'மதிப்பிடப்படவில்லை — துணை ஜாதகத்திலிருந்து ஆயுளைக் கணிப்பதில்லை.'), reasons: [] };
-
 /**
  * Remove lifespan (ayul) checks and gender-weighted rules from lifecheck's deep checks, keeping the shape.
- * Papa samyam is compared symmetrically (either side may carry more; tradition rules pending review).
+ * Papa samyam is compared symmetrically (either side may carry more).
  */
 function neutralDeepChecks(d) {
   const diff = Math.abs(d.papa.groom.total - d.papa.bride.total);
@@ -226,11 +220,13 @@ function neutralDeepChecks(d) {
     ...c, ok: papaOk, ruleStatus: 'proposed',
     note: papaOk
       ? T(`Balanced — ${d.papa.bride.total} and ${d.papa.groom.total} points.`, `சமநிலை — ${d.papa.bride.total}, ${d.papa.groom.total} புள்ளிகள்.`)
-      : T(`Points differ (${d.papa.bride.total} and ${d.papa.groom.total}) — traditions weigh this differently; ask your astrologer.`, `புள்ளிகள் வேறுபடுகின்றன (${d.papa.bride.total}, ${d.papa.groom.total}) — மரபுகள் இதை வேறுவிதமாகப் பார்க்கின்றன; ஜோதிடரிடம் கேளுங்கள்.`),
+      : T(`Points differ (${d.papa.bride.total} and ${d.papa.groom.total}) — a gentle Navagraha prayer together keeps the balance.`, `புள்ளிகள் வேறுபடுகின்றன (${d.papa.bride.total}, ${d.papa.groom.total}) — சேர்ந்து செய்யும் நவகிரக வழிபாடு சமநிலையைத் தரும்.`),
   }));
   const houseAvg = d.houses.bride.reduce((s, b, i) => s + (b.score + d.houses.groom[i].score) / 2, 0) / Math.max(1, d.houses.bride.length);
-  const score = Math.round((d.lagna.score * 0.15 + (papaOk ? 80 : 45) * 0.15 + (d.sandhi.ok ? 80 : 55) * 0.1 + houseAvg * 0.35) / 0.75);
-  return { ...d, ayul: { bride: NOT_ASSESSED, groom: NOT_ASSESSED }, papaOk, checks, passed: checks.filter((c) => c.ok).length, score };
+  const complete = !d.needsBirthTime?.length;
+  const score = complete ? Math.round((d.lagna.score * 0.15 + (papaOk ? 80 : 45) * 0.15 + (d.sandhi.ok ? 80 : 55) * 0.1 + houseAvg * 0.35) / 0.75) : d.score;
+  const { ayul: _removed, ...rest } = d; // longevity is never part of matching
+  return { ...rest, papaOk, checks, passed: checks.filter((c) => c.ok).length, score };
 }
 
 const ROLE_FIELDS = [

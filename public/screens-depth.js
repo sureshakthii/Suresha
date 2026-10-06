@@ -4,7 +4,6 @@ import { RASIS } from './shared/astro.js';
 import { VARGAS, vargaChart, vargaRasi, vargottama, savInsights, AV_PLANETS } from './shared/varga.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, activeMember, chartOf, registerScreen, subHeader, displayName, saveFamily,
-  hasLagna, needsTimeText, unstableChip, precisionNote, reportMeta,
 } from './core.js';
 import { renderSI } from './screens-main.js';
 
@@ -29,7 +28,7 @@ function injectStyle() {
   document.head.append(s);
 }
 
-const levelTag = (lvl) => `<span class="tag ${lvl === 'strong' ? 'good' : 'neutral'}">${lvl === 'strong' ? L('Strong', 'பலம்') : lvl === 'weak' ? L('Weak', 'பலவீனம்') : L('Average', 'மத்திமம்')}</span>`;
+const levelTag = (lvl) => `<span class="tag ${lvl === 'strong' ? 'good' : lvl === 'weak' ? 'bad' : 'warn'}">${lvl === 'strong' ? L('Strong', 'பலம்') : lvl === 'weak' ? L('Weak', 'பலவீனம்') : L('Average', 'மத்திமம்')}</span>`;
 const vLabel = (v) => (ta() ? v.ta : `D${v.n} · ${v.en}`);
 const rasiShort = (i) => (ta() ? RASIS[i].short : RASIS[i].en.slice(0, 3));
 const houseWord = (h) => L(`House ${h}`, `${h}-ம் பாவம்`);
@@ -40,7 +39,7 @@ function renderSav(el, s) {
     const [row, col] = SI_POS[r];
     const h = s.houses.find((x) => x.rasi === r);
     html += `<div class="si-cell sav-cell ${h.level}${r === s.lagna ? ' lagna' : ''}" style="grid-row:${row + 1};grid-column:${col + 1}">
-      ${s.hasLagna ? `<span class="hn">${h.house}</span>` : ''}<b>${s.sav[r]}</b><span class="sn">${esc(rasiName(r))}</span></div>`;
+      <span class="hn">${h.house}</span><b>${s.sav[r]}</b><span class="sn">${esc(rasiName(r))}</span></div>`;
   }
   html += `<div class="si-center"><div class="t">${L('Sarva', 'சர்வ')}</div><div class="s">${L('Ashtakavarga', 'அஷ்டகவர்க்கம்')}<br>${L('Total', 'மொத்தம்')} ${s.total}</div></div>`;
   el.innerHTML = html;
@@ -52,7 +51,7 @@ function render(sec) {
   const c = chartOf(m);
   const v = VARGAS.find((x) => x.n === selN) || VARGAS[0];
   const houses = vargaChart(c, v.n);
-  const lagnaV = hasLagna(c) ? vargaRasi(c.planets.Lagna.longitude, v.n) : null;
+  const lagnaV = vargaRasi(c.planets.Lagna.longitude, v.n);
   const vo = vargottama(c);
   const s = savInsights(c);
   const pool = state.family.filter((x) => x.relation !== 'organization');
@@ -62,10 +61,9 @@ function render(sec) {
   }).join('');
 
   sec.innerHTML = `${subHeader(L('Divisional charts & Ashtakavarga', 'வர்க்க கட்டங்கள் & அஷ்டகவர்க்கம்'), L('Sixteen-fold depth of your Jathagam', 'உங்கள் ஜாதகத்தின் ஆழமான பார்வை'), 'chart')}
-    ${precisionNote(c)}
     ${pool.length > 1 ? `<div class="member-switch">${pool.map((x) => `<button class="mchip${x.id === m.id ? ' sel' : ''}" data-mid="${esc(x.id)}">${esc(displayName(x))}</button>`).join('')}</div>` : ''}
     <div class="card glass">
-      <div class="card-title">${L('Divisional chart (Varga)', 'வர்க்க கட்டம்')}${unstableChip(c, v.n === 9 ? 'navamsaLagna' : `D${v.n}Lagna`)}</div>${hasLagna(c) ? '' : `<p class="muted small">${L('Lagna and houses', 'லக்னம், பாவங்கள்')}: ${needsTimeText()}</p>`}
+      <div class="card-title">${L('Divisional chart (Varga)', 'வர்க்க கட்டம்')}</div>
       <div class="vg-chips">${VARGAS.map((x) => `<button class="chip-btn${x.n === v.n ? ' sel' : ''}" data-vn="${x.n}">${esc(vLabel(x))}</button>`).join('')}</div>
       <div id="vargaChart" class="si-chart"></div>
       <p class="vg-meaning"><span class="tag good">${esc(ta() ? v.ta : v.en)}</span> ${esc(bi(v.signifies))}</p>
@@ -80,13 +78,13 @@ function render(sec) {
       <div class="card-title">🔢 ${L('Ashtakavarga', 'அஷ்டகவர்க்கம்')}</div>
       <div id="savChart" class="si-chart"></div>
       <p class="muted small">${L('Bindus per sign (small number = house from Lagna). 28 or more is strong, 25–27 average, below 25 weak.', 'ஒவ்வொரு ராசிக்கும் பரல்கள் (சிறிய எண் = லக்னத்திலிருந்து பாவம்). 28 அல்லது அதற்கு மேல் பலம், 25–27 மத்திமம், 25-க்குக் கீழ் பலவீனம்.')}</p>
-      ${hasLagna(c) ? `<div class="factor"><span>${L('Best houses', 'சிறந்த பாவங்கள்')}</span><b class="pos">${s.best.map((h) => houseWord(h)).join(', ')}</b></div>
-      <div class="factor"><span>${L('Needs care', 'கவனம் தேவை')}</span><b class="neg">${s.weakest.map((h) => houseWord(h)).join(', ')}</b></div>` : `<p class="muted small">${L('House numbers', 'பாவ எண்கள்')}: ${needsTimeText()}</p>`}
+      <div class="factor"><span>${L('Best houses', 'சிறந்த பாவங்கள்')}</span><b class="pos">${s.best.map((h) => houseWord(h)).join(', ')}</b></div>
+      <div class="factor"><span>${L('Needs care', 'கவனம் தேவை')}</span><b class="neg">${s.weakest.map((h) => houseWord(h)).join(', ')}</b></div>
     </div>
-    ${hasLagna(c) ? `<div class="card glass">
+    <div class="card glass">
       <div class="card-title">🏠 ${L('House-wise strength', 'பாவ வாரியான பலம்')}</div>
       ${s.houses.map((h) => `<div class="factor"><span><b>${houseWord(h.house)}</b> · ${esc(rasiName(h.rasi))}<br><span class="muted small">${esc(bi(h.note))}</span></span><span>${h.bindus} ${levelTag(h.level)}</span></div>`).join('')}
-    </div>` : ''}
+    </div>
     <div class="card glass">
       <div class="card-title">🪐 ${L('Planet Ashtakavarga (Bhinna)', 'கிரக அஷ்டகவர்க்கம் (பின்ன)')}</div>
       <p class="muted small">${esc(bi(s.tip))}</p>
@@ -99,9 +97,8 @@ function render(sec) {
     </div>`;
 
   const sub = `${esc(displayName(m))}${ta() ? "" : `<br>D${v.n}`}`;
-  sec.insertAdjacentHTML('beforeend', reportMeta());
   renderSI($('#vargaChart', sec), houses, c.planets, lagnaV, ta() ? v.ta : v.en, sub, false);
-  renderSav($('#savChart', sec), { ...s, hasLagna: hasLagna(c), lagna: hasLagna(c) ? s.lagna : null });
+  renderSav($('#savChart', sec), s);
   $$('[data-vn]', sec).forEach((b) => b.addEventListener('click', () => { selN = Number(b.dataset.vn); render(sec); }));
   $$('.mchip', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.mid; saveFamily(); render(sec); }));
 }

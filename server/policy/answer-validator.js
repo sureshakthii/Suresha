@@ -233,9 +233,11 @@ export function validateAnswer(answer, { decision, evidence, privateValues = [] 
 }
 
 /** The visible text for a validated answer. */
-export function composeAnswer(a, lang = 'en') {
+export function composeAnswer(a, lang = 'en', { textOnly = false } = {}) {
   const ta = lang === 'ta';
   const parts = [a.text.trim()];
+  // textOnly: the answer style already writes next steps / practice into "text"; the other fields stay as data.
+  if (textOnly) return parts[0];
   if (a.nextSteps?.length) parts.push(`${ta ? 'அடுத்த படிகள்:' : 'Next steps:'}\n${a.nextSteps.map((x) => `• ${x}`).join('\n')}`);
   if (a.uncertainty?.trim()) parts.push(`ℹ️ ${a.uncertainty.trim()}`);
   if (a.optionalPractice?.trim()) parts.push(`🪔 ${a.optionalPractice.trim()}`);

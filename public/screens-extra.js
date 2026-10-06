@@ -48,7 +48,7 @@ function gmForm(who) {
     const pref = pool.find((m) => m.gender === (who === 'bride' ? 'female' : 'male'));
     s.memberId = (pref || pool[0]).id;
   }
-  return `<div class="por-side"><h3>${who === 'bride' ? `👰 ${L('Bride', 'பெண்')}` : `🤵 ${L('Groom', 'மாப்பிள்ளை')}`}</h3>
+  return `<div class="por-side"><h3>${who === 'bride' ? `👰 ${L('Bride', 'மணமகள்')}` : `🤵 ${L('Groom', 'மணமகன்')}`}</h3>
     <div class="seg">${pool.length ? `<button type="button" class="${s.mode === 'member' ? 'sel' : ''}" data-who="${who}" data-mode="member">${L('From family', 'குடும்பத்திலிருந்து')}</button>` : ''}<button type="button" class="${s.mode === 'star' ? 'sel' : ''}" data-who="${who}" data-mode="star">${L('By star', 'நட்சத்திரம் மூலம்')}</button></div>
     ${s.mode === 'member'
     ? `<label>${L('Person', 'நபர்')}<select data-who="${who}" data-f="memberId">${pool.map((m) => `<option value="${esc(m.id)}"${m.id === s.memberId ? ' selected' : ''}>${esc(displayName(m))}</option>`).join('')}</select></label>`
@@ -65,13 +65,13 @@ function gmData(who) {
     const c = m && chartOf(m);
     if (c) return { name: displayName(m), star: c.janmaNakshatra.index, rasi: c.janmaRasi.index };
   }
-  return { name: who === 'bride' ? L('Bride', 'பெண்') : L('Groom', 'மாப்பிள்ளை'), star: s.star, rasi: rasiOfStarPada(s.star, s.pada) };
+  return { name: who === 'bride' ? L('Bride', 'மணமகள்') : L('Groom', 'மணமகன்'), star: s.star, rasi: rasiOfStarPada(s.star, s.pada) };
 }
 
 function renderGunaMilan(sec) {
   injectCss();
   sec.innerHTML = `${subHeader(L('Guna Milan (36 Gunas)', 'குண மிலன் (36 குணங்கள்)'), L('North-Indian Ashtakoota matching — for NRI and inter-state marriages', 'வட இந்திய அஷ்டகூட பொருத்தம் — வெளிநாடு, பிற மாநிலத் திருமணங்களுக்கு'))}
-    <div class="card glass"><div class="card-title">${L('Bride & groom', 'பெண் & மாப்பிள்ளை')}</div>
+    <div class="card glass"><div class="card-title">${L('Bride & groom', 'மணமகள் & மணமகன்')}</div>
       <div class="por-grid">${gmForm('bride')}${gmForm('groom')}</div></div>
     <div id="gmResult"></div>
     <div class="card glass"><p class="small">🪔 ${L('Tamil tradition matches by the 10 poruthams (with Rajju and Vedhai as essentials). Guna Milan is the North-Indian system — use it alongside, not instead.', 'தமிழ் மரபில் 10 பொருத்தங்கள் (ரஜ்ஜு, வேதை அவசியம்) பார்க்கப்படுகின்றன. குண மிலன் வட இந்திய முறை — அதற்கு மாற்றாக அல்ல, துணையாகப் பயன்படுத்துங்கள்.')}</p>
@@ -114,10 +114,10 @@ function showGuna(sec) {
     <div class="card glass"><div class="card-title">${L('Doshas', 'தோஷங்கள்')}</div>
       <div>${doshaList}</div>
       ${r.cancellations.length ? `<div class="mini-label" style="margin-top:10px">${L('Cancellations (parihara)', 'தோஷ நிவர்த்தி')}</div>${r.cancellations.map((c) => `<div class="factor"><span>${esc(bi(c))}</span><b class="pos">✓</b></div>`).join('')}`
-    : (r.doshas.nadi || r.doshas.bhakoot ? `<p class="muted small">${L('No classical cancellation applies — consult your astrologer with both full horoscopes.', 'பாரம்பரிய நிவர்த்தி எதுவும் பொருந்தவில்லை — இருவரின் முழு ஜாதகத்துடன் ஜோதிடரை அணுகவும்.')}</p>` : '')}
+    : (r.doshas.nadi || r.doshas.bhakoot ? `<p class="muted small">${L('Look at the complete marriage porutham with both full horoscopes for the whole picture.', 'முழுமையான பார்வைக்கு இருவரின் முழு ஜாதகத்துடன் விரிவான திருமணப் பொருத்தம் பாருங்கள்.')}</p>` : '')}
     </div>`;
 }
-registerScreen('gunamilan', { render: renderGunaMilan, parent: 'family' });
+registerScreen('gunamilan', { render: renderGunaMilan, parent: 'home' });
 
 // ================================================================ NUMEROLOGY
 const nm = { name: '', memberId: null, date: '', mobile: '', vehicle: '' };
@@ -212,4 +212,4 @@ function updateNumerology(sec, only) {
       : !r ? needDate : `${luckBlock(r)}<p class="muted small">${L('With letters (Chaldean values) the total is', 'எழுத்துகளையும் (கல்தேய மதிப்பு) சேர்த்தால் கூட்டு எண்')} ${r.withLetters.single}.</p>`;
   }
 }
-registerScreen('numerology', { render: renderNumerology, parent: 'chart' });
+registerScreen('numerology', { render: renderNumerology, parent: 'home' });

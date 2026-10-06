@@ -213,14 +213,14 @@ test('relations: respectful prompts, never predicting arguments', () => {
 test('couple: no lifespan/fertility checks, neutral wording, works without birth time', () => {
   const r = marriageReport(bride, chart, { weddingDate: now });
   assert.ok(!r.deep.checks.some((c) => c.id === 'ayul'));
-  assert.equal(r.deep.ayul.bride.level, 'not-assessed');
+  assert.equal(r.deep.ayul, undefined, 'longevity is never part of matching');
   assert.ok(!r.mana.areas.some((a) => /long life/i.test(a.name.en)));
   assert.ok(!/ego clash|disagreements likely|misunderstandings can arise/i.test(JSON.stringify(r)));
   assert.ok(r.remedies.every((x) => x.optional));
   assert.deepEqual(findProhibited(r), []);
   const m = manaPorutham(bride, noTime);
   assert.equal(m.needsBirthTime, true);
-  assert.equal(m.areas.length, 7);
+  assert.equal(m.areas.length, 6); // health/longevity is not scored
   assert.equal(marriageReport(bride, noTime, { weddingDate: now }).needsBirthTime, true);
 });
 

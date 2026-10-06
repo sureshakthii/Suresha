@@ -126,11 +126,12 @@ export function travelAdvice(current, today) {
 
 
 /** Fetch and map the forecast directly (used by the phone app when there is no server). */
-export async function fetchForecast(lat, lon, fetchFn = fetch) {
-  const r = await fetchFn(forecastUrl(lat, lon));
+export async function fetchForecast(lat, lon, fetchFn = fetch, stationFn = null) {
+  const [r, station] = await Promise.all([fetchFn(forecastUrl(lat, lon)), stationFn ? stationFn(lat, lon).catch(() => null) : null]);
   if (!r.ok) throw new Error(`forecast ${r.status}`);
   const f = mapForecast(await r.json());
-  return { ...f, station: null, travel: travelAdvice(f.current, f.daily[0]), source: { station: 'Open-Meteo', forecast: 'open-meteo.com' } };
+  return { ...f, station, travel: travelAdvice(f.current, f.daily[0]), fetchedAt: new Date().toISOString(),
+    source: { station: station ? 'NOAA Aviation Weather (METAR)' : null, forecast: 'Open-Meteo' } };
 }
 
 // ---------------------------------------------------------------- Smart advice ("go early, come back before the heat")

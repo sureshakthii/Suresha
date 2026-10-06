@@ -157,7 +157,7 @@ export function doshams(planets, { profile, stability } = {}) {
       needsBirthTime: !planets.Lagna,
       lagnaStable: !planets.Lagna ? null : !(stability?.unstable || []).includes('lagna') && !(stability?.unstable || []).includes('house:Mars'),
       exceptions,
-      note: T('Exceptions are listed for your astrologer; under this profile they do not cancel automatically.', 'விலக்குகள் ஜோதிடருக்காகப் பட்டியலிடப்பட்டுள்ளன; இந்த முறையில் அவை தானாக நீக்குவதில்லை.'),
+      note: T('Exceptions are listed below; under this profile they do not cancel automatically.', 'விலக்குகள் கீழே பட்டியலிடப்பட்டுள்ளன; இந்த முறையில் அவை தானாக நீக்குவதில்லை.'),
     },
     rahuKetu: {
       ruleId: RAHU_KETU_RULE.id, status: RAHU_KETU_RULE.status,
@@ -193,7 +193,7 @@ export function doshaSamyam(girlD, boyD) {
     const comparison = mixed ? T(`${base.en} One birth time is unknown, so both are compared by the Moon reference only.`, `${base.ta} ஒருவரின் பிறந்த நேரம் தெரியாததால் இருவரும் சந்திர அடிப்படையில் மட்டும் ஒப்பிடப்படுகின்றனர்.`) : base;
     if (g == null || b == null) continue; // reference unavailable (no Lagna) — not compared, not a concern
     if (g && b) notes.push({ key, status: 'both', ok: true, comparison, en: `${d.en}: present in both — samyam (balanced)`, ta: `${d.ta}: இருவருக்கும் உள்ளது — சமம்` });
-    else if (g || b) notes.push({ key, status: 'one', ok: false, comparison, side: g ? 'first' : 'second', en: `${d.en}: present only for the ${g ? 'bride' : 'groom'} — discuss with your astrologer; it is common and not a cause for fear`, ta: `${d.ta}: ${g ? 'பெண்ணுக்கு' : 'மாப்பிள்ளைக்கு'} மட்டும் உள்ளது — ஜோதிடருடன் கலந்து பேசுங்கள்; இது பொதுவானது, பயம் வேண்டாம்` });
+    else if (g || b) notes.push({ key, status: 'one', ok: false, comparison, side: g ? 'first' : 'second', en: `${d.en}: present only for the ${g ? 'bride' : 'groom'} — it is common and not a cause for fear`, ta: `${d.ta}: ${g ? 'பெண்ணுக்கு' : 'மாப்பிள்ளைக்கு'} மட்டும் உள்ளது — இது பொதுவானது, பயம் வேண்டாம்` });
     else notes.push({ key, status: 'none', ok: true, comparison, en: `${d.en}: none`, ta: `${d.ta}: இல்லை` });
   }
   return notes;

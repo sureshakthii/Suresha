@@ -2,6 +2,9 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import express from 'express';
 import { getDb } from './db.js';
+import { requireAdmin as adminRole, audit } from './admin.js';
+import { notifyUser } from './push.js';
+import { BRAND } from '../shared/brand.js';
 import { currentUser, normalizePhone } from './auth.js';
 
 // Marketplace: pooja store (Razorpay), priest directory, service requests, admin.
@@ -76,6 +79,14 @@ const SCHEMA = `
     created_at INTEGER,
     updated_at INTEGER
   );
+  CREATE TABLE IF NOT EXISTS request_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS request_events_req ON request_events(request_id);
   CREATE TABLE IF NOT EXISTS service_requests (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -187,6 +198,22 @@ function parseAddress(a) {
 }
 
 /** Prices always come from the catalogue; client-sent prices are ignored. */
+/**
+ * Units no longer available per product: sold (paid / shipped / delivered) plus a 30-minute hold for orders
+ * awaiting payment, so two people cannot buy the last item. Stock in products.json is the opening stock.
+ */
+const HOLD_MS = 30 * 60000;
+function committedQty() {
+  const out = new Map();
+  let rows = [];
+  try {
+    rows = db().prepare("SELECT items, status, created_at FROM store_orders WHERE status IN ('paid', 'shipped', 'delivered') OR (status IN ('awaiting_payment', 'awaiting_payment_setup') AND created_at > ?)").all(now() - HOLD_MS);
+  } catch { return out; }
+  for (const r of rows) for (const l of parse(r.items, [])) out.set(l.id, (out.get(l.id) || 0) + (Number(l.qty) || 0));
+  return out;
+}
+export const availableStock = (id) => Math.max(0, (PRODUCTS.get(id)?.stock || 0) - (committedQty().get(id) || 0));
+
 function priceItems(items) {
   if (!Array.isArray(items) || !items.length) fail('items must be a non-empty list');
   if (items.length > 50) fail('Too many items in one order (max 50)');
@@ -198,10 +225,12 @@ function priceItems(items) {
     qty.set(p.id, (qty.get(p.id) || 0) + int(it.qty, `qty for ${p.id}`, 1, 20));
   }
   const lines = [];
+  const committed = committedQty();
   for (const [id, q] of qty) {
     const p = PRODUCTS.get(id);
     if (q > 20) fail(`qty for ${id} must be a whole number from 1 to 20`);
-    if (q > p.stock) fail(`Only ${p.stock} left in stock for ${p.name.en}`);
+    const left = Math.max(0, p.stock - (committed.get(id) || 0));
+    if (q > left) fail(left ? `Only ${left} left in stock for ${p.name.en}` : `${p.name.en} is out of stock`);
     lines.push({ id, name: p.name, unit: p.unit, price: p.price, qty: q, lineTotal: p.price * q });
   }
   return { lines, total: lines.reduce((s, l) => s + l.lineTotal, 0) };
@@ -238,6 +267,24 @@ const priestPublic = (p) => ({
 });
 const priestFull = (p) => ({ ...priestPublic(p), phone: p.phone, status: p.status, userId: p.user_id, createdAt: p.created_at, updatedAt: p.updated_at });
 
+/** Fulfilment tracking: every status change of a request is recorded with who made it. */
+function logRequest(id, status, actor) {
+  db().prepare('INSERT INTO request_events (request_id, status, actor, at) VALUES (?, ?, ?, ?)').run(id, status, actor, now());
+}
+const requestHistory = (id) => db().prepare('SELECT status, actor, at FROM request_events WHERE request_id = ? ORDER BY id').all(id);
+
+const STATUS_TEXT = {
+  confirmed: ['Your request is confirmed', 'உங்கள் கோரிக்கை உறுதி செய்யப்பட்டது'],
+  assigned: ['A priest / partner has been assigned', 'புரோகிதர் / கூட்டாளர் நியமிக்கப்பட்டார்'],
+  completed: ['Your seva is completed 🙏', 'உங்கள் சேவை நிறைவடைந்தது 🙏'],
+  cancelled: ['Your request was cancelled', 'உங்கள் கோரிக்கை ரத்து செய்யப்பட்டது'],
+};
+function notifyStatus(row, status) {
+  const t = STATUS_TEXT[status];
+  if (!t || !row.user_id || row.user_id === 'deleted') return;
+  notifyUser(row.user_id, { title: `${BRAND.name} · ${t[0]}`, body: `${t[1]} — ${row.service || row.type} · ${row.date}`, url: '/#bookings', tag: `req-${row.id}` }).catch(() => {});
+}
+
 const requestOut = (q, admin = false) => ({
   id: q.id, type: q.type, service: q.service, priestId: q.priest_id, templeId: q.temple_id,
   date: q.date, time: q.time, city: q.city, people: q.people, meals: q.meals, amount: q.amount,
@@ -255,14 +302,8 @@ function requireUser(req, res, next) {
   next();
 }
 
-function requireAdmin(req, res, next) {
-  const token = env('ADMIN_TOKEN');
-  if (!token) return res.status(503).json({ error: 'Admin is not configured (set ADMIN_TOKEN)' });
-  const given = req.get('x-admin-token');
-  if (!given) return res.status(401).json({ error: 'Admin token required' });
-  if (!safeEqual(given, token)) return res.status(403).json({ error: 'Invalid admin token' });
-  next();
-}
+// Named, role-based admin tokens with lock-out (server/admin.js).
+const requireAdmin = adminRole('support');
 
 // Turns validator errors into 400s; everything else falls through to the app error handler.
 const handle = (fn) => async (req, res, next) => {
@@ -284,11 +325,15 @@ export function marketRouter() {
   r.get('/store/products', handle((req, res) => {
     const cat = req.query.category;
     if (cat !== undefined && !CATEGORIES.some((c) => c.id === cat)) fail(`category must be one of: ${CATEGORIES.map((c) => c.id).join(', ')}`);
-    const products = cat ? CATALOG.products.filter((p) => p.category === cat) : CATALOG.products;
-    res.json({ sample: !!CATALOG.sample, currency: CATALOG.currency, categories: CATEGORIES, products });
+    const committed = committedQty();
+    const products = (cat ? CATALOG.products.filter((p) => p.category === cat) : CATALOG.products)
+      .map((p) => ({ ...p, stock: Math.max(0, p.stock - (committed.get(p.id) || 0)) }));
+    res.json({ sample: !!CATALOG.sample, open: !CATALOG.sample || env('STORE_ALLOW_SAMPLE') === '1', currency: CATALOG.currency, categories: CATEGORIES, products });
   }));
 
   r.post('/store/orders', requireUser, handle(async (req, res) => {
+    // Never sell the sample catalogue. A real catalogue sets "sample": false; STORE_ALLOW_SAMPLE=1 is for dev/tests only.
+    if (CATALOG.sample && env('STORE_ALLOW_SAMPLE') !== '1') return res.status(409).json({ error: 'The store is not open yet — the catalogue shown is a sample and is not for sale.', storeClosed: true });
     const b = body(req);
     const { lines, total } = priceItems(b.items);
     const address = parseAddress(b.address);
@@ -393,6 +438,19 @@ export function marketRouter() {
     res.json({ requests: rows.map((q) => requestOut(q)) });
   });
 
+  // Acceptance: the assigned priest accepts (stays assigned, logged) or declines (back to the team to reassign).
+  r.post('/priests/me/requests/:id/respond', requireUser, handle((req, res) => {
+    const d = db();
+    const priest = d.prepare("SELECT id FROM priests WHERE user_id = ? AND status = 'verified'").get(req.user.id);
+    if (!priest) return res.status(404).json({ error: 'No verified priest profile for this account' });
+    const row = d.prepare("SELECT * FROM service_requests WHERE id = ? AND priest_id = ? AND status = 'assigned'").get(req.params.id, priest.id);
+    if (!row) return res.status(404).json({ error: 'No assigned request with this id' });
+    const decision = oneOf(body(req).decision, ['accept', 'decline'], 'decision');
+    if (decision === 'decline') d.prepare("UPDATE service_requests SET status = 'confirmed', priest_id = NULL, updated_at = ? WHERE id = ?").run(now(), row.id);
+    logRequest(row.id, decision === 'accept' ? 'accepted' : 'declined', `priest:${priest.id}`);
+    res.json({ request: requestOut(d.prepare('SELECT * FROM service_requests WHERE id = ?').get(row.id)) });
+  }));
+
   // Service requests / bookings
   r.post('/requests', requireUser, handle((req, res) => {
     const b = body(req);
@@ -430,15 +488,28 @@ export function marketRouter() {
       notes, contact_phone, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'requested', ?, ?)`)
       .run(q.id, req.user.id, q.type, q.service, q.priestId, q.templeId, q.date, q.time, q.city, q.people, q.meals, q.amount,
         q.notes, q.contactPhone, t, t);
+    logRequest(q.id, 'requested', 'customer');
     res.status(201).json({ request: requestOut(db().prepare('SELECT * FROM service_requests WHERE id = ?').get(q.id)) });
   }));
 
   r.get('/requests', requireUser, (req, res) => {
     const rows = db().prepare('SELECT * FROM service_requests WHERE user_id = ? ORDER BY created_at DESC').all(req.user.id);
-    res.json({ requests: rows.map((q) => requestOut(q)) });
+    res.json({ requests: rows.map((q) => ({ ...requestOut(q), history: requestHistory(q.id) })) });
   });
 
   // Admin (each route checks x-admin-token)
+
+  // The customer can cancel their own request before it is completed (fulfilment tracking keeps the history).
+  r.post('/requests/:id/cancel', requireUser, handle((req, res) => {
+    const d = db();
+    const row = d.prepare('SELECT * FROM service_requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!row) return res.status(404).json({ error: 'Request not found' });
+    if (!['requested', 'confirmed', 'assigned'].includes(row.status)) return res.status(409).json({ error: `This request is already ${row.status}` });
+    d.prepare("UPDATE service_requests SET status = 'cancelled', updated_at = ? WHERE id = ?").run(now(), row.id);
+    audit({ admin: { name: `user:${req.user.id}`, role: 'customer' }, ip: req.ip }, 'request.cancel', row.id, { from: row.status });
+    logRequest(row.id, 'cancelled', 'customer');
+    res.json({ request: requestOut(d.prepare('SELECT * FROM service_requests WHERE id = ?').get(row.id)) });
+  }));
 
   r.get('/admin/priests', requireAdmin, handle((req, res) => {
     const { status } = req.query;
@@ -454,6 +525,7 @@ export function marketRouter() {
     const d = db();
     const { changes } = d.prepare('UPDATE priests SET status = ?, updated_at = ? WHERE id = ?').run(status, now(), req.params.id);
     if (!changes) return res.status(404).json({ error: 'Priest not found' });
+    audit(req, 'priest.status', req.params.id, { status });
     res.json({ priest: priestFull(d.prepare('SELECT * FROM priests WHERE id = ?').get(req.params.id)) });
   }));
 
@@ -467,6 +539,7 @@ export function marketRouter() {
     const d = db();
     const { changes } = d.prepare('UPDATE store_orders SET status = ?, updated_at = ? WHERE id = ?').run(status, now(), req.params.id);
     if (!changes) return res.status(404).json({ error: 'Order not found' });
+    audit(req, 'order.status', req.params.id, { status });
     res.json({ order: orderOut(d.prepare('SELECT * FROM store_orders WHERE id = ?').get(req.params.id), true) });
   }));
 
@@ -489,6 +562,9 @@ export function marketRouter() {
     }
     if (status === 'assigned' && !priestId) fail("priestId is required when status is 'assigned'");
     d.prepare('UPDATE service_requests SET status = ?, priest_id = ?, updated_at = ? WHERE id = ?').run(status, priestId, now(), row.id);
+    audit(req, 'request.status', row.id, { from: row.status, status, priestId });
+    logRequest(row.id, status, `admin:${req.admin.name}`);
+    if (status !== row.status) notifyStatus(row, status);
     res.json({ request: requestOut(d.prepare('SELECT * FROM service_requests WHERE id = ?').get(row.id), true) });
   }));
 

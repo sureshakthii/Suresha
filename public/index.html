@@ -3,19 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f6f1e8" />
+  <meta name="theme-color" content="#6e1a35" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="description" content="Thunai (துணை) — a Tamil-first family companion: today's panchangam, your Jathagam, family matching, temple trips and practical planning." />
-  <meta name="application-name" content="துணை — Thunai" />
-  <meta name="apple-mobile-web-app-title" content="துணை" />
-  <title>துணை — உங்கள் வாழ்க்கையின் வழிகாட்டி</title>
+  <meta name="description" content="துணை · THUNAI — உங்கள் வாழ்வின் வழித்துணை. Personal Astrology &amp; Spiritual Guidance: Tamil panchangam, family horoscopes, explainable guidance and temple journeys." />
+  <title>துணை · THUNAI — Personal Astrology &amp; Spiritual Guidance</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/icon-192.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@500;700&family=Noto+Sans+Tamil:wght@400;600;800&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/fonts.css" />
   <link rel="stylesheet" href="/styles.css" />
   <script type="importmap">{ "imports": { "astronomy-engine": "/vendor/astronomy-engine.js" } }</script>
 </head>
@@ -30,7 +26,7 @@
   </div>
 
   <!-- Splash -->
-  <section id="splash" class="splash" aria-label="துணை — Thunai">
+  <section id="splash" class="splash">
     <div class="splash-wheel">
       <svg viewBox="0 0 200 200" class="zodiac-spin" aria-hidden="true">
         <defs>
@@ -48,30 +44,38 @@
       <div class="orbit o3"><span class="p p3"></span></div>
       <img src="logo.svg" alt="" class="splash-logo" width="150" height="150" />
     </div>
-    <h1 class="brand-ta">துணை</h1>
-    <h2 class="brand-en">Thunai</h2>
-    <p class="slogan">உங்கள் வாழ்க்கையின் வழிகாட்டி</p>
-    <p class="tagline">ஜாதகம் · நட்சத்திரம் · ராசி மண்டலம் · ஓரை · பரிகாரம்</p>
-    <p class="copy splash-copy">© 2026 துணை · Thunai</p>
+    <h1 class="brand-ta" data-brand="ta">துணை</h1>
+    <h2 class="brand-en" data-brand="upper">THUNAI</h2>
+    <p class="slogan" data-brand="tagline">உங்கள் வாழ்வின் வழித்துணை.</p>
+    <p class="tagline" data-brand="descriptor">Personal Astrology &amp; Spiritual Guidance</p>
+    <p class="copy splash-copy">© 2026 Thunai (துணை). All rights reserved.<br>Concept &amp; Developed by AG TECHNOLOGY SOLUTIONS</p>
   </section>
 
   <main id="app" class="app" hidden>
     <header class="topbar">
-      <button class="brand-mini" data-go="home" aria-label="துணை — Today / இன்று">
-        <img src="logo.svg" alt="" width="34" height="34" />
-        <div>
-          <div class="bm-ta">துணை <span class="bm-en">Thunai</span></div>
-          <div class="bm-tag" data-i18n-en="Your guide for life" data-i18n-ta="உங்கள் வாழ்க்கையின் வழிகாட்டி">உங்கள் வாழ்க்கையின் வழிகாட்டி</div>
-        </div>
+      <button class="brand-mini" data-go="home" aria-label="துணை · THUNAI — Today / இன்று">
+        <span class="bm-logo"><img src="logo.svg" alt="" width="40" height="40" decoding="sync" /></span>
+        <span class="bm-text">
+          <span class="bm-ta"><span class="bm-name" data-brand="ta">துணை</span><span class="bm-latin" data-brand="upper">THUNAI</span></span>
+          <span class="bm-tag" data-brand="tagline-short">வாழ்வின் வழித்துணை</span>
+        </span>
       </button>
-      <div class="top-actions"><button id="themeBtn" class="chip-btn icon-only" aria-label="Day / night theme — பகல் / இரவு"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></button>
-      <button id="langBtn" class="chip-btn" aria-label="Change language — மொழி மாற்று">தமிழ் / EN</button>
-      <button id="settingsBtn" class="chip-btn icon-only" data-go="more" aria-label="Profile &amp; settings — சுயவிவரம் &amp; அமைப்புகள்"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/></svg></button></div>
+      <div class="top-actions">
+        <button id="themeBtn" class="chip-btn icon-only" aria-label="Day / night theme — பகல் / இரவு"><svg class="ic-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg><svg class="ic-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg></button>
+        <button id="langBtn" class="chip-btn lang-btn" aria-label="Change language / மொழி மாற்று">EN</button>
+        <button class="chip-btn icon-only" data-go="more" aria-label="Profile &amp; settings — சுயவிவரம் &amp; அமைப்புகள்"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/></svg></button>
+      </div>
     </header>
 
     <div id="views"></div>
 
-    <nav class="tabbar" aria-label="Main — முதன்மை"></nav>
+    <nav class="tabbar" aria-label="Main">
+      <button data-tab="home"><span class="ti"><svg class="ic" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span data-i18n-en="Today" data-i18n-ta="இன்று">இன்று</span></button>
+      <button data-tab="chart"><span class="ti"><svg class="ic" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></span><span data-i18n-en="My Chart" data-i18n-ta="ஜாதகம்">ஜாதகம்</span></button>
+      <button data-tab="familyhub"><span class="ti"><svg class="ic" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span data-i18n-en="Family" data-i18n-ta="குடும்பம்">குடும்பம்</span></button>
+      <button data-tab="chat"><span class="ti"><svg class="ic" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/></svg></span><span data-i18n-en="Ask" data-i18n-ta="கேள்">கேள்</span></button>
+      <button data-tab="services"><span class="ti"><svg class="ic" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 21h18"/><path d="M5 21V10l7-6 7 6v11"/><path d="M9 21v-6h6v6"/></svg></span><span data-i18n-en="Services" data-i18n-ta="சேவைகள்">சேவைகள்</span></button>
+    </nav>
   </main>
 
   <script type="module" src="/app.js"></script>

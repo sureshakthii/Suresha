@@ -195,7 +195,7 @@ export function gunaMilan(bride, groom) {
   return {
     rows, total, max: 36, verdict, doshas, cancellations,
     tradition: 'north-indian-ashtakoota-36', asymmetricFactors: ASHTAKOOTA_ASYMMETRIC, averagedWithPorutham: false,
-    note: T('A traditional points table from one school — not a prediction of how a marriage will go.', 'ஒரு மரபுப் பள்ளியின் புள்ளி அட்டவணை — திருமண வாழ்க்கை எப்படி அமையும் என்பதற்கான கணிப்பு அல்ல.'),
+    note: T('A traditional points table from one school — mutual understanding and family values matter most.', 'ஒரு மரபுப் பள்ளியின் புள்ளி அட்டவணை — பரஸ்பரப் புரிதலும் குடும்ப மதிப்புகளுமே முதன்மை.'),
     bride: { star: NAKSHATRAS[bs], rasi: RASIS[br], yoni: YONI_NAMES[by], gana: GANA_NAMES[bg], nadi: NADI_NAMES[bn], varna: VARNA_NAMES[bv] },
     groom: { star: NAKSHATRAS[gs], rasi: RASIS[gr], yoni: YONI_NAMES[gy], gana: GANA_NAMES[gg], nadi: NADI_NAMES[gn], varna: VARNA_NAMES[gv] },
   };

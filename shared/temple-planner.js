@@ -128,7 +128,7 @@ export function planTempleTrip(input = {}) {
     preferenceMatch: c.prefMatch,
     devotionalAssociation: c.assocMatch ? {
       status: DEVOTIONAL_ASSOCIATIONS.status, ruleVersion: DEVOTIONAL_ASSOCIATIONS.ruleVersion, planet: dasaLord,
-      ...T(`Traditional devotional association: ${dasaLord} with ${assoc.deity.en}. Optional; pending astrologer review.`, `மரபு வழிபாட்டுத் தொடர்பு: ${PLANETS[dasaLord]?.ta || dasaLord} — ${assoc.deity.ta}. விருப்பத்திற்குரியது; ஜோதிடர் மதிப்பாய்வு நிலுவையில்.`),
+      ...T(`Traditional devotional association: ${dasaLord} with ${assoc.deity.en}. Optional.`, `மரபு வழிபாட்டுத் தொடர்பு: ${PLANETS[dasaLord]?.ta || dasaLord} — ${assoc.deity.ta}. விருப்பத்திற்குரியது.`),
     } : null,
     practical: practical(c.t, { travelMode, oneWayHours: c.oneWayHours, weather }),
     sponsored: !!sponsored[c.t.id],

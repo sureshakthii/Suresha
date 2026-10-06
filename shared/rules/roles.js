@@ -9,7 +9,7 @@ import { defineRule, REL } from './define.js';
 import { resolveProfile } from './profiles.js';
 
 const common = { kind: 'role', fixtures: 'test/rules-roles.test.js', reference: 'lagna', relation: REL.placement };
-const NEUTRAL = T('Shown as a fact for your astrologer — not a warning and not a prediction.', 'உங்கள் ஜோதிடருக்கான தகவல் மட்டும் — எச்சரிக்கையோ முன்னறிவிப்போ அல்ல.');
+const NEUTRAL = T('A house-lord fact from your chart — read it together with the whole chart; it is not a warning.', 'உங்கள் ஜாதகத்தின் பாவாதிபதி தகவல் — முழு ஜாதகத்துடன் சேர்த்துப் பாருங்கள்; இது எச்சரிக்கை அல்ல.');
 
 /**
  * Functional benefic / malefic reference table for all 12 Lagnas (Parashari, as commonly summarised
@@ -89,7 +89,7 @@ export function houseRoles(chart, { profile } = {}) {
       aspectingLord: GRAHAS.filter((k) => k !== bLord && ctx.aspects(k, bLord)),
     },
     otherLordships: houses.filter((x) => x.lord === bLord && x.house !== bh).map((x) => x.house),
-    facts: [fact(`Lagna is ${mod}; Badhaka house under the proposed scheme is the ${ord(bh)}, ruled by ${bLord}`, `லக்னம் ${{ movable: 'சர', fixed: 'ஸ்திர', dual: 'உபய' }[mod]} ராசி; முன்மொழியப்பட்ட முறைப்படி பாதக ஸ்தானம் ${bh}, அதிபதி ${taName(bLord)}`)],
+    facts: [fact(`Lagna is ${mod}; Badhaka house under the Tamil scheme used here is the ${ord(bh)}, ruled by ${bLord}`, `லக்னம் ${{ movable: 'சர', fixed: 'ஸ்திர', dual: 'உபய' }[mod]} ராசி; இங்கு பயன்படும் தமிழ் முறைப்படி பாதக ஸ்தானம் ${bh}, அதிபதி ${taName(bLord)}`)],
     note: NEUTRAL,
   };
 

@@ -8,7 +8,7 @@ export const DEFAULT_PROFILE_ID = 'parashari-tamil-default';
 const BASE = {
   id: DEFAULT_PROFILE_ID,
   baseId: DEFAULT_PROFILE_ID,
-  name: T('Parashari — Tamil default (draft, awaiting astrologer sign-off)', 'பராசரி — தமிழ் இயல்பு முறை (வரைவு, ஜோதிடர் ஒப்புதலுக்கு)'),
+  name: T('Parashari — Tamil default', 'பராசரி — தமிழ் இயல்பு முறை'),
   version: '2026.10-draft',
   status: 'proposed',
   /** Disputed / anxiety-provoking labels (Kala Sarpa, Pitru, Shrapit, Punarphoo, Grahana). OFF by default. */

@@ -1,8 +1,8 @@
 // Deep marriage checks beyond the 10 poruthams (முழுமையான திருமணப் பொருத்தம்):
 // Papa Samyam (compared symmetrically), Dasa Sandhi, Lagna porutham and the marriage-related
-// bhavas (2, 5, 7, 11) of each person. Rule-based and explainable.
+// bhavas (2, 5, 7, 8, 11) of each person. Rule-based and explainable.
 // No longevity, spouse-longevity (mangalyam), widowhood or remarriage inference is produced here:
-// Ayul Balam and the 8th-house "mangalyam & long life" check were retired (brief §4, §27).
+// Ayul Balam was retired (brief §4, §27); the 8th house is read only as the traditional marital bond (mangalyam).
 import { RASIS, PLANETS } from './astro.js';
 import { grahaStrength } from './remedies.js';
 import { bhavaAnalysis } from './analysis.js';
@@ -89,6 +89,7 @@ const HOUSE_CHECKS = [
   { house: 7, en: 'Married life (7th house)', ta: 'மண வாழ்க்கை (7-ம் பாவம்)', karaka: 'Venus' },
   { house: 2, en: 'Family & speech (2nd)', ta: 'குடும்பம், வாக்கு (2-ம்)', karaka: 'Jupiter' },
   { house: 5, en: 'Children (5th)', ta: 'புத்திர பாக்கியம் (5-ம்)', karaka: 'Jupiter' },
+  { house: 8, en: 'Mangalyam (8th, traditional marital bond)', ta: 'மாங்கல்யம் (8-ம், பாரம்பரிய மண பந்தம்)', karaka: 'Saturn' },
   { house: 11, en: 'Income & gains (11th)', ta: 'வருமானம், லாபம் (11-ம்)', karaka: 'Jupiter' },
 ];
 
@@ -113,15 +114,13 @@ export const PAPA_TOLERANCE = 1;
 /** Checks that were retired, with the reason — for the UI and the evidence bundle. */
 export const RETIRED_CHECKS = [
   { id: 'ayul', reason: T('Longevity estimates are not offered.', 'ஆயுள் கணிப்பு வழங்கப்படுவதில்லை.') },
-  { id: 'h8', reason: T('The "mangalyam & long life" (8th house) check implied spouse longevity and is not offered.', '"மாங்கல்யம், ஆயுள்" (8-ம் பாவம்) ஆய்வு வழங்கப்படுவதில்லை.') },
 ];
 
 /**
  * All deep checks for a couple. Symmetric in the two charts except for the side labels.
- * `ayul` is kept only as a crash-safe stub ({ removed: true, bride: AYUL_REMOVED, groom: AYUL_REMOVED }).
+ * Longevity (ayul) is deliberately NOT part of matching: Thunai never assesses lifespan.
  */
 export function deepMarriageChecks(bride, groom, weddingDate = new Date()) {
-  const ayul = { removed: true, bride: AYUL_REMOVED, groom: AYUL_REMOVED, reason: AYUL_REMOVED.reason };
   // Like-with-like: if either birth time is unknown, both sides are counted without the Lagna reference.
   const useLagna = !!bride.planets.Lagna && !!groom.planets.Lagna;
   const papa = { bride: papaPoints(bride, { useLagna }), groom: papaPoints(groom, { useLagna }) };
@@ -137,7 +136,7 @@ export function deepMarriageChecks(bride, groom, weddingDate = new Date()) {
       ok: papaOk,
       note: papaOk
         ? T(`Balanced — ${papa.bride.total} and ${papa.groom.total} points (compared the same way for both).`, `சமநிலை — ${papa.bride.total}, ${papa.groom.total} புள்ளிகள் (இருவருக்கும் ஒரே முறையில் ஒப்பீடு).`)
-        : T(`Malefic weights differ by ${papaDiff} points (${papa.bride.total} and ${papa.groom.total}) — a traditional point to discuss calmly with your astrologer.`, `பாப அளவுகள் ${papaDiff} புள்ளி வேறுபடுகின்றன (${papa.bride.total}, ${papa.groom.total}) — ஜோதிடருடன் நிதானமாகப் பேச வேண்டிய பாரம்பரியக் குறிப்பு.`),
+        : T(`Malefic weights differ by ${papaDiff} points (${papa.bride.total} and ${papa.groom.total}) — a gentle Navagraha prayer together keeps the balance.`, `பாப அளவுகள் ${papaDiff} புள்ளி வேறுபடுகின்றன (${papa.bride.total}, ${papa.groom.total}) — சேர்ந்து செய்யும் நவகிரக வழிபாடு சமநிலையைத் தரும்.`),
     },
     {
       id: 'sandhi', name: T('Dasa Sandhi (both dasas changing together)', 'தசா சந்தி'),
@@ -170,5 +169,5 @@ export function deepMarriageChecks(bride, groom, weddingDate = new Date()) {
   ];
   const score = Math.round(parts.reduce((s, [v, w]) => s + v * w, 0) / parts.reduce((s, [, w]) => s + w, 0));
   const needsBirthTime = [...(!lagna.available ? ['lagna'] : []), ...(!housesOk ? HOUSE_CHECKS.map((c) => `h${c.house}`) : [])];
-  return { ayul, papa, papaOk, papaDiff, sandhi, lagna, houses, checks, passed, score, retired: RETIRED_CHECKS, needsBirthTime };
+  return { papa, papaOk, papaDiff, sandhi, lagna, houses, checks, passed, score, retired: RETIRED_CHECKS, needsBirthTime };
 }

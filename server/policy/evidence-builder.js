@@ -41,7 +41,7 @@ export function evidenceFromChart(chart, { includeYogas = true } = {}) {
   }
   if (includeYogas) {
     try {
-      for (const y of detectYogas(chart)) add(`YOGA.${y.id}`, `${y.name.en} (detected by rule ${y.id}; rule pending astrologer approval): ${y.desc.en}`, `analysis.detectYogas:${y.id}`);
+      for (const y of detectYogas(chart)) add(`YOGA.${y.id}`, `${y.name.en} (rule ${y.id}): ${y.desc.en}`, `analysis.detectYogas:${y.id}`);
     } catch { /* yoga rules unavailable — omit, never guess */ }
   }
   return facts;
@@ -90,7 +90,16 @@ export function evidenceFromClientContext(context, { keep = [] } = {}) {
     }
     if (!['string', 'number', 'boolean'].includes(typeof v)) return;
     const id = `C.${path.join('.')}`.replace(/[^\w.-]/g, '_').slice(0, 80);
-    facts.push({ id, text: clip(`${path.filter((p) => typeof p === 'string').join(' › ')}: ${v}`), source: 'client', rule: 'client-context' });
+    const label = path.filter((p) => typeof p === 'string').join(' › ');
+    const str = String(v).trim();
+    if (str.length + label.length + 2 <= MAX_TEXT) {
+      facts.push({ id, text: clip(`${label}: ${str}`), source: 'client', rule: 'client-context' });
+      return;
+    }
+    // Long text (e.g. the engine's built-in answer): one fact per line / sentence so nothing is cut off.
+    const parts = str.split(/\n+|(?<=[.!?।])\s+/).map((x) => x.trim()).filter(Boolean)
+      .flatMap((x) => (x.length > MAX_TEXT - label.length - 2 ? x.match(new RegExp(`.{1,${MAX_TEXT - label.length - 2}}(\\s|$)`, 'gs')) || [x] : [x]));
+    parts.slice(0, 40).forEach((x, i) => { if (facts.length < MAX_FACTS) facts.push({ id: `${id}.${i}`, text: clip(`${label}: ${x.trim()}`), source: 'client', rule: 'client-context' }); });
   };
   if (context && typeof context === 'object') walk(context, [], 0);
   return { facts, dropped: [...dropped] };

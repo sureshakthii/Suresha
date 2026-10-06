@@ -132,7 +132,7 @@ export function hasConsent(ledger, participantIds, scope) {
 const RESULT_LABEL = {
   uttamam: T('Agrees in this tradition', 'இந்த மரபில் பொருந்துகிறது'),
   madhyamam: T('Partly agrees in this tradition', 'இந்த மரபில் ஓரளவு பொருந்துகிறது'),
-  poruthamillai: T('Does not agree in this tradition — worth discussing with your astrologer', 'இந்த மரபில் பொருந்தவில்லை — உங்கள் ஜோதிடருடன் கலந்துபேசலாம்'),
+  poruthamillai: T('Does not agree in this tradition — worth discussing together as a family', 'இந்த மரபில் பொருந்தவில்லை — குடும்பமாகக் கலந்துபேசலாம்'),
 };
 
 // Neutral calculation basis for each porutham; directional = counted from the bride-side star by tradition.
@@ -168,8 +168,8 @@ const EXPERT_QUESTIONS = [
 ];
 const REMARRIAGE_EXPERT_Q = T('If your tradition treats remarriage differently, which houses and reference points does it use, and from which cited school?', 'உங்கள் மரபு மறுமணத்தை வேறுவிதமாகப் பார்க்கிறது என்றால், எந்த பாவங்கள், எந்தக் குறிப்புப் புள்ளிகள், எந்த ஆதாரபூர்வ பள்ளியிலிருந்து?');
 
-const RECOMMENDATION = T('Discuss these factors and seek expert review if this tradition matters to you.',
-  'இந்த மரபு உங்களுக்கு முக்கியமானதென்றால், இந்தக் காரணிகளைப் பற்றிக் கலந்துபேசி நிபுணர் மதிப்பாய்வைப் பெறுங்கள்.');
+const RECOMMENDATION = T('Talk these factors through together; the decision rests with the two of you and your families.',
+  'இந்தக் காரணிகளைச் சேர்ந்து பேசுங்கள்; முடிவு நீங்கள் இருவரும் உங்கள் குடும்பங்களும் எடுப்பது.');
 
 // ------------------------------------------------------------------------------------------ cards
 const card = (cardId, icon, iconLabel, title, summary, prompts, extra = {}) => ({ cardId, icon, iconLabel, title, summary, prompts, ...extra });
@@ -179,7 +179,7 @@ function buildCards(factors) {
   return [
     card('traditional', '📜', T('Scroll icon: traditional matching', 'சுருள் அடையாளம்: மரபுப் பொருத்தம்'), T('Traditional Matching', 'மரபுப் பொருத்தம்'),
       review.length
-        ? T(`Each factor is shown on its own. Factors to review with your astrologer: ${review.map((r) => r.en).join(', ')}.`, `ஒவ்வொரு காரணியும் தனித்தனியாகக் காட்டப்படுகிறது. ஜோதிடருடன் மதிப்பாய்வு செய்ய வேண்டியவை: ${review.map((r) => r.ta).join(', ')}.`)
+        ? T(`Each factor is shown on its own. Factors tradition gives most weight to: ${review.map((r) => r.en).join(', ')}.`, `ஒவ்வொரு காரணியும் தனித்தனியாகக் காட்டப்படுகிறது. மரபு அதிக முக்கியத்துவம் தருபவை: ${review.map((r) => r.ta).join(', ')}.`)
         : T('Each factor is shown on its own, with how it was calculated.', 'ஒவ்வொரு காரணியும் கணக்கிட்ட விதத்துடன் தனித்தனியாகக் காட்டப்படுகிறது.'),
       [RECOMMENDATION], { factorIds: factors.map((f) => f.factorId), consent: 'pair' }),
     card('expectations', '💬', T('Speech bubble icon: relationship expectations', 'உரையாடல் அடையாளம்: உறவு எதிர்பார்ப்புகள்'), T('Relationship Expectations', 'உறவு எதிர்பார்ப்புகள்'),
@@ -203,7 +203,7 @@ function buildCards(factors) {
     card('next_steps', '🗓️', T('Calendar icon: timing and next steps', 'நாள்காட்டி அடையாளம்: நேரமும் அடுத்த படிகளும்'), T('Timing & Next Steps', 'நேரமும் அடுத்த படிகளும்'),
       RECOMMENDATION,
       [T('Take the time you both need — there is no deadline from this report.', 'உங்கள் இருவருக்கும் தேவையான நேரத்தை எடுத்துக்கொள்ளுங்கள் — இந்த அறிக்கையிலிருந்து எந்தக் காலக்கெடுவும் இல்லை.'),
-        T('If you wish, ask your family astrologer the expert questions listed in the detailed view.', 'விரும்பினால், விரிவான பார்வையில் உள்ள நிபுணர் கேள்விகளை உங்கள் குடும்ப ஜோதிடரிடம் கேளுங்கள்.'),
+        T('The detailed view lists the deeper questions tradition looks at for this match.', 'இந்தப் பொருத்தத்திற்கு மரபு பார்க்கும் ஆழமான கேள்விகள் விரிவான பார்வையில் உள்ளன.'),
         T('A Muhurtham can be chosen later, around your real plans.', 'உங்கள் உண்மையான திட்டங்களுக்கு ஏற்ப முகூர்த்தத்தைப் பின்னர் தேர்வு செய்யலாம்.')],
       { consent: 'pair' }),
   ];
@@ -243,7 +243,7 @@ function samyamNotes(da, db, names) {
     const a = da.available ? da[key].placementNoted : null, b = db.available ? db[key].placementNoted : null;
     if (a == null || b == null) { out.push({ key, status: 'uncertain', ...T(`${label.en}: needs a reliable birth time for both.`, `${label.ta}: இருவருக்கும் துல்லியமான பிறந்த நேரம் தேவை.`) }); continue; }
     if (a && b) out.push({ key, status: 'both', ...T(`${label.en}: noted for both — many traditions call this samyam (balanced).`, `${label.ta}: இருவருக்கும் உள்ளது — பல மரபுகளில் இது சாம்யம்.`) });
-    else if (a || b) out.push({ key, status: 'one', ...T(`${label.en}: noted for ${a ? names[0].en : names[1].en} only — traditions differ on exceptions; ask your astrologer.`, `${label.ta}: ${a ? names[0].ta : names[1].ta} அவர்களுக்கு மட்டும் — விதிவிலக்குகளில் மரபுகள் வேறுபடுகின்றன; ஜோதிடரிடம் கேளுங்கள்.`) });
+    else if (a || b) out.push({ key, status: 'one', ...T(`${label.en}: noted for ${a ? names[0].en : names[1].en} only — traditions differ on exceptions.`, `${label.ta}: ${a ? names[0].ta : names[1].ta} அவர்களுக்கு மட்டும் — விதிவிலக்குகளில் மரபுகள் வேறுபடுகின்றன.`) });
     else out.push({ key, status: 'none', ...T(`${label.en}: not noted for either.`, `${label.ta}: இருவருக்கும் இல்லை.`) });
   }
   return out;
@@ -313,7 +313,7 @@ export function buildMatchingReport({ bride, groom, modes = {}, consent = null, 
     expertReview: !!FACTOR_BASIS[r.key]?.expert,
     exceptions: [],
     birthDataLimitation: certainty.some((c) => c !== 'exact')
-      ? T('If either birth time is uncertain near a star boundary, this factor may change — confirm the star with your astrologer.', 'நட்சத்திர எல்லைக்கு அருகில் பிறந்த நேரம் உறுதியில்லையெனில் இந்தக் காரணி மாறலாம் — நட்சத்திரத்தை ஜோதிடருடன் உறுதிப்படுத்துங்கள்.')
+      ? T('If either birth time is uncertain near a star boundary, this factor may change — confirm both birth stars first.', 'நட்சத்திர எல்லைக்கு அருகில் பிறந்த நேரம் உறுதியில்லையெனில் இந்தக் காரணி மாறலாம் — முதலில் இருவரின் நட்சத்திரத்தையும் உறுதிப்படுத்துங்கள்.')
       : null,
   }));
 

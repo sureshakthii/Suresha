@@ -1,3 +1,4 @@
+import { BRAND } from '../shared/brand.js';
 import crypto from 'node:crypto';
 import express from 'express';
 import nodemailer from 'nodemailer';
@@ -54,7 +55,7 @@ function providers() {
   };
 }
 
-const otpText = (code) => `உங்கள் துணை (Thunai) OTP: ${code} (5 நிமிடங்கள் செல்லும்)\nYour Thunai OTP: ${code} (valid for 5 minutes)`;
+const otpText = (code) => `உங்கள் ${BRAND.nameTa} OTP: ${code} (5 நிமிடங்கள் செல்லும்)\nYour ${BRAND.name} OTP: ${code} (valid for 5 minutes)`;
 
 async function sendSms(to, code) {
   if (smsProvider() === 'twilio') {
@@ -86,7 +87,7 @@ async function sendEmail(to, code) {
   mailer ||= nodemailer.createTransport(env('SMTP_URL'));
   await mailer.sendMail({
     from: env('MAIL_FROM'), to,
-    subject: `துணை Thunai OTP: ${code}`,
+    subject: `${BRAND.nameTa} · ${BRAND.name} OTP: ${code}`,
     text: otpText(code),
   });
 }
@@ -358,21 +359,7 @@ export function authRouter() {
     res.json({ ok: true, updatedAt });
   });
 
-  // Privacy (DPDP Act 2023): a signed-in user can download everything held about them and delete the account.
-  r.get('/me/export', (req, res) => {
-    const user = currentUser(req);
-    if (!user) return res.status(401).json({ error: 'Not signed in' });
-    const out = { exportedAt: new Date(now()).toISOString(), user: publicUser(user), records: {} };
-    const row = getDb().prepare('SELECT data, updated_at FROM user_data WHERE user_id = ?').get(user.id);
-    try { out.records.profiles = row?.data ? JSON.parse(row.data) : {}; } catch { out.records.profiles = {}; }
-    for (const t of USER_TABLES) {
-      const rows = rowsOf(t, user.id);
-      if (rows) out.records[t] = rows;
-    }
-    res.setHeader('Content-Disposition', 'attachment; filename="thunai-my-data.json"');
-    res.json(out);
-  });
-
+  // Clear saved profiles only (the account stays).
   r.delete('/me/data', (req, res) => {
     const user = currentUser(req);
     if (!user) return res.status(401).json({ error: 'Not signed in' });
@@ -380,39 +367,44 @@ export function authRouter() {
     res.json({ ok: true });
   });
 
-  // Body { confirm: "DELETE" }. Personal data is erased; payment and order rows are kept only as
-  // de-identified accounting records (tax law), with the user link replaced by a one-way hash.
-  r.post('/me/delete-account', (req, res) => {
+  // Data export: everything stored about this account, as JSON.
+  r.get('/me/export', (req, res) => {
     const user = currentUser(req);
     if (!user) return res.status(401).json({ error: 'Not signed in' });
-    if (req.body?.confirm !== 'DELETE') return res.status(400).json({ error: 'Send { "confirm": "DELETE" } to delete the account' });
     const d = getDb();
-    const tomb = `deleted:${hmac(`tomb:${user.id}`).slice(0, 16)}`;
-    d.exec('BEGIN');
-    try {
-      for (const t of ['user_data', 'sessions', 'push_subs', 'events', 'feedback', 'referral_codes', 'referral_claims', 'gift_redemptions', 'priests']) {
-        if (tableExists(t)) d.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(user.id);
-      }
-      for (const t of ['subscriptions', 'store_orders', 'service_requests']) {
-        if (tableExists(t)) d.prepare(`UPDATE ${t} SET user_id = ? WHERE user_id = ?`).run(tomb, user.id);
-      }
-      d.prepare('DELETE FROM users WHERE id = ?').run(user.id);
-      d.exec('COMMIT');
-    } catch (err) {
-      d.exec('ROLLBACK');
-      throw err;
-    }
+    const tryAll = (sql) => { try { return d.prepare(sql).all(user.id); } catch { return []; } };
+    const row = d.prepare('SELECT data, updated_at FROM user_data WHERE user_id = ?').get(user.id);
+    res.setHeader('Content-Disposition', 'attachment; filename="thunai-account-export.json"');
+    res.json({
+      exportedAt: new Date(now()).toISOString(),
+      account: d.prepare('SELECT id, name, phone, email, created_at FROM users WHERE id = ?').get(user.id),
+      savedData: row?.data ? JSON.parse(row.data) : null,
+      subscriptions: tryAll('SELECT id, plan, status, currency, amount_minor, gateway, starts_at, expires_at, created_at FROM subscriptions WHERE user_id = ?'),
+      storeOrders: tryAll('SELECT id, items, total, status, created_at FROM store_orders WHERE user_id = ?'),
+      serviceRequests: tryAll('SELECT * FROM service_requests WHERE user_id = ?'),
+      feedback: tryAll('SELECT id, rating, comment, status, created_at FROM feedback WHERE user_id = ?'),
+    });
+  });
+
+  // Account deletion: removes profile data, sessions and the account. Payment and order records are
+  // de-identified (kept only where tax/accounting law requires), never shown again in the app.
+  r.delete('/me', (req, res) => {
+    const user = currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const d = getDb();
+    const run = (sql) => { try { d.prepare(sql).run(user.id); } catch { /* table not present on this instance */ } };
+    run('DELETE FROM user_data WHERE user_id = ?');
+    run('DELETE FROM sessions WHERE user_id = ?');
+    run('DELETE FROM push_subs WHERE user_id = ?');
+    run('DELETE FROM feedback WHERE user_id = ?');
+    run('UPDATE events SET user_id = NULL WHERE user_id = ?');
+    run("UPDATE store_orders SET address = '{}', user_id = 'deleted' WHERE user_id = ?");
+    run("UPDATE service_requests SET contact_phone = NULL, notes = '', user_id = 'deleted' WHERE user_id = ?");
+    run("UPDATE subscriptions SET user_id = 'deleted' WHERE user_id = ?");
+    run('DELETE FROM users WHERE id = ?');
     setCookie(req, res, SESSION_COOKIE, '', { maxAge: 0 });
-    res.json({ ok: true, retained: ['subscriptions', 'store_orders', 'service_requests'].filter(tableExists).map((t) => `${t} (de-identified)`) });
+    res.json({ ok: true, deleted: true });
   });
 
   return r;
 }
-
-// Tables (created by other modules on first use) that hold rows linked to a user.
-const USER_TABLES = ['subscriptions', 'store_orders', 'service_requests', 'priests', 'feedback', 'referral_codes', 'referral_claims', 'gift_redemptions', 'push_subs'];
-const tableExists = (t) => !!getDb().prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t);
-// Push subscriptions carry device keys; export only that a device is registered.
-const rowsOf = (t, userId) => (tableExists(t)
-  ? getDb().prepare(`SELECT * FROM ${t} WHERE user_id = ?`).all(userId).map((r) => (t === 'push_subs' ? { id: r.id, prefs: r.prefs, created_at: r.created_at } : r))
-  : null);

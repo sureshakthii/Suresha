@@ -14,7 +14,9 @@ import { growthRouter } from './growth.js';
 import { tamilMonth } from '../shared/tamilcal.js';
 import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
 import { findMuhurtham } from '../shared/special.js';
-import { AI_TASKS } from '../shared/narrator.js';
+import { AI_TASKS, DEADLINE_FIRST } from '../shared/narrator.js';
+import { evaluatePolicy, templateAnswer, deadlineNote, publicPolicy, audit, buildEvidence, publicEvidence, templateText } from './policy/index.js';
+import { policyRouter } from './policy/routes.js';
 
 // Simple per-IP limiter for AI calls (protects the API budget).
 const aiHits = new Map();
@@ -77,6 +79,7 @@ export function createApp() {
   app.use('/api', marketRouter());
   app.use('/api', billingRouter());
   app.use('/api', growthRouter());
+  app.use('/api', policyRouter());
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, ai: aiEnabled() }));
 
@@ -107,49 +110,78 @@ export function createApp() {
   });
 
   /**
-   * Ask the Jothidar. Body: { category, question?, lang?, loc:{lat,lon,tz,name}, birth?:{date,time,lat,lon,tz,...} }
-   * Streams Server-Sent Events when the client accepts text/event-stream, else returns JSON.
+   * Ask the Jothidar (Prasnam). Body: { category, question?, lang?, loc:{lat,lon,tz,name}, birth?:{date,time,lat,lon,tz,relation?,...},
+   *   speaker?, subject?, participants?, sessionFlags?, sessionId?, country? } — see docs/AI-SAFETY-POLICY.md.
+   * Policy runs FIRST: when astrology is not allowed no chart or Prasna is computed and a reviewed template is returned.
+   * Streams Server-Sent Events when the client accepts text/event-stream (validated text arrives as one delta), else JSON.
    */
   app.post('/api/ask', async (req, res) => {
     const { category, question = '', lang = 'en' } = req.body || {};
     if (!getCategory(category)) throw new BadRequest('Unknown category');
     const loc = parseLoc(req.body.loc || {});
-    let chart = null;
-    if (req.body.birth) chart = birthChart(parseBirth(req.body.birth));
+    const birthIn = req.body.birth ? parseBirth(req.body.birth) : null;
+    const q = String(question).slice(0, 500);
+    const wantsStream = (req.headers.accept || '').includes('text/event-stream');
+    const started = Date.now();
+    const { intent, ctx: pctx, decision } = await evaluatePolicy({ body: req.body, user: currentUser(req), turns: q.trim() ? [q] : [], lang, category });
 
+    if (!decision.allowAstrology) {
+      const t = templateAnswer(decision, pctx, lang);
+      const policy = publicPolicy(decision, pctx);
+      audit('ask', { decision, ctx: pctx, intent, source: 'policy', latencyMs: Date.now() - started });
+      const payload = { category, route: decision.route, reply: t.text, source: 'policy', policy, resources: t.resources };
+      if (!wantsStream) return res.json(payload);
+      const send = openStream(res);
+      send('policy', { ...policy, resources: t.resources });
+      send('delta', { text: t.text });
+      send('done', { source: 'policy', route: decision.route });
+      return res.end();
+    }
+
+    const chart = birthIn ? birthChart(birthIn) : null;
     const birth = chart && { janmaNakshatra: chart.janmaNakshatra.index, janmaRasi: chart.janmaRasi.index };
-    const evaluation = evaluatePrasna({ at: new Date(), category, loc, birth });
+    const evaluation = evaluatePrasna({ at: new Date(), category, loc, birth, deadline: Boolean(decision.deadline) });
     const profile = chart && {
-      name: chart.name,
       janmaNakshatraName: chart.janmaNakshatra.name,
       janmaRasiName: chart.janmaRasi.name,
       lagnaName: chart.lagna.rasiName,
       currentDasa: chart.dasa.current && `${chart.dasa.current.lord} Dasa / ${chart.dasa.currentBhukti?.lord} Bhukti`,
     };
-    const ctx = buildContext({ evaluation, question: String(question).slice(0, 500), category, lang, profile, loc });
+    const ctx = buildContext({ evaluation, question: q, category, lang, profile, loc });
+    const evidence = buildEvidence({ chart, evaluation, loc });
+    decision.permittedEvidenceIds = evidence.ids;
+    const engineNote = evaluation.practicalFirst && evaluation.deadlineNote ? (lang === 'ta' ? evaluation.deadlineNote.ta : evaluation.deadlineNote.en) : null;
+    const note = engineNote || deadlineNote(decision, lang);
+    const practical = note ? { deadlineFirst: true, note, questions: evaluation.practicalQuestions || null } : { deadlineFirst: false };
     const summary = {
       category, score: evaluation.score, verdict: evaluation.verdict, verdictText: evaluation.verdictText,
-      factors: evaluation.factors, bestTimes: evaluation.bestTimes,
+      factors: evaluation.factors, bestTimes: evaluation.bestTimes, practical,
       snapshot: {
         at: evaluation.snapshot.at, nakshatra: evaluation.snapshot.nakshatra, tithi: evaluation.snapshot.tithi,
         currentHora: evaluation.snapshot.currentHora, lagna: evaluation.snapshot.lagna, moonRasi: evaluation.snapshot.moonRasi,
       },
     };
 
-    const wantsStream = (req.headers.accept || '').includes('text/event-stream');
-    if (!wantsStream) {
-      const reply = await generateReply({ ctx, evaluation, lang });
-      return res.json({ ...summary, reply: reply.text, source: reply.source });
-    }
-
-    const send = openStream(res);
-    send('evaluation', summary);
-    const reply = await generateReply({
-      ctx, evaluation, lang,
-      onText: (t) => send('delta', { text: t }),
-      onReset: () => send('reset', {}),
-    });
-    send('done', { source: reply.source });
+    const send = wantsStream ? openStream(res) : null;
+    send?.('evaluation', summary); // deterministic engine output — safe to show before the explanation
+    const reply = await generateReply({ ctx, evaluation, lang, decision, evidence, practicalNote: note });
+    // Deadline-first: the practical note always leads (the rule-based narrator already includes it).
+    const narratorHasNote = Boolean(DEADLINE_FIRST[category] || evaluation.practicalFirst);
+    const text = note && (reply.source === 'ai' || !narratorHasNote) ? `${note}\n\n${reply.text}` : reply.text;
+    const cited = reply.answer?.claims?.flatMap((c) => c.evidenceIds);
+    const extra = {
+      route: decision.route,
+      policy: publicPolicy(decision, pctx),
+      evidence: publicEvidence(evidence, cited || null),
+      claims: reply.answer?.claims || [],
+      validation: reply.validation.status,
+      notice: reply.source === 'ai' ? null : templateText('no_ai_notice', lang),
+    };
+    audit('ask', { decision, ctx: pctx, intent, validation: reply.validation.status, validationErrors: reply.validation.errors, source: reply.source, latencyMs: Date.now() - started });
+    if (!send) return res.json({ ...summary, reply: text, source: reply.source, ...extra });
+    send('policy', extra);
+    send('delta', { text });
+    send('done', { source: reply.source, route: decision.route });
     res.end();
   });
 
@@ -189,15 +221,13 @@ export function createApp() {
 
   /**
    * AI tasks: POST /api/ai/chat | /api/ai/porutham | /api/ai/names
-   * Body: { context, messages?:[{role,content}], lang, fallbackText } — streams SSE like /api/ask.
+   * Body: { context, messages?:[{role,content}], lang, fallbackText, birth?, speaker?, subject?, participants?,
+   *   sessionFlags?, sessionId?, country?, loc? } — SSE like /api/ask (policy → delta (validated, whole) → done).
+   * Safety/decline/clarify answers are reviewed templates: no chart work, no model call, no login or quota needed.
    */
   app.post('/api/ai/:task', async (req, res) => {
     const { task } = req.params;
     if (!AI_TASKS[task]) throw new BadRequest('Unknown task');
-    if (process.env.AI_REQUIRE_LOGIN === '1' && !currentUser(req)) return res.status(401).json({ error: 'Please sign in to use the AI Jothidar' });
-    if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many questions — please wait a few minutes' });
-    const metered = billingEnforced();
-    if (metered && !checkAiQuota(req).allowed) return res.status(402).json({ error: 'Free daily limit reached — upgrade to Premium for unlimited answers', upgrade: true });
     const { context = {}, messages = [], lang = 'en', fallbackText = '' } = req.body || {};
     if (JSON.stringify(context).length > 20000) throw new BadRequest('Context too large');
     if (!Array.isArray(messages) || messages.length > 24) throw new BadRequest('Invalid messages');
@@ -206,17 +236,62 @@ export function createApp() {
       return { role: m.role, content: m.content.slice(0, 2000) };
     });
     if (msgs.length && (msgs[0].role !== 'user' || msgs[msgs.length - 1].role !== 'user')) throw new BadRequest('Conversation must start and end with the person');
-    const args = { task, context, messages: msgs, lang, fallbackText: String(fallbackText).slice(0, 4000) || '🙏' };
-    if (!(req.headers.accept || '').includes('text/event-stream')) {
-      const r = await runTask(args);
-      if (metered) recordAiUsage(req);
-      return res.json({ reply: r.text, source: r.source });
+    const wantsStream = (req.headers.accept || '').includes('text/event-stream');
+    const started = Date.now();
+    const user = currentUser(req);
+    const { intent, ctx: pctx, decision } = await evaluatePolicy({ body: req.body, user, turns: msgs.filter((m) => m.role === 'user').map((m) => m.content), lang });
+
+    const respond = (payload, source) => {
+      if (!wantsStream) return res.json(payload);
+      const send = openStream(res);
+      const { reply, ...meta } = payload;
+      send('policy', meta);
+      send('delta', { text: reply });
+      send('done', { source, route: decision.route });
+      return res.end();
+    };
+
+    if (!decision.allowAstrology) {
+      const t = templateAnswer(decision, pctx, lang);
+      audit(`ai:${task}`, { decision, ctx: pctx, intent, source: 'policy', latencyMs: Date.now() - started });
+      return respond({ reply: t.text, source: 'policy', route: decision.route, policy: publicPolicy(decision, pctx), resources: t.resources }, 'policy');
     }
-    const send = openStream(res);
-    const r = await runTask({ ...args, onText: (t) => send('delta', { text: t }), onReset: () => send('reset', {}) });
+
+    if (process.env.AI_REQUIRE_LOGIN === '1' && !user) return res.status(401).json({ error: 'Please sign in to use the AI Jothidar' });
+    if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many questions — please wait a few minutes' });
+    const metered = billingEnforced();
+    if (metered && !checkAiQuota(req).allowed) return res.status(402).json({ error: 'Free daily limit reached — upgrade to Premium for unlimited answers', upgrade: true });
+
+    // Evidence: a server-computed chart when birth details are sent; otherwise the client's deterministic facts
+    // (minimised: names, birth data, places and relations are dropped).
+    let chart = null;
+    if (req.body?.birth) { try { chart = birthChart(parseBirth(req.body.birth)); } catch { chart = null; } }
+    const evidence = buildEvidence({ chart, clientContext: context });
+    decision.permittedEvidenceIds = evidence.ids;
+    const r = await runTask({ task, evidence, messages: msgs, lang, decision });
     if (metered) recordAiUsage(req);
-    send('done', { source: r.source });
-    res.end();
+    let reply = r.text;
+    let templateId = null;
+    if (!reply) {
+      if (r.validation.status === 'not_run') {
+        // No AI configured: only deterministic app text or an approved template, with a limited-capability notice.
+        const adultLove = intent.flags.romanticOrSexual && pctx.speaker.minor === false;
+        templateId = adultLove ? 'adult_love_any_age' : null;
+        reply = adultLove ? templateText('adult_love_any_age', lang) : (String(fallbackText).slice(0, 4000) || '🙏');
+      } else {
+        templateId = 'validation_fallback';
+        reply = templateText('validation_fallback', lang);
+      }
+    }
+    const cited = r.answer?.claims?.flatMap((c) => c.evidenceIds);
+    audit(`ai:${task}`, { decision, ctx: pctx, intent, validation: r.validation.status, validationErrors: r.validation.errors, source: r.source, latencyMs: Date.now() - started });
+    return respond({
+      reply, source: r.source, route: decision.route, policy: publicPolicy(decision, pctx, templateId ? { templateId } : {}),
+      evidence: r.answer ? publicEvidence(evidence, cited) : [],
+      claims: r.answer?.claims || [], uncertainty: r.answer?.uncertainty || null, nextSteps: r.answer?.nextSteps || [],
+      validation: r.validation.status,
+      notice: r.source === 'ai' ? null : templateText('no_ai_notice', lang),
+    }, r.source);
   });
 
   app.use('/shared', express.static(path.join(root, 'shared')));
@@ -240,7 +315,7 @@ export function createApp() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT) || 3000;
   createApp().listen(port, '0.0.0.0', () => {
-    console.log(`🪐 Kaippesi Jothidar running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);
+    console.log(`🪐 Thunai running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);
     startPushScheduler();
   });
 }

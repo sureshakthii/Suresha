@@ -42,7 +42,8 @@ test('life predictions: every question returns ordered windows inside the age ra
   const from = new Date('2026-10-03T00:00:00Z');
   for (const q of QUESTIONS) {
     const r = predictEvent(chart, q.id, { from });
-    assert.ok(['strong', 'good', 'needs effort'].includes(r.promise.level), q.id);
+    // Reproductive questions are never assessed from a chart (brief §10).
+    assert.ok((q.sensitive === 'reproductive' ? ['not-assessed'] : ['strong', 'good', 'needs effort']).includes(r.promise.level), q.id);
     for (let i = 1; i < r.windows.length; i++) assert.ok(r.windows[i - 1].start <= r.windows[i].start);
     for (const w of r.windows) {
       const age = (w.start - chart.utc) / (365.25 * 86400000);

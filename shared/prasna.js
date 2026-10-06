@@ -198,6 +198,26 @@ export const CATEGORIES = [
   },
 ];
 
+// Practical-first categories (brief §10): hospital care, planned delivery, payments, court dates, contracts,
+// urgent travel, visas and exams usually have real deadlines. For these the engine never returns AVOID:
+// the verdict is capped at CAUTION ("proceed with your real deadline; an optional prayer"), and the
+// result carries practicalFirst: true with a deadline-first note. Any other category gets the same
+// treatment when the caller reports a real deadline (opts.deadline / opts.urgent).
+export const URGENT_CATEGORIES = new Set(['surgery', 'delivery', 'cheque', 'court', 'contract', 'travel', 'visa', 'education']);
+for (const c of CATEGORIES) if (URGENT_CATEGORIES.has(c.id)) { c.urgent = true; c.practicalFirst = true; }
+
+export const DEADLINE_FIRST_NOTE = {
+  surgery: { en: 'Follow your doctor\'s timing. Never delay hospital care for a Prasnam, Rahu Kalam or a muhurtham — a short prayer can go with you.', ta: 'மருத்துவர் சொல்லும் நேரத்தையே பின்பற்றுங்கள். பிரசன்னம், ராகு காலம், முகூர்த்தத்திற்காக மருத்துவச் சிகிச்சையைத் தள்ளிப்போட வேண்டாம் — ஒரு சிறு பிரார்த்தனை உடன் வரலாம்.' },
+  delivery: { en: 'Your doctor\'s medical advice decides the date and time. Do not change it for astrology.', ta: 'தேதியையும் நேரத்தையும் மருத்துவரின் ஆலோசனையே தீர்மானிக்கும். ஜோதிடத்திற்காக மாற்ற வேண்டாம்.' },
+  court: { en: 'Keep every court date and filing deadline your lawyer gives you; an optional prayer can be added.', ta: 'வழக்கறிஞர் சொல்லும் ஒவ்வொரு நீதிமன்றத் தேதியையும் காலக்கெடுவையும் தவறாமல் பின்பற்றுங்கள்; விருப்பமெனில் பிரார்த்தனை சேர்க்கலாம்.' },
+  default: { en: 'Your real deadline comes first. If this must be done now, go ahead — an optional prayer can go with you.', ta: 'உங்கள் உண்மையான காலக்கெடுவே முதன்மை. இப்போதே செய்ய வேண்டியதென்றால் செய்யுங்கள் — விருப்பமெனில் ஒரு பிரார்த்தனை உடன் வரலாம்.' },
+};
+export const PRACTICAL_FIRST_TEXT = { en: 'Proceed with your real deadline — an optional prayer before you go', ta: 'உங்கள் உண்மையான காலக்கெடுப்படி செய்யுங்கள் — விருப்பமெனில் முன்பு ஒரு பிரார்த்தனை' };
+export const PRACTICAL_QUESTIONS = [
+  { en: 'Is there a real deadline (doctor, court, bank, employer, embassy)?', ta: 'உண்மையான காலக்கெடு உள்ளதா (மருத்துவர், நீதிமன்றம், வங்கி, நிறுவனம், தூதரகம்)?' },
+  { en: 'What would happen if this were delayed?', ta: 'இது தாமதமானால் என்ன ஆகும்?' },
+];
+
 export const BAD_YOGAS = new Set([0, 5, 8, 9, 12, 14, 16, 18, 26]);
 const TARA = [
   { en: 'Janma', ta: 'ஜன்ம', score: -4 },
@@ -216,7 +236,7 @@ const MALEFICS = ['Saturn', 'Mars', 'Rahu', 'Ketu', 'Sun'];
 export const getCategory = (id) => CATEGORIES.find((c) => c.id === id);
 
 /** Pure scoring of a Panchang snapshot for a category and optional birth chart. */
-export function scoreSnapshot(snap, category, birth) {
+export function scoreSnapshot(snap, category, birth, opts = {}) {
   const factors = [];
   const add = (key, label, labelTa, points, detail) => factors.push({ key, label, labelTa, points, detail });
   const cat = typeof category === 'string' ? getCategory(category) : category;
@@ -295,8 +315,22 @@ export function scoreSnapshot(snap, category, birth) {
 
   const raw = 50 + factors.reduce((s, f) => s + f.points, 0);
   const score = Math.max(0, Math.min(100, Math.round(raw)));
-  const verdict = score >= 62 ? 'DO' : score >= 45 ? 'CAUTION' : 'AVOID';
-  return { score, verdict, factors };
+  const rawVerdict = score >= 62 ? 'DO' : score >= 45 ? 'CAUTION' : 'AVOID';
+  const practicalFirst = !!(cat.practicalFirst || opts.deadline || opts.urgent);
+  if (!practicalFirst) return { score, verdict: rawVerdict, factors, practicalFirst: false };
+  // Engine rule: never defer necessary action — cap at CAUTION.
+  const verdict = rawVerdict === 'AVOID' ? 'CAUTION' : rawVerdict;
+  return {
+    score, verdict, rawVerdict, factors, practicalFirst: true, capped: rawVerdict !== verdict,
+    deadlineNote: DEADLINE_FIRST_NOTE[cat.id] || DEADLINE_FIRST_NOTE.default,
+    practicalQuestions: PRACTICAL_QUESTIONS,
+  };
+}
+
+/** Verdict text for a scoring result (practical-first results get the deadline-first wording when cautious). */
+export function verdictTextFor(result) {
+  if (result.practicalFirst && result.verdict === 'CAUTION') return PRACTICAL_FIRST_TEXT;
+  return VERDICT_TEXT[result.verdict];
 }
 
 export const VERDICT_TEXT = {
@@ -306,12 +340,12 @@ export const VERDICT_TEXT = {
 };
 
 /** Scan ahead to find the best windows for this category in the next `hours`. */
-export function findBestTimes(from, hours, category, loc, birth, stepMin = 15) {
+export function findBestTimes(from, hours, category, loc, birth, stepMin = 15, opts = {}) {
   const results = [];
   for (let m = stepMin; m <= hours * 60; m += stepMin) {
     const t = new Date(from.getTime() + m * 60000);
     const snap = panchang(t, loc.lat, loc.lon, loc.tz, { withEnds: false });
-    const r = scoreSnapshot(snap, category, birth);
+    const r = scoreSnapshot(snap, category, birth, opts);
     results.push({ at: t, score: r.score, verdict: r.verdict, hora: snap.currentHora.lord });
   }
   // Merge consecutive steps into windows and rank by peak score.
@@ -329,9 +363,14 @@ export function findBestTimes(from, hours, category, loc, birth, stepMin = 15) {
 }
 
 /** Full Prasna evaluation used by the API and the Live screen. */
-export function evaluatePrasna({ at = new Date(), category, loc, birth }) {
+export function evaluatePrasna({ at = new Date(), category, loc, birth, deadline = false, urgent = false }) {
   const snap = panchang(at, loc.lat, loc.lon, loc.tz);
-  const result = scoreSnapshot(snap, category, birth);
-  const bestTimes = findBestTimes(at, 24, category, loc, birth);
-  return { snapshot: snap, ...result, verdictText: VERDICT_TEXT[result.verdict], bestTimes };
+  const opts = { deadline, urgent };
+  const result = scoreSnapshot(snap, category, birth, opts);
+  const bestTimes = findBestTimes(at, 24, category, loc, birth, 15, opts);
+  return {
+    snapshot: snap, ...result, verdictText: verdictTextFor(result), bestTimes,
+    // Better times are optional suggestions; for practical-first questions they never replace the real deadline.
+    bestTimesOptional: true,
+  };
 }

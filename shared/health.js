@@ -1,11 +1,12 @@
-// Health Guide (ஆரோக்கிய வழிகாட்டி) — preventive health for each person from the Jathagam + age +
-// current Dasa / Bhukti + Gochara: the age-wise check-up list, an Ayurveda / Siddha style constitution
-// (வாதம் / பித்தம் / கபம்), body areas to protect (Kalapurusha + planet karakatvas + 6/8/12 houses),
-// the present period's outlook, a 12-month strip, what to eat and avoid, simple yoga and free remedies.
-// Wording is always about tendencies and prevention — never a diagnosis, never medicine, never fear.
+// Health Guide (ஆரோக்கிய வழிகாட்டி) — two clearly separated streams (brief §10):
+//  1. General wellbeing (not astrology): the age-wise check-up list, sleep, food habits and yoga. The check-up
+//     list needs qualified medical review and current clinical sourcing before release (needsMedicalReview).
+//  2. Optional traditional context (astrology): an Ayurveda / Siddha style constitution, Kalapurusha body-area
+//     associations, the period's traditional outlook and prayers. It is NOT medical advice and cannot drive
+//     treatment: no disease, reproductive or lifespan inference is made from the horoscope.
+// Export names and shapes are kept for the UI; `flags`, `wellbeing` and `traditionalContext` describe the split.
 import { RASIS, PLANETS, planetPositions } from './astro.js';
 import { grahaStrength, NAVAGRAHA } from './remedies.js';
-import { ayulBalam } from './lifecheck.js';
 
 const T = (en, ta) => ({ en, ta });
 const YEAR = 365.25 * 86400000;
@@ -14,8 +15,28 @@ const lordOf = (lagnaRasi, h) => RASIS[(lagnaRasi + h - 1) % 12].lord;
 const housesRuled = (lagnaRasi, planet) => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((h) => lordOf(lagnaRasi, h) === planet);
 const MALEFICS = ['Saturn', 'Mars', 'Rahu', 'Ketu', 'Sun'];
 const GRAHAS = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
-const HOUSE_TA = { 6: 'ரோக ஸ்தானம்', 8: 'ஆயுள் ஸ்தானம்', 12: 'விரய ஸ்தானம்' };
-const HOUSE_EN = { 6: 'disease', 8: 'chronic', 12: 'hospital & sleep' };
+const HOUSE_TA = { 6: 'சஷ்ட ஸ்தானம்', 8: 'அஷ்டம ஸ்தானம்', 12: 'விரய ஸ்தானம்' };
+const HOUSE_EN = { 6: 'routines', 8: 'long-term care', 12: 'rest & sleep' };
+
+export const HEALTH_POLICY_VERSION = 'health-split-2026.10-v1';
+export const HEALTH_FLAGS = Object.freeze({
+  generalWellbeingSeparate: true,
+  astrologyIsTraditionalContextOnly: true,
+  traditionalContextOptional: true,
+  notMedicalAdvice: true,
+  canDriveTreatment: false,
+  diseaseInference: false,
+  reproductiveInference: false,
+  lifespanInference: false,
+  screeningNeedsMedicalReview: true,
+});
+export const SCREENING_SOURCE = Object.freeze({
+  id: 'clinical-screening-source-pending',
+  status: 'needs-medical-review',
+  title: { en: 'Clinical source pending — to be added after qualified medical review', ta: 'மருத்துவ ஆதாரம் நிலுவையில் — தகுதியான மருத்துவ மதிப்பாய்விற்குப் பின் சேர்க்கப்படும்' },
+  url: null,
+  lastReviewed: null,
+});
 
 // ------------------------------------------------------------------ age & life stage
 export const HEALTH_STAGES = [
@@ -88,12 +109,14 @@ const ELEMENT = [T('fire', 'நெருப்பு'), T('earth', 'நிலம
 function constitution(P) {
   const acc = { vata: 0, pitta: 0, kapha: 0 };
   const add = (map, w) => { for (const [k, v] of Object.entries(map)) acc[k] += v * w; };
-  const L = P.Lagna.rasi;
-  add(SIGN_DOSHA[L % 4], 3);
-  add(PLANET_DOSHA[RASIS[L].lord], 2);
+  const L = P.Lagna ? P.Lagna.rasi : null;
+  if (L != null) {
+    add(SIGN_DOSHA[L % 4], 3);
+    add(PLANET_DOSHA[RASIS[L].lord], 2);
+  }
   add(SIGN_DOSHA[P.Moon.rasi % 4], 2);
   add(SIGN_DOSHA[P.Sun.rasi % 4], 1);
-  const inLagna = GRAHAS.filter((k) => P[k].rasi === L);
+  const inLagna = L == null ? [] : GRAHAS.filter((k) => P[k].rasi === L);
   for (const k of inLagna) add(PLANET_DOSHA[k], 1.5);
   // Everyone carries all three doshas; a small base keeps any one from showing as 0%.
   for (const k of Object.keys(acc)) acc[k] += 1;
@@ -105,7 +128,7 @@ function constitution(P) {
   const dual = pct[dominant] - pct[secondary] <= 8;
   const name = dual ? T(`${DOSHAS[dominant].en}–${DOSHAS[secondary].en}`, `${DOSHAS[dominant].ta}–${DOSHAS[secondary].ta}`) : T(DOSHAS[dominant].en, DOSHAS[dominant].ta);
   const why = [
-    T(`Lagna ${RASIS[L].en} (${ELEMENT[L % 4].en} sign), lord ${RASIS[L].lord}`, `லக்னம் ${RASIS[L].ta} (${ELEMENT[L % 4].ta} ராசி), அதிபதி ${PLANETS[RASIS[L].lord].ta}`),
+    L == null ? NEEDS_TIME : T(`Lagna ${RASIS[L].en} (${ELEMENT[L % 4].en} sign), lord ${RASIS[L].lord}`, `லக்னம் ${RASIS[L].ta} (${ELEMENT[L % 4].ta} ராசி), அதிபதி ${PLANETS[RASIS[L].lord].ta}`),
     T(`Moon in ${RASIS[P.Moon.rasi].en} (${ELEMENT[P.Moon.rasi % 4].en} sign)`, `சந்திரன் ${RASIS[P.Moon.rasi].ta} (${ELEMENT[P.Moon.rasi % 4].ta} ராசி)`),
   ];
   if (inLagna.length) why.push(T(`In the lagna: ${inLagna.join(', ')}`, `லக்னத்தில்: ${inLagna.map((k) => PLANETS[k].ta).join(', ')}`));
@@ -122,7 +145,7 @@ export const BODY_AREAS = {
   stomach: { icon: '🍃', ...T('Stomach & digestion', 'வயிறு, செரிமானம்'), tip: T('Eat on time, chew well and do not overeat; buttermilk after lunch helps.', 'நேரத்திற்கு உணவு, நன்றாக மென்று உண்ணுதல், அளவோடு; மதியம் மோர் நல்லது.') },
   liver: { icon: '🫀', ...T('Liver, fat & sugar', 'கல்லீரல், கொழுப்பு, சர்க்கரை'), tip: T('Less sugar and fried food, a walk after meals, and a yearly sugar test.', 'குறைந்த இனிப்பு, பொரித்த உணவு; உணவுக்குப் பின் நடை; ஆண்டுதோறும் சர்க்கரைப் பரிசோதனை.') },
   kidneys: { icon: '💧', ...T('Kidneys, lower back & hormones', 'சிறுநீரகம், கீழ் முதுகு, ஹார்மோன்கள்'), tip: T('Drink enough water, less salt, and lift weights with a straight back.', 'போதுமான தண்ணீர், குறைந்த உப்பு, நேரான முதுகுடன் சுமை தூக்குதல்.') },
-  reproductive: { icon: '🌸', ...T('Reproductive & urinary health', 'இனப்பெருக்க, சிறுநீர் உறுப்புகள்'), tip: T('Hygiene, enough water and timely check-ups.', 'சுத்தம், போதுமான தண்ணீர், உரிய நேரப் பரிசோதனை.') },
+  pelvis: { icon: '🌸', ...T('Lower abdomen & urinary comfort', 'அடிவயிறு, சிறுநீர் நலம்'), tip: T('Hygiene and enough water.', 'சுத்தம், போதுமான தண்ணீர்.') },
   thighs: { icon: '🦵', ...T('Hips & thighs', 'இடுப்பு, தொடைகள்'), tip: T('Stretch daily and avoid sitting for long hours.', 'தினமும் உடல் நீட்சிப் பயிற்சி; நீண்ட நேரம் உட்காருவதைத் தவிர்க்கவும்.') },
   joints: { icon: '🦴', ...T('Knees, joints, bones & teeth', 'மூட்டுகள், எலும்புகள், முழங்கால், பற்கள்'), tip: T('Gentle exercise, calcium-rich food (ragi, sesame) and morning sunlight.', 'மென்மையான பயிற்சி, கால்சியம் நிறைந்த உணவு (கேழ்வரகு, எள்), காலை வெயில்.') },
   legs: { icon: '🦶', ...T('Calves, ankles & leg veins', 'கெண்டைக்கால், கணுக்கால், கால் நரம்புகள்'), tip: T('Walk, raise the legs when resting and avoid standing still for hours.', 'நடைப்பயிற்சி, ஓய்வில் கால்களை உயர்த்தி வைத்தல்; மணிக்கணக்கில் நின்றபடி இருப்பதைத் தவிர்க்கவும்.') },
@@ -134,26 +157,27 @@ export const BODY_AREAS = {
   infection: { icon: '🛡️', ...T('Infections, wounds & gut', 'தொற்று, புண்கள், குடல்'), tip: T('Wash hands, eat freshly cooked food and clean small wounds at once.', 'கை கழுவுதல், புதிதாகச் சமைத்த உணவு, சிறு காயங்களை உடனே சுத்தம் செய்தல்.') },
 };
 // Kalapurusha: Mesha head … Meena feet.
-const SIGN_AREA = ['head', 'throat', 'chest', 'chest', 'heart', 'stomach', 'kidneys', 'reproductive', 'thighs', 'joints', 'legs', 'feet'];
+const SIGN_AREA = ['head', 'throat', 'chest', 'chest', 'heart', 'stomach', 'kidneys', 'pelvis', 'thighs', 'joints', 'legs', 'feet'];
 const SIGN_PART = [
   T('head', 'தலை'), T('face & throat', 'முகம், தொண்டை'), T('shoulders & lungs', 'தோள், நுரையீரல்'), T('chest', 'மார்பு'),
-  T('heart', 'இதயம்'), T('stomach', 'வயிறு'), T('kidneys & lower back', 'சிறுநீரகம், கீழ் முதுகு'), T('reproductive organs', 'இனப்பெருக்க உறுப்புகள்'),
+  T('heart', 'இதயம்'), T('stomach', 'வயிறு'), T('kidneys & lower back', 'சிறுநீரகம், கீழ் முதுகு'), T('lower abdomen', 'அடிவயிறு'),
   T('hips & thighs', 'இடுப்பு, தொடை'), T('knees', 'முழங்கால்'), T('calves & ankles', 'கெண்டைக்கால், கணுக்கால்'), T('feet', 'பாதங்கள்'),
 ];
 // Planet karakatvas (first = main).
 const PLANET_AREAS = {
   Sun: ['heart', 'eyes', 'joints'], Moon: ['mind', 'chest'], Mars: ['blood'], Mercury: ['nerves'], Jupiter: ['liver'],
-  Venus: ['kidneys', 'reproductive'], Saturn: ['joints'], Rahu: ['allergy'], Ketu: ['infection', 'stomach'],
+  Venus: ['kidneys'], Saturn: ['joints'], Rahu: ['allergy'], Ketu: ['infection', 'stomach'],
 };
 const PLANET_KARAKA = {
   Sun: T('heart, eyes, bones', 'இதயம், கண், எலும்பு'), Moon: T('mind, fluids, chest, sleep', 'மனம், நீர்ச்சத்து, மார்பு, உறக்கம்'),
   Mars: T('blood, BP, injuries', 'ரத்தம், ரத்த அழுத்தம், காயம்'), Mercury: T('nerves, skin, speech', 'நரம்பு, தோல், பேச்சு'),
-  Jupiter: T('liver, fat, sugar', 'கல்லீரல், கொழுப்பு, சர்க்கரை'), Venus: T('kidneys, hormones, reproductive health', 'சிறுநீரகம், ஹார்மோன், இனப்பெருக்கம்'),
-  Saturn: T('joints, bones, teeth, long-standing ailments', 'மூட்டு, எலும்பு, பல், நீண்டகால உபாதைகள்'), Rahu: T('allergies, poisons, addictions, unclear ailments', 'ஒவ்வாமை, நச்சு, போதை, புரியாத உபாதைகள்'),
+  Jupiter: T('liver, fat, sugar', 'கல்லீரல், கொழுப்பு, சர்க்கரை'), Venus: T('kidneys, comfort', 'சிறுநீரகம், சுகம்'),
+  Saturn: T('joints, bones, teeth', 'மூட்டு, எலும்பு, பல்'), Rahu: T('allergies, habits', 'ஒவ்வாமை, பழக்கங்கள்'),
   Ketu: T('infections, wounds, digestion', 'தொற்று, புண், செரிமானம்'),
 };
 
 function bodyAreas(P, st, md, ad) {
+  if (!P.Lagna) return []; // house-based: needs a birth time
   const L = P.Lagna.rasi;
   const score = {}, reasons = {}, planets = {};
   const bump = (id, pts, reason, planet) => {
@@ -168,7 +192,7 @@ function bodyAreas(P, st, md, ad) {
 
   viaSign(L, 1.5, T(`Lagna (body) is ${RASIS[L].en} — Kalapurusha ${SIGN_PART[L].en}`, `லக்னம் (உடல்) ${RASIS[L].ta} — காலபுருஷ ${SIGN_PART[L].ta}`));
   const lagnaLord = RASIS[L].lord;
-  if (st[lagnaLord].level === 'weak') viaPlanet(lagnaLord, 2, T(`Lagna lord ${lagnaLord} is weak — protect ${PLANET_KARAKA[lagnaLord].en}`, `லக்னாதிபதி ${PLANETS[lagnaLord].ta} பலம் குறைவு — ${PLANET_KARAKA[lagnaLord].ta} காக்கவும்`));
+  if (st[lagnaLord].level === 'weak') viaPlanet(lagnaLord, 2, T(`Lagna lord ${lagnaLord} (traditionally linked with ${PLANET_KARAKA[lagnaLord].en}) has low strength in this method`, `லக்னாதிபதி ${PLANETS[lagnaLord].ta} (மரபுப்படி ${PLANET_KARAKA[lagnaLord].ta}) — இந்த முறையில் பலம் குறைவு`));
   const llh = houseOf(L, P[lagnaLord].rasi);
   if ([6, 8, 12].includes(llh)) viaSign(P[lagnaLord].rasi, 1.5, T(`Lagna lord in the ${llh}th house (${sign(P[lagnaLord].rasi).en})`, `லக்னாதிபதி ${llh}-ம் வீட்டில் (${sign(P[lagnaLord].rasi).ta})`));
 
@@ -189,7 +213,7 @@ function bodyAreas(P, st, md, ad) {
     viaPlanet(k, 1, T(`${k} in the lagna`, `${PLANETS[k].ta} லக்னத்தில்`));
   }
   for (const g of Object.values(st)) {
-    if (g.level === 'weak') viaPlanet(g.planet, 2, T(`${g.planet} is weak in the chart (strength ${g.score}) — ${PLANET_KARAKA[g.planet].en}`, `${PLANETS[g.planet].ta} பலம் குறைவு (${g.score}) — ${PLANET_KARAKA[g.planet].ta}`));
+    if (g.level === 'weak') viaPlanet(g.planet, 2, T(`${g.planet} has low strength in this method (${g.score}); traditionally linked with ${PLANET_KARAKA[g.planet].en}`, `${PLANETS[g.planet].ta} இந்த முறையில் பலம் குறைவு (${g.score}); மரபுப்படி ${PLANET_KARAKA[g.planet].ta}`));
   }
   if (md) viaPlanet(md, 1, T(`Running ${md} Dasa`, `நடப்பு ${PLANETS[md].ta} தசை`));
   if (ad) viaPlanet(ad, 0.75, T(`Running ${ad} Bhukti`, `நடப்பு ${PLANETS[ad].ta} புக்தி`));
@@ -199,6 +223,7 @@ function bodyAreas(P, st, md, ad) {
   const max = score[top[0]];
   return top.map((id) => ({
     id, ...BODY_AREAS[id], score: Math.round(score[id] * 10) / 10,
+    traditionalContext: true, canDriveTreatment: false,
     level: score[id] >= Math.max(4, max * 0.7) ? 'care' : 'watch',
     planets: [...(planets[id] || [])],
     reasons: reasons[id].slice(0, 3),
@@ -213,49 +238,56 @@ function lordsAt(chart, date) {
 }
 
 function lordHealth(chart, k, st) {
-  const P = chart.planets, L = P.Lagna.rasi;
+  const P = chart.planets;
   let s = 0;
   const notes = [];
+  if (!P.Lagna) {
+    if (st[k].level === 'weak') { s -= 1; notes.push(T(`${k} has low strength in this method — keep steady routines`, `${PLANETS[k].ta} இந்த முறையில் பலம் குறைவு — ஒழுங்கான வழக்கம் நல்லது`)); }
+    else if (st[k].level === 'strong') { s += 0.75; notes.push(T(`${k} is strong in this method — traditionally supportive`, `${PLANETS[k].ta} இந்த முறையில் வலுவாக உள்ளார் — மரபுப்படி ஆதரவு`)); }
+    return { score: s, notes };
+  }
+  const L = P.Lagna.rasi;
   const lagnaLord = RASIS[L].lord;
-  if (k === lagnaLord) { s += 1; notes.push(T(`${k} is your lagna lord — vitality is supported`, `${PLANETS[k].ta} உங்கள் லக்னாதிபதி — உயிர்ச்சக்திக்கு ஆதரவு`)); }
+  if (k === lagnaLord) { s += 1; notes.push(T(`${k} is your lagna lord — traditionally seen as supportive`, `${PLANETS[k].ta} உங்கள் லக்னாதிபதி — மரபுப்படி ஆதரவானது`)); }
   const bad = housesRuled(L, k).filter((h) => [6, 8, 12].includes(h));
   if (bad.length && k !== lagnaLord) { s -= 0.75; notes.push(T(`${k} rules the ${bad.join(' & ')}th house — keep routines`, `${PLANETS[k].ta} ${bad.join(', ')}-ம் வீட்டு அதிபதி — ஒழுங்கான வாழ்க்கை முறை தேவை`)); }
   const h = houseOf(L, P[k].rasi);
   if ([6, 8, 12].includes(h)) { s -= 0.75; notes.push(T(`${k} sits in the ${h}th house`, `${PLANETS[k].ta} ${h}-ம் வீட்டில்`)); }
   else if ([1, 5, 9].includes(h)) s += 0.5;
-  if (st[k].level === 'weak') { s -= 1; notes.push(T(`${k} is weak — protect ${PLANET_KARAKA[k].en}`, `${PLANETS[k].ta} பலம் குறைவு — ${PLANET_KARAKA[k].ta} காக்கவும்`)); }
-  else if (st[k].level === 'strong') { s += 0.75; notes.push(T(`${k} is strong — a protective influence`, `${PLANETS[k].ta} வலுவாக உள்ளார் — பாதுகாப்பு`)); }
+  if (st[k].level === 'weak') { s -= 1; notes.push(T(`${k} has low strength in this method — keep steady routines`, `${PLANETS[k].ta} இந்த முறையில் பலம் குறைவு — ஒழுங்கான வழக்கம் நல்லது`)); }
+  else if (st[k].level === 'strong') { s += 0.75; notes.push(T(`${k} is strong in this method — traditionally supportive`, `${PLANETS[k].ta} இந்த முறையில் வலுவாக உள்ளார் — மரபுப்படி ஆதரவு`)); }
   if (k === 'Rahu' || k === 'Ketu') s -= 0.25;
   return { score: s, notes };
 }
 
 function gochara(chart, date) {
   const { planets } = planetPositions(date);
-  const M = chart.planets.Moon.rasi, L = chart.planets.Lagna.rasi;
-  const fm = (k) => houseOf(M, planets[k].rasi), fl = (k) => houseOf(L, planets[k].rasi);
+  const M = chart.planets.Moon.rasi, L = chart.planets.Lagna ? chart.planets.Lagna.rasi : null;
+  // Without a birth time only Moon-based transits are used (fl returns 0, matching no rule).
+  const fm = (k) => houseOf(M, planets[k].rasi), fl = (k) => (L == null ? 0 : houseOf(L, planets[k].rasi));
   const sat = fm('Saturn'), jup = fm('Jupiter'), rahu = fm('Rahu'), ketu = fm('Ketu'), mars = fm('Mars');
   let s = 0;
   const notes = [];
   const n = (pts, kind, en, taText) => { s += pts; notes.push({ kind, ...T(en, taText) }); };
   if ([12, 1, 2].includes(sat)) n(-1.25, 'care', `Ezharai Sani (phase ${sat === 12 ? 1 : sat === 1 ? 2 : 3} of 3) — keep sleep, food and stress in check`, `ஏழரைச் சனி (${sat === 12 ? 'விரய' : sat === 1 ? 'ஜென்ம' : 'பாத'} சனி) — உறக்கம், உணவு, மன அழுத்தத்தில் கவனம்`);
-  else if (sat === 8) n(-1.5, 'care', 'Ashtama Sani — do not ignore small symptoms; rest and regular check-ups', 'அஷ்டமச் சனி — சிறு அறிகுறிகளையும் புறக்கணிக்காதீர்கள்; ஓய்வும் பரிசோதனையும்');
+  else if (sat === 8) n(-1.5, 'care', 'Ashtama Sani — tradition advises rest and steady routines', 'அஷ்டமச் சனி — மரபு ஓய்வையும் ஒழுங்கான வழக்கத்தையும் அறிவுறுத்துகிறது');
   else if (sat === 4) n(-0.75, 'care', 'Ardhashtama Sani — care for chest, rest and peace at home', 'அர்த்தாஷ்டமச் சனி — மார்பு, ஓய்வு, வீட்டில் அமைதியில் கவனம்');
   else if ([3, 6, 11].includes(sat)) n(0.5, 'good', `Saturn ${sat}th from Moon — steady strength`, `சனி சந்திரனிலிருந்து ${sat}-ல் — நிலையான பலம்`);
   if (fl('Saturn') === 1 && ![12, 1, 2].includes(sat)) n(-0.5, 'care', 'Saturn over your lagna — joints and tiredness need care', 'சனி லக்னத்தில் — மூட்டு, சோர்வில் கவனம்');
-  if (rahu === 1 || fl('Rahu') === 1) n(-0.75, 'care', 'Rahu over your Moon / lagna — avoid outside food, addictions and confusion', 'ராகு சந்திரன் / லக்னம் மேல் — வெளி உணவு, போதை, குழப்பம் தவிர்க்கவும்');
-  if (ketu === 1 || fl('Ketu') === 1) n(-0.75, 'care', 'Ketu over your Moon / lagna — guard against infections and small wounds', 'கேது சந்திரன் / லக்னம் மேல் — தொற்று, சிறு காயங்களில் கவனம்');
-  if ([2, 5, 7, 9, 11].includes(jup)) n(1, 'good', 'Guru Balam — Jupiter protects your health', 'குரு பலம் — குரு உங்கள் ஆரோக்கியத்தைக் காக்கிறார்');
-  if ([1, 5, 7, 9].includes(fl('Jupiter'))) n(0.5, 'good', 'Jupiter blesses your lagna — a healing influence', 'குரு லக்னத்தைப் பார்க்கிறார் — குணமளிக்கும் ஆசி');
+  if (rahu === 1 || fl('Rahu') === 1) n(-0.75, 'care', 'Rahu over your Moon / lagna — tradition suggests simple home food and clear routines', 'ராகு சந்திரன் / லக்னம் மேல் — எளிய வீட்டு உணவு, தெளிவான வழக்கம் என மரபு சொல்கிறது');
+  if (ketu === 1 || fl('Ketu') === 1) n(-0.75, 'care', 'Ketu over your Moon / lagna — tradition suggests extra cleanliness and calm', 'கேது சந்திரன் / லக்னம் மேல் — கூடுதல் சுத்தம், அமைதி என மரபு சொல்கிறது');
+  if ([2, 5, 7, 9, 11].includes(jup)) n(1, 'good', 'Guru Balam — traditionally a supportive transit', 'குரு பலம் — மரபுப்படி ஆதரவான கோசாரம்');
+  if ([1, 5, 7, 9].includes(fl('Jupiter'))) n(0.5, 'good', 'Jupiter aspects your lagna — traditionally a blessing', 'குரு லக்னத்தைப் பார்க்கிறார் — மரபுப்படி ஆசி');
   const marsCare = [1, 8].includes(mars) || [1, 8].includes(fl('Mars'));
-  if (marsCare) n(-1, 'care', 'Mars over the Moon / 8th — careful with injuries, fever, heat and driving', 'செவ்வாய் சந்திரன் / 8-ம் இடத்தில் — காயம், காய்ச்சல், உடல் சூடு, வாகனப் பயணத்தில் கவனம்');
-  else if ([3, 6, 11].includes(mars)) n(0.25, 'good', 'Mars supports energy and recovery', 'செவ்வாய் சக்தியும் விரைவான குணமும் தருகிறார்');
+  if (marsCare) n(-1, 'care', 'Mars over the Moon / 8th — tradition links this with heat; stay cool and unhurried', 'செவ்வாய் சந்திரன் / 8-ம் இடத்தில் — மரபுப்படி உடல் சூட்டுடன் தொடர்பு; குளிர்ச்சியாக, நிதானமாக இருங்கள்');
+  else if ([3, 6, 11].includes(mars)) n(0.25, 'good', 'Mars traditionally supports energy', 'செவ்வாய் மரபுப்படி சுறுசுறுப்புக்கு ஆதரவு');
   return { score: s, notes, sat, jup, rahu, ketu, mars, marsCare };
 }
 
 const PERIOD_TEXT = {
-  good: T('A supportive period for health — keep the good habits going.', 'ஆரோக்கியத்திற்கு ஆதரவான காலம் — நல்ல பழக்கங்களைத் தொடருங்கள்.'),
-  steady: T('A steady period — a regular routine and yearly check-ups keep you well.', 'நிலையான காலம் — ஒழுங்கான வாழ்க்கை முறையும் ஆண்டுப் பரிசோதனையும் உங்களை நலமாக வைக்கும்.'),
-  care: T('A period to protect your health — rest well, eat simply and do not ignore small symptoms.', 'ஆரோக்கியத்தைப் பாதுகாக்க வேண்டிய காலம் — நன்றாக ஓய்வு, எளிய உணவு; சிறு அறிகுறிகளையும் புறக்கணிக்காதீர்கள்.'),
+  good: T('Your selected tradition sees this as a supportive period — keep the good habits going. Ordinary health care stays the same in every period.', 'நீங்கள் தேர்ந்தெடுத்த மரபு இதை ஆதரவான காலமாகப் பார்க்கிறது — நல்ல பழக்கங்களைத் தொடருங்கள். வழக்கமான ஆரோக்கியக் கவனம் எல்லாக் காலத்திலும் ஒன்றே.'),
+  steady: T('Your selected tradition sees this as a steady period — a regular routine suits it.', 'நீங்கள் தேர்ந்தெடுத்த மரபு இதை நிலையான காலமாகப் பார்க்கிறது — ஒழுங்கான வழக்கம் பொருத்தம்.'),
+  care: T('Your selected tradition emphasises rest and simple routines in this period. For any symptom, see a doctor — in any period.', 'நீங்கள் தேர்ந்தெடுத்த மரபு இக்காலத்தில் ஓய்வையும் எளிய வழக்கத்தையும் வலியுறுத்துகிறது. எந்த அறிகுறிக்கும், எந்தக் காலத்திலும், மருத்துவரைப் பாருங்கள்.'),
 };
 
 // ------------------------------------------------------------------ diet
@@ -318,7 +350,7 @@ function buildDiet(con, dietPlanets, fastPlanet, stage) {
     planet: fastPlanet, day, light: gentle,
     why: gentle
       ? T(`On ${day.en}, eat one simple light meal for ${fastPlanet} instead of a full fast.`, `${day.ta} அன்று ${PLANETS[fastPlanet].ta} பலம் பெற முழு விரதத்திற்குப் பதில் ஒரு எளிய லேசான உணவு.`)
-      : T(`A light fast or simple satvik food on ${day.en} strengthens ${fastPlanet}. Skip fasting if diabetic, pregnant or unwell.`, `${day.ta} அன்று லேசான விரதம் அல்லது எளிய சாத்விக உணவு ${PLANETS[fastPlanet].ta} பலத்தைக் கூட்டும். சர்க்கரை நோய், கர்ப்பம், உடல்நலக் குறைவு இருந்தால் விரதம் வேண்டாம்.`),
+      : T(`Optional tradition: a light fast or simple satvik food on ${day.en} for ${fastPlanet}. Skip fasting if diabetic, pregnant or unwell, and ask your doctor first if you have any condition.`, `விருப்ப மரபு: ${day.ta} அன்று ${PLANETS[fastPlanet].ta} வழிபாட்டிற்காக லேசான விரதம் அல்லது எளிய சாத்விக உணவு. சர்க்கரை நோய், கர்ப்பம், உடல்நலக் குறைவு இருந்தால் விரதம் வேண்டாம்; ஏதேனும் உடல்நிலை இருந்தால் முதலில் மருத்துவரிடம் கேளுங்கள்.`),
   };
   habits.push({ ...T('Drink 8–10 glasses of water; eat at fixed times', 'தினமும் 8–10 குவளை தண்ணீர்; குறித்த நேரத்தில் உணவு'), from: T('Daily', 'தினசரி') });
   return { eat, avoid, habits, fasting };
@@ -366,18 +398,22 @@ function yogaFor(stage, con) {
 const HEALING = [
   T('Pray to Lord Dhanvantari, the divine physician, on Thursdays', 'வியாழன்தோறும் தெய்வ மருத்துவர் தன்வந்திரி பகவானை வணங்குங்கள்'),
   T('Vaitheeswaran Kovil (Lord of healing, near Sirkazhi) — a visit or prayer for the family\'s health', 'வைத்தீஸ்வரன் கோவில் (சீர்காழி அருகே, நோய் தீர்க்கும் இறைவன்) — குடும்ப ஆரோக்கியத்திற்கு தரிசனம் அல்லது பிரார்த்தனை'),
-  T('Share food or medicines with the needy — annadhanam protects health', 'ஏழைகளுக்கு உணவு, மருந்து தானம் — அன்னதானம் ஆரோக்கியம் காக்கும்'),
+  T('Share food with someone in need (annadhanam) — a traditional act of kindness', 'தேவைப்படுபவருக்கு உணவளித்தல் (அன்னதானம்) — மரபு வழி அன்புச் செயல்'),
 ];
 const MRITYUNJAYA = {
   ...T('Om Tryambakam Yajamahe Sugandhim Pushtivardhanam, Urvarukamiva Bandhanan Mrityor Mukshiya Maamritat',
     'ஓம் த்ரயம்பகம் யஜாமஹே சுகந்திம் புஷ்டிவர்த்தனம், உர்வாருகமிவ பந்தனான் ம்ருத்யோர் முக்ஷீய மாம்ருதாத்'),
-  how: T('Chant 11 times every morning (or listen) — the Maha Mrityunjaya mantra for health and protection.', 'தினமும் காலையில் 11 முறை சொல்லுங்கள் (அல்லது கேளுங்கள்) — ஆரோக்கியமும் பாதுகாப்பும் தரும் மகா மிருத்யுஞ்ஜய மந்திரம்.'),
+  how: T('Optional: chant or listen 11 times in the morning — a traditional prayer many families use for wellbeing. It is a prayer, not a treatment.', 'விருப்பமெனில்: காலையில் 11 முறை சொல்லுங்கள் அல்லது கேளுங்கள் — பல குடும்பங்கள் நலனுக்காகச் சொல்லும் மரபுப் பிரார்த்தனை. இது பிரார்த்தனை, சிகிச்சை அல்ல.'),
 };
 
 const DISCLAIMER = T(
-  'Astrology shows tendencies for prevention; for any symptom see a qualified doctor. This is not medical advice — do not start or stop any medicine based on this.',
-  'ஜோதிடம் தடுப்பு முன்னெச்சரிக்கைக்கான போக்குகளை மட்டுமே காட்டுகிறது; எந்த அறிகுறி இருந்தாலும் தகுதியான மருத்துவரைப் பாருங்கள். இது மருத்துவ ஆலோசனை அல்ல — இதை வைத்து எந்த மருந்தையும் தொடங்கவோ நிறுத்தவோ வேண்டாம்.',
+  'The astrology here is optional traditional context only; it cannot detect illness, fertility or lifespan. For any symptom see a qualified doctor. This is not medical advice — do not start, stop or change any treatment based on this.',
+  'இங்குள்ள ஜோதிடம் விருப்பத்திற்குரிய மரபுப் பின்னணி மட்டுமே; நோய், கருவுறுதல், ஆயுள் எதையும் கண்டறிய முடியாது. எந்த அறிகுறி இருந்தாலும் தகுதியான மருத்துவரைப் பாருங்கள். இது மருத்துவ ஆலோசனை அல்ல — இதை வைத்து எந்தச் சிகிச்சையையும் தொடங்கவோ நிறுத்தவோ மாற்றவோ வேண்டாம்.',
 );
+const NEEDS_TIME = T('Lagna-based parts need a known birth time — only Moon-based traditional context is shown.', 'லக்னம் சார்ந்த பகுதிகளுக்குப் பிறந்த நேரம் தேவை — சந்திரன் சார்ந்த மரபுப் பின்னணி மட்டுமே காட்டப்படுகிறது.');
+const TRADITION_LABEL = T('Traditional context (not medical advice)', 'மரபுப் பின்னணி (மருத்துவ ஆலோசனை அல்ல)');
+const VITALITY_NOT_ASSESSED = T('Thunai does not estimate lifespan or vitality from a horoscope. Regular check-ups with your doctor are the reliable guide.',
+  'துணை ஜாதகத்திலிருந்து ஆயுளையோ உயிர்ச்சக்தியையோ கணிப்பதில்லை. மருத்துவரிடம் வழக்கமான பரிசோதனையே நம்பகமான வழிகாட்டி.');
 
 // ------------------------------------------------------------------ main
 /**
@@ -386,16 +422,21 @@ const DISCLAIMER = T(
  */
 export function healthGuide(chart, { now = new Date(), gender } = {}) {
   const P = chart.planets;
-  const L = P.Lagna.rasi;
+  const hasLagna = !!P.Lagna;
+  // Without a birth time the Moon sign stands in only as the remedy/fast reference (labelled), never for houses.
+  const L = hasLagna ? P.Lagna.rasi : P.Moon.rasi;
   const st = Object.fromEntries(grahaStrength(P).map((g) => [g.planet, g]));
   const ageExact = (now - chart.utc) / YEAR;
   const age = Math.max(0, Math.floor(ageExact));
   const stageDef = HEALTH_STAGES.find((s) => ageExact < s.max);
   const checklist = CHECKS.filter((c) => age >= c.min && age < c.max && (!c.gender || !gender || c.gender === gender))
-    .map((c) => ({ en: c.en, ta: c.ta, ...(c.gender ? { forGender: c.gender } : {}) }));
+    .map((c) => ({ en: c.en, ta: c.ta, ...(c.gender ? { forGender: c.gender } : {}), needsMedicalReview: true, source: SCREENING_SOURCE.id }));
   const stage = {
     id: stageDef.id, en: stageDef.en, ta: stageDef.ta, checklist,
-    note: T('Discuss these with your doctor — they decide what and how often.', 'இவற்றை உங்கள் மருத்துவரிடம் கலந்து பேசுங்கள் — எது, எப்போது என்பதை அவரே முடிவு செய்வார்.'),
+    note: T('General wellbeing list (not from astrology), pending medical review. Discuss it with your doctor — they decide what and how often.', 'பொது நலப் பட்டியல் (ஜோதிடத்திலிருந்து அல்ல), மருத்துவ மதிப்பாய்வு நிலுவையில். உங்கள் மருத்துவரிடம் கலந்து பேசுங்கள் — எது, எப்போது என்பதை அவரே முடிவு செய்வார்.'),
+    needsMedicalReview: true,
+    source: SCREENING_SOURCE,
+    fromAstrology: false,
   };
 
   const con = constitution(P);
@@ -465,18 +506,26 @@ export function healthGuide(chart, { now = new Date(), gender } = {}) {
     mantra: MRITYUNJAYA,
   };
 
-  const ayul = ayulBalam(chart);
+  const yoga = yogaFor(stage.id, con);
   return {
     name: chart.name,
+    policyVersion: HEALTH_POLICY_VERSION,
+    flags: HEALTH_FLAGS,
     age, stage,
-    constitution: con,
+    // Stream 1 — general wellbeing (not astrology).
+    wellbeing: { fromAstrology: false, checklist: stage.checklist, yoga, needsMedicalReview: true, source: SCREENING_SOURCE },
+    // Stream 2 — optional traditional context; cannot drive treatment.
+    needsBirthTime: !hasLagna,
+    birthTimeNote: hasLagna ? null : NEEDS_TIME,
+    traditionalContext: { label: TRADITION_LABEL, optional: true, houseBasedPartsShown: hasLagna, notMedicalAdvice: true, canDriveTreatment: false, sections: ['constitution', 'bodyAreas', 'period', 'months', 'diet', 'remedies'] },
+    constitution: { ...con, traditionalContext: true },
     bodyAreas: areas,
-    period,
+    period: { ...period, traditionalContext: true },
     months,
-    diet,
-    yoga: yogaFor(stage.id, con),
-    remedies,
-    vitality: { level: ayul.level, text: ayul.text },
+    diet: { ...diet, traditionalContext: true },
+    yoga,
+    remedies: { ...remedies, optional: true, notTreatment: true },
+    vitality: { level: 'not-assessed', text: VITALITY_NOT_ASSESSED, lifespanInference: false },
     disclaimer: DISCLAIMER,
   };
 }

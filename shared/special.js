@@ -1,7 +1,7 @@
 // Tamil family traditions: Natchathira birthday, Thivasam (annual tithi for ancestors),
 // baby-name first letters from the birth star, and a family Muhurtham finder.
 import { panchang, vedicDay, moonSidereal, sunSidereal, findCrossing, NAKSHATRAS, RASIS } from './astro.js';
-import { scoreSnapshot, getCategory, BAD_YOGAS } from './prasna.js';
+import { scoreSnapshot, getCategory, BAD_YOGAS, DEADLINE_FIRST_NOTE } from './prasna.js';
 import { tamilDate, TAMIL_MONTHS } from './tamilcal.js';
 
 const DAY = 86400000;
@@ -122,10 +122,12 @@ export function eventAllowed(snap, cat) {
  * for an event, requiring every listed person to have good Tara Bala and no Chandrashtamam.
  * persons: [{ name, janmaNakshatra, janmaRasi }]
  */
-export function findMuhurtham({ category, loc, persons = [], from = new Date(), days = 30, stepMin = 30, dayOnly = true, top = 8 }) {
+export function findMuhurtham({ category, loc, persons = [], from = new Date(), days = 30, stepMin = 30, dayOnly = true, top = 8, deadline = null }) {
   const cat = typeof category === 'string' ? getCategory(category) : category;
   const results = [];
-  const end = from.getTime() + days * DAY;
+  // Never suggest a time after a real deadline: the scan stops at the deadline.
+  const end = Math.min(from.getTime() + days * DAY, deadline ? new Date(deadline).getTime() : Infinity);
+  const practicalFirst = !!(cat.practicalFirst || deadline);
   for (let t = from.getTime(); t < end; t += stepMin * 60000) {
     const at = new Date(t);
     const snap = panchang(at, loc.lat, loc.lon, loc.tz, { withEnds: false });
@@ -172,7 +174,51 @@ export function findMuhurtham({ category, loc, persons = [], from = new Date(), 
       lagna: w.peak.snap.lagna && { rasi: w.peak.snap.lagna.rasi, name: RASIS[w.peak.snap.lagna.rasi] },
       hora: w.peak.snap.currentHora.lord, factors: w.peak.factors, personNotes: w.peak.personNotes,
       reasons: muhurthamReasons(w.peak, cat, persons.length),
+      optional: true,
+      ...(practicalFirst ? { practicalFirst: true, deadlineNote: DEADLINE_FIRST_NOTE[cat.id] || DEADLINE_FIRST_NOTE.default } : {}),
     }));
+}
+
+/**
+ * Muhurtham finder with the engine's practical-first rule made explicit for the UI (brief §10):
+ * windows are optional suggestions; for urgent categories (hospital, delivery, payments, court, contracts,
+ * travel, visa, exams) or when a real deadline is given, an empty list never means "wait" — the person
+ * should go ahead with the real deadline.
+ */
+export function muhurthamPlan(opts) {
+  const cat = typeof opts.category === 'string' ? getCategory(opts.category) : opts.category;
+  const windows = findMuhurtham(opts);
+  const practicalFirst = !!(cat.practicalFirst || opts.deadline);
+  return {
+    windows,
+    practicalFirst,
+    neverBlocks: true,
+    deadlineNote: practicalFirst ? DEADLINE_FIRST_NOTE[cat.id] || DEADLINE_FIRST_NOTE.default : null,
+    emptyMeaning: windows.length ? null : practicalFirst
+      ? { en: 'No traditional window before your deadline — go ahead with your real timing; an optional prayer can go with you.', ta: 'உங்கள் காலக்கெடுவுக்கு முன் மரபு நேரம் இல்லை — உங்கள் உண்மையான நேரப்படி செய்யுங்கள்; விருப்பமெனில் ஒரு பிரார்த்தனை உடன் வரலாம்.' }
+      : { en: 'No traditional window in this range — try a longer range, or go ahead when it suits your family.', ta: 'இந்த இடைவெளியில் மரபு நேரம் இல்லை — நீண்ட இடைவெளியை முயலுங்கள் அல்லது குடும்பத்திற்கு ஏற்ற நேரத்தில் செய்யுங்கள்.' },
+  };
+}
+
+/**
+ * Ruthu first bath and Manjal Neerattu dates with data minimisation: the time of the first period is used
+ * only for this calculation — it is not returned, logged or stored, and no name is kept. Callers must not
+ * persist `at`. person: { janmaNakshatra, janmaRasi } (optional).
+ */
+export function ruthuPlan({ at, loc, person = null }) {
+  const minimal = person && person.janmaNakshatra != null ? [{ name: '', janmaNakshatra: person.janmaNakshatra, janmaRasi: person.janmaRasi }] : [];
+  const strip = (ws) => ws.map(({ personNotes, ...w }) => ({ ...w, personNotes: personNotes.map(({ en, ta }) => ({ en, ta })) }));
+  const bath = findMuhurtham({ category: 'ruthu_bath', loc, persons: [], from: at, days: 3, stepMin: 15, top: 3 });
+  const vizha = findMuhurtham({ category: 'manjal_neerattu', loc, persons: minimal, from: new Date(at.getTime() + 5 * DAY), days: 60, top: 5 });
+  return {
+    bath: strip(bath),
+    vizha: strip(vizha),
+    dataPolicy: {
+      storesMenstrualDate: false,
+      returnsInputTime: false,
+      note: { en: 'The date and time you entered are used only for this calculation and are not saved.', ta: 'நீங்கள் உள்ளிட்ட தேதியும் நேரமும் இந்தக் கணக்கிற்கு மட்டுமே பயன்படும்; சேமிக்கப்படுவதில்லை.' },
+    },
+  };
 }
 
 /** Earliest start (ms) of a period the event must not overlap, after `at`: Rahu Kalam, Yamagandam, Kuligai, sunset. */

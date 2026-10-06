@@ -16,7 +16,7 @@ export const ROAD_AREAS = [
   { id: 'career', icon: '💼', ...T('Career', 'தொழில்'), houses: [2, 10, 11], negate: [5, 8, 12], karakas: ['Sun', 'Saturn'] },
   { id: 'wealth', icon: '💰', ...T('Wealth', 'செல்வம்'), houses: [2, 11, 9], negate: [8, 12], karakas: ['Jupiter', 'Venus'] },
   { id: 'family', icon: '🏡', ...T('Family & marriage', 'குடும்பம் & திருமணம்'), houses: [2, 4, 7, 11], negate: [1, 6, 10], karakas: ['Venus', 'Moon'] },
-  { id: 'health', icon: '🌿', ...T('Health', 'ஆரோக்கியம்'), houses: [1, 5, 11], negate: [6, 8, 12], karakas: ['Sun', 'Moon'] },
+  { id: 'health', icon: '🌿', ...T('Wellbeing (traditional view)', 'நலம் (மரபுப் பார்வை)'), traditionalOnly: true, houses: [1, 5, 11], negate: [6, 8, 12], karakas: ['Sun', 'Moon'] },
   { id: 'learning', icon: '🎓', ...T('Learning & growth', 'கல்வி & வளர்ச்சி'), houses: [4, 5, 9], negate: [3, 8], karakas: ['Mercury', 'Jupiter'] },
 ];
 
@@ -131,5 +131,12 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
   if (nextGood) now.push(T(`Plan big moves for the ${nextGood.md}–${nextGood.ad} period starting ${nextGood.start.toISOString().slice(0, 7)}.`, `பெரிய முடிவுகளை ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலத்திற்குத் (${nextGood.start.toISOString().slice(0, 7)} முதல்) திட்டமிடுங்கள்.`));
   if (nextCare) now.push(T(`Prepare savings and health before ${nextCare.start.toISOString().slice(0, 7)} (a period needing care).`, `${nextCare.start.toISOString().slice(0, 7)} முன் சேமிப்பையும் ஆரோக்கியத்தையும் தயார் செய்யுங்கள் (கவனம் தேவைப்படும் காலம்).`));
 
-  return { age: Math.floor(age), stage, nextStage, periods, years: yearsOut, milestones, current, nextGood, nextCare, now };
+  return {
+    age: Math.floor(age), stage, nextStage, periods, years: yearsOut, milestones, current, nextGood, nextCare, now,
+    needsBirthTime: !sig,
+    birthTimeNote: sig ? null : T('Birth time unknown — area scores use Moon-based transits only; house-based period readings need a known birth time.', 'பிறந்த நேரம் தெரியவில்லை — சந்திரன் சார்ந்த கோசாரம் மட்டுமே; பாவம் சார்ந்த கால பலன்களுக்குப் பிறந்த நேரம் தேவை.'),
+    disclaimerId: 'roadmap.traditional-periods.v1',
+    disclaimer: T('Period scores show how your selected tradition reads each Dasa–Bhukti. They are not guarantees, and the wellbeing area is not a medical assessment.',
+      'காலப் புள்ளிகள் நீங்கள் தேர்ந்தெடுத்த மரபு ஒவ்வொரு தசா–புக்தியையும் எப்படிப் பார்க்கிறது என்பதைக் காட்டுகின்றன. இவை உறுதிமொழிகள் அல்ல; நலப் பகுதி மருத்துவ மதிப்பீடும் அல்ல.'),
+  };
 }

@@ -13,39 +13,54 @@ const DAY = 86400000;
 const houseOf = (lagna, rasi) => ((rasi - lagna + 12) % 12) + 1;
 
 export const QUESTIONS = [
-  { id: 'marriage', icon: '💐', en: 'When will marriage happen?', ta: 'திருமணம் எப்போது?', houses: [2, 7, 11], negate: [1, 6, 10], key: 7, karakas: ['Venus', 'Jupiter'], ageMin: 20, ageMax: 50,
+  { id: 'marriage', icon: '💐', en: 'Marriage — traditional periods', ta: 'திருமணம் — மரபுக் காலங்கள்', houses: [2, 7, 11], negate: [1, 6, 10], key: 7, karakas: ['Venus', 'Jupiter'], ageMin: 20, ageMax: 50,
     remedy: { en: 'Pray to Lord Murugan and Valli–Deivanai on Tuesdays; girls may chant the Katyayani mantra, boys light a lamp for Mahalakshmi on Fridays.', ta: 'செவ்வாய்தோறும் வள்ளி–தெய்வானை சமேத முருகனை வழிபடவும்; பெண்கள் காத்யாயனி மந்திரம், ஆண்கள் வெள்ளிதோறும் மகாலட்சுமிக்கு தீபம்.' } },
-  { id: 'partner', icon: '👰', en: 'Will we find the right bride / groom soon?', ta: 'பெண் / மாப்பிள்ளை கிடைப்பார்களா?', houses: [2, 7, 11], negate: [1, 6, 10], key: 7, karakas: ['Venus', 'Jupiter'], ageMin: 20, ageMax: 50,
+  { id: 'partner', icon: '👰', en: 'Finding a life partner — traditional periods', ta: 'வாழ்க்கைத் துணை தேடல் — மரபுக் காலங்கள்', houses: [2, 7, 11], negate: [1, 6, 10], key: 7, karakas: ['Venus', 'Jupiter'], ageMin: 20, ageMax: 50,
     remedy: { en: 'Visit Thirumanancheri (Kalyanasundareswarar) and offer garlands; keep a positive, open search.', ta: 'திருமணஞ்சேரி கல்யாணசுந்தரேஸ்வரரை தரிசித்து மாலை சாற்றவும்; நம்பிக்கையுடன் தேடலைத் தொடரவும்.' } },
-  { id: 'job', icon: '💼', en: 'When will I get a job?', ta: 'வேலை எப்போது கிடைக்கும்?', houses: [2, 6, 10, 11], negate: [5, 8, 12], key: 10, karakas: ['Saturn', 'Sun'], ageMin: 17, ageMax: 65,
+  { id: 'job', icon: '💼', en: 'New job — traditional periods', ta: 'புதிய வேலை — மரபுக் காலங்கள்', houses: [2, 6, 10, 11], negate: [5, 8, 12], key: 10, karakas: ['Saturn', 'Sun'], ageMin: 17, ageMax: 65,
     remedy: { en: 'Offer water to the rising Sun daily and light a sesame-oil lamp on Saturdays; help a worker or elder each week.', ta: 'தினமும் உதய சூரியனுக்கு அர்க்யம், சனிக்கிழமை நல்லெண்ணெய் தீபம்; வாரம் ஒருமுறை உழைப்பாளர்/முதியோருக்கு உதவி.' } },
   { id: 'career', icon: '📈', en: 'Career growth & promotion', ta: 'தொழில் வெற்றி & பதவி உயர்வு', houses: [2, 10, 11], negate: [5, 8, 12], key: 10, karakas: ['Sun', 'Saturn', 'Jupiter'], ageMin: 18, ageMax: 75,
     remedy: { en: 'Recite Aditya Hrudayam on Sundays and keep your word at work — Saturn rewards discipline.', ta: 'ஞாயிறு ஆதித்ய ஹிருதயம்; வேலையில் சொல் தவறாமை — ஒழுக்கத்திற்கு சனி பலன் தருவார்.' } },
-  { id: 'job_change', icon: '🧭', en: 'When is a good job change?', ta: 'வேலை மாற்றம் எப்போது?', houses: [3, 5, 9, 10], negate: [6, 11], key: 10, karakas: ['Rahu', 'Saturn'], ageMin: 18, ageMax: 65,
+  { id: 'job_change', icon: '🧭', en: 'Job change — traditional periods', ta: 'வேலை மாற்றம் — மரபுக் காலங்கள்', houses: [3, 5, 9, 10], negate: [6, 11], key: 10, karakas: ['Rahu', 'Saturn'], ageMin: 18, ageMax: 65,
     remedy: { en: 'Pray to Vinayagar before applying; sign offers in a good Horai from the Prasnam screen.', ta: 'விண்ணப்பிக்கும் முன் விநாயகர் வழிபாடு; பிரசன்னத் திரையில் நல்ல ஓரையில் ஒப்பந்தம் கையெழுத்திடவும்.' } },
-  { id: 'pr', icon: '🛂', en: 'When will I get PR / permanent visa abroad?', ta: 'வெளிநாட்டில் நிரந்தர விசா (PR) எப்போது?', houses: [3, 9, 12], negate: [4], key: 12, karakas: ['Rahu', 'Saturn', 'Moon'], ageMin: 18, ageMax: 75,
+  { id: 'pr', icon: '🛂', en: 'PR / permanent visa — traditional periods', ta: 'நிரந்தர விசா (PR) — மரபுக் காலங்கள்', houses: [3, 9, 12], negate: [4], key: 12, karakas: ['Rahu', 'Saturn', 'Moon'], ageMin: 18, ageMax: 75,
     remedy: { en: 'Durga worship during Rahu Kalam on Tuesdays/Fridays; keep documents complete and file in a good Horai.', ta: 'செவ்வாய்/வெள்ளி ராகு காலத்தில் துர்கை வழிபாடு; ஆவணங்களை முழுமையாக்கி நல்ல ஓரையில் விண்ணப்பிக்கவும்.' } },
   { id: 'visa', icon: '✈️', en: 'Foreign travel / work visa', ta: 'வெளிநாட்டுப் பயணம் / வேலை விசா', houses: [3, 9, 12], negate: [4, 8], key: 9, karakas: ['Rahu', 'Moon'], ageMin: 16, ageMax: 80,
     remedy: { en: 'Pray to Lord Anjaneya before travel and chant "Sri Rama Jaya Rama" on the way.', ta: 'பயணத்திற்கு முன் ஆஞ்சநேயர் வழிபாடு; வழியில் "ஸ்ரீ ராம ஜெய ராம" ஜபம்.' } },
-  { id: 'house', icon: '🏡', en: 'When can I buy my own house?', ta: 'சொந்த வீடு எப்போது?', houses: [4, 11, 2], negate: [3, 12], key: 4, karakas: ['Mars', 'Venus'], ageMin: 21, ageMax: 80,
+  { id: 'house', icon: '🏡', en: 'Own house — traditional periods', ta: 'சொந்த வீடு — மரபுக் காலங்கள்', houses: [4, 11, 2], negate: [3, 12], key: 4, karakas: ['Mars', 'Venus'], ageMin: 21, ageMax: 80,
     remedy: { en: 'Pray to Lord Murugan on Tuesdays and offer red flowers; Bhoomi Devi worship before buying land.', ta: 'செவ்வாய்தோறும் முருகனுக்கு சிவப்பு மலர்; நிலம் வாங்கும் முன் பூமாதேவி வழிபாடு.' } },
-  { id: 'vehicle', icon: '🚗', en: 'When can I buy a vehicle (bike / car)?', ta: 'வாகனம் (பைக் / கார்) எப்போது வாங்கலாம்?', houses: [4, 11, 2], negate: [3, 8, 12], key: 4, karakas: ['Venus', 'Mars'], ageMin: 16, ageMax: 85,
+  { id: 'vehicle', icon: '🚗', en: 'Vehicle (bike / car) — traditional periods', ta: 'வாகனம் (பைக் / கார்) — மரபுக் காலங்கள்', houses: [4, 11, 2], negate: [3, 8, 12], key: 4, karakas: ['Venus', 'Mars'], ageMin: 16, ageMax: 85,
     remedy: { en: 'Light a lamp for Mahalakshmi on Fridays; take the first drive to a Vinayagar temple, break a coconut and crush lemons under the wheels as per tradition. Always wear a helmet / seat belt and follow road safety.', ta: 'வெள்ளிதோறும் மகாலட்சுமிக்கு தீபம்; முதல் பயணம் விநாயகர் கோவிலுக்கு — தேங்காய் உடைத்து, சக்கரங்களின் கீழ் எலுமிச்சை வைத்து ஓட்டுவது மரபு. எப்போதும் தலைக்கவசம் / இருக்கைப் பட்டை அணிந்து சாலை விதிகளைப் பின்பற்றவும்.' } },
-  { id: 'child', icon: '👶', en: 'When will we be blessed with a child?', ta: 'குழந்தை பாக்கியம் எப்போது?', houses: [2, 5, 11], negate: [1, 4, 10], key: 5, karakas: ['Jupiter'], ageMin: 20, ageMax: 50,
-    remedy: { en: 'Chant the Santhana Gopala mantra; visit Garbharakshambigai Temple (Thirukkarukavur). Follow your doctor\'s guidance first.', ta: 'சந்தான கோபால மந்திரம்; திருக்கருகாவூர் கர்ப்பரக்ஷாம்பிகை தரிசனம். மருத்துவர் ஆலோசனையே முதன்மை.' } },
+  { id: 'child', icon: '👶', en: 'Children — traditional periods (not a fertility assessment)', ta: 'குழந்தைகள் — மரபுக் காலங்கள் (கருவுறுதல் மதிப்பீடு அல்ல)', houses: [2, 5, 11], negate: [1, 4, 10], key: 5, karakas: ['Jupiter'], ageMin: 20, ageMax: 50, sensitive: 'reproductive',
+    remedy: { en: 'Optional prayer: the Santhana Gopala mantra; visit Garbharakshambigai Temple (Thirukkarukavur). Follow your doctor\'s guidance first.', ta: 'சந்தான கோபால மந்திரம்; திருக்கருகாவூர் கர்ப்பரக்ஷாம்பிகை தரிசனம். மருத்துவர் ஆலோசனையே முதன்மை.' } },
   { id: 'education', icon: '🎓', en: 'Higher studies / study abroad', ta: 'உயர்கல்வி / வெளிநாட்டுப் படிப்பு', houses: [4, 9, 11], negate: [3, 8], key: 9, karakas: ['Mercury', 'Jupiter'], ageMin: 15, ageMax: 45,
     remedy: { en: 'Pray to Saraswathi and Dakshinamurthy on Thursdays; study in the Mercury Horai.', ta: 'வியாழன் சரஸ்வதி, தட்சிணாமூர்த்தி வழிபாடு; புதன் ஓரையில் படிக்கவும்.' } },
   { id: 'business', icon: '🏪', en: 'Business success', ta: 'வியாபார வெற்றி', houses: [7, 10, 11, 2], negate: [6, 8, 12], key: 10, karakas: ['Mercury', 'Jupiter'], ageMin: 18, ageMax: 80,
     remedy: { en: 'Begin new ventures on a Muhurtham day; Mahalakshmi lamp on Fridays; give a little to charity from each profit.', ta: 'முகூர்த்த நாளில் தொடங்கவும்; வெள்ளி மகாலட்சுமி தீபம்; ஒவ்வொரு லாபத்திலும் சிறு தானம்.' } },
-  { id: 'acting', icon: '🎬', en: 'Cinema / serial acting — when is the breakthrough?', ta: 'சினிமா / சீரியல் நடிப்பு — வாய்ப்பு எப்போது?', houses: [3, 5, 10, 11], negate: [6, 8, 12], key: 5, karakas: ['Venus', 'Moon', 'Rahu'], ageMin: 5, ageMax: 75,
+  { id: 'acting', icon: '🎬', en: 'Cinema / serial acting — traditional periods', ta: 'சினிமா / சீரியல் நடிப்பு — மரபுக் காலங்கள்', houses: [3, 5, 10, 11], negate: [6, 8, 12], key: 5, karakas: ['Venus', 'Moon', 'Rahu'], ageMin: 5, ageMax: 75,
     remedy: { en: 'Pray to Goddess Saraswathi and Lord Nataraja; train daily — Venus rewards practice and grace.', ta: 'சரஸ்வதி, நடராஜர் வழிபாடு; தினமும் பயிற்சி — பயிற்சிக்கும் நளினத்திற்கும் சுக்கிரன் பலன் தருவார்.' } },
   { id: 'politics', icon: '🏛️', en: 'Politics / public life — rise and election periods', ta: 'அரசியல் / பொது வாழ்க்கை — உயர்வு, தேர்தல் காலம்', houses: [6, 10, 11], negate: [5, 8, 12], key: 10, karakas: ['Sun', 'Saturn', 'Rahu', 'Mars'], ageMin: 21, ageMax: 85,
     remedy: { en: 'Serve people steadily (Saturn), honour your word (Sun); Surya namaskaram and Aditya Hrudayam on Sundays.', ta: 'மக்களுக்குத் தொடர்ந்து சேவை (சனி), சொன்ன சொல் தவறாமை (சூரியன்); ஞாயிறு சூரிய நமஸ்காரம், ஆதித்ய ஹிருதயம்.' } },
   { id: 'court', icon: '⚖️', en: 'Court case (vazhakku) — favourable period', ta: 'வழக்கு — சாதகமான காலம்', houses: [6, 11, 1], negate: [5, 12, 8], key: 6, karakas: ['Mars', 'Sun'], ageMin: 0, ageMax: 120,
     remedy: { en: 'Recite Kanda Sashti Kavasam on Tuesdays; settle out of court where fair. Your lawyer\'s advice comes first.', ta: 'செவ்வாய் கந்த சஷ்டி கவசம்; நியாயமானால் சமரசம் நல்லது. வழக்கறிஞர் ஆலோசனையே முதன்மை.' } },
-  { id: 'harmony', icon: '💞', en: 'Husband–wife harmony (and periods needing care)', ta: 'கணவன்–மனைவி ஒற்றுமை (கவனம் தேவைப்படும் காலம்)', houses: [2, 7, 11], negate: [1, 6, 10], key: 7, karakas: ['Venus', 'Jupiter'], ageMin: 18, ageMax: 100, harmony: true,
+  { id: 'harmony', icon: '💞', en: 'Couple harmony — traditional periods for extra care', ta: 'தம்பதியர் ஒற்றுமை — கூடுதல் அக்கறைக்கான மரபுக் காலங்கள்', houses: [2, 7, 11], negate: [1, 6, 10], key: 7, karakas: ['Venus', 'Jupiter'], ageMin: 18, ageMax: 100, harmony: true,
     remedy: { en: 'Visit Shiva–Parvathi temples together on Mondays; talk daily without blame. A counsellor helps when needed — it is a sign of strength.', ta: 'திங்கள் சேர்ந்து சிவ–பார்வதி தரிசனம்; குற்றம் சாட்டாமல் தினமும் பேசுங்கள். தேவைப்பட்டால் ஆலோசகரை அணுகுவது பலத்தின் அடையாளம்.' } },
 ];
+
+export const PREDICT_DISCLAIMER_ID = 'predict.traditional-periods.v1';
+export const PREDICT_DISCLAIMER = {
+  en: 'These are periods your selected tradition associates with this topic. They are not guaranteed dates and not evidence that an event will or will not happen — your own choices and circumstances matter most.',
+  ta: 'இவை நீங்கள் தேர்ந்தெடுத்த மரபு இந்த விஷயத்துடன் தொடர்புபடுத்தும் காலங்கள். இவை உறுதியான தேதிகள் அல்ல; ஒரு நிகழ்வு நடக்கும் அல்லது நடக்காது என்பதற்கான சான்றும் அல்ல — உங்கள் தேர்வுகளும் சூழலுமே முதன்மை.',
+};
+const NOT_ASSESSED_NOTE = {
+  en: 'Thunai does not assess fertility or the ability to have children from a horoscope. For health questions please speak to a doctor.',
+  ta: 'துணை ஜாதகத்திலிருந்து கருவுறுதலையோ குழந்தைப் பேற்றையோ மதிப்பிடுவதில்லை. உடல்நலக் கேள்விகளுக்கு மருத்துவரிடம் பேசுங்கள்.',
+};
+
+export const NEEDS_BIRTH_TIME = {
+  en: 'This needs a known birth time (Lagna and houses). Only Moon-based information is shown.',
+  ta: 'இதற்குப் பிறந்த நேரம் (லக்னம், பாவங்கள்) தேவை. சந்திரன் சார்ந்த தகவல் மட்டுமே காட்டப்படுகிறது.',
+};
 
 const DEITY_OF = {
   Sun: { en: 'Lord Shiva / Surya', ta: 'சிவன் / சூரியன்' }, Moon: { en: 'Ambal (Parvathi, Mariamman)', ta: 'அம்பாள் (பார்வதி, மாரியம்மன்)' },
@@ -58,6 +73,7 @@ const DEITY_OF = {
 /** Which houses each planet signifies: houses it owns, occupies, and those of its nakshatra lord. */
 export function significations(chart) {
   const P = chart.planets;
+  if (!P.Lagna) return null; // house significations need a known birth time
   const L = P.Lagna.rasi;
   const own = {}, occ = {};
   for (const k of Object.keys(PLANETS)) { if (k === 'Lagna') continue; own[k] = []; occ[k] = [houseOf(L, P[k].rasi)]; }
@@ -73,6 +89,7 @@ export function significations(chart) {
 }
 
 export function planetScore(sig, k, q) {
+  if (!sig) return 0; // no house significations without a birth time
   const s = sig[k];
   let score = 0;
   const hit = (arr, w, neg) => { for (const h of arr) { if (q.houses.includes(h)) score += w; if (q.negate.includes(h)) score -= neg; } };
@@ -104,12 +121,25 @@ const ageAt = (chart, d) => (d - chart.utc) / (365.25 * DAY);
 export function predictEvent(chart, questionId, { from = new Date(), years = 15 } = {}) {
   const q = QUESTIONS.find((x) => x.id === questionId);
   const sig = significations(chart);
+  if (!sig) {
+    const md = chart.dasa.periods.find((p) => from >= p.start && from < p.end);
+    const ad = md?.bhuktis.find((b) => from >= b.start && from < b.end);
+    return {
+      question: q, needsBirthTime: true, birthTimeNote: NEEDS_BIRTH_TIME,
+      promise: { score: null, level: q.sensitive === 'reproductive' ? 'not-assessed' : 'needs-birth-time', notes: [q.sensitive === 'reproductive' ? NOT_ASSESSED_NOTE : NEEDS_BIRTH_TIME] },
+      windows: [], earliest: null, careful: [],
+      current: md && ad ? { md: md.lord, ad: ad.lord, start: ad.start, end: ad.end, dasaScore: null } : null,
+      remedy: { ...q.remedy, optional: true }, karakaRemedies: [],
+      disclaimerId: PREDICT_DISCLAIMER_ID, disclaimer: PREDICT_DISCLAIMER, exactDatesGuaranteed: false,
+      framing: { en: `Periods your selected tradition associates with ${q.en.split(' — ')[0].toLowerCase()}`, ta: `நீங்கள் தேர்ந்தெடுத்த மரபு ${q.ta.split(' — ')[0]} உடன் தொடர்புபடுத்தும் காலங்கள்` },
+    };
+  }
   const bhavas = bhavaAnalysis(chart);
   const strength = Object.fromEntries(grahaStrength(chart.planets).map((g) => [g.planet, g.score]));
   const key = bhavas[q.key - 1];
   const promiseScore = Math.round(q.houses.reduce((s, h) => s + bhavas[h - 1].score, 0) / q.houses.length * 0.6
     + q.karakas.reduce((s, k) => s + strength[k], 0) / q.karakas.length * 0.4);
-  const promise = {
+  const promise = q.sensitive === 'reproductive' ? { score: null, level: 'not-assessed', notes: [NOT_ASSESSED_NOTE] } : {
     score: promiseScore,
     level: promiseScore >= 62 ? 'strong' : promiseScore >= 48 ? 'good' : 'needs effort',
     notes: [
@@ -165,7 +195,15 @@ export function predictEvent(chart, questionId, { from = new Date(), years = 15 
     top = ranked.filter((w) => w.dasaScore > 0).slice(0, 3).sort((a, b) => a.start - b.start);
   }
   const earliest = [...windows].filter((w) => w.score >= (ranked[0]?.score || 0) * 0.7).sort((a, b) => a.start - b.start)[0] || null;
-  return { question: q, promise, windows: top, earliest, careful, current, remedy: q.remedy, karakaRemedies: q.karakas.filter((k) => strength[k] < 50).map((k) => ({ planet: k, ...NAVAGRAHA[k] })) };
+  const topic = { en: q.en.split(' — ')[0].toLowerCase(), ta: q.ta.split(' — ')[0] };
+  return {
+    question: q, promise, windows: top, earliest, careful, current, remedy: { ...q.remedy, optional: true },
+    karakaRemedies: q.sensitive ? [] : q.karakas.filter((k) => strength[k] < 50).map((k) => ({ planet: k, ...NAVAGRAHA[k], optional: true })),
+    disclaimerId: PREDICT_DISCLAIMER_ID,
+    disclaimer: PREDICT_DISCLAIMER,
+    framing: { en: `Periods your selected tradition associates with ${topic.en}`, ta: `நீங்கள் தேர்ந்தெடுத்த மரபு ${topic.ta} உடன் தொடர்புபடுத்தும் காலங்கள்` },
+    exactDatesGuaranteed: false,
+  };
 }
 
 function windowReasons(sig, md, ad, q, both, jup) {
@@ -189,20 +227,38 @@ function windowReasons(sig, md, ad, q, both, jup) {
   return r;
 }
 
-/** Kula Deivam guidance: deity nature suggested by the 9th house (ancestral dharma) and the best days. */
-export function kulaDeivam(chart) {
-  const L = chart.planets.Lagna.rasi;
+/**
+ * Kula Deivam: the family's own deity is a family record, never a chart inference (brief §9).
+ * Returns recordedByFamily (what the family recorded, or null) and an OPTIONAL suggestion attributed to the
+ * 9th-house method for families who do not know theirs. `deity` is kept as a deprecated alias of
+ * suggestion.deity for older screens — show it only as "a suggestion from the 9th-house method".
+ */
+export function kulaDeivam(chart, { recorded = null, now = new Date() } = {}) {
+  // Without a birth time the optional suggestion uses the 9th from the Moon sign (labelled in `method`).
+  const fromMoon = !chart.planets.Lagna;
+  const L = fromMoon ? chart.planets.Moon.rasi : chart.planets.Lagna.rasi;
   const ninth = (L + 8) % 12;
   const lord = RASIS[ninth].lord;
   const occupants = Object.keys(chart.planets).filter((k) => k !== 'Lagna' && chart.planets[k].rasi === ninth);
   const strongest = occupants.length ? occupants[0] : lord;
   const periods = chart.dasa.periods.flatMap((p) => p.bhuktis.map((b) => ({ md: p.lord, ad: b.lord, start: b.start, end: b.end })))
-    .filter((b) => b.end > new Date() && (b.ad === lord || b.ad === 'Jupiter' || b.ad === 'Ketu')).slice(0, 3);
+    .filter((b) => b.end > now && (b.ad === lord || b.ad === 'Jupiter' || b.ad === 'Ketu')).slice(0, 3);
+  const suggestion = {
+    deity: DEITY_OF[strongest],
+    optional: true,
+    isFact: false,
+    reference: fromMoon ? 'moon' : 'lagna',
+    method: fromMoon ? { id: 'ninth-from-moon-v0', en: '9th from the Moon sign (birth time unknown) — a traditional suggestion, not a fact about your family', ta: 'சந்திர ராசியிலிருந்து 9-ம் இடம் (பிறந்த நேரம் தெரியவில்லை) — மரபுப் பரிந்துரை மட்டுமே, உங்கள் குடும்பம் பற்றிய உண்மை அல்ல' } : { id: 'ninth-house-v0', en: '9th-house method (house of ancestral dharma) — a traditional suggestion, not a fact about your family', ta: '9-ம் பாவ முறை (பித்ரு தர்ம ஸ்தானம்) — மரபுப் பரிந்துரை மட்டுமே, உங்கள் குடும்பம் பற்றிய உண்மை அல்ல' },
+  };
   return {
-    ninthSign: RASIS[ninth], lord, occupants, deity: DEITY_OF[strongest],
+    recordedByFamily: recorded || null,
+    status: recorded ? 'recorded-by-family' : 'not-recorded',
+    suggestion,
+    ninthSign: RASIS[ninth], lord, occupants,
+    deity: suggestion.deity, // deprecated alias — display as a suggestion only
     guidance: {
-      en: 'Your family\'s own Kula Deivam comes first — ask the elders of your father\'s family. If it is not known, the 9th house points to the deity form below. Visit at least once a year, especially on Panguni Uthiram, Maasi Magam or Aadi Fridays, and before any major family event.',
-      ta: 'உங்கள் குடும்பக் குலதெய்வமே முதன்மை — தந்தை வழிப் பெரியோரிடம் கேளுங்கள். தெரியாவிட்டால் 9-ம் பாவம் கீழே உள்ள தெய்வ வடிவைக் காட்டுகிறது. ஆண்டுக்கு ஒருமுறையாவது, குறிப்பாக பங்குனி உத்திரம், மாசி மகம், ஆடி வெள்ளி, எந்த முக்கிய நிகழ்வுக்கும் முன் வழிபடவும்.',
+      en: 'Your Kula Deivam is your family\'s own tradition — ask the elders of your family and record it here. A chart cannot tell you who it is. If your family does not know, the 9th-house method offers an optional deity form for prayer. Many families visit once a year, for example on Panguni Uthiram, Maasi Magam or Aadi Fridays.',
+      ta: 'குலதெய்வம் உங்கள் குடும்பத்தின் சொந்த மரபு — குடும்பப் பெரியோரிடம் கேட்டு இங்கே பதிவு செய்யுங்கள். ஜாதகத்தால் அதைச் சொல்ல முடியாது. குடும்பத்திற்குத் தெரியாவிட்டால், 9-ம் பாவ முறை வழிபாட்டிற்கு ஒரு விருப்பத் தெய்வ வடிவைப் பரிந்துரைக்கிறது. பல குடும்பங்கள் ஆண்டுக்கு ஒருமுறை, உதாரணமாக பங்குனி உத்திரம், மாசி மகம், ஆடி வெள்ளியில் வழிபடுகின்றன.',
     },
     periods,
   };
@@ -211,9 +267,9 @@ export function kulaDeivam(chart) {
 /** Habits to guard (e.g. alcohol/addiction): gentle, natal tendencies with practical support — never a label. */
 export function habitGuard(chart) {
   const P = chart.planets;
-  const L = P.Lagna.rasi;
+  const L = P.Lagna ? P.Lagna.rasi : null;
   const notes = [];
-  const h = (k) => houseOf(L, P[k].rasi);
+  const h = (k) => (L == null ? 0 : houseOf(L, P[k].rasi)); // house notes need a birth time
   if ([1, 2, 12].includes(h('Rahu'))) notes.push({ en: `Rahu in house ${h('Rahu')}: be mindful of sudden cravings and habits that "start small".`, ta: `ராகு ${h('Rahu')}-ல்: "சிறிதாகத் தொடங்கும்" பழக்கங்களில் கவனம்.` });
   if (P.Moon.rasi === P.Rahu.rasi || P.Moon.rasi === P.Ketu.rasi) notes.push({ en: 'Moon with Rahu/Ketu: the mind seeks escape under stress — choose healthy outlets.', ta: 'சந்திரனுடன் ராகு/கேது: மன அழுத்தத்தில் தப்பிக்க மனம் விரும்பும் — நல்ல வழிகளைத் தேர்வு செய்யவும்.' });
   if (P.Venus.rasi === P.Rahu.rasi) notes.push({ en: 'Venus with Rahu: indulgence can grow quickly — set limits early.', ta: 'சுக்கிரனுடன் ராகு: சுகபோகம் விரைவில் வளரலாம் — முன்பே எல்லை வைக்கவும்.' });
@@ -221,6 +277,7 @@ export function habitGuard(chart) {
   return {
     level: notes.length >= 2 ? 'guard' : notes.length ? 'mild' : 'low',
     notes,
+    ...(L == null ? { needsBirthTime: true, birthTimeNote: NEEDS_BIRTH_TIME } : {}),
     support: {
       en: 'Daily routine, exercise and sleep; Murugan or Anjaneya worship on Tuesdays and Saturdays; avoid company that pressures you. If a habit is already hard to stop, talk to a doctor or a de-addiction counsellor — help works, and asking is strength.',
       ta: 'தினசரி ஒழுங்கு, உடற்பயிற்சி, உறக்கம்; செவ்வாய், சனி முருகன் அல்லது ஆஞ்சநேயர் வழிபாடு; அழுத்தம் தரும் நட்பைத் தவிர்க்கவும். பழக்கத்தை நிறுத்த கடினமாக இருந்தால் மருத்துவர் அல்லது போதை மீட்பு ஆலோசகரை அணுகவும் — உதவி பலன் தரும், கேட்பது பலம்.',
@@ -263,8 +320,13 @@ const FIELDS = [
  */
 export function careerCompass(chart) {
   const P = chart.planets;
-  const L = P.Lagna.rasi;
   const strength = Object.fromEntries(grahaStrength(P).map((g) => [g.planet, g.score]));
+  if (!P.Lagna) {
+    // Without a birth time: planet strength only (no house links), clearly labelled.
+    const ranked = FIELDS.map((f) => ({ ...f, score: Math.round(Math.min(98, f.planets.reduce((s, k) => s + strength[k], 0) / f.planets.length)), reasons: [] })).sort((a, b) => b.score - a.score);
+    return { top: ranked.slice(0, 4), all: ranked, tenthLord: null, tenthSign: null, needsBirthTime: true, birthTimeNote: NEEDS_BIRTH_TIME };
+  }
+  const L = P.Lagna.rasi;
   const bhavas = bhavaAnalysis(chart);
   const tenth = bhavas[9];
   const tenthLinked = new Set([tenth.lord, ...tenth.occupants, ...tenth.aspects]);

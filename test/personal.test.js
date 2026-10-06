@@ -35,12 +35,14 @@ test('personal guide: ishta theivam, colours, gems, siddhar, playlist', () => {
   assert.ok(typeof c.clash === 'boolean');
 });
 
-test('ayul balam is a strength level, never years', () => {
+test('ayul balam is retired: no longevity level, score or text is produced', () => {
   for (const ch of [bride, groom]) {
     const a = ayulBalam(ch);
-    assert.ok(['strong', 'medium', 'care'].includes(a.level));
-    assert.ok(a.score >= 15 && a.score <= 95);
-    assert.ok(!/year|ஆண்டு வரை|வயது/.test(a.text.en + a.text.ta));
+    assert.equal(a.removed, true);
+    assert.equal(a.level, null);
+    assert.equal(a.score, null);
+    assert.equal(a.text, null);
+    assert.ok(a.reason.en && a.reason.ta);
   }
   assert.ok(papaPoints(bride).total >= 0);
 });
@@ -48,7 +50,9 @@ test('ayul balam is a strength level, never years', () => {
 test('deep marriage checks feed the complete porutham', () => {
   const wedding = new Date('2026-11-20T06:00:00Z');
   const d = deepMarriageChecks(bride, groom, wedding);
-  assert.ok(d.checks.length >= 9);
+  assert.ok(d.checks.length >= 7);
+  assert.ok(!d.checks.some((c) => c.id === 'ayul' || c.id === 'h8'), 'no longevity / mangalyam checks');
+  assert.equal(d.ayul.removed, true);
   assert.ok(d.score >= 0 && d.score <= 100);
   const r = marriageReport(bride, groom, { weddingDate: wedding });
   assert.ok(r.deep && r.deep.checks.length === d.checks.length);

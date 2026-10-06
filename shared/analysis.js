@@ -1,7 +1,11 @@
 // Detailed Jathaga analysis: 12 bhavas, yogas, transits (Ezharai / Ashtama Sani, Guru Balam),
 // dasa outlook and life-area scores. Rule-based and explainable; written to encourage, not frighten.
+// Yogas and house-lord roles come from the versioned rule registry in shared/rules/ (the authority);
+// this module only formats them. Planet scores are a custom "Traditional strength index", not Shadbala.
 import { planetPositions, RASIS, PLANETS } from './astro.js';
 import { grahaStrength } from './remedies.js';
+import { evaluateRules, resolveProfile } from './rules/registry.js';
+import { houseRoles as computeHouseRoles } from './rules/roles.js';
 
 const KENDRA = [1, 4, 7, 10];
 const TRIKONA = [1, 5, 9];
@@ -9,7 +13,6 @@ const DUSTHANA = [6, 8, 12];
 const BENEFICS = ['Jupiter', 'Venus', 'Mercury'];
 const MALEFICS = ['Saturn', 'Mars', 'Rahu', 'Ketu', 'Sun'];
 const OWN = { Sun: [4], Moon: [3], Mars: [0, 7], Mercury: [2, 5], Jupiter: [8, 11], Venus: [1, 6], Saturn: [9, 10] };
-const EXALT = { Sun: 0, Moon: 1, Mars: 9, Mercury: 5, Jupiter: 3, Venus: 11, Saturn: 6 };
 // Special aspects (in addition to the 7th) counted as houses from the planet.
 const ASPECTS = { Mars: [4, 7, 8], Jupiter: [5, 7, 9], Saturn: [3, 7, 10], Rahu: [5, 7, 9], Ketu: [5, 7, 9] };
 
@@ -21,7 +24,7 @@ export const BHAVAS = [
   { en: 'Children, intelligence, past merit', ta: 'குழந்தைகள், அறிவு, பூர்வ புண்ணியம்' },
   { en: 'Health issues, debts, competition', ta: 'நோய், கடன், போட்டி' },
   { en: 'Spouse, partnerships, business', ta: 'வாழ்க்கைத் துணை, கூட்டாளி, வியாபாரம்' },
-  { en: 'Longevity, sudden events, research', ta: 'ஆயுள், திடீர் நிகழ்வு, ஆராய்ச்சி' },
+  { en: 'Transformation, sudden events, research', ta: 'மாற்றம், திடீர் நிகழ்வு, ஆராய்ச்சி' },
   { en: 'Fortune, father, dharma, travel', ta: 'பாக்கியம், தந்தை, தர்மம், யாத்திரை' },
   { en: 'Career, status, karma', ta: 'தொழில், அந்தஸ்து, கர்மம்' },
   { en: 'Gains, income, friends', ta: 'லாபம், வருமானம், நண்பர்கள்' },
@@ -31,7 +34,6 @@ export const BHAVAS = [
 const houseOf = (lagnaRasi, rasi) => ((rasi - lagnaRasi + 12) % 12) + 1;
 const lordOfHouse = (lagnaRasi, h) => RASIS[(lagnaRasi + h - 1) % 12].lord;
 const housesRuled = (lagnaRasi, planet) => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((h) => lordOfHouse(lagnaRasi, h) === planet);
-const dignified = (k, rasi) => (OWN[k] || []).includes(rasi) || EXALT[k] === rasi;
 
 /** Planets aspecting a given house (Vedic full aspects). */
 function aspectsOn(planets, lagnaRasi, house) {
@@ -48,6 +50,7 @@ function aspectsOn(planets, lagnaRasi, house) {
 /** The 12 bhavas with occupants, lord placement, aspects and a strength score. */
 export function bhavaAnalysis(chart) {
   const P = chart.planets;
+  if (!P.Lagna) return []; // unknown birth time: houses are not calculated (chart.availability.houses === false)
   const L = P.Lagna.rasi;
   const strength = Object.fromEntries(grahaStrength(P).map((g) => [g.planet, g.score]));
   return BHAVAS.map((b, i) => {
@@ -76,56 +79,51 @@ export function bhavaAnalysis(chart) {
   });
 }
 
-/** Detects well-known yogas, each with a plain explanation. */
-export function detectYogas(chart) {
-  const P = chart.planets;
-  const L = P.Lagna.rasi;
-  const M = P.Moon.rasi;
-  const fromMoon = (k) => houseOf(M, P[k].rasi);
-  const fromLagna = (k) => houseOf(L, P[k].rasi);
-  const yogas = [];
-  const add = (id, en, ta, descEn, descTa, kind = 'good') => yogas.push({ id, name: { en, ta }, desc: { en: descEn, ta: descTa }, kind });
+/** Visible label for the custom 0–100 planet score (it is not Shadbala and not a probability). */
+export const STRENGTH_INDEX_LABEL = { en: 'Traditional strength index', ta: 'பாரம்பரிய பலக் குறியீடு' };
 
-  if (KENDRA.includes(fromMoon('Jupiter'))) add('gajakesari', 'Gaja Kesari Yoga', 'கஜகேசரி யோகம்', 'Jupiter in a kendra from the Moon: respect, wisdom and lasting reputation.', 'சந்திரனுக்கு கேந்திரத்தில் குரு: மதிப்பு, ஞானம், நிலையான புகழ்.');
-  if (P.Sun.rasi === P.Mercury.rasi) add('budhaditya', 'Budha-Aditya Yoga', 'புத ஆதித்ய யோகம்', 'Sun with Mercury: sharp intellect, good communication and learning.', 'சூரியனுடன் புதன்: கூர்மையான அறிவு, பேச்சுத் திறன், கல்வி.');
-  if (P.Moon.rasi === P.Mars.rasi) add('chandramangala', 'Chandra-Mangala Yoga', 'சந்திர மங்கள யோகம்', 'Moon with Mars: enterprise and the ability to earn through effort.', 'சந்திரனுடன் செவ்வாய்: முயற்சியால் சம்பாதிக்கும் திறன்.');
-  const MAHA = { Mars: ['Ruchaka', 'ருசக'], Mercury: ['Bhadra', 'பத்ர'], Jupiter: ['Hamsa', 'ஹம்ஸ'], Venus: ['Malavya', 'மாளவ்ய'], Saturn: ['Sasa', 'சச'] };
-  for (const [k, [en, ta]] of Object.entries(MAHA)) {
-    if (KENDRA.includes(fromLagna(k)) && dignified(k, P[k].rasi)) add(`mahapurusha_${k}`, `${en} Yoga (Pancha Mahapurusha)`, `${ta} யோகம் (பஞ்ச மகாபுருஷ)`, `${k} strong in a kendra: a natural leader in its areas.`, `${PLANETS[k].ta} கேந்திரத்தில் பலம்: தலைமைப் பண்பு.`);
+/** Legacy-compatible view of one registry evaluation (id/name/desc/kind kept for the existing UI). */
+function yogaView(r) {
+  let desc = r.explanation;
+  const sat = r.cancellation?.conditions?.filter((c) => c.satisfied) || [];
+  if (sat.length) {
+    desc = {
+      en: `${desc.en} Traditional cancellation also present: ${sat.map((c) => c.text.en).join('; ')}.`,
+      ta: `${desc.ta} பாரம்பரிய நிவர்த்தியும் உண்டு: ${sat.map((c) => c.text.ta).join('; ')}.`,
+    };
   }
-  // Yogakaraka and Raja yoga (kendra lord with trikona lord).
-  for (const k of ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn']) {
-    const ruled = housesRuled(L, k);
-    if (ruled.some((h) => [4, 7, 10].includes(h)) && ruled.some((h) => [5, 9].includes(h))) {
-      add(`yogakaraka_${k}`, `${k} is your Yogakaraka`, `${PLANETS[k].ta} யோககாரகர்`, `${k} rules both a kendra and a trikona for your lagna; its dasa and its strength bring rise.`, `உங்கள் லக்னத்திற்கு ${PLANETS[k].ta} கேந்திர, திரிகோண அதிபதி; இதன் தசை உயர்வு தரும்.`);
-    }
-  }
-  const kendraLords = new Set([4, 7, 10].map((h) => lordOfHouse(L, h)));
-  const trikonaLords = new Set([5, 9].map((h) => lordOfHouse(L, h)));
-  let raja = false;
-  for (const a of kendraLords) for (const b of trikonaLords) if (a !== b && P[a].rasi === P[b].rasi) raja = true;
-  if (raja) add('raja', 'Raja Yoga', 'ராஜ யோகம்', 'A kendra lord joins a trikona lord: status, authority and success after effort.', 'கேந்திர அதிபதியும் திரிகோண அதிபதியும் சேர்க்கை: அந்தஸ்து, அதிகாரம், வெற்றி.');
-  const dhanaA = new Set([2, 11].map((h) => lordOfHouse(L, h)));
-  const dhanaB = new Set([5, 9].map((h) => lordOfHouse(L, h)));
-  let dhana = false;
-  for (const a of dhanaA) for (const b of dhanaB) if (a !== b && P[a].rasi === P[b].rasi) dhana = true;
-  if (dhana) add('dhana', 'Dhana Yoga', 'தன யோகம்', 'Wealth lords join fortune lords: steady growth of savings and assets.', 'தன அதிபதிகள் பாக்கிய அதிபதிகளுடன்: சேமிப்பு, சொத்து வளர்ச்சி.');
-  const dusLords = [6, 8, 12].map((h) => lordOfHouse(L, h));
-  if (dusLords.every((k) => DUSTHANA.includes(fromLagna(k)))) add('viparita', 'Viparita Raja Yoga', 'விபரீத ராஜ யோகம்', 'Lords of difficulty sit in difficult houses: you rise strongly after obstacles.', 'தடைகளின் அதிபதிகள் மறைவு ஸ்தானத்தில்: தடைகளுக்குப் பின் பெரும் உயர்வு.');
-  const adhi = ['Mercury', 'Jupiter', 'Venus'].filter((k) => [6, 7, 8].includes(fromMoon(k)));
-  if (adhi.length >= 2) add('adhi', 'Adhi Yoga', 'அதி யோகம்', 'Benefics around the 6th–8th from the Moon: comfort, good helpers and respect.', 'சந்திரனுக்கு 6–8-ல் சுபர்கள்: சுகம், நல்ல உதவியாளர்கள், மதிப்பு.');
-  for (const [k, p] of Object.entries(P)) {
-    if (!(k in EXALT) || p.rasi !== (EXALT[k] + 6) % 12) continue;
-    const dispositor = RASIS[p.rasi].lord;
-    if (KENDRA.includes(fromLagna(dispositor)) || KENDRA.includes(fromMoon(dispositor))) {
-      add(`neechabhanga_${k}`, `Neecha Bhanga Raja Yoga (${k})`, `நீச பங்க ராஜ யோகம் (${PLANETS[k].ta})`, `${k}'s weakness is cancelled: what starts hard turns into a strength.`, `${PLANETS[k].ta} நீசம் பங்கமாகிறது: கடினமாகத் தொடங்குவது பலமாக மாறும்.`);
-    }
-  }
-  const around = ['Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'].filter((k) => [2, 12].includes(fromMoon(k)) || P[k].rasi === M);
-  if (!around.length && !KENDRA.includes(fromLagna('Moon'))) {
-    add('kemadruma', 'Kemadruma (mild)', 'கேமத்ரும (லேசானது)', 'The Moon stands alone; keep good company and a calm routine — prayer to Ambal on Mondays strengthens the mind.', 'சந்திரன் தனித்து உள்ளது; நல்ல நட்பு, அமைதியான வாழ்க்கை முறை; திங்கள் அம்பாள் வழிபாடு மனதைப் பலப்படுத்தும்.', 'mild');
-  }
-  return yogas;
+  return {
+    id: r.legacyId, name: r.title, desc, kind: r.tone,
+    rule: r.ruleId, version: r.version, status: r.status, profile: r.profile, reference: r.reference, stability: r.stability,
+    facts: r.facts, variants: r.variants, enabledVariants: r.enabledPresent,
+    strength: r.strength, periods: r.periods, cancellation: r.cancellation, source: r.source,
+  };
+}
+
+/**
+ * Yogas from the rule registry (shared/rules). Each entry keeps the legacy { id, name, desc, kind }
+ * and adds { rule, status, strength, periods, variants, facts, … }: configuration, modifiers and
+ * relevant periods are kept separate. Disputed labels are never included here.
+ */
+export function detectYogas(chart, { profile } = {}) {
+  return evaluateRules(chart, { profile, filter: (r) => r.kind === 'yoga' || r.showWithYogas }).map(yogaView);
+}
+
+/** Rules that could not be evaluated because they need the Lagna (birth time unknown). */
+export function rulesNeedingBirthTime(chart, { profile } = {}) {
+  return evaluateRules(chart, { profile, includeUnavailable: true, filter: (r) => r.kind === 'yoga' || r.showWithYogas })
+    .filter((r) => r.unavailable)
+    .map((r) => ({ rule: r.ruleId, id: r.legacyId, name: r.name, needs: r.needs }));
+}
+
+/** Every registry evaluation (including absent ones when asked) — for the evidence bundle / reviewer view. */
+export function ruleEvidence(chart, { profile, includeAbsent = false } = {}) {
+  return evaluateRules(chart, { profile, includeAbsent });
+}
+
+/** Distinct house-lord role facts (lords, placements, occupants, Badhaka, 2nd/7th lords, functional table). */
+export function houseRoles(chart, { profile } = {}) {
+  return computeHouseRoles(chart, { profile });
 }
 
 /** Sidereal Saturn/Jupiter/Rahu now, relative to the natal Moon; Ezharai / Ashtama Sani and Guru Balam. */
@@ -175,13 +173,16 @@ const AREAS = [
 ];
 
 /** Full analysis bundle used by the Jathagam report screen and the Jothidar. */
-export function fullAnalysis(chart, now = new Date()) {
+export function fullAnalysis(chart, now = new Date(), { profile } = {}) {
+  const pr = resolveProfile(profile);
   const bhavas = bhavaAnalysis(chart);
   const strength = grahaStrength(chart.planets);
   const sMap = Object.fromEntries(strength.map((g) => [g.planet, g.score]));
-  const yogas = detectYogas(chart);
+  const yogas = detectYogas(chart, { profile: pr });
+  const roles = houseRoles(chart, { profile: pr });
+  const hasLagna = !!chart.planets.Lagna;
   const transit = transitStatus(chart, now);
-  const areas = AREAS.map((a) => {
+  const areas = !hasLagna ? [] : AREAS.map((a) => {
     const hs = a.houses.map((h) => bhavas[h - 1].score);
     const ks = a.karakas.map((k) => sMap[k]);
     let score = Math.round(hs[0] * 0.45 + (hs.slice(1).reduce((x, y) => x + y, 0) / Math.max(1, hs.length - 1)) * 0.25 + (ks.reduce((x, y) => x + y, 0) / ks.length) * 0.3);
@@ -194,14 +195,21 @@ export function fullAnalysis(chart, now = new Date()) {
   let dasaOutlook = null;
   if (dasa) {
     const k = dasa.lord;
-    const house = houseOf(chart.planets.Lagna.rasi, chart.planets[k].rasi);
-    const ruled = k in OWN ? housesRuled(chart.planets.Lagna.rasi, k) : [];
+    const house = hasLagna ? houseOf(chart.planets.Lagna.rasi, chart.planets[k].rasi) : null;
+    const ruled = hasLagna && k in OWN ? housesRuled(chart.planets.Lagna.rasi, k) : [];
     const good = sMap[k] >= 55 && !DUSTHANA.includes(house);
+    const where = house ? { en: ` sits in house ${house}`, ta: `: ${house}-ம் வீட்டில்` } : { en: ' (house needs birth time)', ta: ': (பாவத்திற்கு பிறந்த நேரம் தேவை)' };
     dasaOutlook = {
       lord: k, house, ruled, strength: sMap[k], tone: good ? 'favourable' : 'growth through effort',
-      en: `${k} Mahadasa: ${k} sits in house ${house}${ruled.length ? ` and rules ${ruled.join(' & ')}` : ''}. ${good ? 'A supportive period — use it to build.' : 'Results come through patience and steady effort; its parigaram helps.'}`,
-      ta: `${PLANETS[k].ta} மகா தசை: ${house}-ம் வீட்டில்${ruled.length ? `, ${ruled.join(' & ')}-ம் வீடுகளின் அதிபதி` : ''}. ${good ? 'ஆதரவான காலம் — வளர்ச்சிக்குப் பயன்படுத்தவும்.' : 'பொறுமையும் தொடர் முயற்சியும் பலன் தரும்; அதன் பரிகாரம் உதவும்.'}`,
+      en: `${k} Mahadasa: ${k}${where.en}${ruled.length ? ` and rules ${ruled.join(' & ')}` : ''}. ${good ? 'A supportive period — use it to build.' : 'Results come through patience and steady effort; its parigaram helps.'}`,
+      ta: `${PLANETS[k].ta} மகா தசை${where.ta}${ruled.length ? `, ${ruled.join(' & ')}-ம் வீடுகளின் அதிபதி` : ''}. ${good ? 'ஆதரவான காலம் — வளர்ச்சிக்குப் பயன்படுத்தவும்.' : 'பொறுமையும் தொடர் முயற்சியும் பலன் தரும்; அதன் பரிகாரம் உதவும்.'}`,
     };
   }
-  return { bhavas, strength, yogas, transit, areas, dasaOutlook };
+  const needsBirthTime = hasLagna ? [] : rulesNeedingBirthTime(chart, { profile: pr });
+  return {
+    bhavas, strength, strengthLabel: STRENGTH_INDEX_LABEL, yogas, roles, transit, areas, dasaOutlook,
+    availability: chart.availability || { lagna: hasLagna, houses: hasLagna, reason: null },
+    stability: chart.stability || null, needsBirthTime,
+    profile: { id: pr.id, name: pr.name, status: pr.status },
+  };
 }

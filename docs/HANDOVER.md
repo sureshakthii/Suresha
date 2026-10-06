@@ -13,13 +13,13 @@ This records what the rebuild against [`THUNAI-BRIEF.md`](THUNAI-BRIEF.md) deliv
 | §5 First 20 yogas + repairs | Done, status *proposed*; disputed labels off by default | `shared/rules/yogas.js`, `shared/rules/disputed.js` |
 | §6, §16–24 Age-aware evidence-based AI | Done: policy routing, evidence bundle, validator, reviewed templates | `server/policy/`, `server/ai.js`, `docs/AI-SAFETY-POLICY.md` |
 | §7 Birth-time uncertainty | Done: unknown time gives no Lagna; stability report | `birthChart`, `chartStability` |
-| §8 Five destinations, Today ≤ 3 cards, accessibility | See the UI commit | `public/` |
+| §8 Five destinations, Today ≤ 3 cards, accessibility | Done; native Tamil review pending | `public/` |
 | §9 Temple and leave planner | Done; practical data marked "needs checking" | `shared/temple-planner.js` |
 | §10 Health, decisions | Done: no disease/lifespan inference; Prasnam deadline-first | `shared/health.js`, `shared/prasna.js`, `shared/special.js` |
 | §11 Privacy, payments | Export and delete added; payments already verified server-side | `server/auth.js`, `server/billing.js` |
 | §25–26 Themes and practical safeguards | Done; themes *proposed* | `shared/themes.js`, `shared/safeguards.js` |
 | §27–29 First/remarriage matching, consent | Done: modes, adult check, two-person consent, five cards, no verdict | `shared/marriage-context.js` |
-| §12, §23, §30 Release evidence | Partly: 400+ automated tests; expert fixtures and pilot pending | `test/` |
+| §12, §23, §30 Release evidence | Partly: 428 automated tests; expert fixtures and pilot pending | `test/` |
 
 Run `npm test` to check: every suite passes on this branch.
 

@@ -36,3 +36,19 @@ export function money(inr, cur = userCurrency()) {
 export function toInr(amount, cur = userCurrency()) {
   return cur === 'INR' || !INR_PER[cur] ? amount : amount * INR_PER[cur];
 }
+
+/** Currencies a person can pick for a trip budget (rupees first, then those with a guidance rate). */
+export const BUDGET_CURRENCIES = ['INR', ...Object.keys(INR_PER)];
+
+/** Budget currency for a residence country (UAE → AED, USA → USD, India → INR); INR when unsupported. */
+export const currencyForCountry = (cc) => userCurrency(cc || 'IN');
+
+/** Range as text, e.g. "≈ AED 1,030–2,260 (₹24,000–53,000)"; rupees only for INR. */
+export function moneyRange(lowInr, highInr, cur = userCurrency()) {
+  const r = (n) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+  const rupees = `${r(lowInr)}–${r(highInr).slice(1)}`;
+  if (cur === 'INR' || !INR_PER[cur]) return `≈ ${rupees}`;
+  const lo = fmt(nice(lowInr / INR_PER[cur]), cur);
+  const hi = fmt(nice(highInr / INR_PER[cur]), cur).replace(/^[^\d]*/, '');
+  return `≈ ${lo}–${hi} (${rupees})`;
+}

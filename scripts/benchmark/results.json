@@ -1,0 +1,286 @@
+{
+  "meta": {
+    "reference": "Swiss Ephemeris 2.10.03 (sweph npm, SE data files sepl_18/semo_18), SE_SIDM_LAHIRI",
+    "engine": "shared/astro.js on astronomy-engine 2.1.19",
+    "samples": {
+      "positions": 500,
+      "days": 600,
+      "births": 300
+    },
+    "range": "1940-01-01 … 2060-12-31",
+    "cities": 31,
+    "seed": 7,
+    "ran": "2026-10-06T19:26:07.383Z",
+    "moshierFallbacks": 0
+  },
+  "positions": {
+    "Sun": {
+      "medianArcsec": 0.44,
+      "p95Arcsec": 1.43,
+      "maxArcsec": 2.5
+    },
+    "Moon": {
+      "medianArcsec": 1.15,
+      "p95Arcsec": 13.75,
+      "maxArcsec": 22.08
+    },
+    "Mars": {
+      "medianArcsec": 0.98,
+      "p95Arcsec": 3.95,
+      "maxArcsec": 11.44
+    },
+    "Mercury": {
+      "medianArcsec": 1.57,
+      "p95Arcsec": 4.95,
+      "maxArcsec": 11.98
+    },
+    "Jupiter": {
+      "medianArcsec": 2.7,
+      "p95Arcsec": 6.45,
+      "maxArcsec": 9.48
+    },
+    "Venus": {
+      "medianArcsec": 0.94,
+      "p95Arcsec": 6.33,
+      "maxArcsec": 15.53
+    },
+    "Saturn": {
+      "medianArcsec": 2.31,
+      "p95Arcsec": 8.68,
+      "maxArcsec": 12.71
+    },
+    "Rahu": {
+      "medianArcsec": 0.11,
+      "p95Arcsec": 0.13,
+      "maxArcsec": 0.13
+    },
+    "Ketu": {
+      "medianArcsec": 0.11,
+      "p95Arcsec": 0.13,
+      "maxArcsec": 0.13
+    },
+    "Lagna": {
+      "medianArcsec": 0.14,
+      "p95Arcsec": 1.95,
+      "maxArcsec": 3.23
+    },
+    "ayanamsa": {
+      "medianArcsec": 0.14,
+      "p95Arcsec": 0.27,
+      "maxArcsec": 0.35
+    },
+    "moonByEra": {
+      "upTo2025": {
+        "n": 352,
+        "medianArcsec": 0.75,
+        "maxArcsec": 5.56
+      },
+      "from2026": {
+        "n": 148,
+        "medianArcsec": 8.24,
+        "maxArcsec": 22.08
+      },
+      "note": "Future dates differ mainly through the two libraries' Delta-T (Earth rotation) extrapolations"
+    },
+    "meanNodeVsTrueNode": {
+      "medianArcsec": 3724.88,
+      "maxArcsec": 6820.3,
+      "note": "Expected: the app uses the MEAN node by convention; mean − true oscillates up to about ±1.7°"
+    }
+  },
+  "classification": {
+    "Sun": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Moon": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Mars": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Mercury": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Jupiter": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 99.8,
+      "n": 500
+    },
+    "Venus": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Saturn": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Rahu": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Ketu": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Lagna": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    }
+  },
+  "disagreements": [
+    {
+      "kind": "Jupiter pada",
+      "at": "2021-02-18T07:45:41.408Z",
+      "place": "",
+      "app": 290,
+      "ref": 290,
+      "deltaArcsec": -1.76,
+      "refDistToBoundaryArcsec": 0.06
+    }
+  ],
+  "panchang": {
+    "n": 600,
+    "agreementPercent": {
+      "tithi": 100,
+      "nakshatra": 100,
+      "yoga": 100,
+      "karana": 100,
+      "weekday": 100
+    },
+    "endTimeError": {
+      "tithi": {
+        "medianSec": 2.18,
+        "p95Sec": 26.01,
+        "maxSec": 39.94
+      },
+      "nakshatra": {
+        "medianSec": 1.76,
+        "p95Sec": 26.72,
+        "maxSec": 39.06
+      },
+      "yoga": {
+        "medianSec": 1.9,
+        "p95Sec": 27.02,
+        "maxSec": 38.18
+      },
+      "karana": {
+        "medianSec": 2.21,
+        "p95Sec": 26.01,
+        "maxSec": 39.35
+      }
+    },
+    "disagreements": []
+  },
+  "sunrise": {
+    "sunrise": {
+      "medianSec": 1.8,
+      "p95Sec": 2.79,
+      "maxSec": 3.32
+    },
+    "sunset": {
+      "medianSec": 1.82,
+      "p95Sec": 2.75,
+      "maxSec": 3.27
+    },
+    "n": 600,
+    "convention": "Upper limb on the sea-level horizon with standard refraction (both sides)"
+  },
+  "rahu": {
+    "start": {
+      "medianSec": 0.85,
+      "p95Sec": 1.64,
+      "maxSec": 2.49
+    },
+    "end": {
+      "medianSec": 0.86,
+      "p95Sec": 2,
+      "maxSec": 3.08
+    }
+  },
+  "dasa": {
+    "births": 300,
+    "firstLordAgreementPercent": 100,
+    "startErrorHours": {
+      "median": 2.82,
+      "p95": 39.58,
+      "max": 65.81
+    },
+    "startErrorHoursBirthsTo2025": {
+      "median": 1.69,
+      "p95": 6.44,
+      "max": 10.86
+    },
+    "convention": "1 dasa year = 365.25 days on both sides; differences come only from the Moon position at birth"
+  },
+  "sankranti": {
+    "n": 372,
+    "timeErrorSec": {
+      "medianSec": 11.42,
+      "p95Sec": 31.2,
+      "maxSec": 47.9
+    },
+    "tamilDay1Agreement": 100,
+    "day1Disagreements": []
+  },
+  "spot": [
+    {
+      "name": "Mesha Sankranti 2024 at about 21:15 IST on 13 Apr (after sunset) → Tamil New Year (Chithirai 1, Krodhi) on 14 Apr 2024",
+      "expected": "13 Apr 2024 ~21:15 IST; 14 Apr = Chithirai 1",
+      "actual": "2024-04-13T21:04 IST (Lahiri-VP285 variant: 21:13 IST); 14 Apr = Chithirai 1, Krodhi",
+      "ok": true
+    },
+    {
+      "name": "Makara Sankranti 2024 at about 02:54 IST on 15 Jan → Thai Pongal (Thai 1) on 15 Jan 2024",
+      "expected": "15 Jan 2024 ~02:54 IST; Thai 1",
+      "actual": "2024-01-15T02:43 IST (Lahiri-VP285 variant: 02:52 IST); Thai 1",
+      "ok": true
+    },
+    {
+      "name": "New moon of the total solar eclipse, 8 Apr 2024 18:21 UTC (NASA) = end of Amavasai",
+      "expected": "2024-04-08 18:21 UTC",
+      "actual": "2024-04-08T18:20",
+      "ok": true
+    },
+    {
+      "name": "Deepavali 2024: Chathurdasi ends / Amavasai begins 31 Oct 2024 ≈ 15:52 IST",
+      "expected": "31 Oct 2024 15:52 IST",
+      "actual": "2024-10-31T15:53 IST",
+      "ok": true
+    },
+    {
+      "name": "Makara Sankranti 2025 ≈ 09:03 IST on 14 Jan → Thai Pongal 14 Jan 2025",
+      "expected": "14 Jan 2025 ~09:03 IST",
+      "actual": "2025-01-14T08:55 IST (Lahiri-VP285 variant: 09:04 IST)",
+      "ok": true
+    },
+    {
+      "name": "Lahiri ayanamsa at J2000.0 = 23°51′11″ (Indian Astronomical Ephemeris, mean)",
+      "expected": "23.8531°",
+      "actual": "23.8532° (true, incl. nutation)",
+      "ok": true
+    }
+  ]
+}

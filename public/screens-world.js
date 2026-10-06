@@ -10,6 +10,8 @@ import { familyRelations } from './shared/relations.js';
 import { fullAnalysis, BHAVAS } from './shared/analysis.js';
 import { capDate, clipPeriods, cappedDasaPeriods, CAP_LINES } from './shared/lifespan-cap.js';
 import { ageProfile, topicAllowed, adultText, childSafe } from './shared/age-guard.js';
+import { locName, zoneDiffText, countryOfLoc } from './shared/residence.js';
+import { moneyRange, currencyForCountry } from './shared/currency.js';
 import { PACKAGES, PACKAGE_INCLUDES, packageRoute } from './shared/packages.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtIsoDate, api, store,
@@ -721,15 +723,16 @@ function renderPackages(sec, params = {}) {
     ${PACKAGES.map((p) => {
     const r = packageRoute(p, loc);
     const first = r.firstTemple;
-    return `<details class="card glass pkg" id="pkg-${p.id}"${open === p.id ? ' open' : ''}><summary><span class="ti-icon">${p.icon}</span><div><b>${esc(bi(p.name))}</b><div class="muted small">${p.days} ${L('days', 'நாட்கள்')} · ${r.flight ? `✈️ ~${r.flightKm.toLocaleString()} km ${L('flight from', 'விமானம்:')} ${esc(placeName(loc.name))} + ~${Math.round(r.km)} km ${L('by road', 'சாலை வழி')}` : `~${Math.round(r.km)} km ${L('from', 'தொலைவு')} ${esc(placeName(loc.name))}`}</div></div></summary>
+    return `<details class="card glass pkg" id="pkg-${p.id}"${open === p.id ? ' open' : ''}><summary><span class="ti-icon">${p.icon}</span><div><b>${esc(bi(p.name))}</b><div class="muted small">${r.flights ? `${r.totalDays} ${L('days incl. flights', 'நாட்கள் (விமானம் உட்பட)')} · ✈️ ${r.flights.origin.code} → ${r.flights.airport.code} ≈ ${r.flights.out.hours} ${L('h', 'மணி')} + ~${Math.round(r.km)} km ${L('by road', 'சாலை வழி')}` : r.flight ? `${p.days} ${L('days', 'நாட்கள்')} · ✈️ ~${r.flightKm.toLocaleString()} km ${L('flight from', 'விமானம்:')} ${esc(placeName(loc.name))} + ~${Math.round(r.km)} km ${L('by road', 'சாலை வழி')}` : `${p.days} ${L('days', 'நாட்கள்')} · ~${Math.round(r.km)} km ${L('from', 'தொலைவு')} ${esc(placeName(loc.name))}`}</div></div></summary>
       <p class="small">🎯 ${esc(bi(p.for))}</p>
+      ${r.flights ? pkgFlightHtml(r, loc) : ''}
       ${r.days.map((d, i) => `<div class="pkg-day"><b>${L('Day', 'நாள்')} ${i + 1}</b> · ${d.map((t) => esc(bi(t.name))).join(' → ')}</div>`).join('')}
       <div class="mini-label">🛕 ${L('Every temple — highlights, legend and how to reach', 'ஒவ்வொரு கோவிலும் — சிறப்பு, தல வரலாறு, செல்லும் வழி')}</div>
       ${r.days.flat().map((t) => `<div class="pkg-temple">${t.planet ? `<span style="color:${COLOR[t.planet]}">${GLYPH[t.planet]}</span> ` : '🛕 '}<b>${esc(bi(t.name))}</b> <span class="muted small">· ${esc(bi(t.deity))} · ${esc(placeName(t.town))}</span>${templeDetailHtml(t)}</div>`).join('')}
       ${(ta() ? p.extra.ta : p.extra.en).map((x) => `<div class="small">✨ ${esc(x)}</div>`).join('')}
       <div class="btn-row">
         <a class="chip-btn" href="${r.mapsUrl}" target="_blank" rel="noopener">🗺️ ${L('Route', 'பாதை')}</a>
-        <a class="chip-btn" href="https://www.google.com/travel/flights?q=${encodeURIComponent(`flights to ${first.town}`)}" target="_blank" rel="noopener">✈️ ${L('Flights', 'விமானம்')}</a>
+        <a class="chip-btn" href="https://www.google.com/travel/flights?q=${encodeURIComponent(r.flights ? `flights from ${r.flights.origin.code} to ${r.flights.airport.code}` : `flights to ${first.town}`)}" target="_blank" rel="noopener">✈️ ${L('Flights', 'விமானம்')}</a>
         <a class="chip-btn" href="https://www.irctc.co.in/" target="_blank" rel="noopener">🚆 ${L('Trains', 'ரயில்')}</a>
         <a class="chip-btn" href="https://www.google.com/maps/search/hotels+near+${encodeURIComponent(`${first.name.en}, ${first.town}`)}" target="_blank" rel="noopener">🏨 ${L('Hotels', 'தங்குமிடம்')}</a>
         <button class="chip-btn" data-go="muhurtham">🗓️ ${L('Good dates', 'நல்ல நாள்')}</button>
@@ -752,6 +755,20 @@ function renderPackages(sec, params = {}) {
       if (hits.length === 1) openPkg(hits[0].id);
     },
   });
+}
+
+// From abroad (e.g. Dubai → Arupadai Veedu): the flight leg, the time difference and an approximate fare range in the
+// person's currency plus ₹ — typical figures only, labelled ≈ and "check airline"; never a booking or a quote.
+function pkgFlightHtml(r, loc) {
+  const f = r.flights;
+  const home = locName({ name: loc.name, cc: f.origin.cc, zone: f.fromZone });
+  const dest = locName({ name: f.airport.city, cc: f.airport.cc });
+  const diff = zoneDiffText(home, dest, f.diffHours);
+  const cur = currencyForCountry(countryOfLoc(state.residence) || countryOfLoc(loc));
+  return `<div class="pkg-flight small"><b>✈️ ${esc(placeName(f.origin.city))} (${f.origin.code}) → ${esc(placeName(f.airport.city))} (${f.airport.code})</b> · ≈ ${f.out.hours} ${L('h', 'மணி')}${f.out.direct ? '' : ` ${L('incl. one connection', 'ஒரு இணைப்பு உட்பட')}`}
+    ${diff ? `<div>🕒 ${esc(bi(diff))}</div>` : ''}
+    <div>💺 ${L('Flights per person, return', 'ஒருவருக்கு விமானம், போய்வர')}: ${moneyRange(f.farePerPerson.low, f.farePerPerson.high, cur)} <span class="muted">(${L('check airline', 'விமான நிறுவனத்திடம் உறுதி செய்யவும்')})</span></div>
+    <div class="muted">${L(`${r.totalDays} days including the flight days. Airport pickup at ${f.airport.city} can be arranged with the package.`, `விமான நாட்கள் உட்பட ${r.totalDays} நாள். ${placeName(f.airport.city)} விமான நிலைய வரவேற்பு பேக்கேஜுடன் ஏற்பாடு செய்யலாம்.`)}</div></div>`;
 }
 
 function packageForm(id) {

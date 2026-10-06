@@ -1,6 +1,7 @@
 // Pilgrimage & parigaram packages (யாத்திரை பேக்கேஜ்): temples, day-wise route and what is included.
 // Prices are quoted per family by the operations team, so no prices are shown here.
-import { TEMPLES, distanceKm } from './temples.js';
+import { TEMPLES, distanceKm, countryAt } from './temples.js';
+import { planFlights } from './airports.js';
 
 const P = (id, icon, en, ta, days, stops, forEn, forTa, extraEn = [], extraTa = []) => ({ id, icon, name: { en, ta }, days, stops, for: { en: forEn, ta: forTa }, extra: { en: extraEn, ta: extraTa } });
 
@@ -86,9 +87,15 @@ export function packageRoute(pkg, start) {
   const flat = days.flat();
   let km = 0;
   const firstLeg = start && flat[0] ? distanceKm(start.lat, start.lon, flat[0].lat, flat[0].lon) : 0;
-  const flight = firstLeg > 800;
-  let prev = start && !flight ? { lat: start.lat, lon: start.lon } : flat[0];
+  const startCc = start ? start.cc || countryAt(start.lat, start.lon) : null;
+  const destCc = flat[0]?.cc || 'IN';
+  // From abroad (Dubai → Tamil Nadu) or far away: fly to the nearest suitable airport, then the road yatra.
+  const flight = !!start && !!flat[0] && (firstLeg > 800 || (!!startCc && startCc !== destCc && firstLeg > 120));
+  const flights = flight ? planFlights(start, flat[0], { startCc, destCc, minKm: 0 }) : null;
+  let prev = start && !flight ? { lat: start.lat, lon: start.lon } : flights ? { lat: flights.airport.lat, lon: flights.airport.lon } : flat[0];
   for (const t of flat) { km += distanceKm(prev.lat, prev.lon, t.lat, t.lon) * 1.3; prev = t; }
-  const mapsUrl = `https://www.google.com/maps/dir/${[start ? `${start.lat},${start.lon}` : null, ...flat.map((t) => `${t.lat},${t.lon}`)].filter(Boolean).join('/')}`;
-  return { days, km, mapsUrl, firstTemple: flat[0], flight, flightKm: flight ? Math.round(firstLeg) : 0 };
+  const mapsUrl = `https://www.google.com/maps/dir/${[start && !flight ? `${start.lat},${start.lon}` : flights ? `${flights.airport.lat},${flights.airport.lon}` : null, ...flat.map((t) => `${t.lat},${t.lon}`)].filter(Boolean).join('/')}`;
+  // Days include the flights: outbound (plus a day when landing after midnight) and the return day.
+  const totalDays = flights ? pkg.days + 1 + Math.max(0, flights.out.dayOffset) + 1 : pkg.days;
+  return { days, km, mapsUrl, firstTemple: flat[0], flight, flightKm: flight ? Math.round(firstLeg) : 0, flights, totalDays };
 }

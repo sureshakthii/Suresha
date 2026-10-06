@@ -3,6 +3,7 @@ import { chartFromKattam } from './shared/kattam.js';
 import { birthChart, RASIS, NAKSHATRAS, PLANETS } from './shared/astro.js';
 import { buildTaskPrompt } from './shared/narrator.js';
 import { placeTa, attachZone, zoneOffsetHours } from './shared/places.js';
+import { activeLocation, travelExpired, countryOfLoc, zoneLabel, inIndiaTime, locFromPlace } from './shared/residence.js';
 import { BRAND } from './shared/brand.js';
 
 export { BRAND };
@@ -24,16 +25,24 @@ export const store = {
 const legacy = store.get('kj_profile', null);
 // Old profiles saved only a UTC offset: attach the IANA zone when the place is in the built-in list (historical offsets).
 const initialFamily = store.get('kj_family', legacy ? [{ id: 'me', relation: 'self', ...legacy }] : []).map((m) => attachZone(m));
+// Residence (kj_loc — where the person lives now) and an optional temporary travelling place (kj_travel).
+// Neither is ever a birth place: charts use each member's own birth place and zone. Every daily feature reads
+// state.loc = the travelling place while it is active, else the residence (shared/residence.js).
 // A saved location with an IANA zone gets today's offset (daylight saving changes since it was saved).
 const savedLoc = store.get('kj_loc', null);
 if (savedLoc?.zone && zoneOffsetHours(savedLoc.zone) != null) savedLoc.tz = zoneOffsetHours(savedLoc.zone);
+if (savedLoc && !savedLoc.cc) { const cc = countryOfLoc(savedLoc); if (cc) savedLoc.cc = cc; }
+const savedTravel = store.get('kj_travel', null);
 
 export const state = {
   lang: store.get('kj_lang', 'ta'),
   family: initialFamily,
   activeId: store.get('kj_active', initialFamily[0]?.id || null),
   ancestors: store.get('kj_ancestors', []),
-  loc: savedLoc,
+  residence: savedLoc,
+  travel: savedTravel && !travelExpired(savedTravel) ? savedTravel : null,
+  loc: activeLocation(savedLoc, savedTravel),
+  firstRun: !savedLoc,
   settings: { large: false, voice: true, view: 'simple', rate: 0.92, hc: true, theme: 'dark', ...store.get('kj_settings', {}) },
   user: null,
   providers: null,
@@ -134,7 +143,42 @@ export function applyTheme() {
 }
 applyTheme();
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
-export function setLoc(loc) { state.loc = loc; store.set('kj_loc', loc); state.snapAt = 0; }
+/** Save the RESIDENCE (where the person lives now). Old callers pass a plain {lat, lon, tz, zone, name}. */
+export function setLoc(loc, { confirmed = true } = {}) {
+  const res = loc ? { ...loc, cc: loc.cc || countryOfLoc(loc) || undefined, confirmed: !!confirmed } : null;
+  state.residence = res; store.set('kj_loc', res); state.firstRun = false;
+  applyActiveLoc();
+}
+export const setResidence = (place, opts) => setLoc(locFromPlace(place), opts);
+/** Temporary / travelling place until `until` ('YYYY-MM-DD', inclusive); daily timings switch back afterwards. */
+export function setTravel(place, until) {
+  const t = place ? { ...locFromPlace(place), until } : null;
+  state.travel = t; if (t) store.set('kj_travel', t); else store.del('kj_travel');
+  applyActiveLoc();
+}
+export const clearTravel = () => setTravel(null);
+function applyActiveLoc() {
+  const prev = state.loc;
+  state.loc = activeLocation(state.residence, state.travel);
+  if (!prev || !state.loc || prev.lat !== state.loc.lat || prev.lon !== state.loc.lon || prev.tz !== state.loc.tz) { state.snapAt = 0; state.snap = null; }
+}
+/** Called every minute: end an expired travelling place (back to the residence). Returns true when it changed. */
+export function checkTravelExpiry(now = new Date()) {
+  if (!state.travel || !travelExpired(state.travel, now)) return false;
+  state.travel = null; store.del('kj_travel');
+  applyActiveLoc();
+  return true;
+}
+/** "Dubai time (GST, UTC+4)" / "துபாய் நேரம் (GST, UTC+4)" for the place the daily timings use. */
+export const zoneText = (loc = state.loc) => bi(zoneLabel(loc));
+/** Small label for timing cards: zone of the timings, plus the India time for people living abroad. */
+export function zoneLine(loc = state.loc, { india = true, id = '' } = {}) {
+  if (!loc) return '';
+  const abroad = india && !inIndiaTime(loc);
+  return `<span class="zone-line"><span class="zone-lbl">🕒 ${esc(zoneText(loc))}${loc.temp ? ` · ✈️ ${L('travelling', 'பயணத்தில்')}` : ''}</span>${abroad ? `<span class="india-time"${id ? ` id="${id}"` : ''}>${indiaTimeText()}</span>` : ''}</span>`;
+}
+/** "India time: 6:30 PM" — the small secondary line for diaspora users. */
+export const indiaTimeText = (now = new Date()) => `${L('India time', 'இந்திய நேரம்')}: ${fmtTime(now, 5.5)}`;
 
 // ---------------------------------------------------------------- network
 export async function api(path, { method = 'GET', body } = {}) {

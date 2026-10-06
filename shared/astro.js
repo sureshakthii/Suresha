@@ -240,7 +240,9 @@ export function planetPositions(date, lat, lon) {
     const sid = norm360(tropicalLongitude(body, time) - aya);
     out[body] = { ...describeLongitude(sid), ...motion(body, date) };
   }
-  const rahu = norm360(meanNode(date) - aya);
+  // The mean node is referred to the MEAN equinox of date, so it takes the MEAN ayanamsa (equivalently: add nutation
+  // and subtract the true ayanamsa). Subtracting the true ayanamsa here put Rahu off by up to the 17" nutation term.
+  const rahu = norm360(meanNode(date) - lahiriAyanamsaMean(date));
   const node = motion('Rahu', date);
   out.Rahu = { ...describeLongitude(rahu), ...node };
   // Ketu is exactly opposite Rahu by definition (norm360 keeps it in [0, 360)).

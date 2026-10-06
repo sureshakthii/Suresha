@@ -3,7 +3,7 @@
 // change (different ayanamsa, node type, horai method or ephemeris version) is caught.
 // Full prose version: docs/ENGINE-CONTRACT.md.
 
-export const ENGINE_VERSION = '2.0.0';
+export const ENGINE_VERSION = '2.0.1';
 
 export const ENGINE_SETTINGS = Object.freeze({
   engineVersion: ENGINE_VERSION,

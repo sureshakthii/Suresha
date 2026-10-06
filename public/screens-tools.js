@@ -6,7 +6,7 @@ import { CATEGORIES, getCategory } from './shared/prasna.js';
 import { tamilMonth, tamilDay, TAMIL_MONTHS } from './shared/tamilcal.js';
 import { matchPorutham, doshams, doshaSamyam, VERDICTS } from './shared/porutham.js';
 import { grahaStrength, dailyParigaram, NAVAGRAHA } from './shared/remedies.js';
-import { thivasamDates, natchathiraBirthdays, findMuhurtham, milestones } from './shared/special.js';
+import { thivasamDates, natchathiraBirthdays, findMuhurtham, milestones, birthTamilMonth, STAR_BIRTHDAY_RULE } from './shared/special.js';
 import { remindBtn } from './remind.js';
 import { predictEvent } from './shared/predict.js';
 import { personalGuide } from './shared/personal.js';
@@ -16,7 +16,7 @@ import { templeSearchField, attachTempleSearch } from './temple-search.js';
 import { dayInfo } from './shared/journey.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtIsoDate,
-  activeMember, chartOf, registerScreen, go, subHeader, aiTask, toast, speak, saveFamily, starOptions, rasiOfStarPada, STATIC,
+  activeMember, chartOf, registerScreen, go, subHeader, aiTask, toast, speak, saveFamily, saveSettings, starOptions, rasiOfStarPada, STATIC,
   listen, micMessage,
   yogaName, karanaName,
   placeName,
@@ -486,33 +486,59 @@ function renderThivasam(sec) {
 registerScreen('thivasam', { render: renderThivasam, parent: 'home', needsLoc: true });
 
 // ================================================================ NATCHATHIRA BIRTHDAY
+// Star birthdays and the 60th / 70th / 80th celebrations are calculated for the RESIDENCE (where the family lives
+// and celebrates), never the birth place: sunrise and the Tamil month days differ between places.
+const homeLoc = () => state.residence || state.loc;
+const tamilText = (t) => (ta() ? `${t.monthTa} ${t.day}` : `${t.monthEn} ${t.day}`);
+function starNote(x) {
+  const lines = [];
+  if (x.chosenBy !== 'only') {
+    lines.push(L(`The star comes twice this month (${x.occurrences.map(fmtIsoDate).join(', ')}) — the ${x.chosenBy} is taken.`,
+      `இம்மாதம் நட்சத்திரம் இரண்டு முறை (${x.occurrences.map(fmtIsoDate).join(', ')}) — ${x.chosenBy === 'second' ? 'இரண்டாவது' : 'முதல்'} நாள் கொள்ளப்பட்டது.`));
+  }
+  if (x.note) lines.push(bi(x.note));
+  return lines.length ? `<p class="small muted sb-note">ℹ️ ${lines.map(esc).join(' ')}</p>` : '';
+}
 function renderStarBday(sec) {
-  sec.innerHTML = `${subHeader(L('Star Birthday', 'நட்சத்திரப் பிறந்தநாள்'), L('The traditional birthday — your birth star in your Tamil birth month', 'பாரம்பரியப் பிறந்தநாள் — பிறந்த தமிழ் மாதத்தில் ஜென்ம நட்சத்திரம் வரும் நாள்'))}<div id="sbList">${loader(L('Calculating…', 'கணிக்கப்படுகிறது…'))}</div>`;
+  const home = homeLoc();
+  const twice = state.settings.starTwice === 'first' ? 'first' : 'second';
+  sec.innerHTML = `${subHeader(L('Star Birthday', 'நட்சத்திரப் பிறந்தநாள்'), L('The traditional birthday — your birth star in your Tamil birth month', 'பாரம்பரியப் பிறந்தநாள் — பிறந்த தமிழ் மாதத்தில் ஜென்ம நட்சத்திரம் வரும் நாள்'))}
+    <div class="card glass"><p class="small">📐 ${esc(bi(STAR_BIRTHDAY_RULE))}</p>
+      <p class="small muted">📍 ${esc(placeName(home?.name || ''))}</p>
+      <label class="small">${L('If the star comes twice in the month', 'மாதத்தில் நட்சத்திரம் இரண்டு முறை வந்தால்')}
+        <select id="sbTwice"><option value="second"${twice === 'second' ? ' selected' : ''}>${L('Second day (common)', 'இரண்டாவது நாள் (வழக்கம்)')}</option><option value="first"${twice === 'first' ? ' selected' : ''}>${L('First day', 'முதல் நாள்')}</option></select></label></div>
+    <div id="sbList">${loader(L('Calculating…', 'கணிக்கப்படுகிறது…'))}</div>`;
+  $('#sbTwice').addEventListener('change', (e) => { state.settings.starTwice = e.target.value; saveSettings(); renderStarBday(sec); });
   setTimeout(() => {
     if (state.view !== 'starbday') return;
-    const todayIso = new Date(Date.now() + state.loc.tz * 3600000).toISOString().slice(0, 10);
-    const rows = state.family.map((m) => {
+    const loc = { lat: home.lat, lon: home.lon, tz: home.tz, zone: home.zone };
+    const todayIso = new Date(Date.now() + loc.tz * 3600000).toISOString().slice(0, 10);
+    const people = state.family.filter((m) => m.relation !== 'organization');
+    const rows = people.map((m) => {
       const c = chartOf(m);
-      const month = c.planets.Sun.rasi;
-      const next = natchathiraBirthdays({ birthStar: c.janmaNakshatra.index, birthTamilMonth: month, loc: { lat: m.lat, lon: m.lon, tz: m.tz }, count: 1 })[0];
+      const month = birthTamilMonth(c).month;
+      const next = natchathiraBirthdays({ birthStar: c.janmaNakshatra.index, birthTamilMonth: month, loc, count: 1, twice })[0];
       const daysLeft = next ? Math.round((Date.parse(next.date) - Date.parse(todayIso)) / 86400000) : null;
       return { m, c, month, next, daysLeft };
     }).sort((a, b) => (a.daysLeft ?? 999) - (b.daysLeft ?? 999));
-    $('#sbList').innerHTML = rows.map(({ m, c, month, next, daysLeft }) => `<div class="card glass sb-row">
+    $('#sbList').innerHTML = rows.map(({ m, c, month, next, daysLeft }) => `<div class="card glass"><div class="sb-row">
         <span class="avatar">${esc(displayName(m).slice(0, 1).toUpperCase())}</span>
-        <div style="flex:1"><b>${esc(displayName(m))}</b><div class="muted small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(bi(TAMIL_MONTHS[month]))}</div>
-          ${next ? `<div>🎂 <b>${fmtIsoDate(next.date)}</b> · ${esc(ta() ? `${next.tamil.monthTa} ${next.tamil.day}` : `${next.tamil.monthEn} ${next.tamil.day}`)} ${remindBtn({ title: `${L('Star birthday', 'நட்சத்திரப் பிறந்தநாள்')} · ${displayName(m)}`, at: atLocal(next.date, '06:00') })}</div>` : ''}</div>
-        ${daysLeft != null ? `<div class="mu-score">${daysLeft === 0 ? '🎉' : daysLeft}<small>${daysLeft === 0 ? L('today', 'இன்று') : L('days', 'நாள்')}</small></div>` : ''}</div>`).join('')
+        <div style="flex:1;min-width:0"><b>${esc(displayName(m))}</b><div class="muted small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(bi(TAMIL_MONTHS[month]))}</div>
+          ${next ? `<div>🎂 <b>${fmtIsoDate(next.date)}</b> · ${esc(bi(next.weekday))} · ${esc(tamilText(next.tamil))} ${remindBtn({ title: `${L('Star birthday', 'நட்சத்திரப் பிறந்தநாள்')} · ${displayName(m)}`, at: atLocal(next.date, '06:00') })}</div>` : ''}</div>
+        ${daysLeft != null ? `<div class="mu-score">${daysLeft === 0 ? '🎉' : daysLeft}<small>${daysLeft === 0 ? L('today', 'இன்று') : L('days', 'நாள்')}</small></div>` : ''}</div>
+        ${next ? starNote(next) : ''}</div>`).join('')
       || `<div class="card glass cta-card" data-go="family" data-param='{"add":true}'>${L('Add family members to see their star birthdays', 'நட்சத்திரப் பிறந்தநாளைப் பார்க்க குடும்பத்தினரைச் சேர்க்கவும்')} ›</div>`;
     // 60th / 70th / 80th celebrations for elders (shown from age 45).
-    const elders = state.family.filter((m) => m.relation !== 'organization').map((m) => ({ m, c: chartOf(m) }))
+    const elders = people.map((m) => ({ m, c: chartOf(m) }))
       .filter(({ c }) => (Date.now() - c.utc) / (365.25 * 86400000) >= 45);
     if (elders.length) {
       $('#sbList').insertAdjacentHTML('beforeend', `<div class="section-title">🪔 ${L('60th, 70th & 80th celebrations', 'சஷ்டியப்தபூர்த்தி, பீமரத சாந்தி, சதாபிஷேகம்')}</div>
-        ${elders.map(({ m, c }) => milestones(c, { lat: m.lat, lon: m.lon, tz: m.tz }).filter((x) => !x.past).map((x) => `<div class="card glass window first">
-          <div class="win-dates">${esc(bi(x.name))} · ${esc(m.nameTa && ta() ? m.nameTa : m.name)}</div>
-          ${x.day ? `<div>${remindBtn({ title: `${bi(x.name)} · ${displayName(m)}`, at: atLocal(x.day.date, '06:00') })} 📅 <b>${fmtIsoDate(x.day.date)}</b> · ${esc(ta() ? `${x.day.tamil.monthTa} ${x.day.tamil.day}` : `${x.day.tamil.monthEn} ${x.day.tamil.day}`)} · ${esc(nakName(c.janmaNakshatra.index))}</div>` : ''}
-          ${x.thousandthFullMoon ? `<div class="small muted">🌕 ${L('1000th full moon', '1000-வது பௌர்ணமி')}: ${fmtIsoDate(new Date(x.thousandthFullMoon.getTime() + state.loc.tz * 3600000).toISOString().slice(0, 10))}</div>` : ''}
+        ${elders.map(({ m, c }) => milestones(c, loc, new Date(), { twice }).filter((x) => !x.past && x.day).map((x) => `<div class="card glass window first">
+          <div class="win-dates">${esc(bi(x.name))} · ${esc(displayName(m))}</div>
+          <div>${remindBtn({ title: `${bi(x.name)} · ${displayName(m)}`, at: atLocal(x.day.date, '06:00') })} 📅 <b>${fmtIsoDate(x.day.date)}</b> · ${esc(bi(x.day.weekday))} · ${esc(tamilText(x.day.tamil))} · ${esc(bi(x.day.tamil.year))} ${L('year', 'ஆண்டு')} · ${esc(nakName(c.janmaNakshatra.index))}</div>
+          <p class="small muted">📐 ${esc(bi(x.basis))}</p>
+          ${starNote(x.day)}
+          ${x.thousandthFullMoon ? `<div class="small muted">🌕 ${L('1000th full moon', '1000-வது பௌர்ணமி')}: ${fmtIsoDate(new Date(x.thousandthFullMoon.getTime() + loc.tz * 3600000).toISOString().slice(0, 10))}</div>` : ''}
           <p class="small">${L('Traditionally celebrated at Thirukadaiyur Abhirami–Amritaghateswarar temple or at home with homam.', 'பாரம்பரியமாக திருக்கடையூர் அபிராமி–அமிர்தகடேஸ்வரர் கோவிலில் அல்லது வீட்டில் ஹோமத்துடன் கொண்டாடப்படும்.')}</p>
           <div class="btn-row"><button class="chip-btn" data-go="packages" data-param='{"id":"thirukadaiyur"}'>🧳 ${L('Package', 'பேக்கேஜ்')}</button><button class="chip-btn" data-go="seva" data-param='{"service":"homam"}'>🔥 ${L('Book priest', 'புரோகிதர்')}</button></div></div>`).join('')).join('')}`);
     }

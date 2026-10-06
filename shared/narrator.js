@@ -35,6 +35,7 @@ Every statement in "text" about planets, dasa/bhukti, houses, lagna, nakshatra, 
 export const DEADLINE_FIRST = {
   surgery: 'medical', delivery: 'medical', court: 'legal', contract: 'contract', tech_partner: 'contract',
   cheque: 'payment', loan: 'payment', lend_money: 'payment',
+  medicine_start: 'medical', police_complaint: 'legal', money_transfer: 'payment', loan_sign: 'payment', rent_agreement: 'contract',
 };
 const DEADLINE_LINE = {
   medical: ['🩺 Practical first: follow your doctor\'s advice and any date they have set. Never delay hospital care, surgery or medicines for a timing score or Rahu Kalam.', '🩺 நடைமுறை முதலில்: மருத்துவரின் ஆலோசனையையும் அவர் குறித்த தேதியையும் பின்பற்றுங்கள். நேர மதிப்பெண் அல்லது ராகு காலத்துக்காக மருத்துவச் சிகிச்சை, அறுவை சிகிச்சை, மருந்துகளைத் தள்ளிப்போடாதீர்கள்.'],

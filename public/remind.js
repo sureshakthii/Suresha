@@ -14,7 +14,10 @@ const save = (r) => store.set(KEY, r);
 const native = () => window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.LocalNotifications;
 const tz = () => state.loc?.tz ?? 5.5;
 const localParts = (d) => { const x = new Date(d.getTime() + tz() * 3600000); return { date: x.toISOString().slice(0, 10), time: x.toISOString().slice(11, 16) }; };
-const fromLocal = (date, time) => { const [y, m, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(Date.UTC(y, m - 1, d, h, mi) - tz() * 3600000); };
+const fromLocal = (date, time, off = tz()) => { const [y, m, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(Date.UTC(y, m - 1, d, h, mi) - off * 3600000); };
+// A reminder keeps its exact instant (alarmAt): moving to Dubai or travelling never shifts an alarm. Older entries
+// saved only a wall-clock date/time are read in the zone they were saved in (t.tz) when known.
+const alarmOf = (t) => (t.alarmAt ? new Date(t.alarmAt) : fromLocal(t.date, t.time, t.tz ?? tz()));
 
 /** HTML for a bell button. at: Date (instant of the event); title: text shown in the alarm. */
 export function remindBtn({ title, at, place = '', label = '' }) {
@@ -60,7 +63,7 @@ export async function addReminder({ title, place = '', eventAt, alarmAt }) {
   const r = load();
   const id = Math.random().toString(36).slice(2, 10);
   const p = localParts(alarmAt);
-  r.trips.push({ id, kind: 'reminder', title, place, date: p.date, time: p.time, eventAt: new Date(eventAt).toISOString() });
+  r.trips.push({ id, kind: 'reminder', title, place, date: p.date, time: p.time, tz: tz(), alarmAt: new Date(alarmAt).toISOString(), eventAt: new Date(eventAt).toISOString() });
   save(r);
   let how = L('Saved in the app', 'செயலியில் சேமிக்கப்பட்டது');
   const LN = native();
@@ -90,7 +93,8 @@ async function syncPushTrips(r) {
   const today = localParts(new Date()).date;
   await api('/api/push/subscribe', { method: 'POST', body: { subscription: sub.toJSON(), prefs: {
     morningTime: r.morningTime || null, tz: tz(), lat: state.loc?.lat, lon: state.loc?.lon, place: state.loc?.name, lang: state.lang, name: m ? displayName(m) : '',
-    trips: r.trips.filter((t) => t.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 60)
+    // Push prefs carry the current zone: re-express each reminder's instant in it.
+    trips: r.trips.map((t) => (t.alarmAt ? { ...t, ...localParts(new Date(t.alarmAt)) } : t)).filter((t) => t.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 60)
       .map((t) => ({ id: t.id, date: t.date, time: t.time, title: t.title, place: t.place, kind: t.kind || 'trip' })),
   } } });
 }
@@ -98,7 +102,7 @@ async function syncPushTrips(r) {
 /** Upcoming reminders (alarm time from now on), soonest first. */
 export function upcomingReminders(limit = 50) {
   const now = Date.now();
-  return load().trips.map((t) => ({ ...t, alarm: fromLocal(t.date, t.time) })).filter((t) => t.alarm.getTime() > now - 3600000)
+  return load().trips.map((t) => ({ ...t, alarm: alarmOf(t) })).filter((t) => t.alarm.getTime() > now - 3600000)
     .sort((a, b) => a.alarm - b.alarm).slice(0, limit);
 }
 export function deleteReminder(id) {

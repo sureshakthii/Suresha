@@ -156,7 +156,9 @@ export function planTempleTrip(input = {}) {
     .sort((a, b) => a.days - b.days || a.id.localeCompare(b.id));
   const packages = relevantPkg.map((p) => {
     const r = packageRoute(p, departure);
-    return { kind: 'package', id: p.id, name: p.name, days: p.days, roadKm: Math.round(r.km), paid: true, priceShown: false, priceNote: T('Prices are quoted separately on request.', 'விலை கோரிக்கையின் பேரில் தனியாகத் தெரிவிக்கப்படும்.'), sponsored: !!sponsored[p.id], rankingUsesSponsorship: false, booking: { status: 'not-booked', confirmed: false } };
+    // From abroad: the flight is an estimate only (typical duration, fare range) — never a booking or a quote.
+    const flight = r.flights ? { from: r.flights.origin.code, to: r.flights.airport.code, approxHours: r.flights.out.hours, direct: r.flights.out.direct, timeDiffHours: r.flights.diffHours, fareInrPerPersonReturn: r.flights.farePerPerson, note: T('≈ typical flight time and fare range — check with the airline', '≈ வழக்கமான விமான நேரம், கட்டண வரம்பு — விமான நிறுவனத்திடம் உறுதி செய்யவும்'), booked: false } : null;
+    return { kind: 'package', id: p.id, name: p.name, days: r.totalDays || p.days, flight, roadKm: Math.round(r.km), paid: true, priceShown: false, priceNote: T('Prices are quoted separately on request.', 'விலை கோரிக்கையின் பேரில் தனியாகத் தெரிவிக்கப்படும்.'), sponsored: !!sponsored[p.id], rankingUsesSponsorship: false, booking: { status: 'not-booked', confirmed: false } };
   });
 
   const plan = {

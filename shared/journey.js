@@ -14,6 +14,8 @@ import { NAVAGRAHA } from './remedies.js';
 import { PLANETS } from './astro.js';
 import { tamilDay } from './tamilcal.js';
 import { verifiedField } from './temple-verified.js';
+import { planFlights } from './airports.js';
+import { placeTa } from './places.js';
 
 const B = (en, ta) => ({ en, ta });
 
@@ -165,9 +167,10 @@ function buildDays(start, temples, { days, pace, transport }) {
  *   mobility ('none'|'limited'|'wheelchair')
  */
 export function planJourney(p) {
-  const days = Math.max(1, Math.min(10, Number(p.days) || 2));
+  const days = Math.max(1, Math.min(14, Number(p.days) || 2));
   const travellers = Math.max(1, Number(p.travellers) || 1);
-  const transport = p.transport || 'bus';
+  // ✈️ Flight is for the long legs; between temples the plan uses a taxi (or the chosen bus / train).
+  let transport = p.flightFrom && (p.transport === 'flight' || p.transport === 'own_car') ? 'taxi' : p.transport || 'bus';
   const tier = p.tier || 'economy';
   const pace = p.mobility && p.mobility !== 'none' ? 'relaxed' : p.pace || 'moderate';
   const ctx = { prefs: p.prefs || [], planets: p.planets || [] };
@@ -179,6 +182,16 @@ export function planJourney(p) {
     return { t, km: roadKm(p.start, t), ...r };
   });
   const domestic = startCc ? all.filter((x) => x.t.cc === startCc) : all;
+  // From abroad (e.g. Dubai → Tamil Nadu temples): an international flight, road legs between the temples in that
+  // country, and the return flight. Also a domestic flight when the person chose ✈️ and the temples are far away.
+  if (!p.flightFrom) {
+    const destCc = destinationCountry(p, startCc, domestic);
+    if (destCc && (destCc !== startCc || transport === 'flight')) {
+      const fp = flightPlan({ ...p, days, travellers, transport, tier, pace }, startCc, destCc, ctx);
+      if (fp) return fp;
+    }
+  }
+  if (transport === 'flight') transport = 'taxi'; // temples are within road distance: no flight needed
   if (!domestic.length && !p.flightFrom) {
     // e.g. Oslo: plan the road trip from the town of the nearest listed temple, reached by air first (not costed).
     const near = [...all].sort((a, b) => a.km - b.km)[0].t;
@@ -243,6 +256,89 @@ export function planJourney(p) {
   const localPick = local.filter((x) => x.km <= 30).slice(0, 2);
   const C = make('C', B('Minimal travel or worship close to home', 'குறைந்த பயணம் அல்லது வீட்டருகே வழிபாடு'), localPick.length ? localPick : local.slice(0, 1), 1, { homeWorship: true });
   return { options: [A, Bplan, C], inputs: { ...p, days, travellers, transport, tier, pace }, review: REVIEW, assumptions: COST_ASSUMPTIONS, startCc, flightFirst };
+}
+
+// ---------------------------------------------------------------- journeys from abroad (flight + road)
+// Default region for a pilgrimage from abroad, when no temple is chosen: the Madurai / Tiruchi belt of Tamil Nadu
+// (a few hours by road from IXM / TRZ), else the first listed temple of that country.
+const DEST_HUB = { IN: { lat: 10.2, lon: 78.4 }, LK: { lat: 7.5, lon: 80.2 }, MY: { lat: 3.1, lon: 101.7 }, SG: { lat: 1.33, lon: 103.85 } };
+
+/** Which country's temples the trip goes to: the chosen destination, else the chosen temples, else at home. */
+export function destinationCountry(p, startCc, domestic = null) {
+  if (p.destCc) return String(p.destCc).toUpperCase();
+  const focus = (p.focus || []).map((id) => TEMPLES.find((t) => t.id === id)).filter(Boolean);
+  const away = focus.filter((t) => t.cc !== startCc);
+  if (away.length) {
+    const n = {}; away.forEach((t) => { n[t.cc] = (n[t.cc] || 0) + 1; });
+    return Object.entries(n).sort((a, b) => b[1] - a[1])[0][0];
+  }
+  if (focus.length) return startCc;
+  const dom = domestic || TEMPLES.filter((t) => t.cc === startCc);
+  if (!dom.length && p.start) return [...TEMPLES].sort((a, b) => distanceKm(p.start.lat, p.start.lon, a.lat, a.lon) - distanceKm(p.start.lat, p.start.lon, b.lat, b.lon))[0].cc;
+  return startCc;
+}
+
+/** Option C for a family abroad: a temple near home (no flight), else worship at home. */
+function homeOption(p, startCc) {
+  const near = TEMPLES.filter((t) => t.cc === startCc && distanceKm(p.start.lat, p.start.lon, t.lat, t.lon) <= 60);
+  const title = B('No flight — a temple near your home, or worship at home', 'விமானம் வேண்டாம் — வீட்டருகே கோவில் அல்லது வீட்டிலேயே வழிபாடு');
+  if (near.length) {
+    const local = planJourney({ ...p, transport: p.transport === 'flight' || p.transport === 'own_car' ? 'taxi' : p.transport, days: 1, destCc: startCc, focus: [], picked: [], flightFrom: p.start });
+    const c = local.options.find((o) => o.key === 'C');
+    if (c) return { ...c, title, homeWorship: true, local: true };
+  }
+  return { key: 'C', title, temples: [], itinerary: [], totalKm: 0, cost: { total: 0, perPerson: 0, lines: [] }, overBudget: false, why: [], homeWorship: true, local: true };
+}
+
+/**
+ * Journey from abroad: ✈️ start airport → nearest suitable airport to the temples (MAA / IXM / TRZ / CJB / COK / TRV /
+ * BLR …), road legs between the temples (darshan timings in temple-local time), and the flight home. The days
+ * the person gives INCLUDE the travel days. Flight time and fare are typical ranges only ("≈", check the airline);
+ * nothing is booked and no exact fare is invented.
+ */
+function flightPlan(p, startCc, destCc, ctx) {
+  const destTemples = TEMPLES.filter((t) => t.cc === destCc);
+  if (!destTemples.length) return null;
+  const intl = startCc !== destCc;
+  const focus = (p.focus || []).map((id) => TEMPLES.find((t) => t.id === id)).filter((t) => t && t.cc === destCc);
+  let anchor;
+  if (focus.length) anchor = { lat: focus.reduce((a, t) => a + t.lat, 0) / focus.length, lon: focus.reduce((a, t) => a + t.lon, 0) / focus.length };
+  else {
+    const hub = DEST_HUB[destCc] || destTemples[0];
+    const best = destTemples.map((t) => ({ t, score: relevance(t, ctx).score, d: distanceKm(hub.lat, hub.lon, t.lat, t.lon) }))
+      .sort((a, b) => b.score - a.score || a.d - b.d)[0].t;
+    anchor = { lat: best.lat, lon: best.lon };
+  }
+  const fl = planFlights(p.start, anchor, { startCc, destCc });
+  if (!fl) return null;
+  const { airport: arr, out } = fl;
+  const outboundDays = 1 + Math.max(0, out.dayOffset);
+  const templeDays = Math.max(1, p.days - outboundDays - 1);
+  const totalDays = outboundDays + templeDays + 1;
+  const inner = planJourney({ ...p, start: { lat: arr.lat, lon: arr.lon, name: `${arr.city} (${arr.code})`, cc: destCc, airport: arr.code }, days: templeDays, flightFrom: p.start, destCc });
+  const fare = fl.farePerPerson;
+  const low = fare.low * p.travellers, high = fare.high * p.travellers;
+  const arrTa = placeTa(arr.city) || arr.city;
+  const options = inner.options.filter((o) => !o.homeWorship).map((o) => ({
+    ...o,
+    title: o.key === 'A' && !(inner.focus || []).length ? B(`Short yatra around ${arr.city}`, `${arrTa} அருகே குறுகிய யாத்திரை`) : o.key === 'B' ? B(`A ${totalDays}-day journey with flights`, `விமானத்துடன் ${totalDays} நாள் பயணம்`) : o.title,
+    flight: true,
+    flightCost: { low, high, perPersonLow: fare.low, perPersonHigh: fare.high },
+    totalRange: { low: o.cost.total + low, high: o.cost.total + high },
+    overBudget: p.budget ? o.cost.total + low > p.budget : false,
+  }));
+  const C = homeOption(p, startCc);
+  return {
+    options: intl ? [...options, C] : options,
+    inputs: { ...inner.inputs, start: p.start, days: totalDays, requestedDays: p.days, transport: p.transport, roadTransport: inner.inputs.transport },
+    review: REVIEW, assumptions: COST_ASSUMPTIONS, focus: inner.focus || [], startCc, destCc,
+    flightFirst: true, flightTo: { town: arr.city, cc: destCc, km: out.km },
+    flight: {
+      intl, out, back: fl.back, airport: arr, origin: fl.origin, alternatives: fl.alternatives,
+      diffHours: out.diffHours, fromZone: fl.fromZone, toZone: fl.toZone, outboundDays, templeDays, totalDays, addedDays: Math.max(0, totalDays - p.days),
+      fare: { perPersonLow: fare.low, perPersonHigh: fare.high, low, high, returnTrip: true },
+    },
+  };
 }
 
 // National / state public holidays with fixed dates (month-day). Festival holidays come from the Tamil calendar.

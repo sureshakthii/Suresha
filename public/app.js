@@ -1,5 +1,5 @@
 // Thunai (துணை) — app boot, splash, background sky and the one-second live tick.
-import { state, $, $$, L, ta, STATIC, store, go, currentScreen, saveSettings, setLoc, activeMember, toast, BRAND } from './core.js';
+import { state, $, $$, L, ta, STATIC, store, go, currentScreen, saveSettings, setLoc, toast, BRAND, checkTravelExpiry, placeName } from './core.js';
 import { refreshSnap } from './screens-main.js';
 import './screens-tools.js';
 import './screens-names.js';
@@ -21,7 +21,9 @@ import './screens-journey.js';
 import './screens-trust.js';
 import './easy-date.js';
 import { loadSession } from './account.js';
-import { devicePlace, zoneOffsetHours, placeText } from './shared/places.js';
+import { devicePlace } from './shared/places.js';
+import { locFromPlace } from './shared/residence.js';
+import { residenceStep, zonePrompt } from './residence-ui.js';
 import { startAnalytics, loadBilling } from './growth.js';
 
 function startSky() {
@@ -107,11 +109,10 @@ async function boot() {
   saveSettings();
   startAnalytics();
   await Promise.all([splash(), loadSession().then(loadBilling)]);
-  if (!state.loc) {
-    const m = activeMember();
-    const d = devicePlace(); // no profile yet: the main city of the phone's time zone (Chennai in India / unknown)
-    setLoc(m ? { lat: m.lat, lon: m.lon, tz: m.zone ? zoneOffsetHours(m.zone) : m.tz, zone: m.zone, name: m.place } : { lat: d.lat, lon: d.lon, tz: d.tz, zone: d.zone, name: placeText(d) });
-  }
+  // Residence is never taken from a birth place (born in Madurai, living in Dubai). Until the person answers, the
+  // main city of the phone's time zone is used (Dubai phone → Dubai; Chennai in India / unknown).
+  const firstRun = !state.loc;
+  if (firstRun) setLoc(locFromPlace(devicePlace()), { confirmed: false });
   refreshSnap(true);
   $('#app').hidden = false;
   adoptSystemFontScale();
@@ -129,10 +130,19 @@ async function boot() {
 
   // The calendar and basic guidance work without registration: always open on Today.
   // Sign-in is offered from Settings and when a feature (backup, purchases) really needs it.
-  go(startHash === '#bookings' ? 'bookings' : 'home');
+  // If a screen was already opened while the splash was showing (deep link, test, quick tap), stay on it.
+  const opened = document.querySelector('#views .view:not([hidden])');
+  if (startHash === '#bookings') go('bookings'); else if (opened && state.view && state.view !== 'home') go(state.view, state.params || {}, { back: true }); else go('home');
+  // First run: one friendly step — where do you live now? Existing users: a gentle one-time prompt when the
+  // phone's clock zone differs from the saved residence (e.g. landed in Dubai).
+  const deferred = Date.now() - Number(store.get('kj_res_later', 0)) < 3 * 86400000; // "Decide later": ask again in 3 days
+  if (firstRun || (state.residence?.confirmed === false && !deferred)) residenceStep({ first: true });
+  else setTimeout(() => zonePrompt(), 1200);
 
   setInterval(() => {
     if (!state.loc) return;
+    // A temporary travelling place ends on its date: daily timings return to the residence.
+    if (Date.now() % 60000 < 1000 && checkTravelExpiry()) { refreshSnap(true); toast(L(`🏠 Timings are back to ${placeName(state.loc.name)}`, `🏠 நேரங்கள் மீண்டும் ${placeName(state.loc.name)} இடத்திற்கு`), 5000); go(state.view, state.params); return; }
     const fresh = refreshSnap();
     const s = currentScreen();
     if (fresh && state.view === 'home') go('home');

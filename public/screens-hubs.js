@@ -1,100 +1,78 @@
-// Hubs for the five-destination navigation: Family and Services tabs, plus "All tools".
-// Existing feature screens are unchanged; they are just reached from one clear place.
+// Hubs for the five-destination navigation (Family and Services tabs) and the searchable tools launcher.
+// The tool list itself lives in tool-registry.js (grouped by intent, searchable in Tamil / English / Tanglish).
 import {
-  state, $, $$, L, ta, esc, STATIC, api, toast, fmtIsoDate, needsServerCard, go, registerScreen, subHeader, saveFamily, copyright, detailed, saveSettings,
+  state, $, $$, L, ta, esc, STATIC, api, toast, fmtIsoDate, needsServerCard, go, registerScreen, subHeader, saveFamily, copyright, store,
   activeMember, chartOf, displayName, nakName, rasiName, RELATIONS, bi, BRAND,
 } from './core.js';
-import { iconChip } from './icons.js';
+import { icon, iconChip } from './icons.js';
+import { GROUPS, TOOLS, toolById, searchTools } from './tool-registry.js';
 
-/**
- * The feature catalogue. level 'simple' = shown in Simple view; 'advanced' = specialist tools.
- * status: 'device' works fully on the phone · 'server' needs the online server · 'sample' uses sample data.
- */
-export const FEATURES = [
-  // Today
-  { id: 'panchangam', hub: 'home', en: 'Panchangam', ta: 'பஞ்சாங்கம்', level: 'simple' },
-  { id: 'calendar', hub: 'home', en: 'Tamil calendar', ta: 'தமிழ் நாட்காட்டி', level: 'simple' },
-  { id: 'vratham', hub: 'home', en: 'Viratha days', ta: 'விரத நாட்கள்', level: 'simple' },
-  { id: 'reminders', hub: 'home', en: 'Alarms & reminders', ta: 'அலாரம் & நினைவூட்டல்', level: 'simple' },
-  { id: 'weather', hub: 'home', en: 'Weather & travel', ta: 'வானிலை & பயணம்', level: 'simple' },
-  { id: 'live', hub: 'home', en: 'Live sky & Horai', ta: 'நேரலை வானம் & ஓரை', level: 'advanced' },
-  // My Chart
-  { id: 'chart', hub: 'chart', en: 'My Jathagam', ta: 'என் ஜாதகம்', level: 'simple' },
-  { id: 'analysis', hub: 'chart', en: 'Full chart reading', ta: 'முழு ஜாதக ஆய்வு', level: 'simple' },
-  { id: 'parigaram', hub: 'chart', en: 'Parigaram (simple practices)', ta: 'பரிகாரம் (எளிய வழிபாடு)', level: 'simple' },
-  { id: 'peyarchi', hub: 'chart', en: 'Guru / Sani / Rahu-Ketu transits', ta: 'குரு / சனி / ராகு-கேது பெயர்ச்சி', level: 'simple' },
-  { id: 'roadmap', hub: 'chart', en: 'Life periods road map', ta: 'வாழ்க்கைக் கால வரைபடம்', level: 'advanced' },
-  { id: 'life', hub: 'chart', en: 'Life questions — traditional timing', ta: 'வாழ்க்கைக் கேள்விகள் — பாரம்பரிய காலம்', level: 'advanced' },
-  { id: 'health', hub: 'chart', en: 'Health & Planets — eat / avoid', ta: 'ஆரோக்கியம் & கிரகங்கள் — உணவு வழிகாட்டி', level: 'simple' },
-  { id: 'guide', hub: 'chart', en: 'My guide — colour, number, Siddhar', ta: 'என் வழிகாட்டி — நிறம், எண், சித்தர்', level: 'advanced' },
-  { id: 'vargas', hub: 'chart', en: 'Divisional charts & Ashtakavarga', ta: 'வர்க்கச் சக்கரங்கள் & அஷ்டகவர்க்கம்', level: 'advanced' },
-  { id: 'numerology', hub: 'chart', en: 'Name & number numerology', ta: 'பெயர் & எண் கணிதம்', level: 'advanced' },
-  { id: 'mantras', hub: 'chart', en: 'Mantras', ta: 'மந்திரங்கள்', level: 'simple' },
-  // Family
-  { id: 'family', hub: 'familyhub', en: 'Family profiles', ta: 'குடும்ப சுயவிவரங்கள்', level: 'simple' },
-  { id: 'familyplan', hub: 'familyhub', en: 'Shared events & journeys', ta: 'பகிர்ந்த நிகழ்வுகள் & பயணங்கள்', level: 'simple' },
-  { id: 'muhurtham', hub: 'familyhub', en: 'Muhurtham — choose dates', ta: 'முகூர்த்தம் — நாள் தேர்வு', level: 'simple' },
-  { id: 'relations', hub: 'familyhub', en: 'Family relations today', ta: 'இன்று குடும்ப உறவு', level: 'simple' },
-  { id: 'kattam', hub: 'familyhub', en: 'Add from the written jathagam (Rasi Kattam)', ta: 'எழுதிய ஜாதகத்திலிருந்து சேர் (ராசி கட்டம்)', level: 'simple' },
-  { id: 'lovematch', hub: 'familyhub', en: 'Love Match 💘 — emotional sync & chemistry', ta: 'காதல் பொருத்தம் 💘 — உணர்வு & ஈர்ப்பு', level: 'simple' },
-  { id: 'porutham', hub: 'familyhub', en: 'Star match (quick 10)', ta: 'நட்சத்திரப் பொருத்தம் (விரைவு 10)', level: 'simple' },
-  { id: 'couple', hub: 'familyhub', en: 'Detailed marriage matching', ta: 'விரிவான திருமணப் பொருத்தம்', level: 'simple' },
-  { id: 'starbday', hub: 'familyhub', en: 'Star birthdays & 60th/80th', ta: 'நட்சத்திரப் பிறந்தநாள் & சஷ்டியப்தபூர்த்தி', level: 'simple' },
-  { id: 'thivasam', hub: 'familyhub', en: 'Thivasam / tharpanam', ta: 'திவசம் / தர்ப்பணம்', level: 'simple' },
-  { id: 'names', hub: 'familyhub', en: 'Baby name letters', ta: 'குழந்தை பெயர் எழுத்துகள்', level: 'simple' },
-  { id: 'gunamilan', hub: 'familyhub', en: '36 Guna Milan (North Indian)', ta: '36 குண மிலன் (வட இந்திய முறை)', level: 'advanced' },
-  { id: 'partners', hub: 'familyhub', en: 'Business partner match', ta: 'வணிகக் கூட்டாளி பொருத்தம்', level: 'advanced' },
-  { id: 'ruthu', hub: 'familyhub', en: 'Ruthu / Manjal Neerattu', ta: 'ருது / மஞ்சள் நீராட்டு', level: 'advanced' },
-  // Ask
-  { id: 'chat', hub: 'chat', en: 'Ask Thunai', ta: 'துணையிடம் கேளுங்கள்', level: 'simple' },
-  { id: 'ask', hub: 'chat', en: 'Is now a good time? (Prasnam)', ta: 'இப்போது செய்யலாமா? (பிரசன்னம்)', level: 'simple' },
-  // Services
-  { id: 'journey', hub: 'services', en: 'My Spiritual Journey', ta: 'என் ஆன்மீகப் பயணம்', level: 'simple' },
-  { id: 'temples', hub: 'services', en: 'Temples — timings, phone & directions', ta: 'கோவில்கள் — நேரம், தொலைபேசி, வழி', level: 'simple' },
-  { id: 'packages', hub: 'services', en: 'Yatra packages', ta: 'யாத்திரை பேக்கேஜ்', level: 'simple', status: 'server' },
-  { id: 'seva', hub: 'services', en: 'Temple seva requests', ta: 'கோவில் சேவை கோரிக்கை', level: 'simple', status: 'server' },
-  { id: 'priests', hub: 'services', en: 'Priest requests', ta: 'புரோகிதர் கோரிக்கை', level: 'simple', status: 'server' },
-  { id: 'bookings', hub: 'services', en: 'My bookings — status & cancel', ta: 'என் முன்பதிவுகள் — நிலை & ரத்து', level: 'simple', status: 'server' },
-  { id: 'store', hub: 'services', en: 'Pooja store', ta: 'பூஜைக் கடை', level: 'advanced', status: 'sample' },
-  { id: 'plans', hub: 'services', en: 'Premium & Family plans', ta: 'பிரீமியம் & குடும்பத் திட்டங்கள்', level: 'simple' },
-];
+export { GROUPS, TOOLS, searchTools };
 
-const statusBadge = (f) => (f.status === 'server' && STATIC ? `<span class="badge unv">${L('Opening soon', 'விரைவில்')}</span>`
-  : f.status === 'sample' ? `<span class="badge est">${L('Sample — not for sale', 'மாதிரி — விற்பனைக்கு இல்லை')}</span>` : '');
+const statusBadge = (t) => (t.status === 'server' && STATIC ? `<span class="badge unv">${L('Opening soon', 'விரைவில்')}</span>`
+  : t.status === 'sample' ? `<span class="badge est">${L('Sample', 'மாதிரி')}</span>` : '');
 
-function featureList(hub, { includeAdvanced = detailed() } = {}) {
-  const items = FEATURES.filter((f) => (!hub || f.hub === hub) && (includeAdvanced || f.level === 'simple'));
-  return `<div class="menu">${items.map((f) => `<button data-go="${f.id}">${iconChip(f.id, { size: 20, cls: 'mi-icon' })}<span>${esc(L(f.en, f.ta))} ${statusBadge(f)}</span></button>`).join('')}</div>`;
+/** One list row: icon · name (· group) · chevron. Same row everywhere (tools, hubs, settings). */
+export function toolRow(t, { sub = '' } = {}) {
+  return `<button class="row" data-go="${t.id}">${iconChip(t.id, { size: 20, cls: 'mi-icon' })}<span class="row-txt"><span class="row-name">${esc(L(t.en, t.ta))}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${statusBadge(t)}<span class="row-go" aria-hidden="true">${icon('chevron-right', { size: 18 })}</span></button>`;
+}
+const groupOf = (id) => GROUPS.find((g) => g.id === id);
+/** A grouped list (one card, divided rows) for one intent group. */
+export function groupList(groupId, { title = true, exclude = [] } = {}) {
+  const g = groupOf(groupId);
+  const items = TOOLS.filter((t) => t.group === groupId && !exclude.includes(t.id));
+  return `<section class="tl-group" aria-label="${esc(L(g.en, g.ta))}">${title ? `<h3 class="section-title">${esc(L(g.en, g.ta))}</h3>` : ''}<div class="menu list">${items.map((t) => toolRow(t)).join('')}</div></section>`;
 }
 
-/** Simple / Detailed switch used on hubs. */
-export function viewToggle() {
-  return `<div class="set-row view-toggle"><span>${L('View', 'காட்சி')}</span><div class="seg" role="group" aria-label="${L('Simple or detailed view', 'எளிய / விரிவான காட்சி')}">
-    <button data-viewmode="simple" class="${detailed() ? '' : 'sel'}" aria-pressed="${!detailed()}">${L('Simple', 'எளியது')}</button>
-    <button data-viewmode="detailed" class="${detailed() ? 'sel' : ''}" aria-pressed="${detailed()}">${L('Detailed', 'விரிவானது')}</button></div></div>`;
+/** "What are you looking for?" — a search bar that opens the tools launcher (Today's top, Services tab). */
+export function searchPill() {
+  return `<button class="search-pill" type="button" data-go="tools" data-param='{"focus":true}'>${icon('search', { size: 20 })}<span>${L('What are you looking for?', 'எதைத் தேடுகிறீர்கள்?')}</span></button>`;
 }
-document.addEventListener('click', (e) => {
-  const b = e.target.closest('[data-viewmode]');
-  if (!b) return;
-  state.settings.view = b.dataset.viewmode;
-  saveSettings();
-  go(state.view, state.params);
-});
 
-// ================================================================ ALL TOOLS
-function renderTools(sec) {
-  const hubs = [['home', 'Today', 'இன்று'], ['chart', 'My Chart', 'என் ஜாதகம்'], ['familyhub', 'Family', 'குடும்பம்'], ['chat', 'Ask', 'கேளுங்கள்'], ['services', 'Services', 'சேவைகள்']];
-  sec.innerHTML = `${subHeader(L('All tools', 'அனைத்து கருவிகள்'), L('Every feature, grouped by where it lives', 'அனைத்து வசதிகளும், பிரிவு வாரியாக'), 'home')}
-    ${viewToggle()}
-    <label class="sr-only" for="toolSearch">${L('Search tools', 'கருவிகளைத் தேடு')}</label>
-    <input id="toolSearch" placeholder="${esc(L('Search: porutham, temple, dasa…', 'தேடு: பொருத்தம், கோவில், தசை…'))}" autocomplete="off">
-    <div id="toolGroups">${hubs.map(([h, en, tx]) => `<div class="section-title">${L(en, tx)}</div>${featureList(h)}`).join('')}</div>
-    ${detailed() ? '' : `<p class="small muted center">${L('Specialist tools (divisional charts, numerology, Guna Milan…) appear in Detailed view.', 'சிறப்புக் கருவிகள் (வர்க்கச் சக்கரம், எண் கணிதம், குண மிலன்…) விரிவான காட்சியில் தெரியும்.')}</p>`}
-    ${copyright()}`;
-  $('#toolSearch').addEventListener('input', (e) => {
-    const q = e.target.value.trim().toLowerCase();
-    $$('#toolGroups .menu button', sec).forEach((b) => { b.hidden = q && !b.textContent.toLowerCase().includes(q); });
+// Recently used tools ("சமீபத்தில் பயன்படுத்தியவை") — remembered on this phone only.
+const RECENT_KEY = 'kj_recent_tools';
+const NOT_RECENT = new Set(['home', 'tools', 'more', 'chart', 'chat']);
+export const recentTools = () => (store.get(RECENT_KEY, []) || []).map(toolById).filter(Boolean);
+if (typeof document !== 'undefined') {
+  document.addEventListener('kj:screen', (e) => {
+    const id = e.detail;
+    if (!toolById(id) || NOT_RECENT.has(id)) return;
+    store.set(RECENT_KEY, [id, ...(store.get(RECENT_KEY, []) || []).filter((x) => x !== id)].slice(0, 8));
   });
+}
+
+// ================================================================ ALL TOOLS (searchable launcher)
+function renderTools(sec, params = {}) {
+  const recent = recentTools();
+  sec.innerHTML = `${subHeader(L('All tools', 'அனைத்து கருவிகள்'), '', 'home')}
+    <div class="tl-search" role="search">${icon('search', { size: 20 })}
+      <label class="sr-only" for="toolSearch">${L('Search tools', 'கருவிகளைத் தேடு')}</label>
+      <input id="toolSearch" type="search" enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="${esc(L('What are you looking for?', 'எதைத் தேடுகிறீர்கள்?'))}" value="${esc(params.q || '')}">
+    </div>
+    <p class="small muted tl-hint">${L('Try: porutham, rahu kalam, baby names, temple', 'எ.கா.: பொருத்தம், ராகு காலம், குழந்தை பெயர், கோவில்')}</p>
+    <div id="tlResults" class="menu list" role="list" aria-live="polite" hidden></div>
+    <div id="tlBody">
+      ${recent.length ? `<section class="tl-group"><h3 class="section-title">${L('Recently used', 'சமீபத்தில் பயன்படுத்தியவை')}</h3>
+        <div class="tl-recent">${recent.slice(0, 6).map((t) => `<button class="tl-chip" data-go="${t.id}">${iconChip(t.id, { size: 22, cls: 'mi-icon' })}<span>${esc(L(t.en, t.ta).split(' — ')[0].split(' (')[0])}</span></button>`).join('')}</div></section>` : ''}
+      ${GROUPS.map((g) => groupList(g.id)).join('')}
+    </div>
+    ${copyright()}`;
+  const input = $('#toolSearch', sec);
+  const results = $('#tlResults', sec);
+  const body = $('#tlBody', sec);
+  const run = () => {
+    const q = input.value.trim();
+    if (!q) { results.hidden = true; body.hidden = false; return; }
+    const hits = searchTools(q);
+    body.hidden = true; results.hidden = false;
+    results.innerHTML = hits.length ? hits.map((t) => toolRow(t, { sub: L(groupOf(t.group).en, groupOf(t.group).ta) })).join('')
+      : `<div class="tl-empty"><p>${L('No tool matches that.', 'அந்தப் பெயரில் கருவி இல்லை.')}</p><button class="btn-soft" type="button" data-ask>${icon('chat', { size: 18 })} ${L('Ask Thunai instead', 'துணையிடம் கேளுங்கள்')}</button></div>`;
+    $('[data-ask]', results)?.addEventListener('click', () => go('chat', { q }));
+  };
+  input.addEventListener('input', run);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const first = $('#tlResults .row', sec); if (first && !results.hidden) first.click(); } });
+  if (params.q) run();
+  if (params.focus) requestAnimationFrame(() => input.focus({ preventScroll: true }));
 }
 registerScreen('tools', { render: renderTools, parent: 'home' });
 
@@ -102,40 +80,43 @@ registerScreen('tools', { render: renderTools, parent: 'home' });
 function renderFamilyHub(sec) {
   const fam = state.family;
   const people = fam.filter((m) => m.relation !== 'organization');
-  sec.innerHTML = `<div class="sub-head"><div><h2>${L('Family', 'குடும்பம்')}</h2><p class="muted small">${L(`Up to 8 profiles on the ${BRAND.familyEn} plan · private by default`, `${BRAND.familyTa} திட்டத்தில் 8 பேர் வரை · இயல்பாகத் தனிப்பட்டது`)}</p></div></div>
+  sec.innerHTML = `<div class="sub-head hub-head"><div><h2>${L('Family', 'குடும்பம்')}</h2></div></div>
     <div class="card glass">
-      <div class="card-title"><span>👨‍👩‍👧 ${L('Profiles', 'சுயவிவரங்கள்')} (${people.length}/8)</span><button class="link-btn" data-go="family">${L('Manage', 'நிர்வகி')}</button></div>
+      <div class="card-title"><span>${L('Profiles', 'சுயவிவரங்கள்')} (${people.length}/8)</span><button class="link-btn" data-go="family">${L('Manage', 'நிர்வகி')}</button></div>
       ${fam.length ? fam.map((m) => { const c = chartOf(m); return `<button class="fam-row${m.id === state.activeId ? ' active' : ''}" data-id="${esc(m.id)}">
         <span class="avatar">${esc(([...displayName(m)][0] || '').toUpperCase())}</span>
         <span class="fam-name">${esc(displayName(m))}${m.private ? ' 🔒' : ''}<small>${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))} · ${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}</small></span>
         ${m.id === state.activeId ? `<span class="tag good">${L('Active', 'தேர்வு')}</span>` : ''}</button>`; }).join('')
     : `<p class="muted">${L('No profiles yet. The calendar works without one; add birth details for personal guidance.', 'இன்னும் சுயவிவரம் இல்லை. நாட்காட்டிக்குத் தேவையில்லை; தனிப்பட்ட வழிகாட்டலுக்குப் பிறப்பு விவரம் சேர்க்கவும்.')}</p>`}
-      ${people.length < 8 ? `<button class="btn-gold" data-go="family" data-param='{"add":true}'>➕ ${L('Add a family member', 'குடும்ப உறுப்பினர் சேர்')}</button>` : `<p class="small muted">${L('8 of 8 profiles used.', '8 சுயவிவரங்களும் பயன்பாட்டில்.')}</p>`}
+      ${people.length < 8 ? `<button class="btn-gold" data-go="family" data-param='{"add":true}'>${icon('plus', { size: 18 })} ${L('Add a family member', 'குடும்ப உறுப்பினர் சேர்')}</button>` : `<p class="small muted">${L('8 of 8 profiles used.', '8 சுயவிவரங்களும் பயன்பாட்டில்.')}</p>`}
+      <p class="small muted">${L(`Up to 8 profiles on the ${BRAND.familyEn} plan · private by default`, `${BRAND.familyTa} திட்டத்தில் 8 பேர் வரை · இயல்பாகத் தனிப்பட்டது`)}</p>
     </div>
-    ${viewToggle()}
-    ${featureList('familyhub')}
+    ${groupList('family', { exclude: ['family'] })}
+    ${groupList('subha')}
     <div class="note-box">${L('Matching results are traditional interpretations to support a family conversation. They are never a verdict on anyone’s worth or suitability.', 'பொருத்த முடிவுகள் குடும்ப உரையாடலுக்கு உதவும் பாரம்பரிய விளக்கம் மட்டுமே. யாருடைய மதிப்பையும் தகுதியையும் தீர்மானிப்பவை அல்ல.')}</div>
     ${copyright()}`;
   $$('.fam-row', sec).forEach((r) => r.addEventListener('click', () => { state.activeId = r.dataset.id; saveFamily(); renderFamilyHub(sec); }));
 }
 registerScreen('familyhub', { render: renderFamilyHub });
 
-// ================================================================ SERVICES HUB
+// ================================================================ SERVICES HUB (+ the way into every tool)
 function renderServices(sec) {
-  sec.innerHTML = `<div class="sub-head"><div><h2>${L('Services', 'சேவைகள்')}</h2><p class="muted small">${L('Temple journeys, worship and people who can help', 'கோவில் பயணம், வழிபாடு, உதவக்கூடியவர்கள்')}</p></div></div>
-    <button class="card glass cta-card journey-cta" data-go="journey"><b>🛕 ${L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்')}</b>
-      <span class="small muted">${L('Three options — nearby, matching your leave, or worship close to home — with route, timings, weather and stay.', 'மூன்று வழிகள் — அருகில், உங்கள் விடுப்புக்கு ஏற்ப, அல்லது வீட்டருகே வழிபாடு — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.')}</span></button>
-    ${viewToggle()}
-    ${featureList('services')}
-    <button class="card glass cta-card second-opinion" data-go="consult"><b>🧑‍🏫 ${L('Want a second opinion from an expert jothidar? (paid)', 'நிபுணர் ஜோதிடரின் இரண்டாவது கருத்து வேண்டுமா? (கட்டண சேவை)')}</b>
+  sec.innerHTML = `<div class="sub-head hub-head"><div><h2>${L('Services', 'சேவைகள்')}</h2></div></div>
+    ${searchPill()}
+    <button class="row-card" data-go="tools">${iconChip('tools', { size: 22, cls: 'mi-icon' })}<span class="row-txt"><span class="row-name">${L('All tools', 'அனைத்து கருவிகள்')}</span><small>${L('Every feature, grouped by what you want to do', 'எல்லா வசதிகளும், தேவை வாரியாக')}</small></span><span class="row-go" aria-hidden="true">${icon('chevron-right', { size: 18 })}</span></button>
+    <button class="card glass cta-card journey-cta" data-go="journey"><b>${L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்')}</b>
+      <span class="small muted">${L('Nearby, matching your leave, or close to home — with route, timings, weather and stay.', 'அருகில், உங்கள் விடுப்புக்கு ஏற்ப, அல்லது வீட்டருகே — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.')}</span></button>
+    ${groupList('worship', { exclude: ['journey'] })}
+    ${groupList('services', { exclude: ['consult'] })}
+    <button class="card glass cta-card second-opinion" data-go="consult"><b>${L('Want a second opinion from an expert jothidar? (paid)', 'நிபுணர் ஜோதிடரின் இரண்டாவது கருத்து வேண்டுமா? (கட்டண சேவை)')}</b>
       <span class="small muted">${L('Optional — book a fixed-price session with a verified jothidar.', 'விருப்பம் மட்டும் — சரிபார்க்கப்பட்ட ஜோதிடருடன் நிலையான கட்டண அமர்வு.')}</span></button>
-    <div class="card glass"><div class="card-title">🤝 ${L('Our commitments', 'எங்கள் உறுதிமொழி')}</div>
+    <details class="card glass disclose"><summary class="card-title">${L('Our commitments', 'எங்கள் உறுதிமொழி')}</summary>
       <ul class="small">
         <li>${L('Payment never changes which temples we suggest.', 'கட்டணம் எந்தக் கோவிலைப் பரிந்துரைப்போம் என்பதை மாற்றாது.')}</li>
         <li>${L('Any booking commission or partner relationship is shown before you pay.', 'முன்பதிவுக் கமிஷன் அல்லது கூட்டாளர் உறவு கட்டணத்திற்கு முன் காட்டப்படும்.')}</li>
         <li>${L('Bookings are offered only where someone can actually fulfil them.', 'நிறைவேற்றக்கூடிய இடங்களில் மட்டுமே முன்பதிவு வழங்கப்படும்.')}</li>
         <li>${L('No remedy is sold with fear, and none promises a cure or guaranteed result.', 'பயமுறுத்தி எந்தப் பரிகாரமும் விற்கப்படாது; குணமாகும் / உறுதியான பலன் என வாக்களிக்கப்படாது.')}</li>
-      </ul></div>
+      </ul></details>
     ${copyright()}`;
 }
 registerScreen('services', { render: renderServices });

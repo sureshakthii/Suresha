@@ -6,6 +6,7 @@ import { guessCountry, formatPhone } from './shared/countries.js';
 import { enhancePhone, phoneError, startPhoneInputs } from './phone-input.js';
 import { UNKNOWN_TIME_PLACEHOLDER, certaintyOf } from './shared/birthtime.js';
 import { icon, iconChip } from './icons.js';
+import { locationSettingsHtml, bindLocationSettings } from './residence-ui.js';
 import {
   state, $, $$, L, ta, esc, bi, api, STATIC, store, go, registerScreen, subHeader, saveFamily, saveSettings, setLoc,
   toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright, BRAND, supportCard,
@@ -384,7 +385,8 @@ function saveMember(f) {
   if (i >= 0) state.family[i] = m; else state.family.push(m);
   const firstEver = state.family.length === 1;
   if (firstEver || !state.activeId) state.activeId = m.id;
-  if (firstEver || !state.loc) setLoc({ lat: m.lat, lon: m.lon, tz: m.zone ? zoneOffsetHours(m.zone) : m.tz, zone: m.zone, name: m.place });
+  // The birth place never becomes the residence (born in Madurai, living in Dubai): daily timings keep the
+  // place the person lives in (Settings → Location).
   editing = null;
   saveFamily();
   toast(L('Saved', 'சேமிக்கப்பட்டது'));
@@ -393,6 +395,8 @@ function saveMember(f) {
 registerScreen('family', { render: renderFamily, parent: 'more' });
 
 // ================================================================ MORE / SETTINGS
+/** The owner dashboard is shown only to admins: a server-marked admin account, or a phone that has opened it with an admin token. */
+export const isAdmin = () => !!(state.user?.admin || state.user?.isAdmin || ['admin', 'owner'].includes(state.user?.role) || store.get('kj_admin', ''));
 function renderMore(sec) {
   const u = state.user;
   sec.innerHTML = `${subHeader(L('Settings & account', 'அமைப்புகள் & கணக்கு'), '', 'home')}<div class="card glass account-card">
@@ -401,6 +405,16 @@ function renderMore(sec) {
     : `<b>${L('Not signed in', 'உள்நுழையவில்லை')}</b><div class="muted small">${L('Sign in to back up your family', 'குடும்ப விவரங்களைப் பாதுகாக்க உள்நுழையவும்')}</div>`}</div>
       ${u ? `<button class="chip-btn" id="signOut">${L('Sign out', 'வெளியேறு')}</button>` : `<button class="chip-btn" data-go="login">${L('Sign in', 'உள்நுழை')}</button>`}</div>
     <button class="premium-cta" data-go="plans">${iconChip('plans', { size: 20, cls: 'mi-icon' })}${L(`${BRAND.premiumEn} & ${BRAND.familyEn}`, `${BRAND.premiumTa} & ${BRAND.familyTa}`)} ›</button>
+    <div class="card glass settings">
+      <div class="card-title">${L('Settings', 'அமைப்புகள்')}</div>
+      <div class="set-row"><span>${L('Language', 'மொழி')}</span><div class="seg"><button data-lang="ta" class="${ta() ? 'sel' : ''}">தமிழ்</button><button data-lang="en" class="${ta() ? '' : 'sel'}">English</button></div></div>
+      <div class="set-row"><span>${L('Appearance', 'தோற்றம்')}</span><div class="seg">${[['light', 'Day', 'பகல்'], ['dark', 'Night', 'இரவு'], ['auto', 'Auto', 'தானியங்கி']].map(([id, en, tx]) => `<button data-theme-set="${id}" class="${(state.settings.theme || 'dark') === id ? 'sel' : ''}">${L(en, tx)}</button>`).join('')}</div></div>
+      <label class="set-row"><span>${L('Large text (for elders)', 'பெரிய எழுத்து (பெரியோருக்கு)')}</span><input type="checkbox" id="setLarge"${state.settings.large ? ' checked' : ''}></label>
+      <label class="set-row"><span>${L('High contrast', 'அதிக வேறுபாடு')}</span><input type="checkbox" id="setHc"${state.settings.hc ? ' checked' : ''}></label>
+      <label class="set-row"><span>${L('Read answers aloud', 'பதில்களை வாசித்துக்காட்டு')}</span><input type="checkbox" id="setVoice"${state.settings.voice ? ' checked' : ''}></label>
+      <label class="set-row"><span>${L('Read-aloud speed', 'வாசிப்பு வேகம்')} <b id="rateVal">${Number(state.settings.rate || 0.92).toFixed(2)}×</b></span><input type="range" id="setRate" min="0.6" max="1.4" step="0.05" value="${state.settings.rate || 0.92}" aria-label="${L('Read-aloud speed', 'வாசிப்பு வேகம்')}"></label>
+      ${locationSettingsHtml()}
+    </div>
     <div class="menu">
       <button data-go="privacy">${iconChip('privacy', { size: 20, cls: 'mi-icon' })}<span>${L('Privacy & data — consent, export, delete', 'தனியுரிமை & தரவு — அனுமதி, ஏற்றுமதி, நீக்கம்')}</span></button>
       <button data-go="why">${iconChip('why', { size: 20, cls: 'mi-icon' })}<span>${L('How Thunai reads your chart', 'துணை ஜாதகத்தைப் படிக்கும் முறை')}</span></button>
@@ -411,21 +425,7 @@ function renderMore(sec) {
       <button data-go="about">${iconChip('about', { size: 20, cls: 'mi-icon' })}<span>${L(`About ${BRAND.name}`, `${BRAND.nameTa} பற்றி`)}</span></button>
     </div>
     ${supportCard()}
-    <p class="small muted center">${L('Version', 'பதிப்பு')} ${esc(window.KJ_BUILD || 'dev')} · ${esc(BRAND.nameUpper)}</p>
-    <button class="link-btn center-block" data-go="admin">${icon('shield-check', { size: 16 })} ${L('Owner dashboard', 'உரிமையாளர் டாஷ்போர்டு')}</button>
-    <div class="card glass settings">
-      <div class="card-title">${L('Settings', 'அமைப்புகள்')}</div>
-      <div class="set-row"><span>${L('Language', 'மொழி')}</span><div class="seg"><button data-lang="ta" class="${ta() ? 'sel' : ''}">தமிழ்</button><button data-lang="en" class="${ta() ? '' : 'sel'}">English</button></div></div>
-      <div class="set-row"><span>${L('Appearance', 'தோற்றம்')}</span><div class="seg">${[['light', 'Day', 'பகல்'], ['dark', 'Night', 'இரவு'], ['auto', 'Auto', 'தானியங்கி']].map(([id, en, tx]) => `<button data-theme-set="${id}" class="${(state.settings.theme || 'dark') === id ? 'sel' : ''}">${L(en, tx)}</button>`).join('')}</div></div>
-      <label class="set-row"><span>${L('Large text (for elders)', 'பெரிய எழுத்து (பெரியோருக்கு)')}</span><input type="checkbox" id="setLarge"${state.settings.large ? ' checked' : ''}></label>
-      <div class="set-row"><span>${L('View', 'காட்சி')}</span><div class="seg">${[['simple', 'Simple', 'எளியது'], ['detailed', 'Detailed', 'விரிவானது']].map(([id, en, tx]) => `<button data-viewmode="${id}" class="${(state.settings.view || 'simple') === id ? 'sel' : ''}">${L(en, tx)}</button>`).join('')}</div></div>
-      <label class="set-row"><span>${L('High contrast', 'அதிக வேறுபாடு')}</span><input type="checkbox" id="setHc"${state.settings.hc ? ' checked' : ''}></label>
-      <label class="set-row"><span>${L('Read answers aloud', 'பதில்களை வாசித்துக்காட்டு')}</span><input type="checkbox" id="setVoice"${state.settings.voice ? ' checked' : ''}></label>
-      <label class="set-row"><span>${L('Read-aloud speed', 'வாசிப்பு வேகம்')} <b id="rateVal">${Number(state.settings.rate || 0.92).toFixed(2)}×</b></span><input type="range" id="setRate" min="0.6" max="1.4" step="0.05" value="${state.settings.rate || 0.92}" aria-label="${L('Read-aloud speed', 'வாசிப்பு வேகம்')}"></label>
-      <div class="set-row col"><span>${L('Location for today\'s timings', 'இன்றைய நேரங்களுக்கான இடம்')}: <b>${esc(placeName(state.loc?.name) || '—')}</b></span>
-        <label class="place-wrap"><input id="locSearch" placeholder="${esc(L('Search a city…', 'நகரத்தைத் தேடுக…'))}"><ul id="locList" class="suggest" hidden></ul></label>
-        ${STATIC ? '' : `<button class="link-btn" id="geoBtn">📍 ${L('Use my current location', 'என் தற்போதைய இருப்பிடம்')}</button>`}</div>
-    </div>
+    ${isAdmin() ? `<div class="menu list"><button class="row" data-go="admin">${iconChip('admin', { size: 20, cls: 'mi-icon' })}<span class="row-txt"><span class="row-name">${L('Owner dashboard', 'உரிமையாளர் டாஷ்போர்டு')}</span></span></button></div>` : ''}
     ${copyright()}`;
   $('#signOut')?.addEventListener('click', signOut);
   $$('[data-lang]', sec).forEach((b) => b.addEventListener('click', () => { state.lang = b.dataset.lang; store.set('kj_lang', state.lang); document.dispatchEvent(new Event('kj:lang')); }));
@@ -434,20 +434,7 @@ function renderMore(sec) {
   $('#setVoice').addEventListener('change', (e) => { state.settings.voice = e.target.checked; saveSettings(); });
   $('#setHc').addEventListener('change', (e) => { state.settings.hc = e.target.checked; saveSettings(); });
   $('#setRate').addEventListener('input', (e) => { state.settings.rate = Number(e.target.value); $('#rateVal').textContent = `${state.settings.rate.toFixed(2)}×`; saveSettings(); });
-  placeSearch($('#locSearch'), $('#locList'), (p) => { setLoc({ lat: p.lat, lon: p.lon, tz: p.tz, zone: p.zone, name: p.text || p.name }); toast(`📍 ${placeName(p.text || p.name)}`); renderMore(sec); });
-  $('#geoBtn')?.addEventListener('click', () => {
-    navigator.geolocation?.getCurrentPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        let zone = null;
-        try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { /* old WebView */ }
-        const near = nearestPlace(lat, lon, { maxKm: 40 });
-        setLoc({ lat, lon, tz: zone ? zoneOffsetHours(zone) : -new Date().getTimezoneOffset() / 60, zone: isValidZone(zone) ? zone : near?.zone, name: near ? placeText(near) : L('Current location', 'தற்போதைய இருப்பிடம்') });
-        renderMore(sec);
-      },
-      () => toast(L('Location unavailable', 'இருப்பிடம் கிடைக்கவில்லை')), { timeout: 8000 },
-    );
-  });
+  bindLocationSettings(sec, () => renderMore(sec));
 }
 registerScreen('more', { render: renderMore });
 
@@ -465,7 +452,15 @@ function renderAbout(sec) {
     ${P.map(([i, en, tx, den, dta]) => `<div class="card glass about-row"><span class="ti-icon">${i}</span><div><b>${L(en, tx)}</b><p>${L(den, dta)}</p></div></div>`).join('')}
     <div id="aboutTesti"></div>
     <div class="brand-foot"><img src="logo.svg" alt="" width="64" height="64"><div><b>${BRAND.nameTa} · ${BRAND.nameUpper}</b><span class="slogan-sm">${BRAND.taglineTa}</span></div></div>
+    <p class="build-no" id="buildNo" title="${esc(L('For support', 'உதவிக்கு'))}">${esc(window.KJ_BUILD || 'dev')}</p>
     ${copyright()}`;
+  // Support: the build number is small, here only. Long-press it (or tap 7 times) to open the owner dashboard.
+  const bn = $('#buildNo', sec);
+  let pressT, taps = 0;
+  const openAdmin = () => go('admin');
+  bn.addEventListener('pointerdown', () => { pressT = setTimeout(openAdmin, 800); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => bn.addEventListener(ev, () => clearTimeout(pressT)));
+  bn.addEventListener('click', () => { if (++taps >= 7) { taps = 0; openAdmin(); } });
   if (!STATIC) import('./growth.js').then((g) => g.loadTestimonials('#aboutTesti'));
 }
 registerScreen('about', { render: renderAbout, parent: 'more' });

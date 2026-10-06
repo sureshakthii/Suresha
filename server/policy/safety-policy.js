@@ -29,6 +29,7 @@ const DEADLINE_CATEGORY = {
   court: 'legal',
   contract: 'contract', tech_partner: 'contract',
   cheque: 'payment', loan: 'payment', lend_money: 'payment',
+  medicine_start: 'medical', police_complaint: 'legal', money_transfer: 'payment', loan_sign: 'payment', rent_agreement: 'contract',
 };
 
 /** Which deadline-first note applies (or null), from the Prasna category and/or the question's intent. */

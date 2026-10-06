@@ -1,6 +1,6 @@
 # Thunai calculation engine contract
 
-Engine version **2.0.0**. The machine-readable copy is `ENGINE_SETTINGS` in `shared/engine-contract.js`.
+Engine version **2.0.1** (2.0.1: mean node now uses the mean ayanamsa — see docs/ACCURACY-REPORT.md). The machine-readable copy is `ENGINE_SETTINGS` in `shared/engine-contract.js`.
 Tests in `test/engine-*.test.js` check that the code and this document agree.
 
 This contract covers the deterministic astronomy and calendar layer only. It does not cover
@@ -13,7 +13,7 @@ not an astrologer's approval: see "Needs expert / team" at the end.
 |---|---|---|
 | Zodiac | Sidereal | `shared/astro.js` |
 | Ayanamsa | Lahiri (Chitrapaksha), ICRC definition, id `lahiri-chitrapaksha`, version `lahiri-icrc-1956/iau2006-precession/v1` | `lahiriAyanamsa`, `lahiriAyanamsaMean` |
-| Node | **Mean** lunar node (Meeus 47.7). Ketu = Rahu + 180° exactly | `planetPositions` |
+| Node | **Mean** lunar node (Meeus 47.7), mean equinox of date, so the sidereal value subtracts the **mean** Lahiri ayanamsa (matches Swiss Ephemeris SE_MEAN_NODE to 0.2″). Ketu = Rahu + 180° exactly | `planetPositions` |
 | Houses | **Whole-sign**: house *n* = *n*-th sign from the Lagna sign | all modules |
 | Horai | Default `tamil-60` (fixed 60-minute periods from sunrise). Optional `planetary-unequal` | `horaiTable`, `HORAI_METHODS` |
 | Dasa | Vimshottari, 1 year = **365.25 days**, levels maha → bhukti → pratyantara (→ sookshma via `subPeriods`) | `vimshottari`, `subPeriods` |

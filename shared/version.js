@@ -1,7 +1,7 @@
 // Versions of the calculation engine and the interpretation rules.
 // Bump CALC when any astronomical/panchangam convention changes (see docs/CALCULATIONS.md),
 // RULES when interpretation text or scoring rules change. Both appear in "Why this result?" and reports.
-export const CALC_VERSION = '2.0.0';
+export const CALC_VERSION = '2.0.1';
 export const RULES_VERSION = '1.0.0';
 export const ENGINE_VERSION = `calc ${CALC_VERSION} · rules ${RULES_VERSION}`;
 export const CONVENTIONS = {

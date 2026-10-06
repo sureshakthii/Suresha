@@ -10,15 +10,17 @@ import { timeReliability } from './shared/birthtime.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtDate, countdown,
   activeMember, chartOf, registerScreen, go, STATIC, sse, toast, speak, saveFamily,
-  displayName, copyright, store, detailed, listen, micMessage,
+  displayName, copyright, store, listen, micMessage,
   yogaName, karanaName,
-  placeName,
+  placeName, zoneLine, zoneText, indiaTimeText
 } from './core.js';
 import { weatherCardHtml, fillHomeWeather, relationsList, relationRow } from './screens-world.js';
 import { trialBanner, ratePrompt } from './growth.js';
 import { todayColorCard } from './screens-guide.js';
 import { reminderCard, remindBtn } from './remind.js';
-import { iconChip } from './icons.js';
+import { icon, iconChip } from './icons.js';
+import { searchPill } from './screens-hubs.js';
+import { QUICK, toolById } from './tool-registry.js';
 import { healthGuide } from './shared/health.js';
 import { dailyReview } from './shared/daily.js';
 import { todayPlan } from './shared/today-plan.js';
@@ -64,62 +66,96 @@ function todayInfo(loc) {
   return today.day;
 }
 
-// Today's spiritual plan: sacred day + the person's Dasa / Bhukti / Sani transit + the Horai to use, with an
-// encouraging line — the first card after the greeting, so the morning starts with clear, positive actions.
+// Today's one-line guidance: the day's verdict for the person + one encouraging line. The plan details
+// (sacred day, Horai practice) open on tap — progressive disclosure keeps the top of Today calm.
 function todayPlanCard(m, snap, loc, td) {
   const person = m && m.relation !== 'organization' ? m : null;
   let plan, review;
   try {
     const chart = person ? chartOf(person) : null;
-    review = chart ? dailyReview(chart, snap, new Date()) : null;
+    review = chart ? minorDay(dailyReview(chart, snap, new Date()), ageOf(person)) : null;
     const age = person ? (ageOf(person).age ?? 30) : 30;
     plan = todayPlan({ chart, snap, festivals: td.festivals || [], level: review?.level || 'steady', now: new Date(), faith: person ? faithOf(person) : 'hindu', age });
   } catch { return ''; }
   const h = plan.horai;
-  const dateLine = `${esc(bi(td.weekday))} · ${esc(bi({ en: td.tamil.monthEn, ta: td.tamil.monthTa }))} ${td.tamil.day}`;
-  if (!plan.items.length && !h && !person) return '';
-  return `<section class="card glass plan-card" aria-labelledby="tpTitle">
-    <div class="card-title"><span id="tpTitle">🌞 ${L('Today’s guidance', 'இன்றைய வழிகாட்டல்')}</span><span class="pill">${dateLine}</span></div>
-    <p class="tp-energy">✨ ${esc(bi(plan.energy))}</p>
+  const lvCls = review?.personal ? { great: 'good', good: 'good', steady: 'warn', care: 'bad' }[review.level] : '';
+  const n = plan.items.length + (h && h.start ? 1 : 0);
+  return `<section class="card glass plan-card verdict-${lvCls || 'none'}" aria-labelledby="tpTitle">
+    <div class="card-title"><span id="tpTitle">${icon('sun', { size: 18 })} ${L('Today’s guidance', 'இன்றைய வழிகாட்டல்')}</span>${review?.personal ? `<span class="tag ${lvCls}">${esc(bi(review.label))}</span>` : ''}</div>
+    <p class="tp-energy">${esc(bi(plan.energy))}</p>
+    ${n ? `<details class="disclose tp-more"><summary>${L('Today’s plan', 'இன்றைய திட்டம்')} · ${n}</summary>
     ${plan.items.map((it) => `<div class="tp-item${it.personal ? ' mine' : ''}"><div class="tp-icon">${it.icon}</div><div><b>${esc(bi(it.title))}</b><div class="small">${esc(bi(it.text))}</div></div></div>`).join('')}
     ${h && h.start ? `<div class="tp-item tp-horai"><div class="tp-icon">⏰</div><div><b>${esc(fmtTime(h.start, loc.tz))} – ${esc(fmtTime(h.end, loc.tz))} · ${esc(planetName(h.planet))} ${h.planet === 'Rahu' ? L('(Rahu Kalam)', '(ராகு காலம்)') : h.planet === 'Ketu' ? '' : L('Horai', 'ஓரை')}</b>
       <div class="small">${esc(bi(h.text))}</div><div class="small muted">${esc(bi(h.why))} · ${esc(bi(h.repeat))}</div></div>${remindBtn({ title: `${planetName(h.planet)} ${L('Horai prayer', 'ஓரை வழிபாடு')}`, at: h.start })}</div>` : ''}
-    ${!plan.items.length && person ? `<p class="small muted">${L('No special vratham today — follow your Horai practice and the do’s below.', 'இன்று சிறப்பு விரதம் இல்லை — உங்கள் ஓரை வழிபாட்டையும் கீழே உள்ள செய்யலாம் பட்டியலையும் பின்பற்றுங்கள்.')}</p>` : ''}
+    </details>` : ''}
   </section>`;
 }
 
-// Today: personal day review from gochara — Chandrashtamam, Tara / Chandra balam, do's & don'ts, today's god, prayer.
+// Nalla neram / Rahu kalam / Horai — one live strip: what is true NOW and what comes next.
+function timeStrip(td, snap, loc) {
+  const now = Date.now();
+  const t = (d) => fmtTime(d, loc.tz);
+  const ms = (d) => new Date(d).getTime();
+  const gw = (td.gowri || []).filter((g) => ms(g.end) > now).sort((x, y) => ms(x.start) - ms(y.start));
+  const cur = gw.find((g) => ms(g.start) <= now);
+  const nextGood = gw.find((g) => g.good && ms(g.start) > now);
+  const flips = [];
+  let good;
+  if (cur?.good) { good = { cls: 'good', k: L('Good time now', 'இப்போது நல்ல நேரம்'), v: `${L('till', 'வரை')} ${t(cur.end)}`, s: bi(cur) }; flips.push(ms(cur.end)); }
+  else if (nextGood) { good = { cls: '', k: L('Next good time', 'அடுத்த நல்ல நேரம்'), v: `${t(nextGood.start)} – ${t(nextGood.end)}`, s: bi(nextGood) }; flips.push(ms(nextGood.start)); }
+  else good = { cls: '', k: L('Nalla neram', 'நல்ல நேரம்'), v: L('over for today', 'இன்று முடிந்தது'), s: '' };
+  const rk = td.rahuKalam || snap.rahuKalam;
+  let rahu;
+  if (rk && now >= ms(rk.start) && now < ms(rk.end)) { rahu = { cls: 'bad', k: L('Rahu Kalam now', 'இப்போது ராகு காலம்'), v: `${L('till', 'வரை')} ${t(rk.end)}`, s: L('Avoid new starts', 'புதிய தொடக்கம் வேண்டாம்') }; flips.push(ms(rk.end)); }
+  else if (rk && now < ms(rk.start)) { rahu = { cls: 'warn', k: L('Rahu Kalam', 'ராகு காலம்'), v: `${t(rk.start)} – ${t(rk.end)}`, s: L('later today', 'இன்று பின்னர்') }; flips.push(ms(rk.start)); }
+  else rahu = { cls: '', k: L('Rahu Kalam', 'ராகு காலம்'), v: rk ? `${t(rk.start)} – ${t(rk.end)}` : '—', s: L('over for today', 'இன்று முடிந்தது') };
+  const hl = snap.currentHora;
+  const cell = (c, extra = '') => `<div class="ts-cell ${c.cls}"><span class="ts-k">${c.k}</span><b class="ts-v">${esc(c.v)}</b>${c.s ? `<span class="ts-s">${esc(c.s)}</span>` : ''}${extra}</div>`;
+  return `<section class="card glass time-strip" aria-label="${esc(L('Good and bad times today', 'இன்றைய நல்ல / தவிர்க்க வேண்டிய நேரம்'))}">
+    <div class="ts-row">
+      ${cell(good)}
+      ${cell(rahu)}
+      <div class="ts-cell"><span class="ts-k">${L('Horai now', 'இப்போது ஓரை')}</span><b class="ts-v" style="color:${COLOR[hl.lord]}">${GLYPH[hl.lord]} ${esc(planetName(hl.lord))}</b><span class="ts-s">${L('ends in', 'முடிய')} <span class="countdown-sm" data-end="${ms(hl.end)}">${countdown(hl.end)}</span></span></div>
+    </div>
+    ${flips.map((f) => `<i hidden data-flip="${f}"></i>`).join('')}
+    <button class="link-btn ts-more" data-go="panchangam">${L('Full panchangam', 'முழு பஞ்சாங்கம்')} ›</button>
+  </section>`;
+}
+
+// Today: personal do's & don'ts from gochara. The reasons, today's god and the prayer open on tap.
 function dailyCard(m, snap, loc) {
   const person = m && m.relation !== 'organization' ? m : null;
   let r;
   try { r = dailyReview(person ? chartOf(person) : null, snap, new Date()); } catch { return ''; }
   if (person) r = minorDay(r, ageOf(person));
-  const god = `<div class="dc-god"><span class="mini-label">🛕 ${L('God of the day', 'இன்றைய தெய்வம்')}</span><b>${esc(bi(r.deity.god))}</b><span class="dc-mantra">${esc(bi(r.deity.mantra))}</span><span class="small muted">${esc(bi(r.deity.act))}</span></div>`;
+  const god = `<div class="dc-god"><span class="mini-label">${L('God of the day', 'இன்றைய தெய்வம்')}</span><b>${esc(bi(r.deity.god))}</b><span class="dc-mantra">${esc(bi(r.deity.mantra))}</span><span class="small muted">${esc(bi(r.deity.act))}</span></div>`;
   if (!r.personal) return `<section class="card glass daily-card">${god}</section>`;
   const range = (w) => `${fmtDate(w.start, loc.tz)} ${fmtTime(w.start, loc.tz)} – ${fmtDate(w.end, loc.tz)} ${fmtTime(w.end, loc.tz)}`;
   const ch = r.nextChandrashtamam;
   const chLine = r.chandrashtamam
-    ? `<div class="dc-alert">⚠️ <b>${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}</b>${ch ? ` · ${L('till', 'வரை')} ${esc(fmtDate(ch.end, loc.tz))} ${esc(fmtTime(ch.end, loc.tz))}` : ''}<br><span class="small">${ageOf(person).adult ? L('Stay patient; postpone big decisions, signatures and new starts.', 'பொறுமை காக்கவும்; பெரிய முடிவு, கையெழுத்து, புதிய தொடக்கத்தை ஒத்திவையுங்கள்.') : L('Stay calm and gentle today — rest well and keep to your routine.', 'இன்று அமைதியாக, மென்மையாக இருங்கள் — நன்கு ஓய்வெடுத்து வழக்கத்தைப் பின்பற்றுங்கள்.')}</span></div>`
-    : ch ? `<div class="dc-next">🌙 ${L('Next Chandrashtamam', 'அடுத்த சந்திராஷ்டமம்')}: <b>${esc(range(ch))}</b></div>` : '';
+    ? `<div class="dc-alert">${icon('alert', { size: 16 })} <b>${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}</b>${ch ? ` · ${L('till', 'வரை')} ${esc(fmtDate(ch.end, loc.tz))} ${esc(fmtTime(ch.end, loc.tz))}` : ''}<br><span class="small">${ageOf(person).adult ? L('Stay patient; postpone big decisions, signatures and new starts.', 'பொறுமை காக்கவும்; பெரிய முடிவு, கையெழுத்து, புதிய தொடக்கத்தை ஒத்திவையுங்கள்.') : L('Stay calm and gentle today — rest well and keep to your routine.', 'இன்று அமைதியாக, மென்மையாக இருங்கள் — நன்கு ஓய்வெடுத்து வழக்கத்தைப் பின்பற்றுங்கள்.')}</span></div>`
+    : '';
   const fam = state.family.filter((x) => x.id !== person.id && x.relation !== 'organization').filter((x) => { try { return ((snap.moonRasi.index - chartOf(x).janmaRasi.index + 12) % 12) === 7; } catch { return false; } });
-  const lvCls = { great: 'good', good: 'good', steady: 'warn', care: 'bad' }[r.level];
   const faith = faithOf(person);
   const other = faith !== 'hindu';
   const welcome = faithWelcome(faith, displayName(person));
   const blessing = other ? faithBlessing(faith) : null;
   return `<section class="card glass daily-card" aria-labelledby="dcTitle">
-    <div class="card-title"><span id="dcTitle">🌅 ${L('Your day — Gochara, do’s & don’ts', 'உங்கள் இன்றைய பலன் — கோசாரம், செய்யலாம் / தவிர்க்கவும்')} · ${esc(displayName(person))}</span><span class="tag ${lvCls}">${esc(bi(r.label))}</span></div>
-    ${(() => { try { const tl = todayLines(chartOf(person), snap); if (!ageOf(person).adult && childSafe([tl.star, tl.moon], ageOf(person)).length < 2) return ''; return `<div class="dc-star"><span class="dc-star-k">⭐ ${esc(nakName(chartOf(person).janmaNakshatra.index))} · ${esc(rasiName(chartOf(person).janmaRasi.index))}</span><b>${esc(bi(tl.star))}</b><span>🌙 ${esc(bi(tl.moon))}</span></div>`; } catch { return ''; } })()}
-    ${welcome ? `<div class="dc-welcome">🌍 ${esc(bi(welcome))}</div>` : ''}
+    <div class="card-title"><span id="dcTitle">${icon('check', { size: 18 })} ${L('Do’s & don’ts today', 'இன்று செய்யலாம் · தவிர்க்கவும்')}</span></div>
+    ${(() => { try { const tl = todayLines(chartOf(person), snap); if (!ageOf(person).adult && childSafe([tl.star, tl.moon], ageOf(person)).length < 2) return ''; return `<div class="dc-star"><span class="dc-star-k">${esc(nakName(chartOf(person).janmaNakshatra.index))} · ${esc(rasiName(chartOf(person).janmaRasi.index))}</span><b>${esc(bi(tl.star))}</b><span>${esc(bi(tl.moon))}</span></div>`; } catch { return ''; } })()}
+    ${welcome ? `<div class="dc-welcome">${esc(bi(welcome))}</div>` : ''}
     ${chLine}
+    <div class="dc-cols"><div class="dc-do"><h4>${L('Do', 'செய்யலாம்')}</h4><ul>${r.dos.map((x) => `<li>${esc(bi(x))}</li>`).join('')}</ul></div>
+      <div class="dc-dont"><h4>${L('Avoid', 'தவிர்க்கவும்')}</h4><ul>${r.donts.map((x) => `<li>${esc(bi(x))}</li>`).join('')}</ul></div></div>
+    <details class="disclose dc-more"><summary>${L('Why, god of the day & prayer', 'ஏன், இன்றைய தெய்வம் & பிரார்த்தனை')}</summary>
     <ul class="dc-why">${r.why.map((w) => `<li>${esc(bi(w))}</li>`).join('')}</ul>
-    <div class="dc-cols"><div class="dc-do"><h4>✅ ${L('Do', 'செய்யலாம்')}</h4><ul>${r.dos.map((x) => `<li>${esc(bi(x))}</li>`).join('')}</ul></div>
-      <div class="dc-dont"><h4>🚫 ${L('Avoid', 'தவிர்க்கவும்')}</h4><ul>${r.donts.map((x) => `<li>${esc(bi(x))}</li>`).join('')}${snap.rahuKalam ? `<li class="small muted">${L('Rahu Kalam', 'ராகு காலம்')}: ${esc(fmtTime(snap.rahuKalam.start, loc.tz))} – ${esc(fmtTime(snap.rahuKalam.end, loc.tz))}</li>` : ''}</ul></div></div>
-    ${other ? `<div class="dc-god"><span class="mini-label">🤝 ${L('For you today', 'இன்று உங்களுக்கு')}</span><b>${esc(bi(universalPractice(r.dasaDeity?.planet || r.dayLord)))}</b></div>` : god}
-    ${!other && r.dasaDeity ? `<p class="small">🪔 ${L('Your Dasa deity', 'உங்கள் தசா தெய்வம்')}: <b>${esc(bi(r.dasaDeity.name))}</b> · ${L('Birth-star deity', 'நட்சத்திரத் தெய்வம்')}: <b>${esc(bi(r.starDeity))}</b></p>` : ''}
-    ${fam.length ? `<p class="small dc-fam">🌙 ${L('Chandrashtamam today in the family', 'இன்று குடும்பத்தில் சந்திராஷ்டமம்')}: <b>${fam.map((x) => esc(displayName(x))).join(', ')}</b> — ${L('be gentle with them today', 'இன்று அவர்களிடம் மென்மையாக இருங்கள்')}</p>` : ''}
-    ${other ? (blessing ? `<div class="dc-prayer">${esc(bi(blessing))}</div>` : '') : r.prayer ? `<div class="dc-prayer">🙏 ${r.prayer.lines.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}
-    <button class="chip-btn" id="dcShare" type="button">📤 ${L('Share my day', 'என் நாளைப் பகிர்')}</button>
+    ${!r.chandrashtamam && ch ? `<div class="dc-next">${L('Next Chandrashtamam', 'அடுத்த சந்திராஷ்டமம்')}: <b>${esc(range(ch))}</b></div>` : ''}
+    ${other ? `<div class="dc-god"><span class="mini-label">${L('For you today', 'இன்று உங்களுக்கு')}</span><b>${esc(bi(universalPractice(r.dasaDeity?.planet || r.dayLord)))}</b></div>` : god}
+    ${!other && r.dasaDeity ? `<p class="small">${L('Your Dasa deity', 'உங்கள் தசா தெய்வம்')}: <b>${esc(bi(r.dasaDeity.name))}</b> · ${L('Birth-star deity', 'நட்சத்திரத் தெய்வம்')}: <b>${esc(bi(r.starDeity))}</b></p>` : ''}
+    ${fam.length ? `<p class="small dc-fam">${L('Chandrashtamam today in the family', 'இன்று குடும்பத்தில் சந்திராஷ்டமம்')}: <b>${fam.map((x) => esc(displayName(x))).join(', ')}</b> — ${L('be gentle with them today', 'இன்று அவர்களிடம் மென்மையாக இருங்கள்')}</p>` : ''}
+    ${other ? (blessing ? `<div class="dc-prayer">${esc(bi(blessing))}</div>` : '') : r.prayer ? `<div class="dc-prayer">${r.prayer.lines.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}
+    </details>
+    <button class="chip-btn" id="dcShare" type="button">${icon('share', { size: 16 })} ${L('Share my day', 'என் நாளைப் பகிர்')}</button>
   </section>`;
 }
 
@@ -156,7 +192,7 @@ function healthTodayCard(m) {
   const first = (x) => bi(x).split(' — ')[0];
   const md = h.period.md, ad = h.period.ad;
   return `<section class="card glass health-today" aria-labelledby="htTitle">
-    <div class="card-title"><span id="htTitle">🌿 ${L('Arokiyam today — health tips', 'இன்றைய ஆரோக்கியம் — உடல்நலக் குறிப்புகள்')}</span><span class="tag ${lv === 'good' ? 'good' : 'warn'}">${esc(word)}</span></div>
+    <div class="card-title"><span id="htTitle">${icon('health', { size: 18 })} ${L('Health today', 'இன்றைய ஆரோக்கியம்')}</span><span class="tag ${lv === 'good' ? 'good' : 'warn'}">${esc(word)}</span></div>
     ${md ? `<p class="small">🪐 ${L(`${md.lord} Dasa${ad ? ` · ${ad.lord} Bhukti` : ''} with today’s Gochara`, `${md.ta} தசை${ad ? ` · ${ad.ta} புக்தி` : ''} + இன்றைய கோசாரப்படி`)}: ${esc(lv === 'good' ? L('good energy — keep the routine.', 'நல்ல உற்சாகம் — வழக்கத்தைத் தொடருங்கள்.') : lv === 'steady' ? L('steady — simple food and good sleep keep you strong.', 'நிலையானது — எளிய உணவும் நல்ல உறக்கமும் பலம் தரும்.') : L('give the body a little extra rest and regular meals.', 'உடலுக்குக் கொஞ்சம் கூடுதல் ஓய்வும் நேரத்திற்கு உணவும் தாருங்கள்.'))}</p>` : ''}
     <div class="dc-cols"><div class="dc-do"><h4>🥗 ${L('Eat', 'சாப்பிடலாம்')}</h4><ul>${h.diet.eat.slice(0, 3).map((x) => `<li>${esc(first(x))}</li>`).join('')}</ul></div>
       <div class="dc-dont"><h4>🚫 ${L('Avoid', 'தவிர்க்கவும்')}</h4><ul>${h.diet.avoid.slice(0, 3).map((x) => `<li>${esc(first(x))}</li>`).join('')}</ul></div></div>
@@ -177,21 +213,49 @@ if (typeof document !== 'undefined') {
   setInterval(refreshIfNewDay, 60000);
 }
 
+// Who is Today for: one tap switches the person (like stories avatars); + adds a family member.
+function whoChips(m) {
+  if (!state.family.length) return `<div class="who-row"><button class="mchip who add" data-go="family" data-param='{"add":true}'>${icon('plus', { size: 16 })} ${L('Add your birth details for a personal day', 'தனிப்பட்ட பலனுக்குப் பிறப்பு விவரம் சேர்க்கவும்')}</button></div>`;
+  return `<div class="who-row member-switch" role="group" aria-label="${esc(L('Whose day', 'யாருக்கான நாள்'))}">${state.family.map((x) => `<button class="mchip who${x.id === m?.id ? ' sel' : ''}" data-who="${esc(x.id)}" aria-pressed="${x.id === m?.id}"><span class="avatar sm">${esc(([...displayName(x)][0] || '').toUpperCase())}</span>${esc(displayName(x))}</button>`).join('')}
+    ${state.family.filter((x) => x.relation !== 'organization').length < 8 ? `<button class="mchip who add" data-go="family" data-param='{"add":true}' aria-label="${esc(L('Add a family member', 'குடும்ப உறுப்பினர் சேர்'))}">${icon('plus', { size: 16 })}</button>` : ''}</div>`;
+}
+
+// Quick actions: round icon buttons, one row (Ask, Prasnam, Porutham, Temples, Baby names, Muhurtham, All tools).
+const QUICK_LABEL = { chat: ['Ask', 'கேள்'], ask: ['Prasnam', 'பிரசன்னம்'], porutham: ['Porutham', 'பொருத்தம்'], temples: ['Temples', 'கோவில்'], names: ['Baby names', 'பெயர்கள்'], muhurtham: ['Muhurtham', 'முகூர்த்தம்'] };
+function quickRow(m) {
+  const minor = m && m.relation !== 'organization' && !ageOf(m).adult;
+  const ids = QUICK.filter((id) => toolById(id) && !(minor && id === 'porutham'));
+  return `<nav class="quick-stories" aria-label="${esc(L('Quick actions', 'விரைவுச் செயல்கள்'))}">${ids.map((id) => `<button data-go="${id}"><span class="qs-ring">${iconChip(id, { size: 24 })}</span><span class="qs-l">${L(...QUICK_LABEL[id])}</span></button>`).join('')}
+    <button data-go="tools"><span class="qs-ring">${iconChip('tools', { size: 24 })}</span><span class="qs-l">${L('All tools', 'அனைத்தும்')}</span></button></nav>`;
+}
+
 function renderHome(sec) {
   homeDay = dayKey();
   const loc = state.loc;
   const td = todayInfo(loc);
   const snap = state.snap || panchang(new Date(), loc.lat, loc.lon, loc.tz);
   const m = activeMember();
+  const person = m && m.relation !== 'organization' ? m : null;
   const fest = td.festivals;
   const plans = savedPlans();
+  const moreOpen = store.get('kj_home_more', false);
   sec.innerHTML = `
-    <div class="home-greet">🙏 ${L('Vanakkam', 'வணக்கம்')}${m ? `, ${esc(displayName(m))}` : ''}</div>
+    <div class="home-top">
+      <h2 class="home-greet">${L('Vanakkam', 'வணக்கம்')}${m ? `, ${esc(displayName(m))}` : ''}</h2>
+      <p class="home-date">${esc(bi(td.weekday))} · ${esc(bi({ en: td.tamil.monthEn, ta: td.tamil.monthTa }))} ${td.tamil.day} · <span id="homeLoc">${esc(placeName(loc.name))}</span></p>
+      ${zoneLine(loc, { id: 'indiaClock' })}
+    </div>
+    ${whoChips(m)}
+    ${searchPill()}
     ${todayPlanCard(m, snap, loc, td)}
-
+    ${timeStrip(td, snap, loc)}
     ${dailyCard(m, snap, loc)}
     ${healthTodayCard(m)}
-    ${m && m.relation !== 'organization' ? compatCardHtml(m, { uncertain: (() => { try { return !reliabilityOf(m).nakshatra; } catch { return false; } })(), idPrefix: 'cpHome' }) : ''}
+    ${person ? compatCardHtml(person, { uncertain: (() => { try { return !reliabilityOf(person).nakshatra; } catch { return false; } })(), idPrefix: 'cpHome' }) : ''}
+    ${quickRow(m)}
+
+    <details class="home-more" id="homeMore"${moreOpen ? ' open' : ''}>
+      <summary class="more-btn"><span>${L('More for today', 'மேலும்')}</span>${icon('next', { size: 18 })}</summary>
     <section class="guide-box card" aria-labelledby="guideQ">
       <h2 id="guideQ" class="guide-q">${L('What would you like guidance on?', 'எதற்கு வழிகாட்டல் வேண்டும்?')}</h2>
       <form id="guideForm" class="chat-form guide-form">
@@ -201,9 +265,8 @@ function renderHome(sec) {
         <button class="send" aria-label="${L('Ask', 'கேள்')}">➤</button>
       </form>
       <div class="guide-sugs">${suggestionsFor(m ? ageOf(m) : ageProfile(null), GUIDE_SUGGESTIONS, { count: 4 }).map((x) => `<button class="sg" type="button">${esc(bi(x))}</button>`).join('')}</div>
-      <p class="small muted">🎙️ ${L('Type or speak — Tamil, English or Tanglish. You can check the words before sending.', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எழுதலாம் அல்லது பேசலாம். அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
+      <p class="small muted">${L('Type or speak — Tamil, English or Tanglish. You can check the words before sending.', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எழுதலாம் அல்லது பேசலாம். அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
     </section>
-    ${m && !ageOf(m).adult ? '' : `<button class="card glass cta-card love-cta" data-go="lovematch"><b>💘 ${L('Love Match', 'காதல் பொருத்தம்')}</b><span class="small">${L('Emotional sync, chemistry and the star match — check your love vibe and share it', 'உணர்வு, ஈர்ப்பு, நட்சத்திரப் பொருத்தம் — உங்கள் காதல் அதிர்வைப் பார்த்துப் பகிருங்கள்')}</span></button>`}
 
     <div class="hero">
       <div class="hero-top">
@@ -212,23 +275,24 @@ function renderHome(sec) {
           <div>
             <div class="td-month">${esc(bi({ en: td.tamil.monthEn, ta: td.tamil.monthTa }))}</div>
             <div class="td-year">${esc(ta() ? `${td.tamil.year.ta} வருடம்` : `${td.tamil.year.en} year`)} · ${esc(bi(td.weekday))}</div>
-            <div class="muted small">${fmtIsoDate2(td.date)} · <span id="homeLoc">📍 ${esc(placeName(loc.name))}</span></div>
+            <div class="muted small">${fmtIsoDate2(td.date)} · ${esc(placeName(loc.name))}</div>
           </div>
         </div>
         <div class="clock" id="clock">--:--:--</div>
       </div>
-      ${fest.length ? `<div class="fest-row">${fest.map((f) => `<span class="fest ${f.kind}">${f.kind === 'festival' ? '🎉' : '🪔'} ${esc(bi(f))}</span>`).join('')}</div>` : ''}
-      ${td.muhurthaDay ? `<div class="fest-row"><span class="fest muhurtham">💐 ${L('Subha Muhurtha day', 'சுப முகூர்த்த நாள்')}</span></div>` : ''}
+      ${fest.length ? `<div class="fest-row">${fest.map((f) => `<span class="fest ${f.kind}">${esc(bi(f))}</span>`).join('')}</div>` : ''}
+      ${td.muhurthaDay ? `<div class="fest-row"><span class="fest muhurtham">${L('Subha Muhurtha day', 'சுப முகூர்த்த நாள்')}</span></div>` : ''}
       <div class="chips">
         <div class="chip-card"><span class="mini-label">${L('Star', 'நட்சத்திரம்')}</span><b>${esc(nakName(snap.nakshatra.index))}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.nakshatra.endsAt, loc.tz)}</span></div>
         <div class="chip-card"><span class="mini-label">${L('Tithi', 'திதி')}</span><b>${esc(ta() ? snap.tithi.ta : snap.tithi.name)}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.tithi.endsAt, loc.tz)}</span></div>
-        <div class="chip-card"><span class="mini-label">${L('Sunrise', 'சூரிய உதயம்')}</span><b>☀ ${fmtTime(td.sunrise, loc.tz)}</b><span class="mini-sub">🌇 ${fmtTime(td.sunset, loc.tz)}</span></div>
+        <div class="chip-card"><span class="mini-label">${L('Sunrise', 'சூரிய உதயம்')}</span><b>${fmtTime(td.sunrise, loc.tz)}</b><span class="mini-sub">${L('Sunset', 'அஸ்தமனம்')} ${fmtTime(td.sunset, loc.tz)}</span></div>
       </div>
-      <div class="btn-row"><button class="chip-btn" data-go="panchangam">📖 ${L('Full panchangam', 'முழு பஞ்சாங்கம்')}</button><button class="chip-btn" data-go="calendar">📅 ${L('Calendar', 'நாட்காட்டி')}</button></div>
+      <div class="btn-row"><button class="chip-btn" data-go="panchangam">${L('Full panchangam', 'முழு பஞ்சாங்கம்')}</button><button class="chip-btn" data-go="calendar">${L('Calendar', 'நாட்காட்டி')}</button></div>
     </div>
 
     <div class="card glass">
-      <div class="card-title"><span>✨ ${L('Nalla Neram today', 'இன்றைய நல்ல நேரம்')}</span><span class="pill">${L('Gowri', 'கௌரி')}</span></div>
+      <div class="card-title"><span>${L('Nalla Neram today', 'இன்றைய நல்ல நேரம்')}</span><span class="pill">${L('Gowri', 'கௌரி')}</span></div>
+      <p class="zone-sub">🕒 ${esc(zoneText(loc))}</p>
       <div class="gowri">${td.gowri.filter((g) => g.part === 'day').map((g) => gowriCell(g, loc)).join('')}</div>
       <div class="kalam">${kalamCell(L('Rahu Kalam', 'ராகு காலம்'), td.rahuKalam, snap.inRahuKalam, loc)}${kalamCell(L('Yamagandam', 'எமகண்டம்'), td.yamagandam, snap.inYamagandam, loc)}${kalamCell(L('Guligai', 'குளிகை'), td.guligai, snap.inGuligai, loc)}</div>
       <div class="hora-mini" data-go="live" role="button" tabindex="0">
@@ -238,24 +302,27 @@ function renderHome(sec) {
       </div>
     </div>
 
+    ${m && !ageOf(m).adult ? '' : `<button class="card glass cta-card love-cta" data-go="lovematch"><b>${L('Love Match', 'காதல் பொருத்தம்')}</b><span class="small">${L('Emotional sync, chemistry and the star match — check your love vibe and share it', 'உணர்வு, ஈர்ப்பு, நட்சத்திரப் பொருத்தம் — உங்கள் காதல் அதிர்வைப் பார்த்துப் பகிருங்கள்')}</span></button>`}
     ${trialBanner()}
-    ${plans.length ? `<div class="card glass"><div class="card-title"><span>🧭 ${L('Saved plans', 'சேமித்த திட்டங்கள்')}</span><button class="link-btn" data-go="journey">${L('Plan new', 'புதிய திட்டம்')}</button></div>
+    ${plans.length ? `<div class="card glass"><div class="card-title"><span>${L('Saved plans', 'சேமித்த திட்டங்கள்')}</span><button class="link-btn" data-go="journey">${L('Plan new', 'புதிய திட்டம்')}</button></div>
       ${plans.slice(0, 3).map((p) => `<button class="plan-row" data-go="journey" data-param='${esc(JSON.stringify({ open: p.id }))}'><b>${esc(p.title)}</b><span class="muted small">${esc(p.dates || '')}</span></button>`).join('')}</div>`
-    : `<button class="card glass cta-card journey-cta" data-go="journey"><b>🛕 ${L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்')}</b><span class="small muted">${L('Plan a temple visit that fits your leave, budget and family — route, timings, weather and stay.', 'உங்கள் விடுப்பு, பட்ஜெட், குடும்பத்திற்கு ஏற்ற கோவில் பயணம் — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.')}</span></button>`}
+    : `<button class="card glass cta-card journey-cta" data-go="journey"><b>${L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்')}</b><span class="small muted">${L('Plan a temple visit that fits your leave, budget and family — route, timings, weather and stay.', 'உங்கள் விடுப்பு, பட்ஜெட், குடும்பத்திற்கு ஏற்ற கோவில் பயணம் — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.')}</span></button>`}
     ${reminderCard()}
     ${familyCard(snap)}
     ${weatherCardHtml()}
-    ${detailed() ? todayColorCard() + relationsCard() + parigaramCard(snap) : ''}
-
-    <button class="btn-soft" data-go="tools">🧰 ${L('All tools', 'அனைத்து கருவிகள்')} ›</button>
-    <button class="btn-soft" id="shareToday">📤 ${L('Share today\'s calendar', 'இன்றைய நாட்காட்டியைப் பகிர்')}</button>
+    ${todayColorCard()}${relationsCard()}${parigaramCard(snap)}
+    <button class="btn-soft" data-go="tools">${icon('tools', { size: 18 })} ${L('All tools', 'அனைத்து கருவிகள்')}</button>
+    <button class="btn-soft" id="shareToday">${icon('share', { size: 18 })} ${L('Share today\'s calendar', 'இன்றைய நாட்காட்டியைப் பகிர்')}</button>
+    </details>
     ${ratePrompt()}
     ${copyright()}`;
   fillHomeWeather(td);
+  $('#homeMore', sec).addEventListener('toggle', (e) => store.set('kj_home_more', e.target.open));
   $('#dcShare')?.addEventListener('click', () => shareDaily(m, snap, loc));
   bindCompatCard(sec);
   $('#shareToday').addEventListener('click', () => import('./screens-tools.js').then((mod) => mod.shareToday(td, snap)));
   $$('.fam-row', sec).forEach((r) => r.addEventListener('click', () => { state.activeId = r.dataset.id; saveFamily(); renderHome(sec); }));
+  $$('[data-who]', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.who; saveFamily(); renderHome(sec); }));
   const ask = (q) => { q = (q || '').trim(); if (q) go('chat', { q }); };
   $('#guideForm').addEventListener('submit', (e) => { e.preventDefault(); ask($('#guideInput').value); });
   $$('.guide-sugs .sg', sec).forEach((b) => b.addEventListener('click', () => ask(b.textContent)));
@@ -334,13 +401,15 @@ function tickHome() {
   const now = new Date();
   const c = $('#clock');
   if (c) c.textContent = fmtTime(now, state.loc.tz, true);
+  const ic = $('#indiaClock');
+  if (ic) ic.textContent = indiaTimeText(now);
   for (const el of $$('[data-end]')) el.textContent = countdown(Number(el.dataset.end), now.getTime());
 }
 
 registerScreen('home', {
   render: renderHome, needsLoc: true,
   tick: () => {
-    const ends = $$('#view-home [data-end]').map((e) => Number(e.dataset.end));
+    const ends = $$('#view-home [data-end], #view-home [data-flip]').map((e) => Number(e.dataset.end || e.dataset.flip));
     if (ends.some((e) => e <= Date.now())) { refreshSnap(true); renderHome($('#view-home')); } else tickHome();
   },
 });
@@ -544,7 +613,7 @@ function renderChart(sec) {
       ${rel.lagna ? '' : `<p class="small muted">${L('Lagnam (ல) is not marked because the birth time is not precise enough.', 'பிறந்த நேரம் போதுமான துல்லியமில்லாததால் லக்னம் (ல) குறிக்கப்படவில்லை.')}</p>`}</div>
     <button class="btn-gold" data-go="analysis">📜 ${L('Full chart reading', 'முழு ஜாதக ஆய்வு')}</button>
     <div class="btn-row"><button class="chip-btn" data-go="parigaram">🪔 ${L('Simple practices', 'எளிய வழிபாடு')}</button><button class="chip-btn" data-go="peyarchi">🪐 ${L('Transits', 'பெயர்ச்சி')}</button><button class="chip-btn" data-go="health">🌿 ${L('Health & Planets', 'ஆரோக்கியம் & கிரகங்கள்')}</button><button class="chip-btn" data-print="1">🖨️ ${L('Print / PDF', 'அச்சிடு / PDF')}</button></div>
-    <details class="card glass advanced"${detailed() ? ' open' : ''}><summary class="card-title">🔬 ${L('Advanced', 'மேம்பட்டவை')}</summary>
+    <details class="card glass advanced"><summary class="card-title">🔬 ${L('Advanced', 'மேம்பட்டவை')}</summary>
       <div class="menu">
         ${[['roadmap', 'Life periods road map', 'வாழ்க்கைக் கால வரைபடம்'], ['vargas', 'Divisional charts & Ashtakavarga', 'வர்க்கச் சக்கரங்கள் & அஷ்டகவர்க்கம்'], ['life', 'Life questions — traditional timing', 'வாழ்க்கைக் கேள்விகள் — பாரம்பரிய காலம்'], ['guide', 'My guide — colour, number, Siddhar', 'என் வழிகாட்டி — நிறம், எண், சித்தர்'], ['numerology', 'Name & number numerology', 'பெயர் & எண் கணிதம்'], ['live', 'Live sky', 'நேரலை வானம்']].map(([id, en, tx]) => `<button data-go="${id}">${iconChip(id, { size: 20, cls: 'mi-icon' })}<span>${L(en, tx)}${id === 'vargas' && !rel.vargas ? ` <span class="badge unv">${L('needs exact time', 'துல்லிய நேரம் தேவை')}</span>` : ''}</span></button>`).join('')}
       </div></details>
@@ -600,49 +669,97 @@ function renderChart(sec) {
 registerScreen('chart', { render: renderChart, needsMember: true });
 
 // ================================================================ PRASNAM
+// The app's special feature: one tap (or one typed question in Tamil / Tanglish / English) casts the Prasnam for
+// this second. Tiles are grouped; the person it is asked for is shown on top, and a child sees only what suits the age.
+import { RELATIONS } from './core.js';
+import { PRASNA_GROUPS, getCategory, detectPrasnaCategory, defaultAsker, askerBanner, prasnaSummary } from './shared/prasna.js';
+import { ageGuardAnswer } from './shared/age-guard.js';
+
 let prasnaCategory = null;
 let lastAnswer = null;
 let askForId = null;
-const askMember = () => state.family.find((m) => m.id === askForId) || activeMember();
+const askMember = () => state.family.find((m) => m.id === askForId) || defaultAsker(state.family, ageOf) || activeMember();
+const relOf = (m) => RELATIONS.find((r) => r.id === m.relation) || RELATIONS.find((r) => r.id === 'other');
+/** First letter (grapheme) of a name for the avatar — Tamil letters keep their vowel sign. */
+function initialOf(name) {
+  const s = String(name || '?').trim() || '?';
+  try { return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)][0].segment.toUpperCase(); } catch { return s[0].toUpperCase(); }
+}
+/** Who the banner names: the relation ("மகன்") when it is a family relation, else the person's name. */
+const whoOf = (m) => (m.relation && !['self', 'other', 'organization'].includes(m.relation) ? relOf(m) : { en: displayName(m), ta: displayName(m) });
+const prasnaTile = (c) => `<button type="button" class="cat pq-cat${prasnaCategory === c.id ? ' sel' : ''}" data-id="${c.id}"><span class="ci" aria-hidden="true">${c.icon}</span><span class="pq-name">${esc(bi(c))}</span></button>`;
 
 function renderAsk(sec) {
-  // Age first: a child's Prasnam offers only study / exam / health / family-travel matters.
-  const prof = askMember() ? ageOf(askMember()) : ageProfile(null);
-  const cats = CATEGORIES.filter((c) => !c.event && categoryAllowed(c.id, prof));
-  if (prasnaCategory && !cats.some((c) => c.id === prasnaCategory)) { prasnaCategory = null; lastAnswer = null; }
-  if (lastAnswer && !cats.some((c) => c.id === lastAnswer.category)) lastAnswer = null;
+  // Age first — but only for the person actually selected: a child sees study / exam / health / temple / family matters.
+  const m = askMember();
+  const prof = m ? ageOf(m) : ageProfile(null);
+  const allowed = (c) => categoryAllowed(c.id, prof);
+  if (prasnaCategory && !allowed(getCategory(prasnaCategory))) prasnaCategory = null;
+  if (lastAnswer && lastAnswer.category && !allowed(getCategory(lastAnswer.category))) lastAnswer = null;
+  const banner = m ? askerBanner(prof, whoOf(m), state.lang) : null;
+  const people = state.family.filter((x) => x.relation !== 'organization' || state.family.length > 1)
+    .sort((x, y) => (y.relation === 'self') - (x.relation === 'self')); // the user first
+  const groups = PRASNA_GROUPS.map((g) => {
+    const list = g.ids.map(getCategory).filter((c) => c && allowed(c));
+    return list.length ? `<section class="pq-group" aria-label="${esc(L(g.en, g.ta))}"><h3 class="pq-gh"><span aria-hidden="true">${g.icon}</span> ${esc(L(g.en, g.ta))}</h3><div class="cat-grid pq-grid">${list.map(prasnaTile).join('')}</div></section>` : '';
+  }).join('');
   sec.innerHTML = `<div class="seg ask-switch" role="tablist"><button role="tab" aria-selected="false" data-go="chat">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button class="sel" role="tab" aria-selected="true">🔮 ${L('Is now a good time? (Prasnam)', 'இப்போது செய்யலாமா? (பிரசன்னம்)')}</button></div>
-    <div class="card glass">
+    <div class="card glass pq-card">
       <h2>${L('Is now a good time? (Prasnam)', 'இப்போது செய்யலாமா? (பிரசன்னம்)')}</h2>
-      <p class="muted">${L('Choose what you are about to do. The Prasnam is cast for this exact second.', 'செய்யப்போகும் காரியத்தைத் தேர்வு செய்யுங்கள். இந்த நொடிக்கான பிரசன்னம் கணிக்கப்படும்.')}</p>
-      ${state.family.length > 1 ? `<label>${L('Asking for', 'யாருக்காக')}<select id="askFor">${state.family.map((m) => `<option value="${esc(m.id)}"${m.id === askMember()?.id ? ' selected' : ''}>${esc(displayName(m))}${m.relation === 'organization' ? ` (${L('company', 'நிறுவனம்')})` : ''}</option>`).join('')}</select></label>` : ''}
-      <div class="cat-grid">${cats.map((c) => `<button class="cat${prasnaCategory === c.id ? ' sel' : ''}" data-id="${c.id}"><span class="ci">${c.icon}</span>${esc(bi(c))}</button>`).join('')}</div>
+      ${people.length ? `<div class="pq-label">${L('Asking for', 'யாருக்காக')}</div>
+      <div class="pq-people" role="radiogroup" aria-label="${esc(L('Asking for', 'யாருக்காக'))}">${people.map((x) => {
+    const p = ageOf(x);
+    const sub = [bi(relOf(x)), p.age != null && x.relation !== 'organization' ? L(`${p.age} yrs`, `${p.age} வயது`) : ''].filter(Boolean).join(' · ');
+    const on = x.id === m?.id;
+    return `<button type="button" class="pq-person${on ? ' sel' : ''}${p.minor ? ' minor' : ''}" role="radio" aria-checked="${on}" data-mid="${esc(x.id)}"><span class="avatar pq-av" aria-hidden="true">${esc(initialOf(displayName(x)))}</span><span class="pq-pt"><b>${esc(displayName(x))}</b><small>${esc(sub)}</small></span></button>`;
+  }).join('')}</div>` : ''}
+      ${banner ? `<button type="button" class="pq-minor" id="askMinor">🌱 ${esc(banner)}</button>` : ''}
+      <p class="muted pq-lead">${L('Type your question or tap a box — the Prasnam is cast for this exact second.', 'உங்கள் கேள்வியை எழுதுங்கள் அல்லது ஒரு பெட்டியைத் தட்டுங்கள் — இந்த நொடிக்கான பிரசன்னம் கணிக்கப்படும்.')}</p>
+      <label class="sr-only" for="question">${L('Your question', 'உங்கள் கேள்வி')}</label>
+      <textarea id="question" rows="2" maxlength="400" placeholder="${esc(prof.minor ? L('e.g. Is today good to start revision for the exam?', 'உ.தா. தேர்வுக்கான படிப்பை இன்று தொடங்கலாமா?') : L('e.g. Nagai vangalama? · Can I sign the flat agreement today?', 'உ.தா. இன்று நகை வாங்கலாமா? · ஒப்பந்தம் கையெழுத்திடலாமா?'))}"></textarea>
+      <p id="askGuess" class="small pq-guess" aria-live="polite" hidden></p>
+      <button id="askBtn" class="btn-gold">🔮 ${L('Ask now', 'இப்போது கேளுங்கள்')}</button>
       <details class="prasna-intro">
         <summary>📖 ${L('What is Prasnam?', 'பிரசன்னம் என்றால் என்ன?')}</summary>
         <p>${L('Prasnam (horary astrology) answers a question from the sky at the very moment it is asked — no birth time is needed. It is a long-standing Tamil and Kerala tradition for everyday decisions.', 'பிரசன்னம் என்பது கேள்வி கேட்கப்படும் அந்த நொடியின் கிரக நிலையைக் கொண்டு பதில் சொல்லும் ஜோதிட முறை — பிறந்த நேரம் தேவையில்லை. அன்றாட முடிவுகளுக்காகத் தமிழகத்திலும் கேரளத்திலும் நெடுங்காலமாகப் பின்பற்றப்படும் மரபு.')}</p>
         <p><b>${L('How Thunai works it out', 'துணை எப்படிக் கணிக்கிறது')}</b><br>${L('For this exact second and your location it checks the Horai lord for your task, Rahu Kalam, Yamagandam and Guligai, the star, tithi and yoga of the moment, the Prasna Lagna, and — from your birth star — Tara Bala and Chandrashtamam. Each factor adds or removes points, giving a clear Do / Take care / Wait for a better time answer, with the best times in the next 24 hours.', 'இந்த நொடிக்கும் உங்கள் இடத்திற்கும் — உங்கள் காரியத்திற்கான ஓரை அதிபதி, ராகு காலம், எமகண்டம், குளிகை, அந்நேர நட்சத்திரம், திதி, யோகம், பிரசன்ன லக்னம், உங்கள் ஜன்ம நட்சத்திரப்படி தாரா பலம், சந்திராஷ்டமம் ஆகியவற்றைப் பார்க்கிறது. ஒவ்வொன்றும் புள்ளிகளைக் கூட்டி அல்லது குறைத்து, "செய்யலாம் / கவனத்துடன் / நல்ல நேரம் பார்த்து" என்ற தெளிவான பதிலையும், அடுத்த 24 மணி நேரத்தின் சிறந்த நேரங்களையும் தருகிறது.')}</p>
         <p><b>${L('How accurate is it?', 'எவ்வளவு துல்லியம்?')}</b><br>${L('Planet positions, times and panchangam are calculated precisely for your place. The verdict follows traditional Prasna rules, so treat it as guidance on timing — your real deadlines, a doctor, lawyer or bank always come first.', 'கிரக நிலை, நேரங்கள், பஞ்சாங்கம் ஆகியவை உங்கள் இடத்திற்குத் துல்லியமாகக் கணிக்கப்படுகின்றன. முடிவு பாரம்பரிய பிரசன்ன விதிகளின்படி அமைகிறது — இதை நேரம் பற்றிய வழிகாட்டலாகக் கொள்ளுங்கள்; உண்மையான கெடு தேதிகள், மருத்துவர், வழக்கறிஞர், வங்கி ஆலோசனை எப்போதும் முதன்மை.')}</p>
       </details>
-      <label class="sr-only" for="question">${L('Your question', 'உங்கள் கேள்வி')}</label>
-      ${prof.minor ? `<p class="small muted age-note">🌱 ${L('Showing what suits this age — studies, exams, health and family travel.', 'இந்த வயதிற்கு ஏற்றவை மட்டும் — படிப்பு, தேர்வு, ஆரோக்கியம், குடும்பப் பயணம்.')}</p>` : ''}
-      <textarea id="question" rows="2" maxlength="400" placeholder="${esc(prof.minor ? L('Your question (optional) — e.g. Is today good to start revision for the exam?', 'உங்கள் கேள்வி (விருப்பம்) — உ.தா. தேர்வுக்கான படிப்பை இன்று தொடங்கலாமா?') : L('Your question (optional) — e.g. Can I sign the flat agreement today?', 'உங்கள் கேள்வி (விருப்பம்) — உ.தா. இன்று ஒப்பந்தம் கையெழுத்திடலாமா?'))}"></textarea>
-      <button id="askBtn" class="btn-gold">🔮 ${L('Ask now', 'இப்போது கேளுங்கள்')}</button>
+      <div class="pq-groups">${groups}</div>
     </div>
     <div id="answer"${lastAnswer ? '' : ' hidden'}>
       <div class="card glass verdict-card" id="verdictCard"></div>
       <div class="card glass"><div class="card-title"><span>${L('Thunai says', 'துணை பதில்')}</span><span><button class="link-btn" id="speakReply" aria-label="Read aloud">🔊</button> <span id="aiSource" class="pill"></span></span></div><div id="reply" class="reply"></div></div>
-      <div class="card glass" id="factorCard"></div>
       <div class="card glass" id="bestCard"></div>
+      <div class="card glass" id="factorCard"></div>
     </div>`;
-  $$('.cat', sec).forEach((b) => b.addEventListener('click', () => {
-    prasnaCategory = b.dataset.id;
-    $$('.cat', sec).forEach((x) => x.classList.toggle('sel', x === b));
-    $('#askBtn').disabled = false;
-  }));
-  $('#askBtn').addEventListener('click', ask);
-  $('#askFor')?.addEventListener('change', (e) => { askForId = e.target.value; renderAsk(sec); });
+  $$('.pq-cat', sec).forEach((b) => b.addEventListener('click', () => ask({ category: b.dataset.id })));
+  $('#askBtn').addEventListener('click', () => ask());
+  $$('.pq-person', sec).forEach((b) => b.addEventListener('click', () => { askForId = b.dataset.mid; renderAsk(sec); }));
+  $('#askMinor')?.addEventListener('click', () => {
+    const adult = defaultAsker(state.family, ageOf);
+    if (adult && adult.id !== m?.id && ageOf(adult).adult) { askForId = adult.id; renderAsk(sec); } else $('.pq-people')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  let t;
+  $('#question').addEventListener('input', (e) => { clearTimeout(t); t = setTimeout(() => showGuess(e.target.value), 250); });
   $('#speakReply').addEventListener('click', () => { if (!speak($('#reply').textContent)) toast(L('Read-aloud is not available on this device', 'இந்தச் சாதனத்தில் வாசித்துக்காட்டும் வசதி இல்லை')); });
-  if (lastAnswer) { renderAnswer(lastAnswer); $('#reply').textContent = lastAnswer.reply || ''; $('#aiSource').textContent = lastAnswer.source || ''; }
+  if (lastAnswer) {
+    if (lastAnswer.guard) renderGuard(lastAnswer.guard);
+    else { renderAnswer(lastAnswer); $('#reply').textContent = lastAnswer.reply || ''; $('#aiSource').textContent = lastAnswer.source || ''; }
+  }
+}
+
+/** While typing: show which box the question will be read as, and highlight it. */
+function showGuess(text) {
+  const el = $('#askGuess');
+  if (!el) return;
+  const id = text.trim() ? detectPrasnaCategory(text) : null;
+  $$('.pq-cat').forEach((x) => x.classList.toggle('guess', x.dataset.id === id));
+  const c = id && getCategory(id);
+  el.hidden = !c;
+  if (!c) return;
+  el.innerHTML = $(`.pq-cat[data-id="${id}"]`) ? `🔎 ${L('Will be read as', 'இப்படிப் பார்க்கப்படும்')}: <b>${c.icon} ${esc(bi(c))}</b>`
+    : `🌱 ${L(`${c.en} is not read for this age`, `${c.ta} — இந்த வயதுக்குப் பார்க்கப்படுவதில்லை`)}`;
 }
 
 function gauge(score, verdict) {
@@ -659,22 +776,45 @@ export { gauge };
 
 function renderAnswer(a) {
   const loc = state.loc;
-  const cat = CATEGORIES.find((c) => c.id === a.category);
-  $('#verdictCard').innerHTML = `<div class="muted small">${cat.icon} ${esc(bi(cat))} · ${fmtTime(a.snapshot.at, loc.tz, true)}</div>
+  const cat = getCategory(a.category);
+  const s = prasnaSummary(a, cat);
+  const tzName = loc.name ? L(`${placeName(loc.name)} time`, `${placeName(loc.name)} நேரம்`) : L('local time', 'உள்ளூர் நேரம்');
+  const first = a.bestTimes?.[0];
+  const deadline = a.practical?.deadlineFirst ? a.practical.note : a.deadlineNote ? bi(a.deadlineNote) : '';
+  const read = a.how === 'text' ? `<p class="pq-read">🔎 ${L('Your question was read as', 'உங்கள் கேள்வி இப்படிப் பார்க்கப்பட்டது')}: <b>${cat.icon} ${esc(bi(cat))}</b></p>`
+    : a.how === 'fallback' ? `<p class="pq-read">🔎 ${L('No specific work was recognised, so it was read as', 'குறிப்பிட்ட காரியம் கண்டறியப்படவில்லை; எனவே இப்படிப் பார்க்கப்பட்டது')}: <b>${cat.icon} ${esc(bi(cat))}</b>. ${L('Tap a box below for a sharper answer.', 'துல்லியமான பதிலுக்குக் கீழே ஒரு பெட்டியைத் தட்டுங்கள்.')}</p>` : '';
+  $('#verdictCard').innerHTML = `<div class="muted small">${cat.icon} ${esc(bi(cat))}${a.forName ? ` · ${esc(a.forName)}` : ''} · ${fmtTime(a.snapshot.at, loc.tz, true)}</div>
+    ${read}
     ${gauge(a.score, a.verdict)}
     <div class="verdict-big ${a.verdict}">${a.verdict === 'DO' ? '✅' : a.verdict === 'CAUTION' ? '⚠️' : '⛔'} ${esc(bi(a.verdictText))}</div>
     <p class="small muted">${L('Traditional points out of 100 — not a measured probability of success.', 'பாரம்பரியப் புள்ளிகள் 100-க்கு — வெற்றியின் அளவிடப்பட்ட நிகழ்தகவு அல்ல.')}</p>
+    <div class="pq-sum">
+      ${s.reasons.length ? `<div class="pq-row"><div class="pq-h">${L('Why', 'காரணங்கள்')}</div><ul class="pq-why">${s.reasons.map((r) => `<li class="${r.points > 0 ? 'pos' : 'neg'}">${r.points > 0 ? '▲' : '▼'} ${esc(L(r.en, r.ta))}</li>`).join('')}</ul></div>` : ''}
+      <div class="pq-row"><div class="pq-h">🕰️ ${L('Best time in the next 24 h', 'அடுத்த 24 மணி நேரத்தில் சிறந்த நேரம்')}</div>
+        <p>${first ? `<b>${fmtDate(first.start, loc.tz)} · ${fmtTime(first.start, loc.tz)} – ${fmtTime(first.end, loc.tz)}</b> <span class="muted small">(${esc(tzName)})</span>` : L('No strongly favourable window in the next 24 hours.', 'அடுத்த 24 மணி நேரத்தில் வலுவான நல்ல நேரம் இல்லை.')}</p></div>
+      <div class="pq-row pq-do"><div class="pq-h">👉 ${L('What to do now', 'இப்போது செய்ய வேண்டியது')}</div><p>${esc(bi(s.doNow))}</p>${deadline ? `<p class="small">🧭 ${esc(deadline)}</p>` : ''}</div>
+      ${s.parigaram ? `<div class="pq-row pq-pari"><div class="pq-h">🪔 ${L('Simple parigaram (free)', 'எளிய பரிகாரம் (இலவசம்)')}</div><p>${esc(bi(s.parigaram))}</p></div>` : ''}
+    </div>
     <div class="muted small" style="margin-top:6px">${L('Horai', 'ஓரை')}: ${esc(planetName(a.snapshot.currentHora.lord))} · ${L('Star', 'நட்சத்திரம்')}: ${esc(nakName(a.snapshot.nakshatra.index))} · ${L('Lagna', 'லக்னம்')}: ${esc(rasiName(a.snapshot.lagna.rasi))}</div>`;
   animateGauges();
-  $('#factorCard').innerHTML = `<div class="card-title">${L('Today’s astrological factors', 'இன்றைய ஜோதிடக் காரணிகள்')}</div>${a.factors.map((f) => `<div class="factor"><span>${esc(ta() ? f.labelTa : f.label)}</span><b class="${f.points > 0 ? 'pos' : f.points < 0 ? 'neg' : 'zero'}">${f.points > 0 ? '+' : ''}${f.points}</b></div>`).join('')}`;
-  $('#bestCard').innerHTML = `<div class="card-title">🕰️ ${L('Best times in the next 24 hours', 'அடுத்த 24 மணி நேரத்தில் சிறந்த நேரம்')}</div>${a.bestTimes.length ? a.bestTimes.map((w) => `<div class="best">🌟 ${fmtDate(w.start, loc.tz)} · <b>${fmtTime(w.start, loc.tz)} – ${fmtTime(w.end, loc.tz)}</b><br><span class="muted small">${L('score', 'மதிப்பு')} ${w.best} · ${esc(planetName(w.hora))} ${L('Horai', 'ஓரை')}</span></div>`).join('') : `<p class="muted">${L('No strongly favourable window in the next 24 hours.', 'அடுத்த 24 மணி நேரத்தில் வலுவான நல்ல நேரம் இல்லை.')}</p>`}`;
+  $('#factorCard').hidden = false; $('#bestCard').hidden = false;
+  $('#factorCard').innerHTML = `<details><summary class="card-title">${L('All astrological factors', 'எல்லா ஜோதிடக் காரணிகளும்')} (${a.factors.length})</summary>${a.factors.map((f) => `<div class="factor"><span>${esc(ta() ? f.labelTa : f.label)}</span><b class="${f.points > 0 ? 'pos' : f.points < 0 ? 'neg' : 'zero'}">${f.points > 0 ? '+' : ''}${f.points}</b></div>`).join('')}</details>`;
+  $('#bestCard').innerHTML = `<div class="card-title">🕰️ ${L('Good windows in the next 24 hours', 'அடுத்த 24 மணி நேர நல்ல நேரங்கள்')} <span class="pill">${esc(tzName)}</span></div>${a.bestTimes.length ? a.bestTimes.map((w) => `<div class="best">🌟 ${fmtDate(w.start, loc.tz)} · <b>${fmtTime(w.start, loc.tz)} – ${fmtTime(w.end, loc.tz)}</b><br><span class="muted small">${L('score', 'மதிப்பு')} ${w.best} · ${esc(planetName(w.hora))} ${L('Horai', 'ஓரை')}</span></div>`).join('') : `<p class="muted">${L('No strongly favourable window in the next 24 hours.', 'அடுத்த 24 மணி நேரத்தில் வலுவான நல்ல நேரம் இல்லை.')}</p>`}`;
 }
 
-async function askOnDevice(body, m) {
+/** A typed adult question for a child: the warm age-appropriate reply instead of a Prasnam. */
+function renderGuard(g) {
+  $('#answer').hidden = false;
+  $('#verdictCard').hidden = true; $('#factorCard').hidden = true; $('#bestCard').hidden = true;
+  $('#reply').innerHTML = g.sections.map((s) => `<p><b>${esc(s.title)}</b></p><ul>${s.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`).join('');
+  $('#aiSource').textContent = '';
+}
+
+async function askOnDevice(body, m, extra) {
   const c = m && chartOf(m);
   const birth = c && { janmaNakshatra: c.janmaNakshatra.index, janmaRasi: c.janmaRasi.index };
   const evaluation = evaluatePrasna({ at: new Date(), category: body.category, loc: body.loc, birth });
-  const a = { category: body.category, score: evaluation.score, verdict: evaluation.verdict, verdictText: evaluation.verdictText, factors: evaluation.factors, bestTimes: evaluation.bestTimes, snapshot: evaluation.snapshot };
+  const a = { ...extra, category: body.category, score: evaluation.score, verdict: evaluation.verdict, verdictText: evaluation.verdictText, factors: evaluation.factors, bestTimes: evaluation.bestTimes, snapshot: evaluation.snapshot, practicalFirst: evaluation.practicalFirst, deadlineNote: evaluation.deadlineNote };
   lastAnswer = a;
   renderAnswer(a);
   const profile = c && { name: c.name, janmaNakshatraName: c.janmaNakshatra.name, janmaRasiName: c.janmaRasi.name, lagnaName: c.lagna.rasiName, currentDasa: c.dasa.current && `${c.dasa.current.lord} Dasa / ${c.dasa.currentBhukti?.lord} Bhukti` };
@@ -688,23 +828,50 @@ async function askOnDevice(body, m) {
   $('#aiSource').textContent = a.source;
 }
 
-async function ask() {
+/**
+ * Cast the Prasnam. A tapped box is used as is; otherwise a typed question picks its box (Tamil / Tanglish /
+ * English), and a question with no recognisable work is read as "general work" — the answer says which was used.
+ */
+async function ask(opts = {}) {
   const btn = $('#askBtn');
-  if (!prasnaCategory) {
-    toast(L('First choose what you are about to do (one of the boxes above).', 'முதலில் செய்யப்போகும் காரியத்தை மேலே உள்ள பெட்டிகளில் ஒன்றைத் தேர்வு செய்யுங்கள்.'));
-    $('.cat-grid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    $('.cat-grid')?.classList.add('pulse'); setTimeout(() => $('.cat-grid')?.classList.remove('pulse'), 1600);
+  const question = $('#question').value.trim();
+  let category = opts.category || null;
+  let how = category ? 'tile' : null;
+  if (!category && question) {
+    const d = detectPrasnaCategory(question);
+    category = d || 'general';
+    how = d ? 'text' : 'fallback';
+  }
+  if (!category && prasnaCategory) { category = prasnaCategory; how = 'tile'; }
+  if (!category) {
+    toast(L('Type your question, or tap one of the boxes below.', 'உங்கள் கேள்வியை எழுதுங்கள், அல்லது கீழே உள்ள பெட்டிகளில் ஒன்றைத் தட்டுங்கள்.'));
+    $('#question')?.focus();
     return;
   }
-  btn.disabled = true;
+  const m = askMember();
+  const prof = m ? ageOf(m) : ageProfile(null);
+  prasnaCategory = category;
+  $$('.pq-cat').forEach((x) => { x.classList.toggle('sel', x.dataset.id === category); x.classList.remove('guess'); });
+  $('#askGuess') && ($('#askGuess').hidden = true);
+  const cat = getCategory(category);
   $('#answer').hidden = false;
-  $('#verdictCard').hidden = false;
+  if (!categoryAllowed(category, prof)) {
+    // Only the selected minor is limited: a typed adult question gets the age-appropriate reply, never a verdict.
+    const g = ageGuardAnswer({ topic: category, profile: prof, lang: state.lang, name: m ? displayName(m) : '', question, label: { en: cat.en.toLowerCase(), ta: cat.ta } });
+    lastAnswer = { category: null, guard: g };
+    renderGuard(g);
+    $('#answer').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  const extra = { how, forName: m && state.family.length > 1 ? displayName(m) : '' };
+  btn.disabled = true;
+  $('#verdictCard').hidden = false; $('#factorCard').hidden = false; $('#bestCard').hidden = false;
   $('#verdictCard').innerHTML = `<div class="loader"><i></i><i></i><i></i></div><p class="muted">${L('Casting the Prasnam…', 'பிரசன்னம் கணிக்கப்படுகிறது…')}</p>`;
+  $('#verdictCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
   $('#reply').textContent = '';
   $('#reply').classList.add('typing');
   $('#factorCard').innerHTML = ''; $('#bestCard').innerHTML = ''; $('#aiSource').textContent = '';
-  const m = askMember();
-  const body = { category: prasnaCategory, question: $('#question').value.trim(), lang: state.lang, loc: state.loc, birth: m ? { name: m.name, date: m.date, time: m.time, lat: m.lat, lon: m.lon, tz: m.tz, place: m.place } : undefined };
+  const body = { category, question, lang: state.lang, loc: state.loc, birth: m ? { name: m.name, date: m.date, time: m.time, lat: m.lat, lon: m.lon, tz: m.tz, place: m.place } : undefined };
   await new Promise((r) => setTimeout(r, 30));
   try {
     if (STATIC) throw new Error('static');
@@ -714,7 +881,7 @@ async function ask() {
     // Server events: [evaluation] → policy → delta (whole text once) → done{source, route}.
     // Safety / decline routes send no evaluation: show only their text (and help contacts), never a Prasnam.
     await sse('/api/ask', body, {
-      evaluation: (d) => { lastAnswer = d; renderAnswer(d); $('#verdictCard').scrollIntoView({ behavior: 'smooth' }); },
+      evaluation: (d) => { lastAnswer = { ...extra, ...d }; renderAnswer(lastAnswer); },
       policy: (d) => {
         policyAnswer = true;
         if (!lastAnswer) { $('#verdictCard').hidden = true; $('#factorCard').innerHTML = ''; $('#bestCard').innerHTML = ''; }
@@ -728,7 +895,7 @@ async function ask() {
     if (!lastAnswer && !policyAnswer && !reply) throw new Error('empty');
   } catch (e) {
     // Fall back to the on-device Prasnam only when the server gave no answer at all.
-    if (!$('#reply').textContent) await askOnDevice(body, m);
+    if (!$('#reply').textContent) await askOnDevice(body, m, extra);
   } finally {
     $('#reply').classList.remove('typing');
     btn.disabled = false;

@@ -106,12 +106,22 @@ const ADULT_TOPICS = [
   'job', 'job_change', 'career', 'business', 'money', 'finance', 'wealth', 'loan', 'lend_money', 'cheque', 'client', 'contract',
   'tech_partner', 'launch', 'office', 'property', 'house', 'graha_pravesam', 'bhoomi_pooja', 'vehicle', 'gold_vehicle',
   'court', 'legal', 'pr', 'politics', 'acting', 'remarriage',
+  // Prasnam categories (shared/prasna.js) — buying, money, property, work, marriage-related and police matters.
+  'jewellery', 'clothes', 'electronics', 'pet_cattle', 'rent_agreement', 'house_move', 'land_buy', 'property_sell',
+  'kitchen_start', 'borewell', 'interview', 'job_join', 'salary_talk', 'partnership', 'money_transfer', 'investment',
+  'bank_account', 'loan_sign', 'marriage_talk', 'engagement', 'seemantham', 'police_complaint',
 ];
+// Prasnam categories open to every age (studies, health, temple, a child's own samskaras, family travel, general).
+const OPEN_TOPICS = ['surgery', 'medicine_start', 'education', 'course_start', 'travel', 'temple_visit', 'mudi_kaanikkai', 'ear_piercing', 'general'];
 const TOPIC_MIN = {
   ...Object.fromEntries(ADULT_TOPICS.map((t) => [t, 'adult'])),
   compass: '13-17', visa: '13-17', meeting: '13-17', abroad_study: '13-17',
   competition: '6-12', friendship: '6-12',
+  passport_apply: '13-17', vratham: '13-17',
+  ...Object.fromEntries(OPEN_TOPICS.map((t) => [t, '0-5'])),
 };
+/** The youngest band that may see a topic ('0-5' = everyone), or null when the topic is not in the table. */
+export const topicMinBand = (topic) => TOPIC_MIN[topic] || null;
 
 /** May this topic be read / shown for this profile? Unlisted topics (today, temple, prayer, study, health, family…) are open to all. */
 export function topicAllowed(topic, profile) {
@@ -133,7 +143,8 @@ const TOPIC_NAME = {
   loan: T('loans', 'கடன்'), property: T('property', 'சொத்து'), house: T('buying a house', 'வீடு வாங்குதல்'), vehicle: T('buying a vehicle', 'வாகனம் வாங்குதல்'),
   court: T('court cases', 'வழக்கு'), legal: T('court cases', 'வழக்கு'), pr: T('settling abroad', 'வெளிநாட்டில் குடியேற்றம்'),
 };
-const topicName = (topic) => TOPIC_NAME[topic] || T('this', 'இது');
+const TOPIC_LABEL = new Map(); // names passed in by a surface (e.g. a Prasnam category's own name)
+const topicName = (topic) => TOPIC_NAME[topic] || TOPIC_LABEL.get(topic) || T('this', 'இது');
 const ROMANCE = new Set(['love', 'lovematch']);
 const MARRIAGE = new Set(['marriage', 'second_marriage', 'harmony', 'porutham', 'couple', 'gunamilan', 'partner', 'bride_groom', 'marriage_when', 'remarriage', 'divorce']);
 
@@ -258,7 +269,8 @@ function bandLines(topic, profile, name) {
  * The warm, age-appropriate reply used INSTEAD of a prediction when a minor's chart (or an unknown age) is asked
  * about an adult topic. Same shape the chat bubble renders — and deliberately no meter, no periods, no percentage.
  */
-export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', question = '' }) {
+export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', question = '', label = null }) {
+  if (label?.en && label?.ta) TOPIC_LABEL.set(topic, label);
   const L = (o) => say(o, lang);
   const sections = [];
   if (profile?.band === 'unknown') {

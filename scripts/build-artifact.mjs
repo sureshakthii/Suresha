@@ -22,6 +22,10 @@ for (const f of fs.readdirSync('public').filter((x) => x.endsWith('.js') && x !=
 fs.copyFileSync('public/icon.svg', path.join(out, 'icon.svg'));
 fs.copyFileSync('public/logo.svg', path.join(out, 'logo.svg'));
 fs.cpSync('public/fonts', path.join(out, 'fonts'), { recursive: true });
+// Horoscope-import reader (tesseract.js + Tamil/English models + pdf.js, ~14 MB): served from the build's own
+// folder by relative URL and loaded only when someone taps Import — no CDN, works offline in the app.
+if (fs.existsSync('public/vendor/ocr')) fs.cpSync('public/vendor/ocr', path.join(out, 'vendor', 'ocr'), { recursive: true });
+else console.warn('⚠ public/vendor/ocr missing — horoscope import will not work in this build.');
 // Device-preview page (phone · tablet · laptop · desktop frames): a standalone HTML file next to the app page.
 fs.writeFileSync(path.join(out, 'devices.html'), fs.readFileSync('public/devices.html', 'utf8').replace("const APP_URL = '/';", "const APP_URL = './index.html';"));
 const { CATEGORIES } = await import('../server/market.js');

@@ -2321,8 +2321,8 @@ body.ta .zone-line, body.ta .zone-sub, body.ta .res-card p, body.ta .flight-leg,
 .kt-import-btns { flex-wrap: wrap; gap: 8px; }
 .kt-ocr { margin: 10px 0 4px; }
 .kt-ocr progress { width: 100%; height: 8px; accent-color: var(--btn-gold); }
-.kt-auto > input, .kt-auto > select, .place-wrap.kt-auto > input { border-color: var(--gold) !important; box-shadow: 0 0 0 1px var(--gold); }
-.kt-low > input, .kt-low > select, .place-wrap.kt-low > input { border-color: var(--warn) !important; box-shadow: 0 0 0 2px rgba(var(--warn-rgb), .45); background: rgba(var(--warn-rgb), .08); }
+label.kt-auto input, label.kt-auto select { border-color: var(--gold) !important; box-shadow: 0 0 0 1px var(--gold); }
+label.kt-low input, label.kt-low select { border-color: var(--warn) !important; box-shadow: 0 0 0 2px rgba(var(--warn-rgb), .45); background: rgba(var(--warn-rgb), .08); }
 fieldset.kt-auto { border-color: var(--gold); } fieldset.kt-low { border-color: var(--warn); background: rgba(var(--warn-rgb), .06); }
 .kt-box.kt-auto { box-shadow: inset 0 0 0 2px var(--gold); }
 .kt-auto-card { border: 1px solid rgba(var(--warn-rgb), .55); }
@@ -2333,3 +2333,7 @@ fieldset.kt-auto { border-color: var(--gold); } fieldset.kt-low { border-color: 
 .kt-kv dd.kt-low { border-left: 3px solid var(--warn); padding-left: 8px; background: rgba(var(--warn-rgb), .07); border-radius: 0 6px 6px 0; }
 .kt-auto-note { margin-bottom: 8px; }
 .kt-auto-note .kt-flag { margin: 6px 0 0; }
+
+/* Inline text links stay in the line but get a 44px tap area; long Tamil section titles wrap instead of clipping. */
+.link-btn.inline-link { min-height: 44px; display: inline-flex; align-items: center; vertical-align: middle; padding: 0 4px; }
+.section-title { overflow-wrap: anywhere; max-width: 100%; }

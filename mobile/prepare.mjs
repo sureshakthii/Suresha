@@ -186,6 +186,8 @@ function buildStandalone() {
   }
   const leftovers = fs.readdirSync(wwwDir, { recursive: true })
     .filter((f) => String(f).endsWith('.js'))
+    // vendor/ocr/*: tesseract.js keeps its jsDelivr defaults in the code, but ocr-import.js always passes local paths.
+    .filter((f) => !String(f).split(path.sep).join('/').startsWith('vendor/ocr/'))
     .filter((f) => fs.readFileSync(path.join(wwwDir, String(f)), 'utf8').includes('cdn.jsdelivr.net'));
   if (leftovers.length) console.warn(`⚠ still loading from a CDN: ${leftovers.join(', ')}`);
 
@@ -196,6 +198,11 @@ function buildStandalone() {
 
   console.log('✔ mobile/www = standalone offline app (dist/artifact); capacitor.config.json has no server.url');
   console.log('  Noto Sans/Serif Tamil and Inter are bundled, so Tamil text renders the same offline.');
+  const ocrDir = path.join(wwwDir, 'vendor', 'ocr');
+  if (fs.existsSync(ocrDir)) {
+    const mb = fs.readdirSync(ocrDir, { recursive: true }).map((f) => path.join(ocrDir, String(f))).filter((f) => fs.statSync(f).isFile()).reduce((a, f) => a + fs.statSync(f).size, 0) / 1048576;
+    console.log(`  Horoscope import (OCR, Tamil + English, PDF) is bundled in vendor/ocr (${mb.toFixed(1)} MB), loaded only on Import.`);
+  } else console.warn('⚠ vendor/ocr missing in mobile/www — horoscope import will not work offline.');
 }
 
 function buildServer() {

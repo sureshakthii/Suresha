@@ -8,16 +8,21 @@ const AE = 'https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/esm/astronomy.j
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(path.join(out, 'shared'), { recursive: true });
 
-// shared/ has sub-folders (rules/), so copy it recursively.
-for (const f of fs.readdirSync('shared', { recursive: true }).map(String).filter((x) => x.endsWith('.js'))) {
-  const src = fs.readFileSync(path.join('shared', f), 'utf8').replace("from 'astronomy-engine'", `from '${AE}'`);
+// shared/ has sub-folders (rules/), so copy it recursively — modules get the CDN astronomy-engine; any data file
+// (JSON etc.) is copied as is.
+for (const f of fs.readdirSync('shared', { recursive: true }).map(String)) {
+  const from = path.join('shared', f);
+  if (!fs.statSync(from).isFile()) continue;
   fs.mkdirSync(path.dirname(path.join(out, 'shared', f)), { recursive: true });
-  fs.writeFileSync(path.join(out, 'shared', f), src);
+  if (f.endsWith('.js')) fs.writeFileSync(path.join(out, 'shared', f), fs.readFileSync(from, 'utf8').replace("from 'astronomy-engine'", `from '${AE}'`));
+  else fs.copyFileSync(from, path.join(out, 'shared', f));
 }
 for (const f of fs.readdirSync('public').filter((x) => x.endsWith('.js') && x !== 'sw.js')) fs.copyFileSync(path.join('public', f), path.join(out, f));
 fs.copyFileSync('public/icon.svg', path.join(out, 'icon.svg'));
 fs.copyFileSync('public/logo.svg', path.join(out, 'logo.svg'));
 fs.cpSync('public/fonts', path.join(out, 'fonts'), { recursive: true });
+// Device-preview page (phone · tablet · laptop · desktop frames): a standalone HTML file next to the app page.
+fs.writeFileSync(path.join(out, 'devices.html'), fs.readFileSync('public/devices.html', 'utf8').replace("const APP_URL = '/';", "const APP_URL = './index.html';"));
 const { CATEGORIES } = await import('../server/market.js');
 const catalog = JSON.parse(fs.readFileSync('server/data/products.json', 'utf8'));
 fs.writeFileSync(path.join(out, 'products.json'), JSON.stringify({ ...catalog, categories: CATEGORIES }));

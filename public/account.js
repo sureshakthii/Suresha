@@ -429,7 +429,7 @@ function renderMore(sec) {
     ${copyright()}`;
   $('#signOut')?.addEventListener('click', signOut);
   $$('[data-lang]', sec).forEach((b) => b.addEventListener('click', () => { state.lang = b.dataset.lang; store.set('kj_lang', state.lang); document.dispatchEvent(new Event('kj:lang')); }));
-  $$('[data-theme-set]', sec).forEach((b) => b.addEventListener('click', () => { state.settings.theme = b.dataset.themeSet; saveSettings(); renderMore(sec); }));
+  $$('[data-theme-set]', sec).forEach((b) => b.addEventListener('click', () => { state.themeOverride = null; state.settings.theme = b.dataset.themeSet; saveSettings(); renderMore(sec); }));
   $('#setLarge').addEventListener('change', (e) => { state.settings.large = e.target.checked; state.settings.largeChosen = true; saveSettings(); });
   $('#setVoice').addEventListener('change', (e) => { state.settings.voice = e.target.checked; saveSettings(); });
   $('#setHc').addEventListener('change', (e) => { state.settings.hc = e.target.checked; saveSettings(); });

@@ -25,6 +25,7 @@ import { devicePlace } from './shared/places.js';
 import { locFromPlace } from './shared/residence.js';
 import { residenceStep, zonePrompt } from './residence-ui.js';
 import { startAnalytics, loadBilling } from './growth.js';
+import { initDesktopNav } from './desktop-nav.js';
 
 function startSky() {
   const c = $('#sky');
@@ -114,6 +115,7 @@ async function boot() {
   const firstRun = !state.loc;
   if (firstRun) setLoc(locFromPlace(devicePlace()), { confirmed: false });
   refreshSnap(true);
+  initDesktopNav();
   $('#app').hidden = false;
   adoptSystemFontScale();
 

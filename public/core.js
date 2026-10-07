@@ -49,7 +49,15 @@ export const state = {
   view: 'home',
   snap: null,
   snapAt: 0,
+  themeOverride: null,
 };
+// Preview links (the device-preview page, shared test links): ?lang=ta|en&theme=light|dark apply to this visit
+// only — nothing is saved, so the person's own choices stay as they were.
+try {
+  const q = new URLSearchParams(window.location?.search || '');
+  if (['ta', 'en'].includes(q.get('lang'))) state.lang = q.get('lang');
+  if (['light', 'dark'].includes(q.get('theme'))) state.themeOverride = q.get('theme');
+} catch { /* no URL (tests) */ }
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -136,7 +144,7 @@ export function saveSettings() {
 export const detailed = () => state.settings.view === 'detailed';
 /** Theme: 'dark' (default on a new install), 'light' or 'auto' (follow the phone). */
 export function applyTheme() {
-  const pref = state.settings.theme || 'dark';
+  const pref = state.themeOverride || state.settings.theme || 'dark';
   const dark = pref === 'dark' || (pref === 'auto' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b0620' : '#f6f1e8');

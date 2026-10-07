@@ -247,9 +247,11 @@ function renderHome(sec) {
     </div>
     ${whoChips(m)}
     ${searchPill()}
+    <div class="dsk-cols home-dash"><div class="dsk-col">
     ${todayPlanCard(m, snap, loc, td)}
     ${timeStrip(td, snap, loc)}
     ${dailyCard(m, snap, loc)}
+    </div><div class="dsk-col">
     ${healthTodayCard(m)}
     ${person ? compatCardHtml(person, { uncertain: (() => { try { return !reliabilityOf(person).nakshatra; } catch { return false; } })(), idPrefix: 'cpHome' }) : ''}
     ${quickRow(m)}
@@ -314,6 +316,7 @@ function renderHome(sec) {
     <button class="btn-soft" data-go="tools">${icon('tools', { size: 18 })} ${L('All tools', 'அனைத்து கருவிகள்')}</button>
     <button class="btn-soft" id="shareToday">${icon('share', { size: 18 })} ${L('Share today\'s calendar', 'இன்றைய நாட்காட்டியைப் பகிர்')}</button>
     </details>
+    </div></div>
     ${ratePrompt()}
     ${copyright()}`;
   fillHomeWeather(td);
@@ -609,6 +612,7 @@ function renderChart(sec) {
   sec.innerHTML = `${memberSwitcher(m.id)}
     ${certaintyBanner(rel)}
     ${dasaSummaryCard(c, rel)}
+    <div class="dsk-cols chart-dash"><div class="dsk-col">
     <div class="card glass"><div class="card-title"><span>${L('Rasi chart', 'ராசி கட்டம்')}</span><button class="link-btn" data-go="chat" data-param='{"topic":"chart"}'>💬 ${L('Ask about my chart', 'என் ஜாதகம் பற்றிக் கேள்')}</button></div><div id="rasiChart" class="si-chart"></div>
       ${rel.lagna ? '' : `<p class="small muted">${L('Lagnam (ல) is not marked because the birth time is not precise enough.', 'பிறந்த நேரம் போதுமான துல்லியமில்லாததால் லக்னம் (ல) குறிக்கப்படவில்லை.')}</p>`}</div>
     <button class="btn-gold" data-go="analysis">📜 ${L('Full chart reading', 'முழு ஜாதக ஆய்வு')}</button>
@@ -618,6 +622,7 @@ function renderChart(sec) {
         ${[['roadmap', 'Life periods road map', 'வாழ்க்கைக் கால வரைபடம்'], ['vargas', 'Divisional charts & Ashtakavarga', 'வர்க்கச் சக்கரங்கள் & அஷ்டகவர்க்கம்'], ['life', 'Life questions — traditional timing', 'வாழ்க்கைக் கேள்விகள் — பாரம்பரிய காலம்'], ['guide', 'My guide — colour, number, Siddhar', 'என் வழிகாட்டி — நிறம், எண், சித்தர்'], ['numerology', 'Name & number numerology', 'பெயர் & எண் கணிதம்'], ['live', 'Live sky', 'நேரலை வானம்']].map(([id, en, tx]) => `<button data-go="${id}">${iconChip(id, { size: 20, cls: 'mi-icon' })}<span>${L(en, tx)}${id === 'vargas' && !rel.vargas ? ` <span class="badge unv">${L('needs exact time', 'துல்லிய நேரம் தேவை')}</span>` : ''}</span></button>`).join('')}
       </div></details>
     ${rel.navamsa ? `<div class="card glass"><div class="card-title">${L('Navamsa chart', 'நவாம்ச கட்டம்')}</div><div id="navamsaChart" class="si-chart"></div></div>` : ''}
+    </div><div class="dsk-col">
     <div class="card glass"><div class="card-title">${L('Birth details', 'பிறப்பு விவரம்')}</div>
       <dl class="kv">
         <dt>${L('Birth star', 'ஜென்ம நட்சத்திரம்')}</dt><dd>${rel.nakshatra ? `${esc(nakName(c.janmaNakshatra.index))}${rel.pada ? ` · ${L('Pada', 'பாதம்')} ${c.janmaNakshatra.pada}` : ''}` : `<span class="badge unv">${L('uncertain — the star changes on this day', 'உறுதியில்லை — அன்று நட்சத்திரம் மாறுகிறது')}</span>`}</dd>
@@ -658,6 +663,7 @@ function renderChart(sec) {
       <tr><th>${L('Planet', 'கிரகம்')}</th><th>${L('Rasi', 'ராசி')}</th><th>${L('Degree', 'பாகை')}</th><th>${L('Star', 'நட்சத்திரம்')}</th><th>${L('Pada', 'பாதம்')}</th></tr>
       ${order.filter((k) => k !== 'Lagna' || rel.lagna).map((k) => { const p = c.planets[k]; return `<tr><td class="pl" style="color:${COLOR[k]}">${GLYPH[k]} ${esc(planetName(k))}${p.retrograde && !['Rahu', 'Ketu'].includes(k) ? ' ℞' : ''}</td><td>${esc(rasiName(p.rasi))}</td><td>${esc(p.dms)}</td><td>${esc(nakName(p.nakshatra))}</td><td>${p.pada}</td></tr>`; }).join('')}
     </table></div></div>
+    </div></div>
     ${copyright()}`;
   const noLagna = (houses) => (rel.lagna ? houses : houses.map((h) => h.filter((k) => k !== 'Lagna')));
   renderSI($('#rasiChart'), noLagna(c.charts.rasi), c.planets, rel.lagna ? c.lagna.rasi : -1, L('Rasi', 'ராசி'), sub, true);

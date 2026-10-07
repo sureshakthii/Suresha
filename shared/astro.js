@@ -552,6 +552,72 @@ export function panchang(date, lat, lon, tzOffset, { withEnds = true, horaiMetho
   };
 }
 
+// ---------------------------------------------------------------- "today" = the calendar day
+// The Vedic day starts at sunrise, so between local midnight and sunrise `panchang(now)` still describes YESTERDAY's
+// weekday, day lord, Rahu Kalam, horai table … That is right for the live moment, but when a screen says "today" the
+// person means the calendar date they are in. These helpers anchor "today" to that date's sunrise.
+
+/** 'YYYY-MM-DD' calendar date of `now` at the place (`tz`: hours or an IANA zone name). */
+export function calendarDate(now, tz) {
+  return new Date(now.getTime() + offsetHoursAt(tz, now) * 3600000).toISOString().slice(0, 10);
+}
+
+/** Calendar weekday (0 = Sunday) of `now` at the place — "today" as the person means it. */
+export function calendarWeekday(now, tz) {
+  return new Date(`${calendarDate(now, tz)}T12:00:00Z`).getUTCDay();
+}
+
+/** Local noon (as an instant) of the calendar date `now` falls on at the place. */
+export function calendarNoon(now, tz) {
+  const [y, m, d] = calendarDate(now, tz).split('-').map(Number);
+  const guess = Date.UTC(y, m - 1, d, 12);
+  return new Date(guess - offsetHoursAt(tz, new Date(guess)) * 3600000);
+}
+
+/** Sunrise of the calendar date `now` falls on (residence / active place). */
+export function calendarSunrise(now, lat, lon, tz) {
+  return vedicDay(calendarNoon(now, tz), lat, lon).sunrise;
+}
+
+/**
+ * The instant that stands for "today" in day-structure calculations: `now` itself, or — before the sunrise of the
+ * calendar date (local midnight → sunrise) — one minute after that sunrise, so the weekday, day lord, Rahu Kalam,
+ * horai table … are the calendar day's, not the previous Vedic day's.
+ */
+export function dayAnchor(now, lat, lon, tz) {
+  const rise = calendarSunrise(now, lat, lon, tz);
+  return now < rise ? new Date(rise.getTime() + 60000) : now;
+}
+
+/** True between local midnight and the calendar date's sunrise (the Vedic day is still the previous weekday). */
+export function isPreDawn(now, lat, lon, tz) {
+  return now < calendarSunrise(now, lat, lon, tz);
+}
+
+const DAY_FIELDS = ['weekday', 'sunrise', 'sunset', 'nextSunrise', 'dayFlags', 'horai', 'horaiMethod', 'rahuKalam', 'yamagandam', 'guligai'];
+
+/**
+ * "Today" for the screens that mean the calendar day (Today, Parigaram, My Guide, brief, Ask "today" answers …).
+ * Day structure (weekday, sunrise/sunset, horai table, Rahu Kalam, Yamagandam, Kuligai) comes from the calendar
+ * day (`dayAnchor`); the live-moment values (planets, tithi, star, moon rasi, yoga, karanam, lagna, current horai,
+ * their end times / countdowns) stay those of the real `now`. Before sunrise the result carries `preDawn: true`
+ * and `vedic` = the running Vedic day ({ weekday, sunrise, sunset, nextSunrise, horai }) for the live "now" views.
+ * `loc`: { lat, lon, tz } (tz: hours or an IANA zone name).
+ */
+export function todaySnapshot(now = new Date(), loc, opts = {}) {
+  const live = panchang(now, loc.lat, loc.lon, loc.tz, opts);
+  if (!isPreDawn(now, loc.lat, loc.lon, loc.tz)) return { ...live, preDawn: false, vedic: null };
+  const anchor = dayAnchor(now, loc.lat, loc.lon, loc.tz);
+  const day = panchang(anchor, loc.lat, loc.lon, loc.tz, { ...opts, withEnds: false });
+  const out = { ...live, preDawn: true, anchor, vedic: { weekday: live.weekday, sunrise: live.sunrise, sunset: live.sunset, nextSunrise: live.nextSunrise, horai: live.horai } };
+  for (const k of DAY_FIELDS) out[k] = day[k];
+  const inRange = (r) => now >= r.start && now < r.end;
+  out.inRahuKalam = inRange(out.rahuKalam);
+  out.inYamagandam = inRange(out.yamagandam);
+  out.inGuligai = inRange(out.guligai);
+  return out;
+}
+
 const DASA_LEVELS = ['maha', 'bhukti', 'pratyantara', 'sookshma'];
 
 /**

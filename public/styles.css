@@ -2732,3 +2732,6 @@ body.ta .easy-tm { grid-template-columns: minmax(0, .85fr) minmax(0, .85fr) minm
   .view :is(.card, .plan-card, section) :is(p, li), .view p.small.muted { max-width: 62ch; }
   .view .card p.center, .view .card p[style*="center"] { margin-inline: auto; }
 }
+
+/* Toast: a rounded box (not a pill) so wrapped text never turns it into a circle. */
+#toast { border-radius: 14px; width: max-content; line-height: 1.45; }

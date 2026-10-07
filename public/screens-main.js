@@ -1,5 +1,5 @@
 // Main screens: Today (home dashboard), Live Sky, Jathagam, Prasnam.
-import { panchang, planetPositions, buildCharts, RASIS, NAKSHATRAS, PLANETS, listedDasaPeriods } from './shared/astro.js';
+import { panchang, todaySnapshot, calendarDate, planetPositions, buildCharts, RASIS, NAKSHATRAS, PLANETS, listedDasaPeriods } from './shared/astro.js';
 import { CATEGORIES, evaluatePrasna } from './shared/prasna.js';
 import { buildContext, ruleBasedReply } from './shared/narrator.js';
 import { tamilDay } from './shared/tamilcal.js';
@@ -82,6 +82,17 @@ function todayInfo(loc) {
     today = { key, day: tamilDay(noon, loc.lat, loc.lon, loc.tz) };
   }
   return today.day;
+}
+
+/**
+ * Before sunrise (local midnight → sunrise) Today already shows the calendar day's panchangam; a small note says
+ * so, since by panchangam convention the day begins at sunrise. A hidden flip redraws the screen at sunrise.
+ */
+function preDawnNote(snap, loc) {
+  if (!snap?.preDawn) return '';
+  const wd = snap.weekday;
+  const rise = fmtTime(snap.sunrise, loc.tz);
+  return `<p class="small muted predawn-note" data-predawn>${esc(L(`${wd.en}'s panchangam · sunrise ${rise}`, `இன்றைய (${wd.ta}) பஞ்சாங்கம் · சூரிய உதயம் ${rise}`))}</p><i hidden data-flip="${new Date(snap.sunrise).getTime()}"></i>`;
 }
 
 // Today's one-line guidance: the day's verdict for the person + one encouraging line. The plan details
@@ -239,9 +250,13 @@ function healthTodayCard(m) {
 // The Today screen is re-drawn when the calendar day changes (app left open overnight or resumed next morning),
 // so the daily review, do's and don'ts always belong to today.
 let homeDay = '';
-const dayKey = () => { const tz = state.loc?.tz ?? 5.5; return new Date(Date.now() + tz * 3600000).toISOString().slice(0, 10); };
+// The day changes at local MIDNIGHT at the place (calendar day), not at sunrise; before sunrise the snapshot is
+// already today's (shared/astro.js todaySnapshot), and the screen redraws once more at sunrise (preDawn flips).
+const dayKey = () => calendarDate(new Date(), state.loc?.tz ?? 5.5);
+let homePreDawn = false;
 function refreshIfNewDay() {
-  if (homeDay && dayKey() !== homeDay) { state.snapAt = 0; state.snap = null; if (state.view === 'home') go('home', {}); }
+  const sunUp = homePreDawn && state.snap?.sunrise && Date.now() >= new Date(state.snap.sunrise).getTime();
+  if ((homeDay && dayKey() !== homeDay) || sunUp) { state.snapAt = 0; state.snap = null; homePreDawn = false; if (state.view === 'home') go('home', {}); }
 }
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshIfNewDay(); });
@@ -268,7 +283,9 @@ function renderHome(sec) {
   homeDay = dayKey();
   const loc = state.loc;
   const td = todayInfo(loc);
-  const snap = state.snap || panchang(new Date(), loc.lat, loc.lon, loc.tz);
+  if (!state.snap || (state.snap.preDawn && Date.now() >= new Date(state.snap.sunrise).getTime())) refreshSnap(true);
+  const snap = state.snap || todaySnapshot(new Date(), loc);
+  homePreDawn = Boolean(snap.preDawn);
   const m = activeMember();
   const person = m && m.relation !== 'organization' ? m : null;
   const fest = td.festivals;
@@ -279,6 +296,7 @@ function renderHome(sec) {
       <h2 class="home-greet">${L('Vanakkam', 'வணக்கம்')}${m ? `, ${esc(displayName(m))}` : ''}</h2>
       <p class="home-date">${esc(bi(td.weekday))} · ${esc(bi({ en: td.tamil.monthEn, ta: td.tamil.monthTa }))} ${td.tamil.day} · <span id="homeLoc">${esc(placeName(loc.name))}</span></p>
       ${zoneLine(loc, { id: 'indiaClock' })}
+      ${preDawnNote(snap, loc)}
     </div>
     ${whoChips(m)}
     ${searchPill()}
@@ -469,7 +487,8 @@ export function refreshSnap(force = false) {
   const loc = state.loc;
   const now = new Date();
   if (force || !state.snap || now - state.snapAt > 60000) {
-    state.snap = panchang(now, loc.lat, loc.lon, loc.tz);
+    // Day structure (weekday, Rahu Kalam, horai table …) of the CALENDAR day; live tithi / star / horai of `now`.
+    state.snap = todaySnapshot(now, loc);
     state.snapAt = now.getTime();
     return true;
   }
@@ -585,6 +604,11 @@ function renderLive(sec) {
   const now = Date.now();
   const h = s.currentHora;
   const [q, ql] = horaQuality(h.lord);
+  // A live view shows the running Vedic hour: before sunrise that is still the previous weekday's horai — say so.
+  const vd = s.preDawn && s.vedic ? s.vedic : s;
+  const preDawn = s.preDawn && s.vedic
+    ? `<p class="small muted predawn-note" data-predawn>${esc(L(`Before sunrise — by the panchangam it is still ${s.vedic.weekday.en} until ${fmtTime(s.sunrise, loc.tz)}`, `சூரிய உதயத்திற்கு முன் — பஞ்சாங்கப்படி இன்னும் ${s.vedic.weekday.ta} வாரம் (${fmtTime(s.sunrise, loc.tz)} வரை)`))}</p>`
+    : '';
   sec.innerHTML = `${subHeaderLocal(L('Live Sky', 'நேரலை வானம்'), L('Synchronised every second with the real sky', 'ஒவ்வொரு நொடியும் வானத்துடன் ஒத்திசைவு'))}
     <div class="card glass wheel-card">
       <div class="card-title"><span>${L('Rasi Mandalam', 'ராசி மண்டலம்')}</span><span class="live-dot">${L('LIVE', 'நேரலை')}</span></div>
@@ -602,13 +626,14 @@ function renderLive(sec) {
         <div class="mini-sub">${end ? esc(untilL(fmtTime(end, loc.tz))) : ''}</div>${id === 'cdNak' ? '<div class="bar"><i id="cdNakBar"></i></div>' : ''}</div>`).join('')}
     </div>
     <div class="card glass">
-      <div class="card-title"><span>${L('Horai', 'ஓரை')}</span><span class="muted small">☀ ${fmtTime(s.sunrise, loc.tz)} · 🌇 ${fmtTime(s.sunset, loc.tz)}</span></div>
+      <div class="card-title"><span>${L('Horai', 'ஓரை')}</span><span class="muted small">☀ ${fmtTime(vd.sunrise, loc.tz)} · 🌇 ${fmtTime(vd.sunset, loc.tz)}</span></div>
+      ${preDawn}
       <div class="hora-now">
         <div class="hora-glyph" style="color:${COLOR[h.lord]}">${GLYPH[h.lord]}</div>
         <div style="flex:1"><div class="mini-label">${L('Current Horai', 'தற்போதைய ஓரை')}</div><div class="mini-value">${esc(dasaName(h.lord))} ${L('Horai', 'ஓரை')}</div><span class="tag ${q}">${ql}</span></div>
         <div style="text-align:right"><div class="mini-label">${L('ends in', 'முடிய')}</div><div class="countdown" data-end="${new Date(h.end).getTime()}">${countdown(h.end, now)}</div></div>
       </div>
-      <div class="hora-list">${s.horai.map((x) => {
+      <div class="hora-list">${vd.horai.map((x) => {
     const cls = now >= new Date(x.start).getTime() && now < new Date(x.end).getTime() ? 'now' : now >= new Date(x.end).getTime() ? 'past' : '';
     return `<div class="hora-item ${cls}"><b style="color:${COLOR[x.lord]}">${GLYPH[x.lord]} ${esc(ta() ? PLANETS[x.lord].short : x.lord.slice(0, 3))}</b>${fmtTime(x.start, loc.tz)}</div>`;
   }).join('')}</div>

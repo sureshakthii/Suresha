@@ -1,6 +1,6 @@
 // Personal guide (என் வழிகாட்டி) for every family member, and a big, simple Panchangam (பஞ்சாங்கம்)
 // for elders with a quick "vibe" card for the young generation.
-import { NAKSHATRAS, RASIS, panchang } from './shared/astro.js';
+import { NAKSHATRAS, RASIS, panchang, todaySnapshot, calendarWeekday } from './shared/astro.js';
 import { tamilDay, offsetOnDay } from './shared/tamilcal.js';
 import { personalGuide, DAY_COLOR } from './shared/personal.js';
 import { faithOf, TRADITIONAL_OPTIONAL } from './shared/faith.js';
@@ -26,8 +26,8 @@ export function todayColorCard() {
   const m = activeMember();
   if (!m || m.relation === 'organization') return '';
   const c = chartOf(m);
-  const g = personalGuide(c, { date: m.date, faith: faithOf(m) });
-  const snap = state.snap || panchang(new Date(), state.loc.lat, state.loc.lon, state.loc.tz);
+  const g = personalGuide(c, { date: m.date, faith: faithOf(m), weekday: calendarWeekday(new Date(), state.loc.tz) });
+  const snap = state.snap || todaySnapshot(new Date(), state.loc);
   const o = dayOutlook(c, snap);
   // The verdict word is the one shared day label (shared/daily.js DAY_LABEL) — the same as Today and the family list.
   const tail = {
@@ -60,7 +60,7 @@ function renderGuide(sec) {
   if (!m) { sec.innerHTML = `${subHeader(L('My Guide', 'என் வழிகாட்டி'))}<p class="muted center">${L('Add a family member first.', 'முதலில் குடும்ப உறுப்பினரைச் சேர்க்கவும்.')}</p>`; return; }
   guideUi.id = m.id;
   const c = chartOf(m);
-  const g = personalGuide(c, { date: m.date, faith: faithOf(m) });
+  const g = personalGuide(c, { date: m.date, faith: faithOf(m), weekday: calendarWeekday(new Date(), state.loc.tz) });
   // Unknown birth time: no Lagna (chart.lagna / planets.Lagna are empty) — say so instead of failing.
   const lagnaRasi = c.lagna?.rasi ?? c.planets?.Lagna?.rasi ?? null;
   const locked = isLocked('predictions');
@@ -71,7 +71,7 @@ function renderGuide(sec) {
 
     <div class="card glass"><div class="card-title">👕 ${L('Colour to wear today', 'இன்று அணிய வேண்டிய நிறம்')}</div>
       <div class="color-big">${swatch(g.today, true)}<div><b>${esc(bi(g.today))}</b><p class="small">${esc(bi(g.today.note))}</p></div></div>
-      <div class="week-colors">${g.week.map((d) => `<div class="wc${d.weekday === new Date().getDay() ? ' now' : ''}">${swatch(d)}<span>${dayName(d.weekday)}</span></div>`).join('')}</div>
+      <div class="week-colors">${g.week.map((d) => `<div class="wc${d.weekday === calendarWeekday(new Date(), state.loc.tz) ? ' now' : ''}">${swatch(d)}<span>${dayName(d.weekday)}</span></div>`).join('')}</div>
       <p class="muted small">${L('Always lucky for you', 'எப்போதும் உங்களுக்கு ஏற்ற நிறங்கள்')}: ${g.luckyColors.map((x) => `${swatch(x)} ${esc(bi(x))}`).join(' · ')}</p></div>
 
     <div class="card glass"><div class="card-title">🔢 ${L('Lucky numbers', 'அதிர்ஷ்ட எண்கள்')}</div>
@@ -180,7 +180,7 @@ function renderPanchangam(sec) {
   const { iso, noon, td, tz } = dayFor(panUi.offset);
   const loc = { ...state.loc, tz };
   const isToday = panUi.offset === 0;
-  const snapNow = isToday ? (state.snap || panchang(new Date(), loc.lat, loc.lon, loc.tz)) : panchang(noon, loc.lat, loc.lon, loc.tz);
+  const snapNow = isToday ? (state.snap || todaySnapshot(new Date(), loc)) : panchang(noon, loc.lat, loc.lon, loc.tz);
   const wd = td.weekday.index;
   const so = SOOLAM[wd];
   const cRasi = td.chandrashtamaRasi;
@@ -257,7 +257,7 @@ function renderPanchangam(sec) {
 function vibeCard(m, snap) {
   const c = chartOf(m);
   const o = dayOutlook(c, snap);
-  const g = personalGuide(c, { date: m.date });
+  const g = personalGuide(c, { date: m.date, weekday: calendarWeekday(new Date(), state.loc.tz) });
   // One verdict everywhere: the headline is the shared day label; the line under it is only a friendly tagline.
   const energy = { great: 92, good: 80, steady: 60, care: 38 }[o.level];
   const emoji = { great: '🔥', good: '✨', steady: '😌', care: '🧘' }[o.level];

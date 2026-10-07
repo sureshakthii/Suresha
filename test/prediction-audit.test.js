@@ -572,7 +572,7 @@ test('F2: My Guide, Guru Vakku and Love screen respect faith', () => {
   assert.equal(hindu.hindu, true);
   assert.ok(hindu.playlist.length >= 5, 'Hindu playlist kept');
   const guide = src('public/screens-guide.js');
-  assert.equal((guide.match(/personalGuide\(c, \{ date: m\.date, faith: faithOf\(m\) \}\)/g) || []).length, 2, 'Guide and Guru Vakku pass the faith');
+  assert.equal((guide.match(/personalGuide\(c, \{ date: m\.date, faith: faithOf\(m\)[, ]/g) || []).length, 2, 'Guide and Guru Vakku pass the faith');
   assert.match(guide, /g\.hindu \? '' : `<details[^`]*Traditional Hindu guidance \(optional\)/, 'Ishta Theivam folded away as optional');
   assert.match(guide, /g\.hindu \? '' : `<details[^`]*Siddhar tradition \(optional\)/);
   assert.match(guide, /\$\{g\.playlist\.length \? `/, 'playlist card only when there is a playlist');

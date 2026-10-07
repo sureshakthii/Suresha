@@ -9,7 +9,7 @@
 // Age first (shared/age-guard.js): minors get study / play lines, no money, marriage or business topics and no
 // fasting advice; a small child's brief is written for the caregiver. Wording is reflective ("tradition says"),
 // never a promise, never fear (findProhibited in shared/themes.js scans every line in the tests).
-import { panchang, RASIS, NAKSHATRAS, PLANETS } from './astro.js';
+import { panchang, todaySnapshot, RASIS, NAKSHATRAS, PLANETS } from './astro.js';
 import { tamilDay } from './tamilcal.js';
 import { dailyReview, dayVerdict, DAY_DEITY, runningDasa } from './daily.js';
 import { dayPartTa, planetAdjTa } from './fmt.js';
@@ -136,7 +136,7 @@ export function morningBrief(o = {}) {
   const now = o.now ? new Date(o.now) : new Date();
   const date = isoAt(now, tz);
   const td = o.td || tamilDay(instantAt(date, '12:00', tz), loc.lat, loc.lon, tz);
-  const snap = o.snap || panchang(now, loc.lat, loc.lon, tz);
+  const snap = o.snap || todaySnapshot(now, { ...loc, tz });
   const chart = o.chart || null;
   const faith = o.faith || 'hindu';
   const hindu = isHinduFaith(faith);

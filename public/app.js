@@ -1,4 +1,5 @@
 // Thunai (துணை) — app boot, splash, background sky and the one-second live tick.
+import { fmtDay } from './shared/fmt.js';
 import { state, $, $$, L, ta, STATIC, store, go, goBack, currentScreen, saveSettings, setLoc, toast, BRAND, checkTravelExpiry, placeName } from './core.js';
 import { installWebHistory } from './web-history.js';
 import { refreshSnap } from './screens-main.js';
@@ -236,7 +237,8 @@ async function boot() {
   try {
     const b = window.KJ_BUILD;
     if (b && store.get('kj_seen_build', null) !== b) {
-      if (store.get('kj_seen_build', null)) setTimeout(() => toast(L(`✨ Updated to ${b} — see Today’s guidance at the top`, `✨ புதிய பதிப்பு: ${b} — மேலே "இன்றைய வழிகாட்டல்" பாருங்கள்`), 6000), 2500);
+      const when = /^\d{4}-\d{2}-\d{2}/.test(b) ? fmtDay(b.slice(0, 10), state.lang) : b;
+      if (store.get('kj_seen_build', null)) setTimeout(() => toast(L(`✨ Thunai updated · ${when}`, `✨ துணை புதுப்பிக்கப்பட்டது · ${when}`), 4000), 2500);
       store.set('kj_seen_build', b);
     }
   } catch { /* ignore */ }

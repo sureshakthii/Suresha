@@ -1,7 +1,7 @@
 // Feature screens: Tamil calendar, Porutham, Muhurtham, Ruthu, Parigaram, Thivasam,
 // Natchathira birthday, Jothidar chat and the shareable daily card.
 import { faithOf, isHinduFaith, TRADITIONAL_OPTIONAL } from './shared/faith.js';
-import { panchang, vedicDay, RASIS, NAKSHATRAS } from './shared/astro.js';
+import { panchang, vedicDay, dayAnchor, calendarNoon, calendarDate, RASIS, NAKSHATRAS } from './shared/astro.js';
 import { CATEGORIES, getCategory } from './shared/prasna.js';
 import { tamilMonth, tamilDay, TAMIL_MONTHS } from './shared/tamilcal.js';
 import { matchPorutham, doshams, doshaSamyam } from './shared/porutham.js';
@@ -483,7 +483,7 @@ registerScreen('parigaram', { render: renderParigaram, parent: 'home', needsLoc:
 // ================================================================ THIVASAM / THARPANAM
 function upcomingAmavasai(loc, count = 4) {
   const out = [];
-  let d = new Date();
+  let d = dayAnchor(new Date(), loc.lat, loc.lon, loc.tz); // from today's sunrise, not yesterday's before dawn
   for (let i = 0; i < 100 && out.length < count; i++, d = new Date(d.getTime() + 86400000)) {
     const day = vedicDay(d, loc.lat, loc.lon);
     const p = panchang(new Date(day.sunrise.getTime() + 60000), loc.lat, loc.lon, loc.tz, { withEnds: false });
@@ -612,7 +612,8 @@ function aiAvailable() {
 function todayFacts() {
   refreshSnap();
   const s = state.snap, loc = state.loc;
-  const td = tamilDay(new Date(), loc.lat, loc.lon, loc.tz);
+  // The calendar day at the place (before sunrise `new Date()` would still be yesterday's Vedic day).
+  const td = tamilDay(calendarNoon(new Date(), loc.tz), loc.lat, loc.lon, loc.tz);
   const now = Date.now();
   const m = activeMember();
   return {
@@ -656,7 +657,7 @@ function chatContext(question) {
     detectedTopic: classify(question).intent,
     questionType: (() => { const a = askAnswer(question, m, facts, chatTurns()); return a?.qtype ? `${a.qtype}${a.whichKind ? ` (${a.whichKind})` : ''}` : 'general'; })(),
     replyLanguage: answerLang(question, state.lang) === 'ta' ? 'Tamil' : 'English',
-    today: { date: fDay(new Date(Date.now() + loc.tz * 3600000).toISOString().slice(0, 10)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name, ...todayFacts() },
+    today: { date: fDay(calendarDate(new Date(), loc.tz)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name, ...todayFacts() },
     person: m ? { name: m.name, relation: m.relation, birth: m.relation === 'organization' ? undefined : { date: m.date }, ageBand: ageOf(m).band, birthTimeCertainty: rel.certainty, timeSensitiveResultsAllowed: rel.lagna, rasi: rel.rasi ? chartOf(m).janmaRasi.name : 'uncertain', star: rel.nakshatra ? chartOf(m).janmaNakshatra.name : 'uncertain' } : null,
     verifiedChartFacts: factsForAI(facts),
     lifeDetails: (() => { const l = lifeOf(m); return m ? { faith: l.faith || 'hindu', maritalStatus: l.maritalStatus || 'not given', marriedYear: l.marriedYear || null, children: l.children ?? 'not given', firstChildYear: l.firstChildYear || null } : null; })(),
@@ -851,7 +852,7 @@ function generalContext(question, answer) {
     question,
     questionKind: 'general (festival / vratham / scripture / panchangam) — never read a chart',
     replyLanguage: answerLang(question, state.lang) === 'ta' ? 'Tamil' : 'English',
-    today: { date: fDay(new Date(Date.now() + loc.tz * 3600000).toISOString().slice(0, 10)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name },
+    today: { date: fDay(calendarDate(new Date(), loc.tz)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name },
     calendar: answer.intent === 'general_kb' ? answer.text : null,
     builtInAnswer: answer.honest ? null : answer.text,
   };

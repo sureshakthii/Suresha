@@ -48,7 +48,7 @@ export function mergeAccountFamily(remote, local) {
 // never chats, health notes, goals, marital or children notes, faith or any other field.
 
 /** Fields copied into a family share — birth data for the chart and the name to show. */
-export const SHARE_FIELDS = ['id', 'name', 'nameTa', 'relation', 'gender', 'date', 'time', 'timeCertainty', 'timeWindowMin', 'dstChoice', 'place', 'lat', 'lon', 'tz', 'zone', 'kattam'];
+export const SHARE_FIELDS = ['id', 'name', 'nameTa', 'nameDisplay', 'relation', 'gender', 'date', 'time', 'timeCertainty', 'timeWindowMin', 'dstChoice', 'place', 'lat', 'lon', 'tz', 'zone', 'kattam'];
 const SHARE_STR_MAX = 120;
 
 /** True when this profile may be offered for sharing (not private, not someone else's shared copy). */
@@ -61,6 +61,7 @@ export function shareableProfile(m) {
   for (const k of SHARE_FIELDS) {
     const v = m[k];
     if (v === undefined || v === null || v === '') continue;
+    if (k === 'nameDisplay') { if (['ta', 'en', 'auto'].includes(v)) out.nameDisplay = v; continue; } // how the owner wants the name shown
     if (k === 'kattam') { if (typeof v === 'object' && !Array.isArray(v)) out.kattam = v; continue; }
     if (typeof v === 'number') { if (Number.isFinite(v)) out[k] = v; continue; }
     if (typeof v === 'string') out[k] = v.slice(0, SHARE_STR_MAX);

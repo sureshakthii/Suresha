@@ -6,6 +6,7 @@ import { placeTa, attachZone, zoneOffsetHours } from './shared/places.js';
 import { activeLocation, travelExpired, countryOfLoc, zoneLabel, inIndiaTime, locFromPlace } from './shared/residence.js';
 import { BRAND } from './shared/brand.js';
 import { backupPayload, mergeAccountFamily } from './shared/sync-policy.js';
+import { withNameForms, nameInScript, nameScriptFor, toTamil, toLatin, detectScript } from './shared/name-translit.js';
 
 export { BRAND };
 /** Brand name in the current language. */
@@ -25,7 +26,9 @@ export const store = {
 // Migrate the single profile of earlier versions into the family list.
 const legacy = store.get('kj_profile', null);
 // Old profiles saved only a UTC offset: attach the IANA zone when the place is in the built-in list (historical offsets).
-const initialFamily = store.get('kj_family', legacy ? [{ id: 'me', relation: 'self', ...legacy }] : []).map((m) => attachZone(m));
+// Every profile carries its name in both scripts (shared/name-translit.js): older ones get the Tamil (or English)
+// spelling generated here; a Tamil spelling the person typed is never overwritten.
+const initialFamily = store.get('kj_family', legacy ? [{ id: 'me', relation: 'self', ...legacy }] : []).map((m) => withNameForms(attachZone(m)));
 // Residence (kj_loc — where the person lives now) and an optional temporary travelling place (kj_travel).
 // Neither is ever a birth place: charts use each member's own birth place and zone. Every daily feature reads
 // state.loc = the travelling place while it is active, else the residence (shared/residence.js).
@@ -176,6 +179,8 @@ let syncTimer;
 export const backupConsent = () => store.get('kj_consent', {}).backup ?? true;
 export { mergeAccountFamily };
 export function saveFamily() {
+  // Fill the other-script name of any profile that lacks it (written-chart form, shared or restored profiles).
+  state.family.forEach((m, i) => { const n = withNameForms(m); if (n !== m) state.family[i] = n; });
   store.set('kj_family', state.family);
   store.set('kj_active', state.activeId);
   store.set('kj_ancestors', state.ancestors);
@@ -428,8 +433,15 @@ export const copyright = () => `<footer class="copy">
   <span class="ft-note">${L('Traditional astrology is guidance for your life’s journey; for medical, legal or financial matters, also take qualified advice.', 'பாரம்பரிய ஜோதிடம் உங்கள் வாழ்க்கைப் பயணத்திற்கான வழிகாட்டல்; மருத்துவ, சட்ட, நிதி விஷயங்களில் தகுதியான ஆலோசனையும் பெறுங்கள்.')}</span>
 </footer>`;
 
-/** Name to show for a family member: their Tamil name in Tamil mode when given. */
-export const displayName = (m) => (m ? (ta() && m.nameTa ? m.nameTa : m.name) : '');
+/**
+ * Name to show for a family member, in the script the person chose for it (nameDisplay: 'ta' | 'en'), or in the
+ * app language ('auto', the default). Falls back to transliterating whichever spelling exists.
+ */
+export const displayName = (m) => (m ? nameInScript(m, nameScriptFor(m, state.lang)) : '');
+/** The name as it shows in each app language — { en, ta } for bi() and engine reports that pick by language. */
+export const nameBi = (m) => (m ? { en: nameInScript(m, nameScriptFor(m, 'en')), ta: nameInScript(m, nameScriptFor(m, 'ta')) } : { en: '', ta: '' });
+/** Any typed name (an account name, an ancestor) in the app language's script. */
+export const nameInLang = (s) => { const t = String(s ?? '').trim(); if (!t) return ''; const sc = detectScript(t); return ta() ? (sc === 'en' ? toTamil(t) || t : t) : (sc === 'ta' ? toLatin(t) || t : t); };
 
 /** Small card shown where a feature needs the installed app (server), e.g. on the hosted test page. */
 export const needsServerCard = (what) => `<div class="card glass coming" role="status"><b>⏸️ ${L('Not available yet', 'இப்போது கிடைக்கவில்லை')}</b><p class="small">${what}</p><p class="small muted">${L('This service opens soon in the app. Nothing will be charged.', 'இந்தச் சேவை விரைவில் செயலியில் தொடங்கும். எந்தக் கட்டணமும் வசூலிக்கப்படாது.')}</p></div>`;

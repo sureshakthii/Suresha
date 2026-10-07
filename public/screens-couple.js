@@ -14,7 +14,7 @@ import { marriageReport, partnershipReport, HORIZON_LINES } from './shared/coupl
 import { KEY_FACTORS_TITLE, DETAILED_VIEW_TITLE, DISCUSSION_TOPICS, DISCUSSION_TITLE } from './shared/porutham.js';
 import {
   state, chartOf, hasLagna, stabilityChip, doshamReference, $, $$, L, ta, esc, bi, GLYPH, planetName, nakName, rasiName, fmtIsoDate, registerScreen, subHeader, aiTask, speak, toast,
-  displayName, saveFamily, placeName,
+  displayName, nameBi, saveFamily, placeName,
 } from './core.js';
 import { placeSearch } from './account.js';
 import { isLocked, lockCard, pairKey } from './growth.js';
@@ -123,14 +123,14 @@ function resolve(slot, label) {
   const f = forms[slot];
   if (f.mode === 'family' && adultPool().length) {
     const m = adultPool().find((x) => x.id === f.memberId) || adultPool()[0];
-    return { member: m, chart: chartOf(m), name: { en: m.name, ta: displayName(m) } };
+    return { member: m, chart: chartOf(m), name: nameBi(m) };
   }
   if (!f.name || !f.date || !f.time || f.lat == null) throw new Error(L(`Please enter ${label}'s name, birth date, time and place (pick the city from the list).`, `${label} — பெயர், பிறந்த தேதி, நேரம், இடம் (பட்டியலிலிருந்து நகரம்) உள்ளிடவும்.`));
   if (!isAdult(f.date, { tz: state.loc?.tz })) throw new Error(L(`${label}: matching is only for people aged 18 and over.`, `${label}: பொருத்தம் 18 வயதுக்கு மேற்பட்டவர்களுக்கு மட்டும்.`));
   if (f.save && !f.consent) throw new Error(`${label}: ${permissionError()}`);
   const m = { id: `${slot}_${f.date}_${f.time}`, name: f.name.trim(), gender: f.gender, date: f.date, time: f.time.length === 5 ? `${f.time}:00` : f.time, place: f.place, lat: Number(f.lat), lon: Number(f.lon), tz: Number(f.tz), zone: f.zone || undefined, relation: 'other' };
   if (f.save && !state.family.some((x) => x.date === m.date && x.time === m.time && x.name === m.name)) saveWithConsent(m);
-  return { member: m, chart: birthChart(m), name: { en: m.name, ta: m.name } };
+  return { member: m, chart: birthChart(m), name: nameBi(m) };
 }
 
 // ---------------------------------------------------------------- shared porutham view (also used by screens-tools)
@@ -360,8 +360,8 @@ function showCouple(bride, groom) {
     t.classList.add('typing');
     // The marriage context is never sent to the reading: it is not an astrological input.
     const context = {
-      bride: { name: names[0].en, star: bride.chart.janmaNakshatra.name, rasi: bride.chart.janmaRasi.name, lagna: bride.chart.lagna?.rasiName },
-      groom: { name: names[1].en, star: groom.chart.janmaNakshatra.name, rasi: groom.chart.janmaRasi.name, lagna: groom.chart.lagna?.rasiName },
+      bride: { name: bride.member?.name || names[0].en, star: bride.chart.janmaNakshatra.name, rasi: bride.chart.janmaRasi.name, lagna: bride.chart.lagna?.rasiName },
+      groom: { name: groom.member?.name || names[1].en, star: groom.chart.janmaNakshatra.name, rasi: groom.chart.janmaRasi.name, lagna: groom.chart.lagna?.rasiName },
       weddingDate: coupleUi.wedding, reportHorizon: r.reportHorizon.label.en, poruthamFactorsAgree: `${r.porutham.agree} of ${r.porutham.rows.length}`, keyFactors: r.porutham.keyFactors.map((k) => `${k.en}: ${k.label.en}`),
       manaPorutham: r.mana.areas.map((x) => x.name.en),
       doshaSamyam: r.samyam.map((n) => n.en), deepChecks: r.deep.checks.map((c) => `${c.name.en}: ${c.ok ? 'ok' : 'care'} — ${c.note.en}`),

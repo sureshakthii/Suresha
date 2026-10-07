@@ -2,7 +2,7 @@
 // The tool list itself lives in tool-registry.js (grouped by intent, searchable in Tamil / English / Tanglish).
 import {
   state, $, $$, L, ta, esc, STATIC, api, toast, fmtIsoDate, needsServerCard, go, registerScreen, subHeader, saveFamily, copyright, store,
-  activeMember, chartOf, displayName, nakName, rasiName, RELATIONS, bi, BRAND,
+  activeMember, chartOf, displayName, nameInLang, nakName, rasiName, RELATIONS, bi, BRAND,
 } from './core.js';
 import { icon, iconChip } from './icons.js';
 import { GROUPS, TOOLS, toolById, searchTools } from './tool-registry.js';
@@ -88,7 +88,7 @@ function renderFamilyHub(sec, opts = {}) {
       <div class="card-title"><span>${L('Profiles', 'சுயவிவரங்கள்')} (${people.length}/8)</span><button class="link-btn" data-go="family">${L('Manage', 'நிர்வகி')}</button></div>
       ${fam.length ? fam.map((m) => { const c = chartOf(m); return `<button class="fam-row${m.id === state.activeId ? ' active' : ''}" data-id="${esc(m.id)}">
         <span class="avatar">${esc(([...displayName(m)][0] || '').toUpperCase())}</span>
-        <span class="fam-name">${esc(displayName(m))}${m.private ? ' 🔒' : ''}<small>${m.shared ? `${L('Shared by', 'பகிர்ந்தவர்')} ${esc(m.shared.by || L('family', 'குடும்பம்'))}${m.shared.permission === 'edit' ? '' : ` (${L('view only', 'பார்வைக்கு மட்டும்')})`} · ` : `${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))} · `}${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}</small></span>
+        <span class="fam-name">${esc(displayName(m))}${m.private ? ' 🔒' : ''}<small>${m.shared ? `${L('Shared by', 'பகிர்ந்தவர்')} ${esc(nameInLang(m.shared.by) || L('family', 'குடும்பம்'))}${m.shared.permission === 'edit' ? '' : ` (${L('view only', 'பார்வைக்கு மட்டும்')})`} · ` : `${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))} · `}${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}</small></span>
         ${m.id === state.activeId ? `<span class="tag good">${L('Active', 'தேர்வு')}</span>` : ''}</button>`; }).join('')
     : `<p class="muted">${L('No profiles yet. The calendar works without one; add birth details for personal guidance.', 'இன்னும் சுயவிவரம் இல்லை. நாட்காட்டிக்குத் தேவையில்லை; தனிப்பட்ட வழிகாட்டலுக்குப் பிறப்பு விவரம் சேர்க்கவும்.')}</p>`}
       ${people.length < 8 ? `<button class="btn-gold" data-go="family" data-param='{"add":true}'>${icon('plus', { size: 18 })} ${L('Add a family member', 'குடும்ப உறுப்பினர் சேர்')}</button>` : `<p class="small muted">${L('8 of 8 profiles used.', '8 சுயவிவரங்களும் பயன்பாட்டில்.')}</p>`}

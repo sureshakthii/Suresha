@@ -1,5 +1,5 @@
 // App-shell cache so the Jathagam and live Panchangam work offline. API calls always go to the network.
-const CACHE = 'kj-v24';
+const CACHE = 'kj-v25';
 const SHELL = [
   '/', '/index.html', '/styles.css', '/app.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/screens-world.js',
   '/screens-life.js', '/screens-plans.js', '/screens-couple.js', '/couple-cards.js', '/shared/marriage-context.js', '/screens-guide.js', '/remind.js', '/screens-roadmap.js',
@@ -19,7 +19,7 @@ const SHELL = [
   '/shared/rules/yogas.js', '/shared/rules/disputed.js', '/shared/rules/define.js', '/vendor/astronomy-engine.js', '/icon.svg',
   '/phone-input.js', '/family-share.js', '/shared/countries.js', '/shared/country-data.js', '/shared/world-places.js', '/shared/currency.js',
   '/temple-search.js', '/desktop-nav.js', '/compat-card.js', '/shared/compat.js', '/residence-ui.js', '/shared/residence.js', '/shared/airports.js',
-  '/shared/family-delete.js', '/logo.svg', '/manifest.webmanifest'];
+  '/shared/family-delete.js', '/shared/name-translit.js', '/logo.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

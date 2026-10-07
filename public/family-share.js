@@ -2,7 +2,7 @@
 // Only birth details are shared (shared/sync-policy.js shareableProfile). Private profiles never leave this phone;
 // chats, health notes and goals are never shared. Revoking deletes the server copy; other phones drop it on sync.
 import {
-  state, $, $$, L, esc, api, STATIC, store, go, toast, saveFamily, displayName,
+  state, $, $$, L, esc, api, STATIC, store, go, toast, saveFamily, displayName, nameInLang,
 } from './core.js';
 import { canShareProfile, shareableProfile, mergeSharedProfiles } from './shared/sync-policy.js';
 
@@ -167,9 +167,9 @@ function render(box, ov, onChange) {
   const received = state.family.filter((m) => m.shared);
   box.innerHTML = `<div class="card glass fs-card"><h3>👨‍👩‍👧 ${L('Shared family', 'பகிர்ந்த குடும்பம்')}${g.name ? ` · ${esc(g.name)}` : ''}</h3>
     <div class="fs-section" aria-label="${esc(L('Members', 'உறுப்பினர்கள்'))}"><p class="small muted">${L('Members', 'உறுப்பினர்கள்')} (${g.members.length}/${g.maxMembers})</p>
-      ${g.members.map((m) => `<div class="fs-row"><span class="avatar">${esc(([...(m.name || '?')][0] || '?').toUpperCase())}</span>
-        <div class="fs-main"><b>${esc(m.name || L('Member', 'உறுப்பினர்'))}</b>${m.you ? ` <span class="pill">${L('You', 'நீங்கள்')}</span>` : ''}<div class="small muted">${esc(roleText(m.role))}</div></div>
-        ${owner && !m.you ? `<button class="link-btn danger" data-remove="${esc(m.userId)}" data-name="${esc(m.name || '')}">${L('Remove', 'நீக்கு')}</button>` : ''}</div>`).join('')}
+      ${g.members.map((m) => `<div class="fs-row"><span class="avatar">${esc(([...(nameInLang(m.name) || '?')][0] || '?').toUpperCase())}</span>
+        <div class="fs-main"><b>${esc(nameInLang(m.name) || L('Member', 'உறுப்பினர்'))}</b>${m.you ? ` <span class="pill">${L('You', 'நீங்கள்')}</span>` : ''}<div class="small muted">${esc(roleText(m.role))}</div></div>
+        ${owner && !m.you ? `<button class="link-btn danger" data-remove="${esc(m.userId)}" data-name="${esc(nameInLang(m.name))}">${L('Remove', 'நீக்கு')}</button>` : ''}</div>`).join('')}
       ${g.members.length < g.maxMembers ? `<button class="btn-gold" id="fsInvite">➕ ${L('Invite an adult', 'பெரியவரை அழை')}</button>` : ''}
       <div id="fsInviteOut"></div>
     </div>
@@ -181,7 +181,7 @@ function render(box, ov, onChange) {
         const s = shareByProfile.get(m.id);
         const ok = canShareProfile(m);
         const val = s ? s.permission : 'none';
-        const who = s && s.audience.length ? s.audience.map((a) => a.name || L('Member', 'உறுப்பினர்')).join(', ') : '';
+        const who = s && s.audience.length ? s.audience.map((a) => nameInLang(a.name) || L('Member', 'உறுப்பினர்')).join(', ') : '';
         return `<div class="fs-row"><div class="fs-main"><b>${esc(displayName(m))}</b>${m.private ? ' 🔒' : ''}
           <div class="small muted">${!ok ? L('Private — stays on this phone', 'தனிப்பட்டது — இந்தக் கைப்பேசியில் மட்டும்') : s ? `${L('Visible to', 'பார்க்கக்கூடியவர்')}: ${esc(who || L('no one yet', 'இன்னும் யாரும் இல்லை'))}` : L('Only you', 'நீங்கள் மட்டும்')}</div></div>
           <label class="sr-only" for="fsp-${esc(m.id)}">${L('Sharing for', 'பகிர்வு')} ${esc(displayName(m))}</label>
@@ -194,7 +194,7 @@ function render(box, ov, onChange) {
     </div>
     <div class="fs-section"><p class="small muted">${L('Shared with me', 'எனக்குப் பகிரப்பட்டவை')}</p>
       ${received.length ? received.map((m) => `<div class="fs-row"><div class="fs-main"><b>${esc(displayName(m))}</b>
-        <div class="small muted">${L('Shared by', 'பகிர்ந்தவர்')} ${esc(m.shared.by || L('a member', 'ஒரு உறுப்பினர்'))} · ${m.shared.permission === 'edit' ? L('you can edit', 'நீங்கள் திருத்தலாம்') : L('view only', 'பார்வைக்கு மட்டும்')}</div></div></div>`).join('')
+        <div class="small muted">${L('Shared by', 'பகிர்ந்தவர்')} ${esc(nameInLang(m.shared.by) || L('a member', 'ஒரு உறுப்பினர்'))} · ${m.shared.permission === 'edit' ? L('you can edit', 'நீங்கள் திருத்தலாம்') : L('view only', 'பார்வைக்கு மட்டும்')}</div></div></div>`).join('')
         : `<p class="small muted">${L('Nothing shared with you yet.', 'இன்னும் எதுவும் பகிரப்படவில்லை.')}</p>`}
     </div>
     ${BOUNDARY()}

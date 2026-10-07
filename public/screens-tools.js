@@ -111,7 +111,7 @@ function renderCalDay(d, c) {
   $('#calDay').innerHTML = `<div class="card glass">
     <div class="card-title"><span>${fmtIsoDate(d.date)} · ${esc(bi(d.weekday))}</span><span class="pill">${esc(ta() ? `${d.tamil.monthTa} ${d.tamil.day}` : `${d.tamil.monthEn} ${d.tamil.day}`)}</span></div>
     ${d.festivals.length || d.muhurthaDay ? `<div class="fest-row">${d.festivals.map((f) => `<span class="fest ${f.kind}">${f.kind === 'festival' ? '🎉' : '🪔'} ${esc(bi(f))}</span>`).join('')}${d.muhurthaDay ? `<span class="fest muhurtham">💐 ${L('Subha Muhurtha day', 'சுப முகூர்த்த நாள்')}</span>` : ''}</div>` : ''}
-    ${cs ? `<p class="tag bad block">⚠️ ${L(`Chandrashtamam for ${c.name}`, `${c.name} அவர்களுக்குச் சந்திராஷ்டமம்`)}</p>` : ''}
+    ${cs ? `<p class="tag bad block">⚠️ ${L(`Chandrashtamam for ${esc(displayName(activeMember()))}`, `${esc(displayName(activeMember()))} அவர்களுக்குச் சந்திராஷ்டமம்`)}</p>` : ''}
     <dl class="kv">
       <dt>${L('Sunrise / Sunset', 'உதயம் / அஸ்தமனம்')}</dt><dd>${fmtTime(d.sunrise, loc.tz)} / ${fmtTime(d.sunset, loc.tz)}</dd>
       <dt>${L('Tithi', 'திதி')}</dt><dd>${esc(ta() ? d.tithi.ta : `${d.paksha} ${d.tithi.name}`)} ${L('till', 'வரை')} ${fmtTime(d.tithi.endsAt, loc.tz)}</dd>
@@ -241,7 +241,7 @@ function renderMuhurtham(sec, params = {}) {
   $('#muBtn').addEventListener('click', async () => {
     $('#muResult').innerHTML = `<div class="card glass">${loader(L('Checking every half hour of every day…', 'ஒவ்வொரு நாளின் ஒவ்வொரு அரை மணி நேரமும் ஆராயப்படுகிறது…'))}</div>`;
     await wait();
-    const persons = muForm.persons.map((id) => muPeople().find((m) => m.id === id)).filter(Boolean).map((m) => { const c = chartOf(m); return { name: m.name, janmaNakshatra: c.janmaNakshatra.index, janmaRasi: c.janmaRasi.index }; });
+    const persons = muForm.persons.map((id) => muPeople().find((m) => m.id === id)).filter(Boolean).map((m) => { const c = chartOf(m); return { name: displayName(m), janmaNakshatra: c.janmaNakshatra.index, janmaRasi: c.janmaRasi.index }; });
     const res = findMuhurtham({ category: muForm.category, loc: state.loc, persons, days: muForm.days });
     renderMuResults(res, '#muResult', { showReasons: muForm.category === 'vehicle' });
   });
@@ -321,7 +321,7 @@ function renderRuthu(sec) {
     const at = new Date(Date.UTC(yy, mm - 1, dd, hh, mi) - loc.tz * 3600000);
     let person;
     const gid = $('#ruGirl')?.value;
-    if (gid) { const c = chartOf(state.family.find((m) => m.id === gid)); person = { name: c.name, janmaNakshatra: c.janmaNakshatra.index, janmaRasi: c.janmaRasi.index }; }
+    if (gid) { const gm = state.family.find((m) => m.id === gid); const c = chartOf(gm); person = { name: displayName(gm), janmaNakshatra: c.janmaNakshatra.index, janmaRasi: c.janmaRasi.index }; }
     else { const s = Number($('#ruStar').value), p = Number($('#ruPada').value); person = { name: L('Girl', 'பெண்'), janmaNakshatra: s, janmaRasi: rasiOfStarPada(s, p) }; }
     $('#ruResult').innerHTML = `<div class="card glass">${loader(L('Calculating…', 'கணிக்கப்படுகிறது…'))}</div>`;
     await wait();
@@ -483,9 +483,9 @@ function renderThivasam(sec) {
       const [y, mo, d] = a.date.split('-').map(Number); const [h, mi] = a.time.split(':').map(Number);
       const death = new Date(Date.UTC(y, mo - 1, d, h, mi) - a.tz * 3600000);
       const th = thivasamDates({ death, loc: { lat: a.lat, lon: a.lon, tz: a.tz } });
-      return `<div class="card glass"><div class="card-title"><span>🙏 ${esc(a.name)}</span><button class="link-btn del-anc" data-id="${esc(a.id)}">${L('Remove', 'நீக்கு')}</button></div>
+      return `<div class="card glass"><div class="card-title"><span>🙏 ${esc(displayName(a))}</span><button class="link-btn del-anc" data-id="${esc(a.id)}">${L('Remove', 'நீக்கு')}</button></div>
         <p>${esc(ta() ? `${th.month.ta} மாதம் · ${th.tithi.paksha === 'Shukla' ? 'வளர்பிறை' : 'தேய்பிறை'} ${th.tithi.ta}` : `${th.month.en} month · ${th.tithi.paksha} ${th.tithi.name}`)}</p>
-        ${th.dates.map((x) => `<div class="best">📅 <b>${fmtIsoDate(x.date)}</b> · ${esc(bi(x.weekday))} · ${esc(ta() ? `${x.tamil.monthTa} ${x.tamil.day}` : `${x.tamil.monthEn} ${x.tamil.day}`)} ${remindBtn({ title: `${L('Thivasam', 'திவசம்')} · ${a.name || ''}`, at: atLocal(x.date, '06:00') })}</div>`).join('')}</div>`;
+        ${th.dates.map((x) => `<div class="best">📅 <b>${fmtIsoDate(x.date)}</b> · ${esc(bi(x.weekday))} · ${esc(ta() ? `${x.tamil.monthTa} ${x.tamil.day}` : `${x.tamil.monthEn} ${x.tamil.day}`)} ${remindBtn({ title: `${L('Thivasam', 'திவசம்')} · ${displayName(a)}`, at: atLocal(x.date, '06:00') })}</div>`).join('')}</div>`;
     }).join('') || `<p class="muted center">${L('No ancestors added yet.', 'இன்னும் யாரும் சேர்க்கப்படவில்லை.')}</p>`;
     $$('.del-anc').forEach((b) => b.addEventListener('click', () => { state.ancestors = state.ancestors.filter((x) => x.id !== b.dataset.id); saveFamily(); renderThivasam(sec); }));
     $('#amaList').innerHTML = upcomingAmavasai(loc).map((x) => `<div class="factor"><span>🌑 ${fmtIsoDate(x.date)}</span><b class="zero">${esc(bi(x.weekday))}</b></div>`).join('');

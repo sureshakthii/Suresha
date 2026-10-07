@@ -10,8 +10,9 @@ import { locationSettingsHtml, bindLocationSettings } from './residence-ui.js';
 import {
   state, $, $$, L, ta, esc, bi, api, STATIC, store, go, registerScreen, subHeader, saveFamily, saveSettings, setLoc,
   toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright, BRAND, supportCard,
-  placeName, mergeAccountFamily, backupConsent,
+  placeName, mergeAccountFamily, backupConsent, nameInLang,
 } from './core.js';
+import { toTamil, toLatin, detectScript, nameInScript } from './shared/name-translit.js';
 import { track } from './growth.js';
 import { syncShares, pendingJoinCode, mountSharedFamily, pushSharedEdit } from './family-share.js';
 import { mergeGoals } from './shared/goals.js';
@@ -187,7 +188,7 @@ async function verifyOtp() {
       saveFamily(); // upload anything that was only on this device
     }
     login.step = 'choose';
-    toast(`🙏 ${L('Welcome', 'நல்வரவு')}${state.user.name ? `, ${state.user.name}` : ''}!`);
+    toast(`🙏 ${L('Welcome', 'நல்வரவு')}${state.user.name ? `, ${nameInLang(state.user.name)}` : ''}!`);
     afterLogin(name);
   } catch (e) {
     err.textContent = e.message;
@@ -276,10 +277,75 @@ function dstCheck(zone, date, time) {
   try { const z = zonedToUtc(date, time, zone); return z.ambiguous || z.nonexistent ? z : null; } catch { return null; }
 }
 
+// ---------------------------------------------------------------- name in both scripts (shared/name-translit.js)
+// One main Name box takes English or Tamil; the other script fills itself as the person types (editable). A
+// corrected spelling is kept (nameTaEdited / nameEnEdited) until they tap ↻. "Show this name in" chooses the
+// script used everywhere in the app (nameDisplay: 'ta' | 'en' | 'auto' = app language).
+const tamilMain = (s) => { const sc = detectScript(s); return sc === 'ta' || (sc === 'mixed' && (s.match(/[\u0B80-\u0BFF]/g) || []).length > (s.match(/[A-Za-z]/g) || []).length); };
+function nameFields(m) {
+  const main = m.nameScript === 'ta' ? (m.nameTa || m.name || '') : (m.name || '');
+  const show = ['ta', 'en', 'auto'].includes(m.nameDisplay) ? m.nameDisplay : 'auto';
+  return `<div class="row2 name-row">
+      <label>${L('Name (English or Tamil)', 'பெயர் (தமிழ் அல்லது English)')}<input name="name" required maxlength="60" autocomplete="off" autocapitalize="words" value="${esc(main)}"></label>
+      <div class="name-alt"><label for="nameAlt" id="nameAltLab">${L('Name in Tamil', 'தமிழில் பெயர்')}</label><input id="nameAlt" name="nameAlt" maxlength="60" lang="ta" autocomplete="off">
+        <div class="name-hint"><span id="nameHint" class="small"></span><button type="button" class="link-btn small" id="nameRegen" hidden>↻ ${L('re-generate', 'மீண்டும் உருவாக்கு')}</button></div></div></div>
+    <fieldset class="name-show"><legend>${L('Show this name in', 'பெயரை எந்த எழுத்தில் காட்ட')}</legend>
+      <div class="seg" role="radiogroup">${[['ta', 'தமிழ்', 'தமிழ்'], ['en', 'English', 'English'], ['auto', 'Follow app language', 'செயலி மொழிப்படி']].map(([id, en, tx]) => `<label class="seg-opt"><input type="radio" name="nameDisplay" value="${id}"${show === id ? ' checked' : ''}> <span lang="${id === 'ta' ? 'ta' : id === 'en' ? 'en' : ''}">${L(en, tx)}</span></label>`).join('')}</div>
+      <p class="small muted" id="namePreview"></p></fieldset>`;
+}
+
+/** Live other-script name: debounced fill, manual corrections kept, ↻ to regenerate. Returns read() for saving. */
+function bindNameFields(f, m) {
+  const main = f.elements.name, alt = f.elements.nameAlt;
+  const nm = { ta: m.nameTa || '', en: m.nameScript === 'ta' ? (m.name || '') : '', taEdited: !!m.nameTaEdited, enEdited: !!m.nameEnEdited };
+  const mode = () => (tamilMain(main.value) ? 'en' : 'ta'); // the script of the second box
+  const gen = (md, s) => (md === 'ta' ? toTamil(s) : toLatin(s));
+  const hint = () => {
+    const md = mode(), edited = md === 'ta' ? nm.taEdited : nm.enEdited;
+    $('#nameAltLab', f).textContent = md === 'ta' ? L('Name in Tamil', 'தமிழில் பெயர்') : L('Name in English', 'ஆங்கிலத்தில் பெயர்');
+    alt.lang = md;
+    $('#nameHint', f).textContent = !main.value.trim() ? L('Fills itself as you type the name', 'பெயரை எழுதும்போது தானாக நிரம்பும்')
+      : edited ? `✎ ${L('your spelling — kept', 'உங்கள் எழுத்துக்கூட்டல் — மாறாது')}` : `✓ ${L('auto — you can correct it', 'தானாக — திருத்தலாம்')}`;
+    $('#nameHint', f).className = `small ${edited ? 'name-mine' : 'name-auto'}`;
+    $('#nameRegen', f).hidden = !edited || !main.value.trim();
+    const pick = f.elements.nameDisplay.value || 'auto';
+    const r = read();
+    const want = pick === 'auto' ? (ta() ? 'ta' : 'en') : pick;
+    $('#namePreview', f).textContent = r.name || r.nameTa ? `${L('Shown as', 'காட்டப்படுவது')}: ${nameInScript(r, want)}` : '';
+  };
+  const fill = () => {
+    const s = main.value.trim(), md = mode();
+    if (md === 'ta' && !nm.taEdited) nm.ta = gen('ta', s);
+    if (md === 'en' && !nm.enEdited) nm.en = gen('en', s);
+    alt.value = md === 'ta' ? nm.ta : nm.en;
+    hint();
+  };
+  let timer;
+  main.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(fill, 220); });
+  alt.addEventListener('input', () => {
+    const md = mode(), v = alt.value.trim(), auto = gen(md, main.value.trim());
+    nm[md] = alt.value;
+    nm[`${md}Edited`] = Boolean(v) && v !== auto; // emptied or same as generated: back to automatic
+    hint();
+  });
+  $('#nameRegen', f).addEventListener('click', () => { nm[`${mode()}Edited`] = false; fill(); alt.focus(); });
+  $$('input[name="nameDisplay"]', f).forEach((r) => r.addEventListener('change', hint));
+  function read() {
+    const s = main.value.trim();
+    if (tamilMain(s)) {
+      const en = (nm.enEdited && nm.en.trim()) || toLatin(s) || s;
+      return { name: en, nameTa: s, nameScript: 'ta', nameEnEdited: nm.enEdited && Boolean(nm.en.trim()), nameTaEdited: false, nameAutoFrom: s };
+    }
+    const tamil = (nm.taEdited && nm.ta.trim()) || toTamil(s);
+    return { name: s, nameTa: tamil || undefined, nameScript: 'en', nameTaEdited: nm.taEdited && Boolean(nm.ta.trim()), nameEnEdited: false, nameAutoFrom: s };
+  }
+  fill();
+  return { read: () => { clearTimeout(timer); fill(); return { ...read(), nameDisplay: f.elements.nameDisplay.value || 'auto' }; } };
+}
+
 function memberForm(m, first) {
   return `<form id="memberForm" autocomplete="off">
-    <div class="row2"><label>${L('Name', 'பெயர்')}<input name="name" required maxlength="60" value="${esc(m.name || '')}"></label>
-      <label>${L('Name in Tamil (optional)', 'தமிழில் பெயர் (விருப்பம்)')}<input name="nameTa" maxlength="60" lang="ta" placeholder="சுரேஷ்" value="${esc(m.nameTa || '')}"></label></div>
+    ${nameFields(m)}
     <p class="muted small">${L('For a company or team, choose "Company / Team" and enter its founding (incorporation) date, time and place.', 'நிறுவனம் / குழுவிற்கு "நிறுவனம் / குழு" தேர்வு செய்து, தொடங்கிய தேதி, நேரம், இடம் உள்ளிடவும்.')}</p>
     <div class="row2">
       <label>${L('Relation', 'உறவு')}<select name="relation">${RELATIONS.map((r) => `<option value="${r.id}"${(m.relation || (first ? 'self' : 'other')) === r.id ? ' selected' : ''}>${esc(bi(r))}</option>`).join('')}</select></label>
@@ -373,7 +439,8 @@ function renderFamily(sec, params = {}) {
     f.elements.tz.addEventListener('input', (e) => { if (e.isTrusted) { f.elements.zone.value = ''; showZone(); } }); // typed by hand: keep the fixed offset
     for (const k of ['date', 'time']) f.elements[k].addEventListener('change', showZone);
     showZone();
-    f.addEventListener('submit', (e) => { e.preventDefault(); saveMember(f); });
+    const names = bindNameFields(f, editing);
+    f.addEventListener('submit', (e) => { e.preventDefault(); saveMember(f, names.read()); });
     f.addEventListener('change', (e) => {
       if (e.target.name !== 'timeCertainty') return;
       const v = e.target.value;
@@ -390,7 +457,7 @@ function renderFamily(sec, params = {}) {
     ${state.family.map((m) => { const c = chartOf(m); return `<div class="card glass fam-card${m.id === state.activeId ? ' active' : ''}">
       <span class="avatar">${esc(([...displayName(m)][0] || '').toUpperCase())}</span>
       <div style="flex:1"><b>${esc(displayName(m))}</b> <span class="pill">${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))}</span>
-        ${m.shared ? `<div class="small"><span class="tag ${m.shared.permission === 'edit' ? 'good' : 'warn'}">${L('Shared by', 'பகிர்ந்தவர்')} ${esc(m.shared.by || L('family', 'குடும்பம்'))} · ${m.shared.permission === 'edit' ? L('can edit', 'திருத்தலாம்') : L('view only', 'பார்வைக்கு மட்டும்')}</span></div>` : ''}
+        ${m.shared ? `<div class="small"><span class="tag ${m.shared.permission === 'edit' ? 'good' : 'warn'}">${L('Shared by', 'பகிர்ந்தவர்')} ${esc(nameInLang(m.shared.by) || L('family', 'குடும்பம்'))} · ${m.shared.permission === 'edit' ? L('can edit', 'திருத்தலாம்') : L('view only', 'பார்வைக்கு மட்டும்')}</span></div>` : ''}
         <div class="muted small">${esc(m.date)} · ${certaintyOf(m) === 'unknown' ? L('time unknown', 'நேரம் தெரியாது') : `${esc(m.time.slice(0, 5))}${certaintyOf(m) === 'approx' ? ` (± ${m.timeWindowMin || 60} ${L('min', 'நிமி')})` : ''}`} · ${esc(placeName(m.place))}</div>
         <div class="small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}${certaintyOf(m) === 'exact' ? ` · ${L('Lagnam', 'லக்னம்')} ${esc(rasiName(c.lagna.rasi))}` : ''}</div></div>
       <div class="fam-actions">${m.id === state.activeId ? `<span class="tag good">${L('Active', 'தேர்வு')}</span>` : `<button class="chip-btn" data-use="${esc(m.id)}">${L('Use', 'தேர்வு')}</button>`}
@@ -550,7 +617,7 @@ function showUndo(name, snapshot) {
   });
 }
 
-function saveMember(f) {
+function saveMember(f, names) {
   const timeCertainty = f.elements.timeCertainty.value || 'exact';
   const raw = f.elements.time.value;
   if (timeCertainty !== 'unknown' && f.dataset.dst === 'nonexistent') { $('#formErr').textContent = L('This birth time did not exist on the clock that day (daylight saving). Please correct it.', 'அன்று இந்தப் பிறந்த நேரம் கடிகாரத்தில் இல்லை (பகல் சேமிப்பு நேரம்). திருத்தவும்.'); return; }
@@ -565,7 +632,7 @@ function saveMember(f) {
     children: /^\d{1,2}$/.test(f.elements.children.value.trim()) ? Number(f.elements.children.value.trim()) : undefined,
     firstChildYear: /^(19|20)\d{2}$/.test(f.elements.firstChildYear.value.trim()) ? Number(f.elements.firstChildYear.value.trim()) : undefined,
     id: editing.id || Math.random().toString(36).slice(2, 10),
-    name: f.elements.name.value.trim(), nameTa: f.elements.nameTa.value.trim() || undefined, relation: f.elements.relation.value, gender: f.elements.gender.value,
+    ...names, relation: f.elements.relation.value, gender: f.elements.gender.value,
     date: f.elements.date.value, time, place: f.elements.place.value.trim(),
     lat: Number(f.elements.lat.value), lon: Number(f.elements.lon.value), tz: Number(f.elements.tz.value),
     zone: isValidZone(f.elements.zone.value) ? f.elements.zone.value : undefined,
@@ -595,8 +662,8 @@ export const isAdmin = () => !!(state.user?.admin || state.user?.isAdmin || ['ad
 function renderMore(sec) {
   const u = state.user;
   sec.innerHTML = `${subHeader(L('Settings & account', 'அமைப்புகள் & கணக்கு'), '', 'home')}<div class="card glass account-card">
-      <span class="avatar big">${esc(u?.name ? [...u.name][0].toUpperCase() : '🙏')}</span>
-      <div style="flex:1">${u ? `<b>${esc(displayName(state.family.find((m) => m.relation === 'self')) || u.name || L('Signed in', 'உள்நுழைந்துள்ளீர்கள்'))}</b><div class="muted small">${esc(u.phone ? formatPhone(u.phone) : u.email || (u.hasFacebook ? 'Facebook' : ''))}${u.demo ? ' · demo' : ''}</div>`
+      <span class="avatar big">${esc(u ? ([...(displayName(state.family.find((m) => m.relation === 'self')) || nameInLang(u.name))][0] || '🙏').toUpperCase() : '🙏')}</span>
+      <div style="flex:1">${u ? `<b>${esc(displayName(state.family.find((m) => m.relation === 'self')) || nameInLang(u.name) || L('Signed in', 'உள்நுழைந்துள்ளீர்கள்'))}</b><div class="muted small">${esc(u.phone ? formatPhone(u.phone) : u.email || (u.hasFacebook ? 'Facebook' : ''))}${u.demo ? ' · demo' : ''}</div>`
     : `<b>${L('Not signed in', 'உள்நுழையவில்லை')}</b><div class="muted small">${L('Sign in to back up your family', 'குடும்ப விவரங்களைப் பாதுகாக்க உள்நுழையவும்')}</div>`}</div>
       ${u ? `<button class="chip-btn" id="signOut">${L('Sign out', 'வெளியேறு')}</button>` : `<button class="chip-btn" data-go="login">${L('Sign in', 'உள்நுழை')}</button>`}</div>
     <button class="premium-cta" data-go="plans">${iconChip('plans', { size: 20, cls: 'mi-icon' })}${L(`${BRAND.personalEn} & ${BRAND.familyEn}`, `${BRAND.personalTa} & ${BRAND.familyTa}`)} ›</button>

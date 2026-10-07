@@ -24,7 +24,7 @@ function chartFor(slot) {
   const m = { name: f.name.trim(), gender: f.gender, date: f.date, time, place: f.place || '', ...loc };
   if (f.save && !f.consent) throw new Error(permissionError());
   if (f.save && !state.family.some((x) => x.date === m.date && x.name === m.name)) saveWithConsent({ ...m, relation: 'other', timeCertainty: f.time ? 'exact' : 'unknown' });
-  return { chart: birthChart(m), name: m.name, gender: m.gender, timeKnown: !!f.time };
+  return { chart: birthChart(m), name: displayName(m), gender: m.gender, timeKnown: !!f.time };
 }
 
 function noteRow(n) {

@@ -57,11 +57,11 @@ export function currentWeek() {
   const today = isoAt(new Date(), loc);
   // Dated next steps of saved goals (screens-goals.js, kj_goals) — corrected on the goal screen, shown here.
   const goalSteps = (() => { try { return weekSteps(store.get('kj_goals', null), { lang: ta() ? 'ta' : 'en', profileOf: (id) => { const p = state.family.find((m) => m.id === id) || o; return p ? ageProfile(p, { tz: loc.tz }) : null; } }); } catch { return []; } })();
-  const key = JSON.stringify([today, loc, plan.tasks, goalSteps, plan.observances, state.family.map((m) => [m.id, m.date, m.time, m.name, m.relation]), state.ancestors, reminders.map((r) => r.id), profile.band, state.lang, Math.floor(Date.now() / 600000)]);
+  const key = JSON.stringify([today, loc, plan.tasks, goalSteps, plan.observances, state.family.map((m) => [m.id, m.date, m.time, m.name, m.nameTa, m.nameDisplay, m.relation]), state.ancestors, reminders.map((r) => r.id), profile.band, state.lang, Math.floor(Date.now() / 600000)]);
   if (cache && cache.key === key) return cache.week;
   const week = buildWeek({
     start: today, loc, now: new Date(), profile: { minor: profile.minor, age: profile.age ?? 30 },
-    family: familyInputs(), ancestors: state.ancestors || [], chosenObservances: plan.observances, tasks: plan.tasks, reminders, goalSteps,
+    family: familyInputs(), ancestors: (state.ancestors || []).map((a) => ({ ...a, name: displayName(a) })), chosenObservances: plan.observances, tasks: plan.tasks, reminders, goalSteps,
   });
   cache = { key, week };
   return week;

@@ -191,3 +191,14 @@ test('/api/ai/chat: an ordinary question carries the trace and the no-AI notice 
   assert.ok(policy.trace.calcVersion && policy.trace.rulesVersion);
   assert.match(policy.notice, /சுருக்கப் பதில் முறை/);
 });
+
+test('/api/ai/general (General mode): safety policy still first; without an API key the app’s own calendar answer is kept', async () => {
+  const crisis = await (await post('/api/ai/general', { context: { question: 'x' }, messages: [{ role: 'user', content: 'I want to end my life' }], lang: 'en', fallbackText: 'Saraswathi Pooja: 20 Oct 2026' })).json();
+  assert.equal(crisis.route, 'safety_support');
+  assert.equal(crisis.source, 'policy');
+  const fallbackText = 'சரஸ்வதி பூஜை: 20 அக்டோபர் 2026 (செவ்வாய்) — உங்கள் ஊருக்கான துணை தமிழ் நாட்காட்டிப்படி.';
+  const r = await (await post('/api/ai/general', { context: { question: 'saraswathi pooja eppo', questionKind: 'general', calendar: fallbackText }, messages: [{ role: 'user', content: 'saraswathi pooja eppo' }], lang: 'ta', fallbackText })).json();
+  assert.equal(r.source, 'rules');
+  assert.equal(r.reply, fallbackText);
+  assert.doesNotMatch(r.reply, /தசை|புக்தி|dasa|bhukti/);
+});

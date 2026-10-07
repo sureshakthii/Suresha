@@ -2,7 +2,7 @@
 // plus one-time packages for occasional needs (Marriage / Journey), and the optional "Your Thunai so far" summary.
 import { state, $, $$, L, esc, bi, api, STATIC, store, registerScreen, subHeader, go, toast, fmtIsoDate, displayName, BRAND } from './core.js';
 import { redeemBox, wireRedeem, trialBanner, track, taskLog, pairKey } from './growth.js';
-import { valueSummary } from './shared/plan-gates.js';
+import { valueSummary, PLAN_FEATURE_LINES } from './shared/plan-gates.js';
 
 /** Display name of a plan id (old premium_* ids are the Personal plan). */
 export const planLabel = (id) => (!id || id === 'free' ? L('Free', 'இலவசம்')
@@ -57,10 +57,12 @@ function chosenScope(card, plan) {
   return { journeyId: id };
 }
 
+/** The server's feature list plus app-side lines (Daily Ithihasa: intro + episode 1 free, every episode on paid plans). */
+const planFeatures = (p) => [...(p.features || []), ...(p.kind === 'free' || !p.amount ? PLAN_FEATURE_LINES.free : PLAN_FEATURE_LINES.paid)];
 const planCard = (p, currency) => `<div class="card glass plan${p.id.startsWith('family') ? ' best' : ''}">
       ${p.id === 'family_year' ? `<span class="pill best-pill">${L('Best value', 'சிறந்த மதிப்பு')}</span>` : ''}
       <div class="plan-head"><b>${esc(bi(p.name))}</b><span class="plan-price">${p.amount ? money(p.amount, currency) : L('Free', 'இலவசம்')}<small>${p.interval ? ` / ${p.interval === 'month' ? L('month', 'மாதம்') : L('year', 'ஆண்டு')}` : ''}</small></span></div>
-      <ul>${p.features.map(featureItem).join('')}</ul>
+      <ul>${planFeatures(p).map(featureItem).join('')}</ul>
       ${p.amount ? `<button class="btn-gold" data-buy="${p.id}">${L('Choose', 'தேர்வு செய்')}</button>` : ''}</div>`;
 
 const packageCard = (p, currency, params) => `<div class="card glass plan pkg" data-pkg="${p.id}" id="pkg-${p.id}">

@@ -1,6 +1,7 @@
 // Tamil daily calendar (Nalla Naal / Panchangam): Tamil month & date, 60-year cycle name,
 // Gowri Nalla Neram, festivals and vratham days, Subha Muhurtha days.
 import { panchang, sunSidereal, findCrossing, vedicDay, NAKSHATRAS } from './astro.js';
+import { occurrencesBetween } from './spiritual-kb.js';
 
 export const TAMIL_MONTHS = [
   { en: 'Chithirai', ta: 'சித்திரை' }, { en: 'Vaikasi', ta: 'வைகாசி' }, { en: 'Aani', ta: 'ஆனி' },
@@ -105,50 +106,87 @@ export function gowriPanchangam(day, weekday) {
 const MUHURTHA_STARS = new Set([3, 4, 9, 11, 12, 14, 16, 18, 20, 21, 25, 26]); // Rohini, Mrigasirisham, Magam, Uthiram, Hastham, Swathi, Anusham, Moolam, Uthiradam, Thiruvonam, Uthirattathi, Revathi
 const BAD_TITHI_IN_PAKSHA = new Set([3, 7, 8, 13]); // Chathurthi, Ashtami, Navami, Chathurdasi
 
-/** Festivals and vratham days observed on a given sunrise Panchangam. */
-function festivalsFor(p, td, sunsetTithi, middayTithi) {
-  const out = [];
-  const add = (en, ta, kind = 'festival') => out.push({ en, ta, kind });
-  const t = p.tithi.index;
-  const star = p.nakshatra.index;
-  const m = td.month;
-  if (t === 29) add('Amavasai', 'அமாவாசை', 'vratham');
-  if (t === 14) add('Pournami', 'பௌர்ணமி', 'vratham');
-  if (t === 10 || t === 25) add('Ekadasi', 'ஏகாதசி', 'vratham');
-  if (t === 5) add('Sashti Viratham', 'சஷ்டி விரதம்', 'vratham');
-  if (t === 18) add('Sankatahara Chathurthi', 'சங்கடஹர சதுர்த்தி', 'vratham');
-  if (t === 28) add('Masa Sivarathri', 'மாத சிவராத்திரி', 'vratham');
-  if (sunsetTithi === 12 || sunsetTithi === 27) add('Pradosham', 'பிரதோஷம்', 'vratham');
-  if (star === 2) add('Karthigai Viratham', 'கார்த்திகை விரதம்', 'vratham');
-  if (star === 21) add('Thiruvonam Viratham', 'திருவோண விரதம்', 'vratham');
-  if (td.day === 1) {
-    if (m === 0) add('Tamil New Year', 'தமிழ்ப் புத்தாண்டு');
-    else if (m === 9) add('Thai Pongal', 'தைப் பொங்கல்');
-    else add(`${TAMIL_MONTHS[m].en} Month Begins`, `${TAMIL_MONTHS[m].ta} மாதப் பிறப்பு`);
+// ---------------------------------------------------------------- festivals and vratham days
+// One source of truth: the dates come from the festival engine in spiritual-kb.js (the same occurrence rules the
+// Festivals screen and Ask Thunai use — sunrise tithi/star with the Pradosham-at-sunset, Sivaratri / Krishna
+// Jayanthi-at-midnight, Vinayagar Chathurthi-at-midday and Sankatahara-at-moonrise exceptions, kshaya tithis kept on
+// the day they run, a star occurring twice in a Tamil month taking the full-moon one). This table only chooses which
+// KB entries the calendar shows and their short calendar names, in display order.
+// (spiritual-kb.js imports this module too; the cycle is safe because neither side uses the other at load time.)
+/** Calendar festival / vratham set: { id (KB entry id), en, ta, kind }. 'month-start' is named per month. */
+export const CALENDAR_FESTIVALS = [
+  { id: 'amavasai', en: 'Amavasai', ta: 'அமாவாசை', kind: 'vratham' },
+  { id: 'pournami', en: 'Pournami', ta: 'பௌர்ணமி', kind: 'vratham' },
+  { id: 'ekadasi', en: 'Ekadasi', ta: 'ஏகாதசி', kind: 'vratham' },
+  { id: 'sashti', en: 'Sashti Viratham', ta: 'சஷ்டி விரதம்', kind: 'vratham' },
+  { id: 'sankatahara', en: 'Sankatahara Chathurthi', ta: 'சங்கடஹர சதுர்த்தி', kind: 'vratham' },
+  { id: 'masa-sivaratri', en: 'Masa Sivarathri', ta: 'மாத சிவராத்திரி', kind: 'vratham' },
+  { id: 'pradosham', en: 'Pradosham', ta: 'பிரதோஷம்', kind: 'vratham' },
+  { id: 'karthigai', en: 'Karthigai Viratham', ta: 'கார்த்திகை விரதம்', kind: 'vratham' },
+  { id: 'thiruvonam', en: 'Thiruvonam Viratham', ta: 'திருவோண விரதம்', kind: 'vratham' },
+  { id: 'tamil-new-year', en: 'Tamil New Year', ta: 'தமிழ்ப் புத்தாண்டு', kind: 'festival' },
+  { id: 'thai-pongal', en: 'Thai Pongal', ta: 'தைப் பொங்கல்', kind: 'festival' },
+  { id: 'month-start', en: null, ta: null, kind: 'festival' },
+  { id: 'aadi-perukku', en: 'Aadi Perukku', ta: 'ஆடிப் பெருக்கு', kind: 'festival' },
+  { id: 'mattu-pongal', en: 'Mattu Pongal', ta: 'மாட்டுப் பொங்கல்', kind: 'festival' },
+  { id: 'chithra-pournami', en: 'Chithra Pournami', ta: 'சித்ரா பௌர்ணமி', kind: 'festival' },
+  { id: 'vaikasi-visakam', en: 'Vaikasi Visakam', ta: 'வைகாசி விசாகம்', kind: 'festival' },
+  { id: 'aadi-pooram', en: 'Aadi Pooram', ta: 'ஆடிப் பூரம்', kind: 'festival' },
+  { id: 'aadi-amavasai', en: 'Aadi Amavasai', ta: 'ஆடி அமாவாசை', kind: 'festival' },
+  { id: 'vinayagar-chathurthi', en: 'Vinayagar Chathurthi', ta: 'விநாயகர் சதுர்த்தி', kind: 'festival' },
+  { id: 'krishna-jayanthi', en: 'Krishna Jayanthi', ta: 'கிருஷ்ண ஜெயந்தி', kind: 'festival' },
+  { id: 'mahalaya-amavasai', en: 'Mahalaya Amavasai', ta: 'மகாளய அமாவாசை', kind: 'festival' },
+  { id: 'navaratri-day-1', en: 'Navarathri Begins', ta: 'நவராத்திரி ஆரம்பம்', kind: 'festival' },
+  { id: 'saraswathi-pooja', en: 'Saraswathi Pooja', ta: 'சரஸ்வதி பூஜை', kind: 'festival' },
+  { id: 'vijayadasami', en: 'Vijayadasami', ta: 'விஜயதசமி', kind: 'festival' },
+  { id: 'soorasamharam', en: 'Kanda Sashti Soorasamharam', ta: 'கந்த சஷ்டி சூரசம்ஹாரம்', kind: 'festival' },
+  { id: 'deepavali', en: 'Deepavali', ta: 'தீபாவளி', kind: 'festival' },
+  { id: 'karthigai-deepam', en: 'Karthigai Deepam', ta: 'கார்த்திகை தீபம்', kind: 'festival' },
+  { id: 'vaikunta-ekadasi', en: 'Vaikunta Ekadasi', ta: 'வைகுண்ட ஏகாதசி', kind: 'festival' },
+  { id: 'arudra-darisanam', en: 'Arudra Darisanam', ta: 'ஆருத்ரா தரிசனம்', kind: 'festival' },
+  { id: 'thai-poosam', en: 'Thai Poosam', ta: 'தைப்பூசம்', kind: 'festival' },
+  { id: 'thai-amavasai', en: 'Thai Amavasai', ta: 'தை அமாவாசை', kind: 'festival' },
+  { id: 'masi-magam', en: 'Maasi Magam', ta: 'மாசி மகம்', kind: 'festival' },
+  { id: 'maha-sivaratri', en: 'Maha Sivarathri', ta: 'மகா சிவராத்திரி', kind: 'festival' },
+  { id: 'panguni-uthiram', en: 'Panguni Uthiram', ta: 'பங்குனி உத்திரம்', kind: 'festival' },
+];
+const CAL_IDS = new Set(CALENDAR_FESTIVALS.map((f) => f.id));
+
+// KB occurrences of the calendar set, per place and Gregorian month (the KB pads each window by 40 days, so a month
+// window gives the same dates as a longer one). A calendar month view or a Today card costs one window; neighbouring
+// months share the KB's per-day snapshots.
+const festCache = new Map();
+function festivalIdsByDate(iso, lat, lon, tz) {
+  const ym = iso.slice(0, 7);
+  const key = `${lat.toFixed(3)},${lon.toFixed(3)},${tz},${ym}`;
+  let byDate = festCache.get(key);
+  if (!byDate) {
+    const [y, m] = ym.split('-').map(Number);
+    const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    byDate = new Map();
+    for (const o of occurrencesBetween(`${ym}-01`, days, { lat, lon }, tz)) {
+      if (!CAL_IDS.has(o.id) || o.date.slice(0, 7) !== ym) continue;
+      if (!byDate.has(o.date)) byDate.set(o.date, new Set());
+      byDate.get(o.date).add(o.id);
+    }
+    festCache.set(key, byDate);
+    if (festCache.size > 60) festCache.delete(festCache.keys().next().value);
   }
-  if (m === 3 && td.day === 18) add('Aadi Perukku', 'ஆடிப் பெருக்கு');
-  if (m === 9 && td.day === 2) add('Mattu Pongal', 'மாட்டுப் பொங்கல்');
-  if (m === 0 && t === 14) add('Chithra Pournami', 'சித்ரா பௌர்ணமி');
-  if (m === 1 && star === 15) add('Vaikasi Visakam', 'வைகாசி விசாகம்');
-  if (m === 3 && star === 10) add('Aadi Pooram', 'ஆடிப் பூரம்');
-  if (m === 3 && t === 29) add('Aadi Amavasai', 'ஆடி அமாவாசை');
-  if (m === 4 && middayTithi === 3) add('Vinayagar Chathurthi', 'விநாயகர் சதுர்த்தி'); // observed when Chathurthi prevails at midday
-  if (m === 4 && t === 22) add('Krishna Jayanthi', 'கிருஷ்ண ஜெயந்தி');
-  if (m === 5 && t === 29) add('Mahalaya Amavasai', 'மகாளய அமாவாசை');
-  const navaratriSeason = m === 5 || (m === 6 && td.day <= 12);
-  if (navaratriSeason && t === 0) add('Navarathri Begins', 'நவராத்திரி ஆரம்பம்');
-  if (navaratriSeason && t === 8) add('Saraswathi Pooja', 'சரஸ்வதி பூஜை');
-  if (navaratriSeason && t === 9) add('Vijayadasami', 'விஜயதசமி');
-  if (m === 6 && t === 5) add('Kanda Sashti Soorasamharam', 'கந்த சஷ்டி சூரசம்ஹாரம்');
-  if (m === 6 && t === 28) add('Deepavali', 'தீபாவளி');
-  if (m === 7 && star === 2) add('Karthigai Deepam', 'கார்த்திகை தீபம்');
-  if (m === 8 && t === 10) add('Vaikunta Ekadasi', 'வைகுண்ட ஏகாதசி');
-  if (m === 8 && star === 5) add('Arudra Darisanam', 'ஆருத்ரா தரிசனம்');
-  if (m === 9 && star === 7) add('Thai Poosam', 'தைப்பூசம்');
-  if (m === 9 && t === 29) add('Thai Amavasai', 'தை அமாவாசை');
-  if (m === 10 && star === 9) add('Maasi Magam', 'மாசி மகம்');
-  if (m === 10 && t === 28) add('Maha Sivarathri', 'மகா சிவராத்திரி');
-  if (m === 11 && star === 11) add('Panguni Uthiram', 'பங்குனி உத்திரம்');
+  return byDate.get(iso) || null;
+}
+
+/** Festivals and vratham days of one civil day (KB rules), in calendar display order. */
+function festivalsFor(iso, td, lat, lon, tz) {
+  const ids = festivalIdsByDate(iso, lat, lon, tz);
+  if (!ids) return [];
+  const out = [];
+  for (const f of CALENDAR_FESTIVALS) {
+    if (!ids.has(f.id)) continue;
+    if (f.id === 'month-start') {
+      const m = TAMIL_MONTHS[td.month];
+      out.push({ id: f.id, en: `${m.en} Month Begins`, ta: `${m.ta} மாதப் பிறப்பு`, kind: f.kind });
+    } else out.push({ ...f });
+  }
   return out;
 }
 
@@ -159,14 +197,13 @@ export function tamilDay(dateLocalNoon, lat, lon, tz) {
   const p = panchang(atSunrise, lat, lon, tz);
   // The Tamil date follows the Sun's rasi at sunset (a Sankranti before sunset starts the new month that day).
   const td = tamilDate(new Date(day.sunset.getTime() - 60000), lat, lon, tz);
-  const sunsetP = panchang(day.sunset, lat, lon, tz, { withEnds: false });
-  const middayP = panchang(new Date((day.sunrise.getTime() + day.sunset.getTime()) / 2), lat, lon, tz, { withEnds: false });
   const gowri = gowriPanchangam(day, p.weekday.index);
   const pakshaTithi = p.tithi.index % 15;
   const muhurthaDay = MUHURTHA_STARS.has(p.nakshatra.index) && !BAD_TITHI_IN_PAKSHA.has(pakshaTithi)
     && p.tithi.index !== 29 && ![2, 6].includes(p.weekday.index) && !BAD_YOGA_IDX.has(p.yoga.index);
+  const iso = ymd(dateLocalNoon, tz);
   return {
-    date: ymd(dateLocalNoon, tz),
+    date: iso,
     tamil: td,
     weekday: p.weekday,
     sunrise: day.sunrise, sunset: day.sunset,
@@ -174,7 +211,7 @@ export function tamilDay(dateLocalNoon, lat, lon, tz) {
     rahuKalam: p.rahuKalam, yamagandam: p.yamagandam, guligai: p.guligai,
     gowri,
     nallaNeram: gowri.filter((g) => g.good && g.part === 'day'),
-    festivals: festivalsFor(p, td, sunsetP.tithi.index, middayP.tithi.index),
+    festivals: festivalsFor(iso, td, lat, lon, tz),
     muhurthaDay,
     paksha: p.tithi.paksha,
     // Chandrashtamam: the birth star group for which the Moon today is in the 8th rasi.

@@ -17,7 +17,7 @@ import { templeSearchField, attachTempleSearch } from './temple-search.js';
 import { dayInfo } from './shared/journey.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtIsoDate,
-  activeMember, chartOf, hasLagna, registerScreen, go, subHeader, aiTask, toast, speak, saveFamily, saveSettings, starOptions, rasiOfStarPada, STATIC,
+  activeMember, chartOf, hasLagna, registerScreen, go, subHeader, aiTask, toast, speak, saveFamily, saveSettings, starOptions, rasiOfStarPada, STATIC, store,
   listen, micMessage,
   yogaName, karanaName,
   placeName,
@@ -565,7 +565,21 @@ registerScreen('starbday', { render: renderStarBday, parent: 'home', needsLoc: t
 // Chart facts come only from the calculation engine (shared/guidance.js). With AI configured, the AI
 // receives those facts and must not invent others; without AI, the built-in engine answers the actual
 // question in the same six-part structure. Every answer is labelled with its source.
-const chat = { messages: [], memberId: null, busy: false };
+const chat = { messages: [], memberId: null, busy: false, mode: askModeSaved() };
+// "About my chart" or "General (festivals, spiritual)": remembered for this browser session only.
+function askModeSaved() { try { return sessionStorage.getItem('kj_ask_mode') === 'general' ? 'general' : 'chart'; } catch { return 'chart'; } }
+function setAskMode(mode) {
+  chat.mode = mode === 'general' ? 'general' : 'chart';
+  try { sessionStorage.setItem('kj_ask_mode', chat.mode); } catch { /* private mode: keep it in memory */ }
+  $$('.ask-mode button').forEach((b) => { const on = b.dataset.mode === chat.mode; b.classList.toggle('sel', on); b.setAttribute('aria-checked', String(on)); });
+}
+// Is the server AI available for a "Detailed answer"? (never in the phone-only build or when the person turned AI off)
+let aiAvail = null;
+function aiAvailable() {
+  if (STATIC || store.get('kj_consent', {}).aiChat === false) return Promise.resolve(false);
+  aiAvail ||= fetch('/api/health').then((r) => (r.ok ? r.json() : {})).then((j) => Boolean(j.ai)).catch(() => false);
+  return aiAvail;
+}
 // Suggested-question chips come from ask-thunai.js askSuggestions (the most common real questions per age band).
 
 /** Today's practical timings for the "good time" answers. */
@@ -614,6 +628,7 @@ function chatContext(question) {
   return {
     question,
     detectedTopic: classify(question).intent,
+    questionType: (() => { const a = askAnswer(question, m, facts, chatTurns()); return a?.qtype ? `${a.qtype}${a.whichKind ? ` (${a.whichKind})` : ''}` : 'general'; })(),
     replyLanguage: answerLang(question, state.lang) === 'ta' ? 'Tamil' : 'English',
     today: { date: fmtIsoDate(new Date(Date.now() + loc.tz * 3600000).toISOString().slice(0, 10)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name, ...todayFacts() },
     person: m ? { name: m.name, relation: m.relation, birth: m.relation === 'organization' ? undefined : { date: m.date }, ageBand: ageOf(m).band, birthTimeCertainty: rel.certainty, timeSensitiveResultsAllowed: rel.lagna, rasi: rel.rasi ? chartOf(m).janmaRasi.name : 'uncertain', star: rel.nakshatra ? chartOf(m).janmaNakshatra.name : 'uncertain' } : null,
@@ -631,15 +646,17 @@ function renderAnswerHtml(ans) {
   const rest = secs.filter((sx) => sx.key !== 'answer' && sx.key !== 'prayer');
   const prayer = secs.filter((sx) => sx.key === 'prayer');
   const sec = (sx) => `<div class="ans-sec ans-${sx.key}"><div class="ans-h">${esc(sx.title)}</div><ul>${sx.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
-  const m = ans.meter;
-  const meterHtml = m ? `<div class="ans-meter ${m.level}" role="img" aria-label="${esc(`${m.topic} ${m.pct}% ${m.label}`)}"><div class="am-top"><span>${esc(m.topic)}</span><b>${m.pct}%</b></div><div class="am-bar"><i style="width:${m.pct}%"></i></div><div class="am-label">${esc(m.label)}</div></div>` : '';
-  return `${meterHtml}${top.map(sec).join('')}${rest.map(sec).join('')}${prayer.map(sec).join('')}`;
+  // No percentage meter: Ask answers never score (product rule). A WHEN / STATUS answer carries a short text label.
+  return `${top.map(sec).join('')}${rest.map(sec).join('')}${prayer.map(sec).join('')}`;
 }
 
 function renderChat(sec, params = {}) {
   const m = activeMember();
   if (chat.memberId !== (m?.id || null)) { chat.messages = []; chat.memberId = m?.id || null; }
   sec.innerHTML = `<div class="chat-main"><div class="seg ask-switch" role="tablist"><button class="sel" role="tab" aria-selected="true">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button role="tab" aria-selected="false" data-go="ask">🔮 ${L('Is now a good time? (Prasnam)', 'இப்போது செய்யலாமா? (பிரசன்னம்)')}</button></div>
+    <div class="seg ask-mode" role="radiogroup" aria-label="${esc(L('What is your question about?', 'உங்கள் கேள்வி எதைப் பற்றியது?'))}">
+      <button type="button" role="radio" data-mode="chart" class="${chat.mode === 'chart' ? 'sel' : ''}" aria-checked="${chat.mode === 'chart'}">🪐 ${L('About my chart', 'ஜாதகம் பற்றி')}</button>
+      <button type="button" role="radio" data-mode="general" class="${chat.mode === 'general' ? 'sel' : ''}" aria-checked="${chat.mode === 'general'}">🪔 ${L('General (festivals, spiritual)', 'பொது விஷயம் (பண்டிகை, ஆன்மீகம்)')}</button></div>
     <div class="chat-head card glass"><div class="avatar big">🪔</div><div><b>${esc(assistantName())}</b>
       <div class="muted small">${m ? L(`Using ${displayName(m)}'s chart${m.private ? ' · private profile — this chat stays on this phone' : ''}`, `${displayName(m)} அவர்களின் ஜாதகப்படி${m.private ? ' · தனிப்பட்ட சுயவிவரம் — இந்த உரையாடல் இந்தக் கைப்பேசியிலேயே' : ''}`) : L('Add birth details for personal answers', 'தனிப்பட்ட பதில்களுக்குப் பிறப்பு விவரம் சேர்க்கவும்')}</div></div></div>
     <div id="chatLog" class="chat-log" aria-live="polite">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask anything — in Tamil, English or Tanglish. Answers come in English (change language with the தமிழ் button).', 'வணக்கம்! தமிழ், ஆங்கிலம், தங்கிலீஷ் — எப்படியும் கேளுங்கள். பதில் தமிழில் வரும்.')}</div>`}</div>
@@ -651,6 +668,7 @@ function renderChat(sec, params = {}) {
     <p class="small muted center">${L('Voice: your phone converts speech to text (it may use its own online service). The text appears in the box for you to check.', 'குரல்: உங்கள் கைப்பேசி பேச்சை எழுத்தாக மாற்றும் (அதன் இணைய சேவையைப் பயன்படுத்தலாம்). சரிபார்க்க பெட்டியில் உரை தோன்றும்.')}</p>
     ${copyright()}`;
   for (const msg of chat.messages) addBubble(msg.role, msg.content, msg);
+  $$('.ask-mode button', sec).forEach((b) => b.addEventListener('click', () => setAskMode(b.dataset.mode)));
   $$('.sg', sec).forEach((b) => b.addEventListener('click', () => send(b.textContent)));
   $('#chatForm').addEventListener('submit', (e) => { e.preventDefault(); send($('#chatInput').value); });
   setupVoiceInput($('#micBtn'), $('#chatInput'));
@@ -675,6 +693,8 @@ function addBubble(role, text, meta = {}) {
     body.append(row);
   }
   if (meta.notice) { const n = document.createElement('p'); n.className = 'small muted ans-notice'; n.textContent = meta.notice; body.append(n); }
+  // "Answered as a general question" (auto-detected in chart mode) — with a one-tap switch back below.
+  if (meta.answer?.modeNote) { const n = document.createElement('p'); n.className = 'small ans-mode-note'; n.textContent = `ℹ️ ${meta.answer.modeNote}`; body.prepend(n); }
   const foot = document.createElement('div');
   foot.className = 'ans-foot';
   // Every on-device / rule-based answer carries a visible "limited guidance" badge.
@@ -696,7 +716,18 @@ function addBubble(role, text, meta = {}) {
   }
   if (meta.answer?.actions?.length) {
     const row = document.createElement('div'); row.className = 'btn-row';
-    meta.answer.actions.forEach((a) => { const x = document.createElement('button'); x.className = 'chip-btn'; x.textContent = `${a.label} ›`; x.addEventListener('click', () => go(a.go, a.param || {})); row.append(x); });
+    const q = meta.question || chat.messages.filter((mm) => mm.role === 'user').at(-1)?.content || '';
+    meta.answer.actions.forEach((a) => {
+      const x = document.createElement('button'); x.className = 'chip-btn'; x.textContent = `${a.label} ›`;
+      if (a.mode) x.addEventListener('click', () => { setAskMode(a.mode); send(q, { again: true }); });
+      else if (a.ai) {
+        // "Detailed answer": only when the server AI is available; the question then goes to it (general or chart).
+        x.hidden = true;
+        aiAvailable().then((ok) => { x.hidden = !ok; });
+        x.addEventListener('click', () => send(q, { again: true, forceAI: true, general: Boolean(meta.answer.general) }));
+      } else x.addEventListener('click', () => go(a.go, a.param || {}));
+      row.append(x);
+    });
     b.append(row);
   }
   if (meta.typing !== true) b.insertAdjacentHTML('beforeend', clarityPrompt('chat')); // "Was this clear?" under each answer
@@ -725,41 +756,49 @@ function askAnswer(text, m, facts, turns = []) {
   return askThunai({
     text, chart: m ? chartOf(m) : null, rel: m ? reliabilityOf(m) : null, facts, life: lifeOf(m), lang: answerLang(text, state.lang),
     name: m ? displayName(m) : '', today: todayFacts(), turns, speaker, profile: prof, childAnswer: m ? childAnswer : null,
+    mode: chat.mode, loc: state.loc,
   });
 }
 
 /** The person's own earlier messages in this chat (oldest first) — follow-ups keep the earlier context. */
 const chatTurns = () => chat.messages.filter((x) => x.role === 'user').map((x) => x.content).slice(-12);
 
-async function send(text) {
+async function send(text, opts = {}) {
   text = String(text || '').trim();
   if (!text || chat.busy) return;
   chat.busy = true;
   $('#chatInput').value = ''; $('#chatInput').dispatchEvent(new Event('input', { bubbles: true }));
-  chat.messages.push({ role: 'user', content: text });
-  const ub = addBubble('user', text);
-  requestAnimationFrame(() => ub.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  if (!opts.again) {
+    chat.messages.push({ role: 'user', content: text });
+    const ub = addBubble('user', text);
+    requestAnimationFrame(() => ub.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
   const { m, facts } = memberFacts();
   const answer = askAnswer(text, m, facts, chatTurns());
   // Safety-critical topics and on-device policy answers (decline / child / teen) are always the reviewed rules,
   // never free AI text. Private profiles never send their questions to the AI service.
   // Age-guarded answers are never handed to free AI text; a minor's chat goes to the AI only through the server,
   // whose policy re-checks the person's age (the phone-only build never calls a model — see core.js aiTask).
+  // An honest "cannot answer from your chart" and a mode-switch offer stay on the device unless the person taps
+  // "Detailed answer". General questions go to the AI with the general-knowledge task (no chart, ever).
   const prof = m ? ageOf(m) : null;
-  const rulesOnly = ['crisis', 'death', 'pain', 'age_guard', 'policy'].includes(answer.intent) || Boolean(answer.policy) || answer.validationFallback || Boolean(m?.private) || Boolean(prof?.minor && STATIC);
-  let msg = { role: 'assistant', content: answer.text, answer, source: 'rules', speakText: answer.text };
+  const general = opts.general || Boolean(answer.general);
+  const rulesOnly = ['crisis', 'death', 'pain', 'age_guard', 'policy', 'mode_switch'].includes(answer.intent) || Boolean(answer.policy) || answer.validationFallback || Boolean(m?.private) || Boolean(prof?.minor && STATIC)
+    || (answer.honest && !opts.forceAI);
+  let msg = { role: 'assistant', content: answer.text, answer, source: 'rules', speakText: answer.text, question: text };
   if (!rulesOnly) {
     const thinking = addBubble('assistant', L('Thinking…', 'யோசிக்கிறேன்…'), { typing: true });
     thinking.classList.add('typing');
     const node = thinking.querySelector('.ans-body');
-    const r = await aiTask({ task: 'chat', context: chatContext(text), messages: chat.messages.slice(-12).map(({ role, content }) => ({ role, content })), fallbackText: answer.text, onText: (tx) => { if (tx !== answer.text) node.textContent = tx; } });
+    const context = general ? generalContext(text, answer) : chatContext(text);
+    const r = await aiTask({ task: general ? 'general' : 'chat', context, messages: chat.messages.slice(-12).map(({ role, content }) => ({ role, content })), fallbackText: answer.text, onText: (tx) => { if (tx !== answer.text) node.textContent = tx; } });
     thinking.remove();
     const meta = r.meta || {};
     // The server's answer wins whenever it is a validated AI reply OR a policy reply (safety / decline / clarify /
     // child / teen) — a policy reply is never replaced by the on-device answer.
     if ((r.source === 'ai' || r.source === 'policy') && r.text.trim()) {
-      msg = { role: 'assistant', content: r.text, source: r.source, speakText: r.text, resources: meta.resources || null, notice: meta.notice || null, trace: meta.trace || null,
-        answer: r.source === 'ai' ? { actions: answer.actions } : null };
+      msg = { role: 'assistant', content: r.text, source: r.source, speakText: r.text, resources: meta.resources || null, notice: meta.notice || null, trace: meta.trace || null, question: text,
+        answer: r.source === 'ai' ? { actions: (answer.actions || []).filter((a) => !a.ai), modeNote: answer.modeNote, general } : null };
     } else if (meta.notice) {
       msg.notice = meta.notice; // the server could not add an AI explanation: say so (no_ai_notice)
     }
@@ -767,6 +806,20 @@ async function send(text) {
   chat.messages.push(msg);
   addBubble('assistant', msg.content, msg);
   chat.busy = false;
+}
+
+/** Context for a general question: the language, today's panchangam and the app calendar's own answer (no chart). */
+function generalContext(question, answer) {
+  refreshSnap();
+  const s = state.snap, loc = state.loc;
+  return {
+    question,
+    questionKind: 'general (festival / vratham / scripture / panchangam) — never read a chart',
+    replyLanguage: answerLang(question, state.lang) === 'ta' ? 'Tamil' : 'English',
+    today: { date: fmtIsoDate(new Date(Date.now() + loc.tz * 3600000).toISOString().slice(0, 10)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name },
+    calendar: answer.intent === 'general_kb' ? answer.text : null,
+    builtInAnswer: answer.honest ? null : answer.text,
+  };
 }
 registerScreen('chat', { render: renderChat, needsLoc: true });
 

@@ -154,12 +154,13 @@ test('shared guidance (composeAnswer) applies the same guard — no meter for a 
   }
 });
 
-test('adults are unchanged: a 35-year-old still gets the meter, periods and marriage follow-ups', () => {
+test('adults: a 35-year-old gets periods and marriage follow-ups — and no percentage meter (Ask answers never score)', () => {
   const chart = birthChart(THIRTY_FIVE);
   for (const q of ['எனக்கு எப்போது திருமணம் நடக்கும்?', 'Enaku eppo velai kidaikum', 'When will I get married?']) {
     const a = topicAnswer({ topic: detectTopic(q), question: q, chart, lang: 'ta', name: 'Suresh', now: NOW });
     assert.notEqual(a.intent, 'age_guard');
-    assert.ok(a.meter && a.meter.pct >= 45, q);
+    assert.equal(a.meter, null, q);
+    assert.doesNotMatch(a.text, /\d+\s*%/, q);
     assert.ok(a.sections.some((s) => s.key === 'periods'), q);
   }
   const m = topicAnswer({ topic: 'marriage', question: 'q', chart, lang: 'en', now: NOW });

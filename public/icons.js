@@ -196,7 +196,9 @@ export const ICONS = {
   why: "info",
   bookings: "calendar-check",
   week: "calendar-days",
-  goals: "calendar-check"
+  goals: "calendar-check",
+  ithihasa: "book-open",
+  festivals: "flame-kindling"
 };
 
 /** Concept -> chip colour group (daily | personal | match | spiritual | services | help). */
@@ -252,7 +254,9 @@ export const ICON_GROUP = {
   calc: "help",
   birthtime: "personal",
   tools: "help",
-  bookings: "services"
+  bookings: "services",
+  ithihasa: "spiritual",
+  festivals: "daily"
 };
 
 /** Inline SVG string for a Lucide icon name (or an ICONS concept key). Unknown names render an empty box. */

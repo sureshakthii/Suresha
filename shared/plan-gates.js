@@ -6,6 +6,12 @@
 // Calculation quality, safety explanations and privacy controls are identical on every plan — nothing here
 // gates them. A gate is shown only at the specific task, after the person has already seen a useful result.
 
+/** Plans-screen feature lines added by the app (the server's plan list predates these features). */
+export const PLAN_FEATURE_LINES = Object.freeze({
+  free: [{ en: 'Daily Ithihasa: introduction and episode 1', ta: 'தினசரி இதிகாசம்: அறிமுகமும் முதல் பகுதியும்' }],
+  paid: [{ en: 'Daily Ithihasa — Ramayanam & Mahabharatham, a new 15-minute episode each day, read aloud', ta: 'தினசரி இதிகாசம் — இராமாயணம், மகாபாரதம்: தினமும் புதிய 15 நிமிடப் பகுதி, குரலில் வாசிப்புடன்' }],
+});
+
 /** Free-plan limits for saved items (paid plans: no limit). */
 export const FREE_LIMITS = Object.freeze({ goals: 1, shortlist: 10, journeys: 1 });
 
@@ -22,6 +28,8 @@ export const GATE_ADDS = Object.freeze({
   familyProfiles: { plan: 'family', adds: [f('Up to 8 family profiles in your account backup', 'கணக்குக் காப்பில் 8 குடும்ப உறுப்பினர்கள் வரை'), f('Each person shares only with permission; private profiles stay on this phone', 'ஒவ்வொருவரும் அனுமதியுடன் மட்டுமே பகிர்வர்; தனிப்பட்ட சுயவிவரம் இந்தக் கைப்பேசியிலேயே')] },
   familyCollab: { plan: 'family', adds: [f('Share goals, plans and events with family members who agree', 'ஒப்புக்கொள்ளும் குடும்பத்தினருடன் இலக்குகள், திட்டங்கள், நிகழ்வுகளைப் பகிரலாம்'), f('Up to 8 permission-based profiles', 'அனுமதி அடிப்படையிலான 8 சுயவிவரங்கள் வரை')] },
   sharedPlanning: { plan: 'family', adds: [f('Plan family events and journeys together', 'குடும்ப நிகழ்வுகள், பயணங்களை ஒன்றாகத் திட்டமிடலாம்'), f('Everyone sees the same plan, with permission', 'அனுமதியுடன் அனைவரும் ஒரே திட்டத்தைப் பார்ப்பர்')] },
+  // Daily Ithihasa (screens-ithihasa.js): free = series intro + episode 1 in full + ~2-minute preview of later episodes.
+  ithihasa: { plan: 'personal', adds: [f('Daily Ithihasa: every episode of Ramayanam and Mahabharatham, ~15 minutes a day, read aloud', 'தினசரி இதிகாசம்: இராமாயணம், மகாபாரதம் — ஒவ்வொரு நாளும் ~15 நிமிட உரை, குரலில் வாசிப்புடன்'), f('Continues each day from where you stopped', 'நேற்று விட்ட இடத்திலிருந்து ஒவ்வொரு நாளும் தொடரும்'), f('The introduction and episode 1 stay free for everyone', 'அறிமுகமும் முதல் பகுதியும் அனைவருக்கும் இலவசம்')] },
 });
 
 // FNV-1a — a short, stable tag so a couple's names or birth data are never sent in clear as the package scope.
@@ -53,6 +61,7 @@ export function gateAllows(ent, enforced, feature, { count = 0, scope = {} } = {
     case 'predictions': case 'matchingReport': return !!ent.predictions || inPair;
     case 'familyProfiles': return count < (ent.familyProfiles ?? 1);
     case 'familyCollab': case 'sharedPlanning': return !!ent[feature];
+    case 'ithihasa': return !!ent.predictions || !!ent.ithihasa; // Personal and Family plans
     default: return !!ent[feature];
   }
 }

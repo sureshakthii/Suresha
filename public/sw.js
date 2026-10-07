@@ -1,5 +1,5 @@
 // App-shell cache so the Jathagam and live Panchangam work offline. API calls always go to the network.
-const CACHE = 'kj-v27';
+const CACHE = 'kj-v29';
 const SHELL = [
   '/', '/index.html', '/styles.css', '/app.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/screens-world.js',
   '/screens-life.js', '/screens-plans.js', '/screens-couple.js', '/couple-cards.js', '/shared/marriage-context.js', '/screens-guide.js', '/remind.js', '/screens-roadmap.js',
@@ -14,11 +14,14 @@ const SHELL = [
   '/shared/temple-info.js', '/shared/roadmap.js', '/shared/varga.js', '/shared/ashtakoota.js', '/shared/numerology.js',
   '/shared/peyarchi.js', '/shared/health.js', '/shared/brand.js', '/shared/sync-policy.js', '/shared/plan-gates.js', '/shared/birthtime.js', '/shared/guidance.js', '/shared/journey.js',
   '/shared/version.js', '/shared/temple-verified.js', '/shared/kattam.js', '/shared/daily.js', '/shared/today-plan.js', '/shared/faith.js',
-  '/today-lines.js', '/ask-thunai.js', '/shared/written-palan.js', '/shared/weather.js', '/shared/station.js', '/shared/love.js', '/shared/datetime.js', '/shared/age-guard.js', '/shared/themes.js', '/shared/report-horizon.js', '/shared/written-date.js', '/shared/horoscope-parse.js', '/ocr-import.js',
+  '/today-lines.js', '/ask-thunai.js', '/shared/ask-sense.js', '/shared/ask-which.js', '/shared/written-palan.js', '/shared/weather.js', '/shared/station.js', '/shared/love.js', '/shared/datetime.js', '/shared/age-guard.js', '/shared/themes.js', '/shared/report-horizon.js', '/shared/written-date.js', '/shared/horoscope-parse.js', '/ocr-import.js',
   '/shared/rules/core.js', '/shared/rules/profiles.js', '/shared/rules/registry.js', '/shared/rules/chevvai.js', '/shared/rules/roles.js',
   '/shared/rules/yogas.js', '/shared/rules/disputed.js', '/shared/rules/define.js', '/vendor/astronomy-engine.js', '/icon.svg',
   '/phone-input.js', '/family-share.js', '/shared/countries.js', '/shared/country-data.js', '/shared/world-places.js', '/shared/currency.js',
   '/temple-search.js', '/desktop-nav.js', '/compat-card.js', '/shared/compat.js', '/residence-ui.js', '/shared/residence.js', '/shared/airports.js',
+  '/screens-festivals.js', '/shared/spiritual-kb.js', '/shared/kb/common.js', '/shared/kb/monthly.js', '/shared/kb/festivals-a.js',
+  '/shared/kb/festivals-b.js', '/shared/kb/ekadasi.js', '/shared/kb/concepts.js', '/shared/kb/characters.js',
+  '/screens-ithihasa.js', '/shared/ithihasa/index.js', // Daily Ithihasa: series data (/shared/ithihasa/<series>.js) is cached on first read, not precached
   '/shared/family-delete.js', '/shared/name-translit.js', '/logo.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {

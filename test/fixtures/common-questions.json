@@ -1,7 +1,7 @@
 {
  "description": "Ask Thunai evaluation corpus: real questions people ask a family jothidar (Tamil script, Tanglish, English). Each row lists the expected topic(s), the asker's age band, faith (when stated), whether it asks \"when\", and tags a good answer MUST / MUST NOT contain. Tags are defined in test/common-questions.test.js (CHECKS).",
  "version": 1,
- "count": 350,
+ "count": 446,
  "questions": [
   {
    "id": "child-01",
@@ -7302,6 +7302,2029 @@
    "mustNot": [
     "certainty",
     "fertility_verdict"
+   ]
+  },
+  {
+   "id": "which_career-01",
+   "category": "which_career",
+   "q": "என் ஜாதகத்திற்கு எந்தத் தொழில் ஏற்றது?",
+   "lang": "ta",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-02",
+   "category": "which_career",
+   "q": "எனக்கு எந்தத் துறை பொருத்தமானது?",
+   "lang": "ta",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-03",
+   "category": "which_career",
+   "q": "என் ஜாதகப்படி என்ன வேலை செய்தால் நல்லது?",
+   "lang": "ta",
+   "topic": [
+    "career",
+    "job"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-04",
+   "category": "which_career",
+   "q": "enakku entha velai set aagum",
+   "lang": "tanglish",
+   "topic": [
+    "career",
+    "job"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-05",
+   "category": "which_career",
+   "q": "en jathagathukku endha field correct ah irukkum",
+   "lang": "tanglish",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-06",
+   "category": "which_career",
+   "q": "naan enna tholil pannalam",
+   "lang": "tanglish",
+   "topic": [
+    "career",
+    "business"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-07",
+   "category": "which_career",
+   "q": "Which profession suits my chart?",
+   "lang": "en",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-08",
+   "category": "which_career",
+   "q": "What kind of career is good for me according to my horoscope?",
+   "lang": "en",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-09",
+   "category": "which_career",
+   "q": "Which field should I choose for my career?",
+   "lang": "en",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-10",
+   "category": "which_career",
+   "q": "IT field ah teaching ah enakku edhu best",
+   "lang": "tanglish",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-11",
+   "category": "which_career",
+   "q": "Government job or private job — which suits me?",
+   "lang": "en",
+   "topic": [
+    "job",
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-12",
+   "category": "which_career",
+   "q": "அரசு வேலையா தனியார் வேலையா, எது எனக்குப் பொருந்தும்?",
+   "lang": "ta",
+   "topic": [
+    "job",
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-13",
+   "category": "which_career",
+   "q": "Job or business — what suits my chart?",
+   "lang": "en",
+   "topic": [
+    "career",
+    "business",
+    "job"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_career-14",
+   "category": "which_career",
+   "q": "velai pannalama illa sontha business pannalama",
+   "lang": "tanglish",
+   "topic": [
+    "career",
+    "business",
+    "job"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "which_options",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_business-01",
+   "category": "which_business",
+   "q": "enakku entha business set aagum",
+   "lang": "tanglish",
+   "topic": [
+    "business"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_business-02",
+   "category": "which_business",
+   "q": "எனக்கு எந்த வியாபாரம் சரிப்படும்?",
+   "lang": "ta",
+   "topic": [
+    "business"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_business-03",
+   "category": "which_business",
+   "q": "What business should I start as per my chart?",
+   "lang": "en",
+   "topic": [
+    "business"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_business-04",
+   "category": "which_business",
+   "q": "enna business panna laabam varum",
+   "lang": "tanglish",
+   "topic": [
+    "business"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_business-05",
+   "category": "which_business",
+   "q": "Which type of business suits me?",
+   "lang": "en",
+   "topic": [
+    "business"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_study-01",
+   "category": "which_study",
+   "q": "which field should my son study",
+   "lang": "en",
+   "topic": [
+    "education"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "honest",
+    "subject_chart",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "which_study-02",
+   "category": "which_study",
+   "q": "en paiyanukku entha course nalladhu",
+   "lang": "tanglish",
+   "topic": [
+    "education"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "honest",
+    "subject_chart",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "which_study-03",
+   "category": "which_study",
+   "q": "என் மகளுக்கு எந்தப் படிப்பு ஏற்றது?",
+   "lang": "ta",
+   "topic": [
+    "education"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "honest",
+    "subject_chart",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "which_study-04",
+   "category": "which_study",
+   "q": "Which course should I study after my degree?",
+   "lang": "en",
+   "topic": [
+    "education"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:5",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_study-05",
+   "category": "which_study",
+   "q": "naan endha course padikkalam",
+   "lang": "tanglish",
+   "topic": [
+    "education"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:5",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_study-06",
+   "category": "which_study",
+   "q": "நான் எந்தப் படிப்பு படித்தால் நல்லது?",
+   "lang": "ta",
+   "topic": [
+    "education"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "house:5",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_study-07",
+   "category": "which_study",
+   "q": "Commerce or science — which stream suits me?",
+   "lang": "en",
+   "topic": [
+    "education"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "which_options",
+    "house:5",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_study-08",
+   "category": "which_study",
+   "q": "Which group should I take in 11th — biology or computer science?",
+   "lang": "en",
+   "topic": [
+    "education"
+   ],
+   "band": "13-17",
+   "qtype": "choice",
+   "must": [
+    "which_options",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template",
+    "adult_topic"
+   ]
+  },
+  {
+   "id": "which_study-09",
+   "category": "which_study",
+   "q": "நான் எந்தப் பாடப்பிரிவு எடுக்கலாம்?",
+   "lang": "ta",
+   "topic": [
+    "education"
+   ],
+   "band": "13-17",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template",
+    "adult_topic"
+   ]
+  },
+  {
+   "id": "which_direction-01",
+   "category": "which_direction",
+   "q": "naan velinaadu poganuma illa inga irukkanuma",
+   "lang": "tanglish",
+   "topic": [
+    "travel"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "house:12",
+    "house:4",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_direction-02",
+   "category": "which_direction",
+   "q": "வெளிநாட்டில் வேலை செய்வதா, இங்கேயே இருப்பதா — எது நல்லது?",
+   "lang": "ta",
+   "topic": [
+    "travel"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "house:12",
+    "house:4",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_direction-03",
+   "category": "which_direction",
+   "q": "Should I settle abroad or stay in India?",
+   "lang": "en",
+   "topic": [
+    "travel"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "house:12",
+    "house:4",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_direction-04",
+   "category": "which_direction",
+   "q": "Which direction is good for my work?",
+   "lang": "en",
+   "topic": [
+    "career",
+    "travel"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "house:12",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_direction-05",
+   "category": "which_direction",
+   "q": "endha disai la vela thedalam",
+   "lang": "tanglish",
+   "topic": [
+    "career",
+    "job",
+    "travel"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "house:12",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_partner-01",
+   "category": "which_partner",
+   "q": "What kind of person will my wife be?",
+   "lang": "en",
+   "topic": [
+    "marriage",
+    "harmony"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ],
+   "gender": "male"
+  },
+  {
+   "id": "which_partner-02",
+   "category": "which_partner",
+   "q": "என் வருங்கால கணவர் எப்படிப்பட்டவராக இருப்பார்?",
+   "lang": "ta",
+   "topic": [
+    "marriage"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_partner-03",
+   "category": "which_partner",
+   "q": "en future wife eppadi irupaanga",
+   "lang": "tanglish",
+   "topic": [
+    "marriage"
+   ],
+   "band": "26-59",
+   "qtype": "status",
+   "must": [
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ],
+   "gender": "male"
+  },
+  {
+   "id": "which_partner-04",
+   "category": "which_partner",
+   "q": "What will my future husband's nature be like?",
+   "lang": "en",
+   "topic": [
+    "marriage",
+    "harmony"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_partner-05",
+   "category": "which_partner",
+   "q": "mapillai gunam eppadi irukkum",
+   "lang": "tanglish",
+   "topic": [
+    "marriage"
+   ],
+   "band": "26-59",
+   "qtype": "status",
+   "must": [
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_luck-01",
+   "category": "which_luck",
+   "q": "எனக்கு அதிர்ஷ்ட எண் எது?",
+   "lang": "ta",
+   "topic": [
+    "luck"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_luck-02",
+   "category": "which_luck",
+   "q": "enakku lucky colour enna",
+   "lang": "tanglish",
+   "topic": [
+    "luck"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_luck-03",
+   "category": "which_luck",
+   "q": "Which day of the week is lucky for me?",
+   "lang": "en",
+   "topic": [
+    "luck"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_luck-04",
+   "category": "which_luck",
+   "q": "எனக்கு ஏற்ற நிறம் எது?",
+   "lang": "ta",
+   "topic": [
+    "luck"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_luck-05",
+   "category": "which_luck",
+   "q": "Which god should I pray to as per my chart?",
+   "lang": "en",
+   "topic": [
+    "remedy"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_luck-06",
+   "category": "which_luck",
+   "q": "endha deivatha kumbidanum",
+   "lang": "tanglish",
+   "topic": [
+    "remedy"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_luck-07",
+   "category": "which_luck",
+   "q": "Which gemstone suits me?",
+   "lang": "en",
+   "topic": [
+    "remedy"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "free_remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "paid_remedy"
+   ]
+  },
+  {
+   "id": "which_luck-08",
+   "category": "which_luck",
+   "q": "enakku endha rasi kal podalam",
+   "lang": "tanglish",
+   "topic": [
+    "remedy"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "free_remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "paid_remedy"
+   ]
+  },
+  {
+   "id": "which_luck-09",
+   "category": "which_luck",
+   "q": "Which god should I pray to? I am Christian.",
+   "lang": "en",
+   "topic": [
+    "remedy"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "hindu_remedy"
+   ],
+   "faith": "christian"
+  },
+  {
+   "id": "why-01",
+   "category": "why",
+   "q": "yen ennaku kalyanam thallipoguthu",
+   "lang": "tanglish",
+   "topic": [
+    "marriage"
+   ],
+   "band": "26-59",
+   "qtype": "why",
+   "must": [
+    "why_reasons",
+    "house:7",
+    "empathy",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "why-02",
+   "category": "why",
+   "q": "ஏன் எனக்கு வேலை கிடைக்கவில்லை?",
+   "lang": "ta",
+   "topic": [
+    "job"
+   ],
+   "band": "26-59",
+   "qtype": "why",
+   "must": [
+    "why_reasons",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "why-03",
+   "category": "why",
+   "q": "Why am I not getting a promotion?",
+   "lang": "en",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "why",
+   "must": [
+    "why_reasons",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "why-04",
+   "category": "why",
+   "q": "ஏன் எனக்குக் கடன் தீரவே இல்லை?",
+   "lang": "ta",
+   "topic": [
+    "loan"
+   ],
+   "band": "26-59",
+   "qtype": "why",
+   "must": [
+    "why_reasons",
+    "house:6",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "why-05",
+   "category": "why",
+   "q": "Why is my business not growing?",
+   "lang": "en",
+   "topic": [
+    "business"
+   ],
+   "band": "26-59",
+   "qtype": "why",
+   "must": [
+    "why_reasons",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "why-06",
+   "category": "why",
+   "q": "yen enakku panam nikka maatenguthu",
+   "lang": "tanglish",
+   "topic": [
+    "money"
+   ],
+   "band": "26-59",
+   "qtype": "why",
+   "must": [
+    "why_reasons",
+    "house:11",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "why-07",
+   "category": "why",
+   "q": "Why do I keep failing in exams?",
+   "lang": "en",
+   "topic": [
+    "education"
+   ],
+   "band": "26-59",
+   "qtype": "why",
+   "must": [
+    "why_reasons",
+    "house:5",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "why-08",
+   "category": "why",
+   "q": "என் வீடு வாங்கும் முயற்சி ஏன் தள்ளிப் போகிறது?",
+   "lang": "ta",
+   "topic": [
+    "property"
+   ],
+   "band": "26-59",
+   "qtype": "why",
+   "must": [
+    "why_reasons",
+    "house:4",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "why-09",
+   "category": "why",
+   "q": "visa yen reject aaguthu",
+   "lang": "tanglish",
+   "topic": [
+    "travel"
+   ],
+   "band": "26-59",
+   "qtype": "why",
+   "must": [
+    "why_reasons",
+    "house:12",
+    "official_source",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "why-10",
+   "category": "why",
+   "q": "Why are there so many quarrels at home?",
+   "lang": "en",
+   "topic": [
+    "harmony",
+    "family"
+   ],
+   "band": "26-59",
+   "qtype": "why",
+   "must": [
+    "why_reasons",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "how-01",
+   "category": "how",
+   "q": "What should I do to get a job?",
+   "lang": "en",
+   "topic": [
+    "job"
+   ],
+   "band": "26-59",
+   "qtype": "how",
+   "must": [
+    "steps_first",
+    "house:10",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "how-02",
+   "category": "how",
+   "q": "பதவி உயர்வு பெற நான் என்ன செய்ய வேண்டும்?",
+   "lang": "ta",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "how",
+   "must": [
+    "steps_first",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "how-03",
+   "category": "how",
+   "q": "kadan theera enna pannanum",
+   "lang": "tanglish",
+   "topic": [
+    "loan"
+   ],
+   "band": "26-59",
+   "qtype": "how",
+   "must": [
+    "steps_first",
+    "house:6",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "how-04",
+   "category": "how",
+   "q": "How can I save more money?",
+   "lang": "en",
+   "topic": [
+    "money"
+   ],
+   "band": "26-59",
+   "qtype": "how",
+   "must": [
+    "steps_first",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "how-05",
+   "category": "how",
+   "q": "திருமணம் விரைவில் நடக்க என்ன செய்யலாம்?",
+   "lang": "ta",
+   "topic": [
+    "marriage"
+   ],
+   "band": "26-59",
+   "qtype": "how",
+   "must": [
+    "steps_first",
+    "house:7",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "how-06",
+   "category": "how",
+   "q": "business valara enna seiyanum",
+   "lang": "tanglish",
+   "topic": [
+    "business"
+   ],
+   "band": "26-59",
+   "qtype": "how",
+   "must": [
+    "steps_first",
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "how-07",
+   "category": "how",
+   "q": "How do I prepare for a government job?",
+   "lang": "en",
+   "topic": [
+    "job"
+   ],
+   "band": "26-59",
+   "qtype": "how",
+   "must": [
+    "steps_first",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "how-08",
+   "category": "how",
+   "q": "வெளிநாட்டு வேலை பெற என்ன செய்ய வேண்டும்?",
+   "lang": "ta",
+   "topic": [
+    "travel"
+   ],
+   "band": "26-59",
+   "qtype": "how",
+   "must": [
+    "steps_first",
+    "official_source",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "how-09",
+   "category": "how",
+   "q": "padippula nalla mark vaanga eppadi padikkanum",
+   "lang": "tanglish",
+   "topic": [
+    "education"
+   ],
+   "band": "26-59",
+   "qtype": "how",
+   "must": [
+    "steps_first",
+    "house:5",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "should-01",
+   "category": "should",
+   "q": "Should I accept a job offer in another city?",
+   "lang": "en",
+   "topic": [
+    "career",
+    "job",
+    "job_change"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "decision",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "should-02",
+   "category": "should",
+   "q": "ippo veedu vaangalama",
+   "lang": "tanglish",
+   "topic": [
+    "property"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "decision",
+    "house:4",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "should-03",
+   "category": "should",
+   "q": "இந்த ஆண்டு கார் வாங்கலாமா?",
+   "lang": "ta",
+   "topic": [
+    "vehicle"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "decision",
+    "house:4",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "should-04",
+   "category": "should",
+   "q": "Should I take a loan to start a business?",
+   "lang": "en",
+   "topic": [
+    "business",
+    "loan"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "decision",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "should-05",
+   "category": "should",
+   "q": "partner kooda serndhu tholil pannalama",
+   "lang": "tanglish",
+   "topic": [
+    "career",
+    "business"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "decision",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "should-06",
+   "category": "should",
+   "q": "Should I quit my job now or wait for a year?",
+   "lang": "en",
+   "topic": [
+    "career",
+    "job_change"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "decision",
+    "timing",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "should-07",
+   "category": "should",
+   "q": "இப்போது வேலையை விடலாமா, அல்லது காத்திருக்கலாமா?",
+   "lang": "ta",
+   "topic": [
+    "career",
+    "job_change",
+    "job"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "decision",
+    "timing",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "should-08",
+   "category": "should",
+   "q": "Should I go for higher studies or take a job?",
+   "lang": "en",
+   "topic": [
+    "education",
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "choice",
+   "must": [
+    "decision",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "status-01",
+   "category": "status",
+   "q": "How is my career this year?",
+   "lang": "en",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "status",
+   "must": [
+    "status_label",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "status-02",
+   "category": "status",
+   "q": "இந்த ஆண்டு என் பண நிலை எப்படி இருக்கும்?",
+   "lang": "ta",
+   "topic": [
+    "money"
+   ],
+   "band": "26-59",
+   "qtype": "status",
+   "must": [
+    "status_label",
+    "house:11",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "status-03",
+   "category": "status",
+   "q": "en kalyana vazhkai eppadi irukkum",
+   "lang": "tanglish",
+   "topic": [
+    "marriage"
+   ],
+   "band": "26-59",
+   "qtype": "status",
+   "must": [
+    "status_label",
+    "house:7",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "status-04",
+   "category": "status",
+   "q": "How will my business be next year?",
+   "lang": "en",
+   "topic": [
+    "business"
+   ],
+   "band": "26-59",
+   "qtype": "status",
+   "must": [
+    "status_label",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "status-05",
+   "category": "status",
+   "q": "என் படிப்பு எப்படி இருக்கும்?",
+   "lang": "ta",
+   "topic": [
+    "education"
+   ],
+   "band": "26-59",
+   "qtype": "status",
+   "must": [
+    "status_label",
+    "house:5",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "will-01",
+   "category": "will",
+   "q": "Will I get a government job?",
+   "lang": "en",
+   "topic": [
+    "job"
+   ],
+   "band": "26-59",
+   "qtype": "will",
+   "must": [
+    "calibrated",
+    "house:10",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "will-02",
+   "category": "will",
+   "q": "enakku sontha veedu amaiyuma",
+   "lang": "tanglish",
+   "topic": [
+    "property"
+   ],
+   "band": "26-59",
+   "qtype": "will",
+   "must": [
+    "calibrated",
+    "house:4",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "will-03",
+   "category": "will",
+   "q": "எனக்கு வெளிநாட்டு வேலை அமையுமா?",
+   "lang": "ta",
+   "topic": [
+    "travel"
+   ],
+   "band": "26-59",
+   "qtype": "will",
+   "must": [
+    "calibrated",
+    "house:12",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "will-04",
+   "category": "will",
+   "q": "Will my salary increase this year?",
+   "lang": "en",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "will",
+   "must": [
+    "calibrated",
+    "house:11",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "when_sub-01",
+   "category": "when_sub",
+   "q": "சம்பள உயர்வு எப்போது?",
+   "lang": "ta",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "when",
+   "must": [
+    "timing",
+    "house:11",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "when_sub-02",
+   "category": "when_sub",
+   "q": "When will I get a transfer to my home town?",
+   "lang": "en",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "when",
+   "must": [
+    "timing",
+    "house:3",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "when_sub-03",
+   "category": "when_sub",
+   "q": "office la boss tholla eppo theerum",
+   "lang": "tanglish",
+   "topic": [
+    "career"
+   ],
+   "band": "26-59",
+   "qtype": "when",
+   "must": [
+    "timing",
+    "house:6",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_elder-01",
+   "category": "which_elder",
+   "q": "என் மகனுக்கு எந்தத் தொழில் ஏற்றது?",
+   "lang": "ta",
+   "topic": [
+    "career"
+   ],
+   "band": "60+",
+   "qtype": "which",
+   "must": [
+    "honest",
+    "subject_chart",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "which_elder-02",
+   "category": "which_elder",
+   "q": "Which weekday is best for me to pray?",
+   "lang": "en",
+   "topic": [
+    "luck"
+   ],
+   "band": "60+",
+   "qtype": "which",
+   "must": [
+    "which_options",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "template"
+   ]
+  },
+  {
+   "id": "which_elder-03",
+   "category": "which_elder",
+   "q": "en magalukku entha mapillai set aagum",
+   "lang": "tanglish",
+   "topic": [
+    "marriage"
+   ],
+   "band": "60+",
+   "qtype": "which",
+   "must": [
+    "honest",
+    "subject_chart",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "honest-01",
+   "category": "honest",
+   "q": "Who will win the election?",
+   "lang": "en",
+   "topic": [
+    "general",
+    "honest"
+   ],
+   "band": "26-59",
+   "qtype": "general",
+   "must": [
+    "honest",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "honest-02",
+   "category": "honest",
+   "q": "What is today's gold rate?",
+   "lang": "en",
+   "topic": [
+    "general",
+    "honest"
+   ],
+   "band": "26-59",
+   "qtype": "general",
+   "must": [
+    "honest",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "honest-03",
+   "category": "honest",
+   "q": "en friend ku eppo kalyanam",
+   "lang": "tanglish",
+   "topic": [
+    "marriage"
+   ],
+   "band": "26-59",
+   "qtype": "when",
+   "must": [
+    "honest",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "honest-04",
+   "category": "honest",
+   "q": "When will my brother get a job?",
+   "lang": "en",
+   "topic": [
+    "job"
+   ],
+   "band": "26-59",
+   "qtype": "when",
+   "must": [
+    "honest",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "honest-05",
+   "category": "honest",
+   "q": "என் நண்பருக்கு வெளிநாட்டு வேலை கிடைக்குமா?",
+   "lang": "ta",
+   "topic": [
+    "travel"
+   ],
+   "band": "26-59",
+   "qtype": "will",
+   "must": [
+    "honest",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "honest-06",
+   "category": "honest",
+   "q": "Which bank gives the cheapest home loan?",
+   "lang": "en",
+   "topic": [
+    "loan",
+    "property"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "honest",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "astrology_reading"
+   ]
+  },
+  {
+   "id": "honest-07",
+   "category": "honest",
+   "q": "lottery la enna number varum",
+   "lang": "tanglish",
+   "topic": [
+    "general",
+    "honest"
+   ],
+   "band": "26-59",
+   "qtype": "which",
+   "must": [
+    "honest",
+    "followup"
+   ],
+   "mustNot": [
+    "meter",
+    "certainty",
+    "astrology_reading"
    ]
   }
  ]

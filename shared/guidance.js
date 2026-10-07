@@ -19,6 +19,7 @@ import { tamilDay } from './tamilcal.js';
 import { TEMPLES } from './temples.js';
 import { ageProfile, topicAllowed, ageGuardAnswer, facilitationCheck, policyAnswer, reviewedAnswer, childFeelingsAsked, REVIEWED_TEXT, LIMITS_LINE } from './age-guard.js';
 import { findProhibited, answerTrace } from './themes.js';
+import { careerFactsForAI } from './ask-which.js';
 
 export { RULES_VERSION } from './version.js';
 
@@ -158,6 +159,8 @@ export function factsForAI(f) {
     upcomingDasaBhukti: upcomingPeriods(f, 10),
     transits: f.transit?.status.map((s) => s.en) || [],
     saturnTransit: f.transit ? `Saturn ${f.transit.saturnFromMoon}${ordEn(f.transit.saturnFromMoon).slice(String(f.transit.saturnFromMoon).length)} from the Moon sign, in this sign ${iso(f.transit.satSpan.from)} to ${iso(f.transit.satSpan.to)}` : null,
+    // Which fields suit this chart (the same reading the on-device WHICH answer gives), so the AI names fields too.
+    careerSuitability: f.chart ? careerFactsForAI(f.chart, f.rel, f.now ? new Date(f.now) : new Date()) : null,
     jupiterTransit: f.transit ? `Jupiter ${f.transit.jupiterFromMoon}${ordEn(f.transit.jupiterFromMoon).slice(String(f.transit.jupiterFromMoon).length)} from the Moon sign, in this sign ${iso(f.transit.jupSpan.from)} to ${iso(f.transit.jupSpan.to)}` : null,
   };
 }

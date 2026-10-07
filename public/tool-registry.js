@@ -52,6 +52,7 @@ export const TOOLS = [
   // 5. Subhakaryam
   { id: 'muhurtham', group: 'subha', en: 'Muhurtham — choose good dates', ta: 'முகூர்த்தம் — நல்ல நாள் தேர்வு', k: 'muhurtham muhurtham muhurat good date nalla naal subha griha pravesam house warming wedding date' },
   { id: 'calendar', group: 'subha', en: 'Tamil calendar & festivals', ta: 'தமிழ் நாட்காட்டி & பண்டிகைகள்', k: 'calendar naatkaatti festival pandigai holiday month' },
+  { id: 'festivals', group: 'subha', en: 'Festivals & Vratham — why, how, when', ta: 'விழாக்கள் & விரதங்கள் — ஏன், எப்படி, எப்போது', k: 'festival festivals pandigai vizha thiruvizha vratham viratham deepavali diwali pongal navaratri saraswathi pooja ayudha pooja vinayagar chathurthi karthigai deepam vaikunta ekadasi sivaratri thai poosam aadi perukku krishna jayanthi skanda sashti pradosham ekadasi amavasai why how 365 days பண்டிகை விழா விரதம் தீபாவளி பொங்கல் நவராத்திரி' },
   { id: 'vratham', group: 'subha', en: 'Viratham days', ta: 'விரத நாட்கள்', k: 'vratham viratham fasting ekadasi pradosham amavasai pournami sashti' },
   { id: 'thivasam', group: 'subha', en: 'Thivasam / tharpanam', ta: 'திவசம் / தர்ப்பணம்', k: 'thivasam dhivasam tharpanam ancestors munnorgal shraddha' },
   // 6. Parigaram & temples
@@ -59,6 +60,7 @@ export const TOOLS = [
   { id: 'temples', group: 'worship', en: 'Temples — timings & directions', ta: 'கோவில்கள் — நேரம் & வழி', k: 'temple temples kovil koil aalayam darshan timings sthalam' },
   { id: 'journey', group: 'worship', en: 'My spiritual journey', ta: 'என் ஆன்மீகப் பயணம்', k: 'journey yatra pilgrimage trip temple tour aanmeegam payanam' },
   { id: 'mantras', group: 'worship', en: 'Mantras', ta: 'மந்திரங்கள்', k: 'mantra manthiram slokam sloka stotram prayer' },
+  { id: 'ithihasa', group: 'worship', en: 'Daily Ithihasa — Ramayanam & Mahabharatham', ta: 'இதிகாசத் தொடர் — இராமாயணம், மகாபாரதம்', k: 'ithihasa ithikasam itihasa ramayanam ramayana ramayan kamba ramayanam valmiki rama raman seethai sita hanuman anuman mahabharatham mahabharata bharatham krishna story kathai kadhai urai pravachanam upanyasam daily story audio listen read aloud இதிகாசம் இராமாயணம் ராமாயணம் மகாபாரதம் கதை உரை' },
   // 7. Services
   { id: 'priests', group: 'services', en: 'Priest requests', ta: 'புரோகிதர் கோரிக்கை', k: 'priest purohit iyer aiyar homam pooja', status: 'server' },
   { id: 'seva', group: 'services', en: 'Temple seva requests', ta: 'கோவில் சேவை கோரிக்கை', k: 'seva archanai abishekam temple booking', status: 'server' },

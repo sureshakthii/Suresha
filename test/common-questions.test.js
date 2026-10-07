@@ -110,7 +110,26 @@ const CHECKS = {
   no_accusation: (a) => !proh(a, ['accusation']).length && !findProhibited(a).some((h) => /infidelity|theft/.test(h.id)),
   deaddiction: has(/de-?addiction|counsel|14416|ஆலோசக|போதை மீட்பு/i),
   age_gate: (a) => ['age_guard', 'policy'].includes(a.intent) || Boolean(a.ageGuarded || a.policy || a.ageGuard),
+  // Question-type checks (shared/ask-sense.js): the first section answers the KIND of question that was asked.
+  which_options: (a) => whichOptions(a),
+  honest: (a) => a.honest === true && !CHART_READING.test(body(a)),
+  why_reasons: (a) => /main reasons|முக்கியக் காரணங்கள்/.test(first(a)) && first(a).split('\n').length >= 3,
+  steps_first: (a) => /first thing to do|முதலில் செய்ய வேண்டியது/.test(first(a)),
+  decision: (a) => /decision|decide|முடிவு|now rather than later|இப்போதே|a little later|சற்றுப் பொறுத்து|between the two|இரண்டில்|leans|சாய்கிறது|supports both|இரண்டையும் ஆதரிக்கிறது/i.test(first(a)),
+  status_label: (a) => /^(Now: |இப்போதைய நிலை: )/m.test(first(a)),
+  calibrated: (a) => /support|ஆதரவு|step by step|படிப்படியாக|supportive timing|சாதகமான காலத்தை/i.test(first(a)) && /not a promise|உறுதிமொழி அல்ல|never a yes or no|தீர்மானிப்பதில்லை/i.test(first(a)),
 };
+const first = (a) => ((a.sections || []).find((s) => s.key === 'answer')?.lines || []).join('\n');
+const CHART_READING = /\bdasa\b|\bbhukti\b|\bhouse \d|\d(st|nd|rd|th) house|தசை|புக்தி|-ம் வீடு|-ம் பாவம்/i;
+/** A WHICH answer names concrete options, each with its reason, in the first section. */
+function whichOptions(a) {
+  const lines = (a.sections || []).find((s) => s.key === 'answer')?.lines || [];
+  const numbered = lines.filter((l) => /^\d\)\s.+\s—\s.+/.test(l)).length;
+  if (numbered >= 2) return true;
+  if (a.whichKind === 'number') return lines.some((l) => /\d/.test(l)) && lines.length >= 2;
+  if (['partner', 'direction'].includes(a.whichKind)) return lines.length >= 2 && /\d+-ம்|\d+(st|nd|rd|th)|house|வீட்டில்/.test(lines.join(' '));
+  return numbered >= 1 && a.whichKind !== 'career';
+}
 const house = (n) => (a) => new RegExp(`\\b${ordEn(n)}\\b|\\bhouse ${n}\\b|(^|[^\\d])${n}-ம்|(^|[^\\d])${n}-ஆம்|(^|[^\\d])${n}-ல்`, 'i').test(body(a));
 const planet = (names) => (a) => names.split('|').some((p) => new RegExp(`\\b${p}\\b`, 'i').test(body(a)) || body(a).includes(PLANETS[p].ta));
 
@@ -135,12 +154,31 @@ const NOT = {
   chart_first: (a) => !CHECKS.urgent_first(a),
   accusation_of_victim: (a) => /your (fault|karma|chart) (caused|is why)|உங்கள் தவறு தான்|உங்கள் ஜாதகத்தால் தான்/i.test(all(a)),
   hindu_remedy: (a) => HINDU.test([sec(a, 'remedy', 'practice', 'prayer', 'dos', 'answer', 'next'), ...(a.followups || [])].join('\n')),
+  // The old one-size skeleton: "career growth & promotion" for every career question, or today's Rahu Kalam padding
+  // a WHICH / WHY / WILL / STATUS answer.
+  template: (a) => /தொழில் வளர்ச்சி & பதவி உயர்வு|தொழில் வளர்ச்சிக்கும் பதவி உயர்வுக்கும்|career growth & promotion/i.test(body(a)) || (['which', 'why', 'will', 'status'].includes(a.qtype) && /Today’s Rahu Kalam|இன்றைய ராகு காலம்/.test(body(a))),
 };
 
 function tagCheck(tag) {
   if (tag.startsWith('house:')) return house(Number(tag.slice(6)));
   if (tag.startsWith('planet:')) return planet(tag.slice(7));
   return CHECKS[tag];
+}
+
+// The answer's shape must fit the question type, and carry that shape's marker in the first section.
+const SHAPES = { which: ['which'], when: ['when', 'deadline'], will: ['will', 'deadline'], why: ['why', 'deadline'], how: ['how', 'deadline'], choice: ['choice', 'now_wait', 'love', 'which', 'deadline'], status: ['status', 'which', 'deadline'], general: ['when', 'which', 'deadline'] };
+function shapeOk(a, p) {
+  if (!(SHAPES[a.qtype] || []).includes(a.shape) && !(a.shape === 'how' && a.qtype === 'which') && !(a.shape === 'which' && a.whichKind)) return false;
+  switch (a.shape) {
+    case 'which': return whichOptions(a) || ['gem', 'god'].includes(a.whichKind);
+    case 'when': return YEAR.test(first(a)) || /no strongly marked window|வலுவாகக் குறிக்கப்பட்ட காலம் இல்லை/.test(first(a)) || (p.key === 'unknown' && p.rel.rasi === false);
+    case 'why': return CHECKS.why_reasons(a);
+    case 'how': return CHECKS.steps_first(a);
+    case 'will': return CHECKS.calibrated(a);
+    case 'status': return CHECKS.status_label(a);
+    case 'choice': case 'now_wait': case 'love': return CHECKS.decision(a) || /^Love or arranged|^காதலா/m.test(first(a));
+    default: return true;
+  }
 }
 
 // ------------------------------------------------------------------ run
@@ -158,6 +196,7 @@ function answerFor(row, p) {
 }
 
 const results = [];
+const answersByRow = [];
 const fail = (row, p, check, a) => results.push({ id: row.id, q: row.q, profile: p.key, check, ok: false, sample: body(a).slice(0, 220).replace(/\n/g, ' | ') });
 const pass = (row, p, check) => results.push({ id: row.id, profile: p.key, check, ok: true });
 const judge = (row, p, check, ok, a) => (ok ? pass(row, p, check) : fail(row, p, check, a));
@@ -177,6 +216,7 @@ test('the corpus is large, multilingual and covers every life area', () => {
     assert.ok(r.q && r.topic?.length && r.band && Array.isArray(r.must) && Array.isArray(r.mustNot), r.id);
     for (const t of [...r.must]) assert.ok(tagCheck(t), `${r.id}: unknown must tag ${t}`);
     for (const t of r.mustNot) assert.ok(NOT[t], `${r.id}: unknown mustNot tag ${t}`);
+    if (r.qtype) assert.ok(['which', 'when', 'will', 'why', 'how', 'choice', 'status', 'general'].includes(r.qtype), `${r.id}: qtype ${r.qtype}`);
   }
   assert.equal(new Set(qs.map((r) => r.id)).size, qs.length, 'unique ids');
 });
@@ -193,6 +233,11 @@ test('every question, four profiles, on-device answer path', () => {
       judge(row, p, 'prohibited', findProhibited(a).length === 0 && proh(a, minorChart ? MINOR_CLASSES.filter((c) => !['marriage_scheduling'].includes(c) || ADULT_TOPICS.has(topicOf(a))) : ADULT_CLASSES).length === 0, a);
       judge(row, p, 'no_certainty', !NOT.certainty(a), a);
       judge(row, p, 'not_validation_fallback', !a.validationFallback, a);
+      // Ask answers never carry a percentage meter (product rule: no scores / verdicts).
+      judge(row, p, 'no_meter', a.meter == null && !/\b\d{1,3}\s?%/.test(body(a)), a);
+      // The answer's shape matches the kind of question (which → options, when → dates, why → reasons …).
+      if (a.shape) judge(row, p, `shape:${a.shape}`, shapeOk(a, p), a);
+      if (p.key === 'adult') answersByRow.push({ row, a });
       if (['crisis', 'abuse'].includes(row.category)) {
         judge(row, p, 'routes_to_help', CHECKS.helpline(a) && !NOT.astrology_reading(a), a);
       }
@@ -208,6 +253,7 @@ test('every question, four profiles, on-device answer path', () => {
       if (!isPrimary) continue;
       // Asked by this kind of person: full content checks.
       judge(row, p, 'topic', row.topic.includes(topicOf(a)), { ...a, sections: [{ key: 'x', lines: [`got topic ${topicOf(a)} (intent ${a.intent})`] }] });
+      if (row.qtype) judge(row, p, 'qtype', a.qtype === row.qtype, { ...a, sections: [{ key: 'x', lines: [`got qtype ${a.qtype} (shape ${a.shape})`] }] });
       const timingPossible = !(p.key === 'unknown' && p.rel.rasi === false);
       for (const tag of row.must) {
         if (tag === 'timing' && !timingPossible) continue;
@@ -310,6 +356,16 @@ test('with an API key the model gets the same five-part structure and the dated 
   const f = factsForAI(PROFILES.adult.facts);
   assert.ok(f.upcomingDasaBhukti.length >= 3 && /\d{4}-\d{2}-\d{2}/.test(f.upcomingDasaBhukti[0]));
   assert.match(f.saturnTransit, /from the Moon sign/);
+  // The model is told to answer the KIND of question first, and gets the career-suitability facts to name fields.
+  assert.match(ANSWER_STYLE, /WHICH[\s\S]*careerSuitability/);
+  for (const k of ['WHEN', 'WILL / YES-NO', 'WHY', 'HOW / WHAT TO DO', 'SHOULD-I', 'STATUS']) assert.ok(ANSWER_STYLE.includes(k), k);
+  assert.match(ANSWER_STYLE, /never give a general reading instead/);
+  assert.equal(f.careerSuitability.topFields.length, 3);
+  assert.match(f.careerSuitability.topFields[0], /10th lord|10th house/);
+  assert.ok(ev.ids.includes('CAREER.field.0') && ev.ids.includes('CAREER.job_or_business'), 'career-suitability evidence');
+  // General questions: their own task, no chart ever.
+  assert.ok(AI_TASKS.general && /NEVER read the person's horoscope/.test(AI_TASKS.general));
+  assert.match(AI_TASKS.general, /use exactly that date/);
 });
 
 test('suggested-question chips follow the age band (and never show temple chips to other faiths)', () => {
@@ -320,4 +376,108 @@ test('suggested-question chips follow the age band (and never show temple chips 
   assert.doesNotMatch(chips('elder', { faith: 'christian' }), /temple/i);
   const young = ask.askSuggestions({ band: 'adult', age: 22, adult: true, minor: false }).map((c) => c.en).join(' | ');
   assert.match(young, /job|married/);
+});
+
+// ------------------------------------------------------------------ no repetition (owner, Oct 2026)
+// "Everybody when click should not repeat the same answer — it means there is no intelligence."
+const SAFETY_CATS = new Set(['crisis', 'abuse', 'missing', 'death', 'child_sex', 'minor_gate']);
+const lineSet = (a) => new Set((a.sections || []).flatMap((s) => s.lines || []));
+const jaccard = (x, y) => { let i = 0; for (const v of x) if (y.has(v)) i++; return i / (x.size + y.size - i || 1); };
+const intentKey = (row, a) => [topicOf(a), a.shape || a.intent, a.subtopic || '', a.whichKind || '', a.subject ? 'descendant' : '', a.honestReason || '', row.lang === 'en' ? 'en' : 'ta'].join('|');
+
+test('no repetition: different questions never get the same answer body, and different intents in a topic differ substantially', () => {
+  assert.ok(answersByRow.length >= 400, `answers collected: ${answersByRow.length}`);
+  const rows = answersByRow.filter(({ row, a }) => !SAFETY_CATS.has(row.category) && !['age_guard', 'policy'].includes(a.intent) && !a.policy);
+  // (1) identical bodies across different questions (same question text = same answer, by design)
+  const seen = new Map();
+  const dups = [];
+  for (const { row, a } of rows) {
+    const b = body(a);
+    const prev = seen.get(b);
+    if (prev && prev.q !== row.q) dups.push(`${prev.id} = ${row.id}: ${row.q}`);
+    else seen.set(b, row);
+  }
+  assert.deepEqual(dups, [], `identical answers for different questions:\n${dups.slice(0, 20).join('\n')}`);
+  // (2) within a topic, two DIFFERENT intents (shape / sub-topic / which-kind …) share < 60% of their lines
+  const byTopic = new Map();
+  for (const x of rows) { const t = topicOf(x.a); if (!byTopic.has(t)) byTopic.set(t, []); byTopic.get(t).push({ ...x, key: intentKey(x.row, x.a), set: lineSet(x.a) }); }
+  const close = [];
+  for (const [t, list] of byTopic) {
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+      if (list[i].key === list[j].key || list[i].row.q === list[j].row.q) continue;
+      const jv = jaccard(list[i].set, list[j].set);
+      if (jv >= 0.6) close.push(`${t}: ${list[i].row.id} ~ ${list[j].row.id} (${jv.toFixed(2)}) [${list[i].key}] vs [${list[j].key}]`);
+    }
+  }
+  assert.deepEqual(close, [], `answers for different intents are too similar:\n${close.slice(0, 25).join('\n')}`);
+});
+
+test('WHICH answers name concrete, chart-specific options with reasons — and two charts get different options', () => {
+  const q = 'என் ஜாதகத்திற்கு எந்தத் தொழில் ஏற்றது?';
+  const run = (p) => answerFor({ q, lang: 'ta', band: '26-59' }, PROFILES[p]);
+  const a = run('adult');
+  const lines = a.sections[0].lines;
+  assert.equal(a.qtype, 'which');
+  assert.equal(a.meter, null);
+  assert.ok(lines.filter((l) => /^\d\)\s.+\s—\s.+/.test(l)).length === 3, lines.join('\n'));
+  assert.match(lines.join('\n'), /10-ம் அதிபதி/);
+  assert.match(lines.join('\n'), /வேலையா தொழிலா/);
+  assert.match(lines.join('\n'), /^இப்போது: /m);
+  assert.doesNotMatch(body(a), /இன்றைய ராகு காலம்|தொழில் வளர்ச்சி & பதவி உயர்வு/);
+  const b = run('unknown');
+  assert.notDeepEqual(a.sections[0].lines.slice(1, 4), b.sections[0].lines.slice(1, 4), 'two different charts must not get the same fields');
+  assert.match(body(b), /சந்திர ராசிப்படி|தசாம்சம் \(D10\) பார்க்கத் துல்லியமான பிறந்த நேரம் தேவை/);
+});
+
+test('honesty gate: unanswerable questions get an honest line and specific ways forward — never a template', () => {
+  const qs = ['Who will win the election?', 'What is today\'s gold rate?', 'Which stock should I buy tomorrow?', 'What is the capital of France?', 'lottery la enna number varum',
+    'en friend ku eppo kalyanam', 'When will my brother get a job?', 'என் நண்பருக்கு வெளிநாட்டு வேலை கிடைக்குமா?', 'my sister marriage eppo nadakkum',
+    'which field should my son study', 'என் மகளுக்கு எந்தப் படிப்பு ஏற்றது?', 'Which bank gives the cheapest home loan?', 'asdf qwerty', 'what is the meaning of life'];
+  for (const q of qs) {
+    for (const lang of ['ta', 'en']) {
+      const a = answerFor({ q, lang, band: '26-59' }, PROFILES.adult);
+      assert.equal(a.honest, true, `${q}: ${a.intent} ${body(a).slice(0, 120)}`);
+      assert.doesNotMatch(body(a), CHART_READING, q);
+      assert.ok(!(a.sections || []).some((s) => ['periods', 'chart', 'dos', 'donts', 'remedy'].includes(s.key)), `${q}: no template sections`);
+      assert.match(a.sections[0].lines[0], lang === 'ta' ? /உறுதியான பதில் தர இயலவில்லை/ : /cannot give a firm answer/);
+      assert.ok((a.followups || []).length >= 2, `${q}: rephrase chips`);
+      assert.ok(a.actions.some((x) => x.ai), `${q}: detailed-answer (server AI) option`);
+      if (/friend|brother|sister|நண்பர|son|மகள/.test(q)) assert.ok(a.actions.some((x) => x.go === 'family'), `${q}: add their chart`);
+    }
+  }
+});
+
+// ------------------------------------------------------------------ general questions (festivals, vratham, scripture)
+const GENERAL_QS = ['when is Saraswathi pooja', 'saraswathi pooja eppo', 'சரஸ்வதி பூஜை எப்போது?', 'ஏகாதசி விரதம் ஏன்', 'why shasti viratham', 'next pradosham', 'adutha pradosham eppo',
+  'ramayanam la sabari yaar', 'இன்று என்ன திதி', 'inniku enna thithi', 'When is Deepavali this year?', 'deepavali eppo', 'தீபாவளி எப்போது?', 'next pournami', 'அடுத்த பௌர்ணமி எப்போது?',
+  'amavasai eppo', 'When is the next Ekadasi?', 'Why do we fast on Ekadasi?', 'pradosham viratham eppadi irukkanum', 'Story of Karthigai Deepam', 'கார்த்திகை தீபம் ஏன் கொண்டாடுகிறோம்?',
+  'thai poosam eppo', 'Who is Sabari in Ramayanam?', 'mahabharatham la karnan yaar', 'மகாபாரதத்தில் பீஷ்மர் யார்?', 'What is the meaning of Vaikunta Ekadasi?', 'navarathri eppo start aagum',
+  'kanda sashti viratham eppadi', 'சஷ்டி விரதம் எப்படி இருப்பது?', 'When is Pongal?', 'pongal eppo', 'Sankatahara chathurthi eppo', 'Why is Shivarathri celebrated?', 'sivarathri eppo',
+  'Vinayagar chathurthi eppo', 'Ayudha pooja date', 'Mahalaya amavasai significance', 'arudra darisanam eppo', 'thiruvonam viratham eppo', "What is tomorrow's tithi?"];
+test('general questions never get a chart reading — in either mode (owner: "when is Saraswathi pooja" got a dasa reading)', async () => {
+  await ask.loadGeneralKB?.();
+  assert.ok(GENERAL_QS.length >= 40);
+  for (const q of GENERAL_QS) {
+    for (const mode of ['chart', 'general']) {
+      for (const lang of ['ta', 'en']) {
+        const a = ask.askThunai({ text: q, chart: PROFILES.adult.chart, rel: PROFILES.adult.rel, facts: PROFILES.adult.facts, life: { faith: 'hindu' }, lang, name: 'Priya', today: TODAY, profile: PROFILES.adult.prof, speaker: PROFILES.adult.prof, now: NOW, mode });
+        assert.equal(a.general, true, `${q} [${mode}] → ${a.intent}`);
+        assert.doesNotMatch(body(a), CHART_READING, `${q} [${mode}]: ${body(a).slice(0, 160)}`);
+        assert.equal(a.meter, null);
+        if (mode === 'chart') assert.ok(a.modeNote && a.actions.some((x) => x.mode === 'chart'), `${q}: note + one-tap switch back`);
+      }
+    }
+  }
+  // The calendar answers a festival date even before the general engine is present.
+  const s = ask.askThunai({ text: 'when is Saraswathi pooja', chart: PROFILES.adult.chart, rel: PROFILES.adult.rel, life: {}, lang: 'en', profile: PROFILES.adult.prof, now: NOW, mode: 'general' });
+  assert.match(body(s), /2026|2027/);
+  // General mode + a question about the person: offer the switch, never a general (or chart) answer.
+  for (const q of ['when will I get married', 'en jathagam eppadi', 'எனக்கு எப்போது வேலை கிடைக்கும்?']) {
+    const a = ask.askThunai({ text: q, chart: PROFILES.adult.chart, rel: PROFILES.adult.rel, life: {}, lang: 'ta', profile: PROFILES.adult.prof, now: NOW, mode: 'general' });
+    assert.equal(a.intent, 'mode_switch', q);
+    assert.ok(a.actions.some((x) => x.mode === 'chart'), q);
+  }
+  // Safety still comes first in General mode.
+  const c = ask.askThunai({ text: 'I want to end my life', chart: PROFILES.adult.chart, rel: PROFILES.adult.rel, life: {}, lang: 'en', profile: PROFILES.adult.prof, now: NOW, mode: 'general' });
+  assert.match(body(c), /14416/);
 });

@@ -3,6 +3,7 @@
 // no coordinates, no family/relationship details unless the task needs them.
 import { detectYogas, transitStatus } from '../../shared/analysis.js';
 import { runningDasa } from '../../shared/daily.js';
+import { careerFactsForAI } from '../../shared/ask-which.js';
 
 export const EVIDENCE_VERSION = 'evidence-1.1.0';
 
@@ -60,6 +61,17 @@ export function evidenceFromChart(chart, { includeYogas = true, now = new Date()
     add('TRANSIT.jupiter', `Jupiter transits house ${tr.jupiterFromMoon} from the Moon sign, in this sign ${iso(tr.jupSpan.from)} to ${iso(tr.jupSpan.to)}`, 'analysis.transitStatus');
     for (const st of tr.status) add(`TRANSIT.${st.id}`, st.en, `analysis.transitStatus:${st.id}`);
   } catch { /* ephemeris unavailable — omit, never guess */ }
+  // Career suitability (which fields suit this chart, job vs business, the running dasa's fit) — so a WHICH career
+  // question can be answered with named fields from engine facts only.
+  try {
+    const cf = careerFactsForAI(chart, chart.planets?.Lagna ? null : { lagna: false }, now);
+    if (cf) {
+      add('CAREER.tenth', `10th house: ${cf.tenthHouse}`, 'ask-which.careerReading');
+      cf.topFields.forEach((t, i) => add(`CAREER.field.${i}`, `Suitable field group ${t}`, 'ask-which.careerReading'));
+      add('CAREER.job_or_business', `Job or business: ${cf.jobOrBusiness}`, 'ask-which.careerReading');
+      add('CAREER.dasa_fit', `Current dasa fit: ${cf.currentDasaFit}`, 'ask-which.careerReading');
+    }
+  } catch { /* optional — omit, never guess */ }
   if (includeYogas) {
     try {
       for (const y of detectYogas(chart)) add(`YOGA.${y.id}`, `${y.name.en} (rule ${y.id}): ${y.desc.en}`, `analysis.detectYogas:${y.id}`);

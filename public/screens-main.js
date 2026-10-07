@@ -25,6 +25,7 @@ import { healthGuide } from './shared/health.js';
 import { healthNowHtml } from './screens-health.js';
 import { dailyReview } from './shared/daily.js';
 import { todayPlan } from './shared/today-plan.js';
+import { hymnText } from './hymn-links.js';
 import { faithOf, faithWelcome, faithBlessing, universalPractice, isHinduFaith } from './shared/faith.js';
 import { todayLines } from './today-lines.js';
 import { ageProfile, suggestionsFor, categoryAllowed, childSafe } from './shared/age-guard.js';
@@ -87,7 +88,7 @@ function todayPlanCard(m, snap, loc, td) {
     <div class="card-title"><span id="tpTitle">${icon('sun', { size: 18 })} ${L('Today’s guidance', 'இன்றைய வழிகாட்டல்')}</span>${review?.personal ? `<span class="tag ${lvCls}">${esc(bi(review.label))}</span>` : ''}</div>
     <p class="tp-energy">${esc(bi(plan.energy))}</p>
     ${n ? `<details class="disclose tp-more"><summary>${L('Today’s plan', 'இன்றைய திட்டம்')} · ${n}</summary>
-    ${plan.items.map((it) => `<div class="tp-item${it.personal ? ' mine' : ''}"><div class="tp-icon">${it.icon}</div><div><b>${esc(bi(it.title))}</b><div class="small">${esc(bi(it.text))}</div></div></div>`).join('')}
+    ${plan.items.map((it) => `<div class="tp-item${it.personal ? ' mine' : ''}"><div class="tp-icon">${it.icon}</div><div><b>${esc(bi(it.title))}</b><div class="small">${hymnText(bi(it.text))}</div></div></div>`).join('')}
     ${h && h.start ? `<div class="tp-item tp-horai"><div class="tp-icon">⏰</div><div><b>${esc(fmtTime(h.start, loc.tz))} – ${esc(fmtTime(h.end, loc.tz))} · ${esc(planetName(h.planet))} ${h.planet === 'Rahu' ? L('(Rahu Kalam)', '(ராகு காலம்)') : h.planet === 'Ketu' ? '' : L('Horai', 'ஓரை')}</b>
       <div class="small">${esc(bi(h.text))}</div><div class="small muted">${esc(bi(h.why))} · ${esc(bi(h.repeat))}</div></div>${remindBtn({ title: `${planetName(h.planet)} ${L('Horai prayer', 'ஓரை வழிபாடு')}`, at: h.start })}</div>` : ''}
     </details>` : ''}
@@ -131,7 +132,7 @@ function dailyCard(m, snap, loc) {
   let r;
   try { r = dailyReview(person ? chartOf(person) : null, snap, new Date(), { faith: person ? faithOf(person) : 'hindu' }); } catch { return ''; }
   if (person) r = minorDay(r, ageOf(person));
-  const god = `<div class="dc-god"><span class="mini-label">${L('God of the day', 'இன்றைய தெய்வம்')}</span><b>${esc(bi(r.deity.god))}</b><span class="dc-mantra">${esc(bi(r.deity.mantra))}</span><span class="small muted">${esc(bi(r.deity.act))}</span></div>`;
+  const god = `<div class="dc-god"><span class="mini-label">${L('God of the day', 'இன்றைய தெய்வம்')}</span><b>${esc(bi(r.deity.god))}</b><span class="dc-mantra">${esc(bi(r.deity.mantra))}</span><span class="small muted">${hymnText(bi(r.deity.act))}</span></div>`;
   // God of the day: Hindu tradition — shown only when the member is Hindu (or no member is chosen).
   if (!r.personal) return person && !isHinduFaith(faithOf(person)) ? '' : `<section class="card glass daily-card">${god}</section>`;
   const range = (w) => `${fmtDate(w.start, loc.tz)} ${fmtTime(w.start, loc.tz)} – ${fmtDate(w.end, loc.tz)} ${fmtTime(w.end, loc.tz)}`;
@@ -693,7 +694,7 @@ function renderChart(sec) {
         <div class="gb-detail" id="gb-${g.planet}" hidden>
           <ul>${g.reasons.map((r) => `<li>${r.pts > 0 ? '▲' : '▼'} ${esc(L(r.en, r.ta))}</li>`).join('') || `<li>${L('No special factors', 'சிறப்புக் காரணிகள் இல்லை')}</li>`}</ul>
           <p class="muted small">${esc(bi(NAVAGRAHA[g.planet].governs))}</p>
-          ${g.level === 'weak' ? `<p>🪔 ${esc(bi(NAVAGRAHA[g.planet].free))}</p><p>🛕 ${esc(bi(NAVAGRAHA[g.planet].temple))}</p>` : ''}
+          ${g.level === 'weak' ? `<p>🪔 ${hymnText(bi(NAVAGRAHA[g.planet].free))}</p><p>🛕 ${esc(bi(NAVAGRAHA[g.planet].temple))}</p>` : ''}
         </div>`).join('')}</div>
     ${ageOf(m).minor ? `<div class="card glass"><div class="card-title">${L('Doshams', 'தோஷங்கள்')}</div><p class="small">🌱 ${L('Doshams are looked at only for marriage matching, after 18. For a child, the chart is read for studies, health and good habits.', 'தோஷங்கள் 18 வயதுக்குப் பிறகு திருமணப் பொருத்தத்திற்கு மட்டுமே பார்க்கப்படும். குழந்தைக்கு ஜாதகம் கல்வி, ஆரோக்கியம், நல்ல பழக்கங்களுக்காக மட்டுமே பார்க்கப்படுகிறது.')}</p></div>` : `<div class="card glass"><div class="card-title">${L('Doshams', 'தோஷங்கள்')}</div>
       ${dRef ? `<p class="small muted"><span class="pill">${L('Moon reference', 'சந்திர லக்னம்')}</span> ${esc(bi(dRef))}</p>` : d.chevvai.lagnaStable === false ? `<p class="small">${chip('lagna', 'house:Mars')} ${L('The Lagna-based check can change within your birth-time window.', 'லக்ன அடிப்படைக் கணக்கு உங்கள் பிறந்த நேர இடைவெளிக்குள் மாறலாம்.')}</p>` : ''}

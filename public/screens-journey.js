@@ -3,6 +3,7 @@
 import { planJourney, parseTripText, worshipOptions, REVIEW, COST_ASSUMPTIONS, dayInfo, prov, tripEndDate, ACCESS_NEEDS, normaliseNeeds, templeFacts } from './shared/journey.js';
 import { fetchWeather, provBadge, offlineBanner } from './screens-world.js';
 import { NAVAGRAHA } from './shared/remedies.js';
+import { hymnText } from './hymn-links.js';
 import { templeLinks, TEMPLES } from './shared/temples.js';
 import { templeInfo } from './shared/temple-info.js';
 import { searchLocalPlaces, placeText } from './shared/places.js';
@@ -417,9 +418,9 @@ function optionHtml(o, idx) {
     </div>`).join('')}
     ${fl ? flightCard(fl.back, `${L('Day', 'நாள்')} ${totalDays}${plan.date ? ` · ${dayDate(o.itinerary.length)}` : ''}`, true) : ''}
     </details>` : ''}
-    ${o.homeWorship ? `<div class="ans-sec"><div class="ans-h">🪔 ${L('Or worship at home (free)', 'அல்லது வீட்டிலேயே வழிபாடு (இலவசம்)')}</div><p class="small">${homePlanet ? `${esc(planetName(homePlanet))}: ${esc(bi(NAVAGRAHA[homePlanet].free))}` : L('Light a lamp at sunrise or sunset and spend ten quiet minutes in prayer.', 'சூரிய உதயம் / மறைவில் தீபம் ஏற்றி, பத்து நிமிடம் அமைதியாக வழிபடுங்கள்.')}</p></div>` : ''}
+    ${o.homeWorship ? `<div class="ans-sec"><div class="ans-h">🪔 ${L('Or worship at home (free)', 'அல்லது வீட்டிலேயே வழிபாடு (இலவசம்)')}</div><p class="small">${homePlanet ? `${esc(planetName(homePlanet))}: ${hymnText(bi(NAVAGRAHA[homePlanet].free))}` : L('Light a lamp at sunrise or sunset and spend ten quiet minutes in prayer.', 'சூரிய உதயம் / மறைவில் தீபம் ஏற்றி, பத்து நிமிடம் அமைதியாக வழிபடுங்கள்.')}</p></div>` : ''}
     ${travellerAdvice(o)}
-    <div class="ans-sec"><div class="ans-h">${L('Optional worship', 'விருப்ப வழிபாடு')}</div><ul class="small">${worshipOptions(o.temples[0]?.planet || homePlanet).map((w) => `<li>${esc(bi(w))}</li>`).join('')}</ul></div>
+    <div class="ans-sec"><div class="ans-h">${L('Optional worship', 'விருப்ப வழிபாடு')}</div><ul class="small">${worshipOptions(o.temples[0]?.planet || homePlanet).map((w) => `<li>${hymnText(bi(w))}</li>`).join('')}</ul></div>
     <div class="btn-row">
       <button class="chip-btn" data-save="${idx}">💾 ${L('Save', 'சேமி')}</button>
       <button class="chip-btn" data-share="${idx}">📤 ${L('Share', 'பகிர்')}</button>

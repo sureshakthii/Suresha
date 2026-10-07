@@ -8,6 +8,7 @@ import { MANTRAS } from './shared/mantras.js';
 import { state, $, $$, L, ta, esc, bi, go, registerScreen, subHeader, speak, placeName, monthName, activeMember } from './core.js';
 import { remindBtn } from './remind.js';
 import { faithOf } from './shared/faith.js';
+import { hymnText } from './hymn-links.js';
 import { icon } from './icons.js';
 
 const FILTERS = [
@@ -113,7 +114,7 @@ function renderDetail(sec, id) {
     }
     const isList = s.lines.length > 1;
     return `<div class="card glass fx-sec fx-${esc(s.key)}"><div class="card-title"><span>${esc(s.title)}</span></div>
-      ${isList ? `<ul class="fx-list">${s.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : `<p>${esc(s.lines[0] || '')}</p>`}</div>`;
+      ${isList ? `<ul class="fx-list">${s.lines.map((l) => `<li>${hymnText(l)}</li>`).join('')}</ul>` : `<p>${hymnText(s.lines[0] || '')}</p>`}</div>`;
   }).join('');
   sec.innerHTML = `${subHeader(bi(e.names), bi(e.line), 'festivals')}
     <div class="card glass fx-head">

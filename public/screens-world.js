@@ -6,6 +6,7 @@ import { templeInfo } from './shared/temple-info.js';
 import { templeSearchField, attachTempleSearch } from './temple-search.js';
 import { MANTRAS, MANTRA_TAGS } from './shared/mantras.js';
 import { NAVAGRAHA, grahaStrength } from './shared/remedies.js';
+import { hymnText } from './hymn-links.js';
 import { familyRelations } from './shared/relations.js';
 import { fullAnalysis, BHAVAS } from './shared/analysis.js';
 import { faithOf } from './shared/faith.js';
@@ -691,7 +692,7 @@ function rolesCard(r, c) {
   const b = r.badhaka, mk = r.maraka;
   const marakas = [...new Set([mk.second.lord, mk.seventh.lord])];
   const row = (lord, title, meaning) => `<div class="pari-row"><span class="pg" style="color:${COLOR[lord]}">${GLYPH[lord]}</span><div><b>${title}</b><p>${meaning}</p>
-    <p class="small">⏳ ${esc(lordPeriods(lord, c).join(' · ') || bi(HORIZON_LINES.periods(AN_YEARS)))}</p><p class="small">🪔 ${esc(bi(NAVAGRAHA[lord].free))}</p></div></div>`;
+    <p class="small">⏳ ${esc(lordPeriods(lord, c).join(' · ') || bi(HORIZON_LINES.periods(AN_YEARS)))}</p><p class="small">🪔 ${hymnText(bi(NAVAGRAHA[lord].free))}</p></div></div>`;
   return `<div class="card glass"><div class="card-title">🧭 ${L('Badhakathipathi & Marakathipathi', 'பாதகாதிபதி & மாரகாதிபதி')} <span class="pill horizon-label">${esc(bi(horizonLabel(AN_YEARS)))}</span>${stabilityChip(c, 'lagna')}</div>
     ${row(b.lord, `${L('Badhakathipathi', 'பாதகாதிபதி')}: ${esc(planetName(b.lord))} · ${L(`lord of the ${b.house}th house`, `${b.house}-ம் வீட்டு அதிபதி`)}`,
     esc(L('The planet tradition links with delays and unexpected hurdles. In its periods, plan early, stay patient and do its parigaram — hurdles turn into lessons and growth.', 'தாமதம், எதிர்பாராத தடைகளுடன் மரபு இணைக்கும் கிரகம். அதன் காலங்களில் முன்கூட்டியே திட்டமிட்டு, பொறுமையுடன், அதன் பரிகாரம் செய்தால் தடைகள் பாடமாகவும் வளர்ச்சியாகவும் மாறும்.')))}

@@ -11,6 +11,7 @@ import {
 import { remindBtn } from './remind.js';
 import { ageProfile, adultText } from './shared/age-guard.js';
 import { faithOf } from './shared/faith.js';
+import { hymnText } from './hymn-links.js';
 // The viewer's faith (the active family member's) — another faith gets practices for every faith, not Hindu pujas.
 const pyFaith = () => { const m = activeMember(); return m && m.relation !== 'organization' ? faithOf(m) : 'hindu'; };
 
@@ -153,7 +154,7 @@ function fillPalan(cur) {
       <div class="hd"><b style="color:${COLOR[p]}">${GLYPH[p]} ${esc(planetName(p))} · ${esc(rasiName(rasi))} <span class="muted small">(${houseLabel(x.house)})</span></b><span class="tag ${TAG[x.level]}">${levelLabel(x.level)}</span></div>
       ${x.special ? `<span class="pill">${esc(bi(x.special))}</span>` : ''}
       <p>${esc(bi(kidText(x.text)))}</p>
-      <p class="rem">🙏 ${esc(bi(x.remedy))}</p>
+      <p class="rem">🙏 ${hymnText(bi(x.remedy))}</p>
     </div>`).join('')}
   </div>`;
 }

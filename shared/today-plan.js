@@ -13,9 +13,9 @@ const SACRED = [
   { re: /Pradosham/, icon: '🔱', deity: T('Lord Shiva & Nandi', 'சிவபெருமான் & நந்தி'), planets: ['Saturn', 'Moon', 'Sun'],
     act: T('At Pradosha time (about 4:30–6:00 PM) visit Shiva and Nandi; offer bilva leaves and pray quietly.', 'பிரதோஷ வேளையில் (மாலை சுமார் 4:30–6:00) சிவன், நந்தி தரிசனம்; வில்வம் அர்ப்பணம், அமைதியான பிரார்த்தனை.') },
   { re: /Sashti|Soorasamharam/, icon: '🦚', deity: T('Lord Murugan', 'முருகப் பெருமான்'), planets: ['Mars', 'Rahu'],
-    act: T('Sashti viratham: avoid non-vegetarian food today and read Kanda Sashti Kavasam.', 'சஷ்டி விரதம்: இன்று அசைவம் தவிர்த்து கந்த சஷ்டி கவசம் படியுங்கள்.'), food: true },
+    act: T('Sashti viratham: avoid non-vegetarian food today and read Kanda Sashti Kavasam.', 'சஷ்டி விரதம்: இன்று அசைவம் தவிர்த்து கந்த சஷ்டி கவசம் படியுங்கள்.'), food: true, hymn: 'kanda-sashti-kavasam' },
   { re: /Ekadasi/, icon: '🪷', deity: T('Lord Perumal', 'பெருமாள்'), planets: ['Mercury', 'Jupiter', 'Saturn'],
-    act: T('Ekadasi viratham: skip rice (fruit / light food), chant Vishnu Sahasranamam or “Om Namo Narayanaya”.', 'ஏகாதசி விரதம்: அரிசி உணவு தவிர்த்து (பழம் / எளிய உணவு), விஷ்ணு சகஸ்ரநாமம் அல்லது “ஓம் நமோ நாராயணாய”.'), food: true },
+    act: T('Ekadasi viratham: skip rice (fruit / light food), chant Vishnu Sahasranamam or “Om Namo Narayanaya”.', 'ஏகாதசி விரதம்: அரிசி உணவு தவிர்த்து (பழம் / எளிய உணவு), விஷ்ணு சகஸ்ரநாமம் அல்லது “ஓம் நமோ நாராயணாய”.'), food: true, hymn: 'vishnu-sahasranamam' },
   { re: /Amavasai/, icon: '🪔', deity: T('Ancestors (Pithrus)', 'முன்னோர்கள் (பித்ருக்கள்)'), planets: ['Sun', 'Rahu', 'Ketu'],
     act: T('Remember your ancestors: tharpanam or feed someone in need; light a lamp in the evening.', 'முன்னோர்களை நினைவுகூருங்கள்: தர்ப்பணம் அல்லது அன்னதானம்; மாலை தீபம்.') },
   { re: /Pournami/, icon: '🌕', deity: T('Goddess Ambal', 'அம்பாள்'), planets: ['Moon', 'Venus'],
@@ -86,6 +86,7 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
       icon: s.icon, personal: !!why,
       title: T(`Today is ${fe.en}${why ? ` — ${why.en}` : ''}`, `இன்று ${fe.ta}${why ? ` — ${why.ta}` : ''}`),
       text: T(`As per your transits: ${act.en}`, `உங்கள் கோசாரப்படி: ${act.ta}`),
+      ...(s.hymn && act.en.startsWith(s.act.en) ? { hymn: s.hymn } : {}), // the hymn named in the text (shared/hymns.js)
     });
   }
 

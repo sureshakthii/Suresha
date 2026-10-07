@@ -28,6 +28,7 @@ import { chartFacts, factsForAI, classify, answerLang } from './shared/guidance.
 import { askThunai, askSuggestions, childGeneralAnswer, LIMITED_LABEL } from './ask-thunai.js';
 import { ageProfile, isAdult, MATCH_ADULTS_NOTE } from './shared/age-guard.js';
 import { dailyReview } from './shared/daily.js';
+import { hymnText } from './hymn-links.js';
 import { clarityPrompt } from './growth.js';
 
 const wait = () => new Promise((r) => setTimeout(r, 40));
@@ -278,7 +279,7 @@ function renderVehicleYoga() {
           : L('No strong Dasa period soon — choose a good muhurtham below and do the Friday Mahalakshmi lamp.', 'விரைவில் வலுவான தசை காலம் இல்லை — கீழே நல்ல முகூர்த்தம் தேர்ந்து, வெள்ளி மகாலட்சுமி தீபம் ஏற்றவும்.')}</p>
         ${colors.length ? `<div class="small">🎨 ${L('Vehicle colour that suits you', 'உங்களுக்கு ஏற்ற வாகன நிறம்')}: ${colors.map((x) => `<span class="pill"><span style="display:inline-block;width:.8em;height:.8em;border-radius:50%;vertical-align:middle;background:${esc(x.hex)}"></span> ${esc(bi(x))}</span>`).join(' ')}</div>` : ''}
         ${lucky.length ? `<div class="small">🔢 ${L('Registration number total (digit sum) to prefer', 'பதிவு எண் கூட்டுத்தொகை')}: <b>${lucky.join(', ')}</b>${avoid.length ? ` · ${L('avoid', 'தவிர்க்க')}: ${avoid.join(', ')}` : ''}</div>` : ''}
-        <p class="small">🪔 ${esc(bi(r.remedy))}</p>
+        <p class="small">🪔 ${hymnText(bi(r.remedy))}</p>
         <button class="chip-btn" data-go="numerology">🔢 ${L('Check a vehicle number in Numerology', 'எண் கணிதத்தில் வாகன எண்ணைச் சரிபார்க்க')}</button>
       </div>`;
     }).join('');
@@ -367,9 +368,9 @@ function renderParigaram(sec) {
       ${n.day != null ? `<dt>${L('Day', 'கிழமை')}</dt><dd>${esc(ta() ? ['ஞாயிறு', 'திங்கள்', 'செவ்வாய்', 'புதன்', 'வியாழன்', 'வெள்ளி', 'சனி'][n.day] : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][n.day])}</dd>` : ''}
       <dt>${L('Colour', 'நிறம்')}</dt><dd>${esc(bi(n.color))}</dd><dt>${L('Grain (dhanyam)', 'தானியம்')}</dt><dd>${esc(bi(n.grain))}</dd>
       <dt>${L('Temple', 'கோவில்')}</dt><dd>${esc(bi(n.temple))}</dd></dl>
-      <p>🪔 <b>${L('Free remedy', 'இலவச பரிகாரம்')}:</b> ${esc(bi(n.free))}</p>
+      <p>🪔 <b>${L('Free remedy', 'இலவச பரிகாரம்')}:</b> ${hymnText(bi(n.free))}</p>
       <p>🤲 <b>${L('Charity', 'தானம்')}:</b> ${esc(bi(n.charity))}</p>
-      <p class="mantra">📿 ${esc(bi(n.mantra))} <button class="link-btn say" data-say="${esc(mantraOnly(n.mantra))}" aria-label="Read aloud">🔊</button></p>
+      <p class="mantra">📿 ${hymnText(bi(n.mantra))} <button class="link-btn say" data-say="${esc(mantraOnly(n.mantra))}" aria-label="Read aloud">🔊</button></p>
       <p class="muted small">💎 ${L('Gemstone', 'ரத்தினம்')}: ${esc(bi(n.gem))} — ${L('wear only after a careful personal consultation; it is never required.', 'கவனமான தனிப்பட்ட ஆலோசனைக்குப் பின் மட்டும் அணியவும்; இது கட்டாயமல்ல.')}</p></details>`;
   };
   const rec = c && hindu ? sthalamPicks(c, weak) : [];
@@ -377,7 +378,7 @@ function renderParigaram(sec) {
   sec.innerHTML = `${subHeader(L('Parigaram', 'பரிகாரம்'), hindu ? L('Simple, free remedies first — for peace, health and prosperity', 'எளிய இலவச பரிகாரங்கள் முதலில் — அமைதி, ஆரோக்கியம், செல்வத்திற்கு') : L('Simple practices that fit every faith — prayer in your own way, charity, discipline and service', 'எல்லா நம்பிக்கைக்கும் பொருந்தும் எளிய வழிகள் — உங்கள் வழியில் பிரார்த்தனை, தானம், ஒழுக்கம், சேவை'))}
     ${rec.length ? sthalamCard(rec, m) : ''}
     <div class="card glass"><div class="card-title">🌅 ${L('For today', 'இன்றைக்கு')}${m ? ` · ${esc(displayName(m))}` : ''}</div>
-      ${items.map((i) => `<div class="pari-row"><span class="pg" style="color:${COLOR[i.planet]}">${GLYPH[i.planet]}</span><div><b>${esc(bi(i.reason))}</b><p>${esc(bi(i.free))}</p>${hindu ? `<p class="muted small">🛕 ${esc(bi(i.deity))} · ${esc(bi(i.temple))}</p>` : `<p class="muted small">🤲 ${esc(bi(i.charity))}</p>`}</div></div>`).join('')}
+      ${items.map((i) => `<div class="pari-row"><span class="pg" style="color:${COLOR[i.planet]}">${GLYPH[i.planet]}</span><div><b>${esc(bi(i.reason))}</b><p>${hymnText(bi(i.free))}</p>${hindu ? `<p class="muted small">🛕 ${esc(bi(i.deity))} · ${esc(bi(i.temple))}</p>` : `<p class="muted small">🤲 ${esc(bi(i.charity))}</p>`}</div></div>`).join('')}
     </div>
     ${hindu ? `<div class="section-title">${L('Navagraha parigaram', 'நவகிரக பரிகாரம்')}</div>${cards}`
     : `<details class="disclose"><summary>${L('Traditional Navagraha practices (optional)', 'பாரம்பரிய நவகிரக வழிபாடு (விருப்பம்)')}</summary><p class="small muted">${esc(bi(TRADITIONAL_OPTIONAL))}</p>${cards}</details>`}`;
@@ -434,7 +435,7 @@ function stRow(r, checked, date) {
       <span class="small">📞 ${L('Phone', 'தொலைபேசி')}: — · <a href="${templeLinks(t).contact}" target="_blank" rel="noopener">${L('Maps listing', 'வரைபடப் பட்டியல்')}</a></span>
       ${info?.festival ? `<span class="small">🎉 ${L('Festival', 'திருவிழா')}: ${esc(bi(info.festival))}</span>` : ''}
       <span class="small">👥 ${{ high: L('Heavy crowd on the suggested day', 'பரிந்துரைத்த நாளில் அதிக கூட்டம்'), medium: L('Moderate crowd', 'மிதமான கூட்டம்'), low: L('Usually calm', 'பொதுவாக அமைதி') }[di.crowd]}</span>
-      ${r.planet && NAVAGRAHA[r.planet] ? `<span class="small">🪔 ${esc(bi(NAVAGRAHA[r.planet].free))}</span>` : ''}</span></label>`;
+      ${r.planet && NAVAGRAHA[r.planet] ? `<span class="small">🪔 ${hymnText(bi(NAVAGRAHA[r.planet].free))}</span>` : ''}</span></label>`;
 }
 function sthalamCard(rec, m) {
   const date = nextWeekday(DAY_OF[rec[0].planet] ?? 0);
@@ -645,7 +646,7 @@ function renderAnswerHtml(ans) {
   const top = secs.filter((sx) => sx.key === 'answer');
   const rest = secs.filter((sx) => sx.key !== 'answer' && sx.key !== 'prayer');
   const prayer = secs.filter((sx) => sx.key === 'prayer');
-  const sec = (sx) => `<div class="ans-sec ans-${sx.key}"><div class="ans-h">${esc(sx.title)}</div><ul>${sx.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+  const sec = (sx) => `<div class="ans-sec ans-${sx.key}"><div class="ans-h">${esc(sx.title)}</div><ul>${sx.lines.map((l) => `<li>${hymnText(l)}</li>`).join('')}</ul></div>`;
   // No percentage meter: Ask answers never score (product rule). A WHEN / STATUS answer carries a short text label.
   return `${top.map(sec).join('')}${rest.map(sec).join('')}${prayer.map(sec).join('')}`;
 }

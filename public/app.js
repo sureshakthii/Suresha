@@ -22,6 +22,7 @@ import './screens-trust.js';
 import './screens-week.js';
 import './screens-goals.js';
 import './screens-ithihasa.js';
+import './screens-hymns.js';
 import './screens-festivals.js';
 import './easy-date.js';
 import { loadSession } from './account.js';

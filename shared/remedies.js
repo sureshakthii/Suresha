@@ -8,7 +8,7 @@ export const NAVAGRAHA = {
   Sun: {
     deity: { en: 'Lord Surya / Lord Shiva', ta: 'சூரிய பகவான் / சிவன்' }, day: 0, color: { en: 'Red / saffron', ta: 'சிவப்பு / காவி' },
     grain: { en: 'Wheat', ta: 'கோதுமை' }, gem: { en: 'Ruby', ta: 'மாணிக்கம்' },
-    mantra: { en: 'Om Suryaya Namaha · Aditya Hrudayam', ta: 'ஓம் சூர்யாய நமஹ · ஆதித்ய ஹிருதயம்' },
+    mantra: { en: 'Om Suryaya Namaha · Aditya Hrudayam', ta: 'ஓம் சூர்யாய நமஹ · ஆதித்ய ஹிருதயம்' }, hymn: 'aditya-hrudayam', // full text: shared/hymns.js
     temple: { en: 'Suriyanar Kovil (near Kumbakonam)', ta: 'சூரியனார் கோவில் (கும்பகோணம் அருகே)' },
     free: { en: 'Offer water to the rising Sun (arghyam) and do Surya Namaskaram; respect your father and elders.', ta: 'உதய சூரியனுக்கு அர்க்யம் கொடுத்து சூரிய நமஸ்காரம் செய்யவும்; தந்தை, பெரியோரை மதிக்கவும்.' },
     charity: { en: 'Donate wheat or jaggery on Sunday.', ta: 'ஞாயிறு அன்று கோதுமை அல்லது வெல்லம் தானம் செய்யவும்.' },
@@ -26,7 +26,7 @@ export const NAVAGRAHA = {
   Mars: {
     deity: { en: 'Lord Murugan', ta: 'முருகப் பெருமான்' }, day: 2, color: { en: 'Red', ta: 'சிவப்பு' },
     grain: { en: 'Toor dal (thuvarai)', ta: 'துவரை' }, gem: { en: 'Red coral', ta: 'பவளம்' },
-    mantra: { en: 'Om Saravanabhava · Kanda Sashti Kavasam', ta: 'ஓம் சரவணபவ · கந்த சஷ்டி கவசம்' },
+    mantra: { en: 'Om Saravanabhava · Kanda Sashti Kavasam', ta: 'ஓம் சரவணபவ · கந்த சஷ்டி கவசம்' }, hymn: 'kanda-sashti-kavasam', // full text: shared/hymns.js
     temple: { en: 'Vaitheeswaran Kovil', ta: 'வைத்தீஸ்வரன் கோவில்' },
     free: { en: 'Recite Kanda Sashti Kavasam on Tuesday; control anger; help siblings.', ta: 'செவ்வாய் அன்று கந்த சஷ்டி கவசம் பாராயணம்; கோபத்தைக் கட்டுப்படுத்தவும்; உடன்பிறந்தோருக்கு உதவவும்.' },
     charity: { en: 'Donate toor dal or red cloth on Tuesday.', ta: 'செவ்வாய் அன்று துவரை அல்லது சிவப்பு துணி தானம்.' },
@@ -35,7 +35,7 @@ export const NAVAGRAHA = {
   Mercury: {
     deity: { en: 'Lord Vishnu / Perumal', ta: 'பெருமாள் / விஷ்ணு' }, day: 3, color: { en: 'Green', ta: 'பச்சை' },
     grain: { en: 'Green gram (pachai payaru)', ta: 'பச்சைப் பயறு' }, gem: { en: 'Emerald', ta: 'மரகதம்' },
-    mantra: { en: 'Om Budhaya Namaha · Vishnu Sahasranamam', ta: 'ஓம் புதாய நமஹ · விஷ்ணு சகஸ்ரநாமம்' },
+    mantra: { en: 'Om Budhaya Namaha · Vishnu Sahasranamam', ta: 'ஓம் புதாய நமஹ · விஷ்ணு சகஸ்ரநாமம்' }, hymn: 'vishnu-sahasranamam', // full text: shared/hymns.js
     temple: { en: 'Thiruvenkadu Swetharanyeswarar Temple', ta: 'திருவெண்காடு ஸ்வேதாரண்யேஸ்வரர் கோவில்' },
     free: { en: 'Read or chant Vishnu Sahasranamam on Wednesday; learn something new; speak truthfully.', ta: 'புதன் அன்று விஷ்ணு சகஸ்ரநாமம்; புதிதாக ஏதேனும் கற்கவும்; உண்மையே பேசவும்.' },
     charity: { en: 'Donate green gram or books to students.', ta: 'பச்சைப் பயறு அல்லது மாணவர்களுக்குப் புத்தகம் தானம்.' },
@@ -62,7 +62,7 @@ export const NAVAGRAHA = {
   Saturn: {
     deity: { en: 'Lord Saneeswarar / Lord Anjaneya', ta: 'சனீஸ்வரர் / ஆஞ்சநேயர்' }, day: 6, color: { en: 'Black / dark blue', ta: 'கருப்பு / கருநீலம்' },
     grain: { en: 'Black sesame (ellu)', ta: 'எள்' }, gem: { en: 'Blue sapphire', ta: 'நீலம்' },
-    mantra: { en: 'Om Shanaischaraya Namaha · Hanuman Chalisa', ta: 'ஓம் சனைச்சராய நமஹ · அனுமன் சாலீசா' },
+    mantra: { en: 'Om Shanaischaraya Namaha · Hanuman Chalisa', ta: 'ஓம் சனைச்சராய நமஹ · அனுமன் சாலீசா' }, hymn: 'hanuman-chalisa', // full text: shared/hymns.js
     temple: { en: 'Thirunallar Dharbaranyeswarar Temple', ta: 'திருநள்ளாறு தர்பாரண்யேஸ்வரர் கோவில்' },
     free: { en: 'Light a sesame-oil (nallennai) lamp on Saturday; feed crows; serve the elderly and workers.', ta: 'சனி அன்று நல்லெண்ணெய் தீபம்; காகத்திற்கு அன்னமிடவும்; முதியோர், உழைப்பாளர்களுக்கு உதவவும்.' },
     charity: { en: 'Donate black sesame, oil or food on Saturday.', ta: 'சனி அன்று எள், எண்ணெய் அல்லது அன்னதானம்.' },
@@ -80,7 +80,7 @@ export const NAVAGRAHA = {
   Ketu: {
     deity: { en: 'Lord Vinayagar', ta: 'விநாயகர்' }, day: null, color: { en: 'Multi-colour', ta: 'பல வண்ணம்' },
     grain: { en: 'Horse gram (kollu)', ta: 'கொள்ளு' }, gem: { en: "Cat's eye (Vaiduryam)", ta: 'வைடூரியம்' },
-    mantra: { en: 'Om Ketave Namaha · Vinayagar Agaval', ta: 'ஓம் கேதவே நமஹ · விநாயகர் அகவல்' },
+    mantra: { en: 'Om Ketave Namaha · Vinayagar Agaval', ta: 'ஓம் கேதவே நமஹ · விநாயகர் அகவல்' }, hymn: 'vinayagar-agaval', // full text: shared/hymns.js
     temple: { en: 'Keezhaperumpallam Naganathar Temple', ta: 'கீழப்பெரும்பள்ளம் நாகநாதர் கோவில்' },
     free: { en: 'Pray to Vinayagar before any work; practise meditation and spiritual reading.', ta: 'எந்த வேலைக்கும் முன் விநாயகரை வணங்கவும்; தியானம், ஆன்மீக வாசிப்பு.' },
     charity: { en: 'Donate horse gram or feed dogs.', ta: 'கொள்ளு தானம் அல்லது நாய்களுக்கு உணவு.' },

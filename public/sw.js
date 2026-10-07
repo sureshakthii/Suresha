@@ -1,5 +1,5 @@
 // App-shell cache so the Jathagam and live Panchangam work offline. API calls always go to the network.
-const CACHE = 'kj-v30';
+const CACHE = 'kj-v31';
 const SHELL = [
   '/', '/index.html', '/styles.css', '/app.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/screens-world.js',
   '/screens-life.js', '/screens-plans.js', '/screens-couple.js', '/couple-cards.js', '/shared/marriage-context.js', '/screens-guide.js', '/remind.js', '/screens-roadmap.js',
@@ -22,6 +22,7 @@ const SHELL = [
   '/screens-festivals.js', '/shared/spiritual-kb.js', '/shared/kb/common.js', '/shared/kb/monthly.js', '/shared/kb/festivals-a.js',
   '/shared/kb/festivals-b.js', '/shared/kb/ekadasi.js', '/shared/kb/concepts.js', '/shared/kb/characters.js',
   '/screens-ithihasa.js', '/shared/ithihasa/index.js', // Daily Ithihasa: series data (/shared/ithihasa/<series>.js) is cached on first read, not precached
+  '/read-aloud.js', '/screens-hymns.js', '/hymn-links.js', '/shared/hymns.js', // Hymns: each text (/shared/hymns/<id>.js) is cached on first read, not precached
   '/shared/family-delete.js', '/shared/name-translit.js', '/logo.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {

@@ -2537,6 +2537,27 @@ body.large .ith-p { font-size: 22px; }
 .ith-pos { flex: 1; text-align: center; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ith-rate select { min-height: 40px; border-radius: 10px; padding: 2px 6px; border: 1px solid var(--glass-b); background: var(--surface-soft); color: var(--text); }
 @media (min-width: 900px) { .ith-bar { bottom: 16px; } .ith-p { font-size: 20px; } }
+/* Hymns & Stotras: inline links on hymn names, the list and the reader (reuses the Ithihasa player bar). */
+.hymn-link { display: inline; padding: 0; margin: 0; border: 0; background: none; font: inherit; color: var(--gold2); text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; text-align: start; }
+.hymn-link::after { content: ' 📜'; font-size: .85em; text-decoration: none; }
+.hymn-link:hover { text-decoration-style: solid; }
+.menu.hy-list > button.hy-row > span.hy-ic.hy-ic { flex: 0 0 34px; width: 34px; font-size: 24px; text-align: center; }
+.menu.hy-list > button.hy-row > span.tag.tag, .menu.hy-list > button.hy-row > span.badge { flex: 0 0 auto; margin-top: 0; white-space: nowrap; }
+.hy-row .row-txt small { display: block; }
+.hy-head { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
+.hy-big-ic { font-size: 34px; line-height: 1; }
+.hy-title { margin: 0; font-family: 'Noto Serif Tamil', 'Noto Sans Tamil', serif; color: var(--gold2); font-size: 22px; line-height: 1.4; }
+.hy-intro p { line-height: 1.7; }
+.hy-intro dl.kv dd { overflow-wrap: anywhere; }
+.hy-coming { border: 1px dashed var(--gold); }
+.hy-voice-note { padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--gold); background: rgba(var(--gold-rgb), .06); }
+.hy-read { padding: 4px 0 8px; }
+.hy-sec-title { font-family: 'Noto Sans Tamil', sans-serif; color: var(--gold); font-size: 15px; margin: 22px 4px 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(var(--gold-rgb), .25); }
+.hy-line { font-family: 'Noto Serif Tamil', 'Noto Sans Tamil', serif; font-size: 20px; line-height: 1.8; margin: 0 0 4px; padding: 4px 10px; border-radius: 10px; color: var(--text); overflow-wrap: anywhere; cursor: pointer; transition: background .3s, box-shadow .3s; }
+body.large .hy-line { font-size: 24px; }
+.hy-line.cur { background: rgba(var(--gold-rgb), .16); box-shadow: inset 3px 0 0 var(--gold); }
+.hy-source a { color: var(--gold2); overflow-wrap: anywhere; }
+@media (min-width: 900px) { .hy-line { font-size: 22px; } .hy-read { max-width: 760px; } }
 
 /* Ask Thunai: "About my chart" / "General (festivals, spiritual)" selector and the auto-routing note */
 .ask-mode { margin-top: 8px; }

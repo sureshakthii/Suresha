@@ -61,6 +61,7 @@ export const TOOLS = [
   { id: 'journey', group: 'worship', en: 'My spiritual journey', ta: 'என் ஆன்மீகப் பயணம்', k: 'journey yatra pilgrimage trip temple tour aanmeegam payanam' },
   { id: 'mantras', group: 'worship', en: 'Mantras', ta: 'மந்திரங்கள்', k: 'mantra manthiram slokam sloka stotram prayer' },
   { id: 'ithihasa', group: 'worship', en: 'Daily Ithihasa — Ramayanam & Mahabharatham', ta: 'இதிகாசத் தொடர் — இராமாயணம், மகாபாரதம்', k: 'ithihasa ithikasam itihasa ramayanam ramayana ramayan kamba ramayanam valmiki rama raman seethai sita hanuman anuman mahabharatham mahabharata bharatham krishna story kathai kadhai urai pravachanam upanyasam daily story audio listen read aloud இதிகாசம் இராமாயணம் ராமாயணம் மகாபாரதம் கதை உரை' },
+  { id: 'hymns', group: 'worship', en: 'Hymns & Stotras — full text', ta: 'தோத்திரங்கள் & பாடல்கள் — முழு வடிவம்', k: 'hymn hymns stotram stotra stothram slokam sloka paadal padal song lyrics full text read recite parayanam kavasam kavacham kanda sashti kavasam skanda vishnu sahasranamam sahasranamam hanuman chalisa anuman aditya hrudayam hridayam vinayagar agaval angaraka rina vimochana durga saptashloki katyayani santhana gopala abhirami anthadhi தோத்திரம் ஸ்தோத்திரம் பாடல் கவசம் கந்த சஷ்டி கவசம் விஷ்ணு சகஸ்ரநாமம் அனுமன் சாலீசா ஆதித்ய ஹிருதயம் விநாயகர் அகவல் அபிராமி அந்தாதி' },
   // 7. Services
   { id: 'priests', group: 'services', en: 'Priest requests', ta: 'புரோகிதர் கோரிக்கை', k: 'priest purohit iyer aiyar homam pooja', status: 'server' },
   { id: 'seva', group: 'services', en: 'Temple seva requests', ta: 'கோவில் சேவை கோரிக்கை', k: 'seva archanai abishekam temple booking', status: 'server' },
@@ -96,6 +97,7 @@ export const ROUTES = {
   login: 'more', // Sign in button on Settings
   value: 'more', // "Your Thunai so far" — optional value summary on Settings (screens-plans.js)
   admin: 'about', // owner only: shown on Settings for admins; long-press the build number in About
+  hymn: 'hymns', // one hymn's reader: opened from the Hymns list and from hymn names in remedies, festivals and answers
 };
 
 /** Quick actions on Today (Instagram-stories-style row). */

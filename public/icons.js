@@ -198,6 +198,8 @@ export const ICONS = {
   week: "calendar-days",
   goals: "calendar-check",
   ithihasa: "book-open",
+  hymns: "scroll-text",
+  hymn: "scroll-text",
   festivals: "flame-kindling"
 };
 
@@ -256,6 +258,8 @@ export const ICON_GROUP = {
   tools: "help",
   bookings: "services",
   ithihasa: "spiritual",
+  hymns: "spiritual",
+  hymn: "spiritual",
   festivals: "daily"
 };
 

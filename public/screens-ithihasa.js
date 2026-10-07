@@ -8,6 +8,7 @@
 import { state, $, $$, L, ta, esc, bi, store, registerScreen, subHeader, toast, copyright, go } from './core.js';
 import { isLocked, lockCard } from './growth.js';
 import { addReminder, upcomingReminders, deleteReminder } from './remind.js';
+import { createPlayer, detectVoice, nativeTts, userHasTapped } from './read-aloud.js';
 import {
   SERIES_LIST, loadSeries, todayIn, episodeFor, unlockedUpTo, savePosition, resumeAt, markDone, currentStreak, doneCount,
   minutesOf, readableParas, episodeAccess, previously, newProgress, CHARACTERS, addDays, WORDS_PER_MINUTE,
@@ -24,87 +25,11 @@ const allowedFull = () => !isLocked('ithihasa');
 const progressOf = (prefs, id) => prefs.progress[id] || null;
 const setProgress = (id, p) => { const prefs = loadPrefs(); prefs.progress[id] = p; savePrefs(prefs); };
 
-// ────────────────────────────────────────────────────────────── voice
-const nativeTts = () => window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.TextToSpeech;
-let voiceCache = null;
-/** { tamil: SpeechSynthesisVoice|null, engine: 'web'|'native'|'none' } — waits briefly for voices to load. */
-async function detectVoice() {
-  if (nativeTts()) return { tamil: null, engine: 'native' };
-  if (!('speechSynthesis' in window)) return { tamil: null, engine: 'none' };
-  if (voiceCache) return voiceCache;
-  let voices = speechSynthesis.getVoices();
-  if (!voices.length) {
-    voices = await new Promise((res) => {
-      const done = () => res(speechSynthesis.getVoices());
-      speechSynthesis.addEventListener?.('voiceschanged', done, { once: true });
-      setTimeout(done, 1500);
-    });
-  }
-  const tamil = voices.find((v) => /^ta([-_]|$)/i.test(v.lang)) || null;
-  voiceCache = { tamil, engine: tamil ? 'web' : 'none' };
-  if (voices.length) setTimeout(() => { voiceCache = null; }, 30000); // re-check later (voice data may be installed)
-  return voiceCache;
-}
-/** Sentence-sized chunks: long utterances get cut off on phones. */
-function chunks(text) {
-  const out = [];
-  for (const p of String(text).replace(/\s+/g, ' ').trim().split(/(?<=[.!?।])\s+/)) {
-    if (p.length <= 200) { if (p) out.push(p); continue; }
-    let rest = p;
-    while (rest.length > 200) { const cut = rest.lastIndexOf(' ', 200); out.push(rest.slice(0, cut > 80 ? cut : 200)); rest = rest.slice(cut > 80 ? cut + 1 : 200); }
-    if (rest) out.push(rest);
-  }
-  return out;
-}
-
-// ────────────────────────────────────────────────────────────── player (one at a time)
-const player = { gen: 0, playing: false, i: 0, max: 0, rate: 1, ep: null, seriesId: null, timer: null, engine: 'none', onPara: null, onState: null, onEnd: null };
-function stopAudio() {
-  player.gen++;
-  player.playing = false;
-  clearTimeout(player.timer);
-  try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch { /* ignore */ }
-  try { nativeTts()?.stop?.(); } catch { /* ignore */ }
-  player.onState?.();
-}
-/** Speak (or, with no Tamil voice, time) paragraph i, then continue with the next one. */
-async function playFrom(i) {
-  stopAudio();
-  const gen = ++player.gen;
-  player.i = Math.max(0, Math.min(i, player.max - 1));
-  player.playing = true;
-  player.onState?.();
-  const v = await detectVoice();
-  if (gen !== player.gen) return;
-  player.engine = v.engine;
-  player.onState?.();
-  const step = () => {
-    if (gen !== player.gen) return;
-    if (player.i >= player.max) { player.playing = false; player.onState?.(); player.onEnd?.(); return; }
-    player.onPara?.(player.i);
-    const text = player.ep.ta[player.i];
-    const next = () => { if (gen !== player.gen) return; player.i++; step(); };
-    if (v.engine === 'native') {
-      nativeTts().speak({ text, lang: 'ta-IN', rate: player.rate, category: 'playback' }).then(next).catch(() => { player.engine = 'none'; readAlong(text, next); });
-    } else if (v.engine === 'web') {
-      const parts = chunks(text);
-      parts.forEach((c, k) => {
-        const u = new SpeechSynthesisUtterance(c);
-        u.lang = 'ta-IN'; u.voice = v.tamil; u.rate = player.rate;
-        if (k === parts.length - 1) u.onend = next;
-        u.onerror = (e) => { if (e?.error !== 'interrupted' && e?.error !== 'canceled' && k === parts.length - 1) next(); };
-        speechSynthesis.speak(u);
-      });
-    } else readAlong(text, next);
-  };
-  step();
-}
-/** No voice: hold each paragraph for the time it takes to read it at the chosen speed. */
-function readAlong(text, next) {
-  const words = String(text).split(/\s+/).filter(Boolean).length;
-  player.timer = setTimeout(next, Math.max(2500, (words / (WORDS_PER_MINUTE * player.rate)) * 60000));
-}
-const userHasTapped = () => (navigator.userActivation ? navigator.userActivation.hasBeenActive : true);
+// ────────────────────────────────────────────────────────────── player (one at a time; shared with the hymn reader)
+const player = createPlayer({ textAt: (i) => player.ep.ta[i], wpm: WORDS_PER_MINUTE, lang: 'ta-IN' });
+Object.assign(player, { ep: null, seriesId: null });
+const stopAudio = () => player.stop();
+const playFrom = (i) => player.playFrom(i);
 document.addEventListener('kj:screen', (e) => { if (e.detail !== 'ithihasa') stopAudio(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && player.engine === 'none') stopAudio(); });
 

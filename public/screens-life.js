@@ -1,6 +1,7 @@
 // Life Questions (வாழ்க்கைக் கேள்விகள்): marriage, job, PR / visa, own house, child, court case,
 // husband–wife harmony, Kula Deivam and habits — timed by Dasa–Bhukti and Guru–Sani double transit.
 import { faithOf } from './shared/faith.js';
+import { hymnText } from './hymn-links.js';
 import { QUESTIONS, predictEvent, kulaDeivam, habitGuard, careerCompass, questionFor, questionFitsAge } from './shared/predict.js';
 import { REPORT_YEARS, horizonLabel, HORIZON_LINES } from './shared/report-horizon.js';
 import {
@@ -97,8 +98,8 @@ function renderPrediction(c, m) {
     ${r.careful.length ? `<div class="section-title">🤍 ${L('Periods to be extra caring with each other', 'ஒருவருக்கொருவர் கூடுதல் அன்பு காட்ட வேண்டிய காலங்கள்')}</div>
       ${r.careful.map((w) => `<div class="card glass window care"><div class="win-dates">${monthYear(w.start)} – ${monthYear(w.end)}</div><div class="small">${esc(dasaLabel(w))}</div><p class="small">${L('Patience, shared prayer and open talks keep the bond strong in this period.', 'இந்தக் காலத்தில் பொறுமை, சேர்ந்த வழிபாடு, மனம் திறந்த பேச்சு உறவை வலுப்படுத்தும்.')}</p></div>`).join('')}` : ''}
     <div class="card glass"><div class="card-title">🔍 ${L('What the chart shows', 'ஜாதகம் காட்டுவது')}</div>${r.promise.notes.map((n) => `<div class="small">• ${esc(bi(n))}</div>`).join('')}</div>
-    <div class="card glass"><div class="card-title">🪔 ${faith === 'hindu' ? L('Parigaram', 'பரிகாரம்') : L('A simple practice (optional)', 'எளிய வழி (விருப்பம்)')}</div><p>${esc(bi(r.remedy))}</p>
-      ${r.karakaRemedies.map((k) => `<p class="small"><span style="color:${COLOR[k.planet]}">${GLYPH[k.planet]}</span> ${esc(planetName(k.planet))}: ${esc(bi(k.free))}</p>`).join('')}</div>
+    <div class="card glass"><div class="card-title">🪔 ${faith === 'hindu' ? L('Parigaram', 'பரிகாரம்') : L('A simple practice (optional)', 'எளிய வழி (விருப்பம்)')}</div><p>${hymnText(bi(r.remedy))}</p>
+      ${r.karakaRemedies.map((k) => `<p class="small"><span style="color:${COLOR[k.planet]}">${GLYPH[k.planet]}</span> ${esc(planetName(k.planet))}: ${hymnText(bi(k.free))}</p>`).join('')}</div>
     <button class="btn-gold" id="lifeExplain">📜 ${L('Detailed explanation', 'விரிவான விளக்கம்')}</button>
     <div class="card glass" id="lifeAi" hidden><div class="card-title"><span>📜 ${L('Explanation', 'விளக்கம்')}</span><button class="link-btn" id="lifeSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="lifeText"></div></div>
     <p class="muted small center">${L('Astrology shows favourable timing; effort, family support and the right professional advice make it happen.', 'ஜோதிடம் சாதகமான நேரத்தைக் காட்டும்; முயற்சி, குடும்ப ஆதரவு, சரியான நிபுணர் ஆலோசனையே அதை நிறைவேற்றும்.')}</p>`;

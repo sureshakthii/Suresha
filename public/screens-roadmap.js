@@ -2,6 +2,7 @@
 // plus a print / save-as-PDF report (ஜாதகப் புத்தகம்) that families can keep or share.
 import { lifeRoadmap, ROAD_AREAS as ALL_AREAS } from './shared/roadmap.js';
 import { faithOf } from './shared/faith.js';
+import { hymnText } from './hymn-links.js';
 // Health is not scored from the chart (THUNAI brief: wellness stays separate from horoscope interpretation).
 let ROAD_AREAS = ALL_AREAS.filter((a) => a.id !== 'health');
 import {
@@ -130,7 +131,7 @@ function drawRoadmap(m) {
       ${ROAD_AREAS.map((a) => `<div class="gb-row static"><span class="gb-name">${a.icon} ${esc(bi(a))}</span>${bar(p.scores[a.id])}<b>${p.scores[a.id]}</b></div>`).join('')}
       <p class="small">${p.focus !== 'health' ? `⭐ ${L('Focus', 'கவனம் செலுத்த')}: <b>${esc(bi(area(p.focus)))}</b>` : ''}${p.careArea && p.careArea !== 'health' ? ` · 🤍 ${L('Care', 'கவனம்')}: ${esc(bi(area(p.careArea)))}` : ''}</p>
       ${p.notes.map((n) => `<p class="small">🪐 ${esc(bi(n))}</p>`).join('')}
-      <p class="small">🪔 ${p.remedy.deity ? `${esc(bi(p.remedy.deity))} · ${esc(bi(p.remedy.mantra))}` : esc(bi(p.remedy.free))}</p></details>`).join('')}
+      <p class="small">🪔 ${p.remedy.deity ? `${esc(bi(p.remedy.deity))} · ${hymnText(bi(p.remedy.mantra))}` : hymnText(bi(p.remedy.free))}</p></details>`).join('')}
     <button class="btn-gold" id="rmAi">📜 ${L('Guru\'s reading of my road map', 'என் வரைபடத்திற்கு குருவின் விளக்கம்')}</button>
     <div class="card glass" id="rmAiBox" hidden><div class="reply" id="rmAiText"></div></div>`}
     <div class="btn-row"><button class="chip-btn" id="rmPrint">🖨️ ${L('Print / save as PDF', 'அச்சிடு / PDF ஆக சேமி')}</button><button class="chip-btn" data-go="guide">🧭 ${L('My Guide', 'என் வழிகாட்டி')}</button><button class="chip-btn" data-go="analysis">📜 ${L('Full analysis', 'முழு ஆய்வு')}</button></div>

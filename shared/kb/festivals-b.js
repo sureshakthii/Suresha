@@ -443,7 +443,7 @@ export const FESTIVALS_B = [
   {
     id: 'karthigai-deepam', kind: 'festival', mantra: 'shiva',
     names: B('Karthigai Deepam', 'கார்த்திகை தீபம்'),
-    aliases: ['karthigai deepam', 'karthikai deepam', 'karthigai deebam', 'thiru karthigai', 'kartika deepam', 'annamalai deepam', 'tiruvannamalai deepam', 'maha deepam', 'bharani deepam', 'கார்த்திகை தீபம்', 'திருக்கார்த்திகை', 'கார்த்திகை தீப', 'மகா தீபம்', 'பரணி தீபம்'],
+    aliases: ['karthigai deepam', 'karthikai deepam', 'karthigai deebam', 'thiru karthigai', 'kartika deepam', 'annamalai deepam', 'tiruvannamalai deepam', 'maha deepam', 'bharani deepam', 'கார்த்திகை தீபம்', 'திருக்கார்த்திகை', 'கார்த்திகை தீப', 'மகா தீபம்', 'பரணி தீபம்', 'lamps on karthigai', 'karthigai lamps', 'karthigai lamp', 'karthigai vilakku', 'karthigai agal', 'கார்த்திகை விளக்கு', 'கார்த்திகை அகல்'],
     deity: B('Lord Shiva as Annamalaiyar (column of light); Murugan', 'அண்ணாமலையார் (ஒளிப்பிழம்பு); முருகன்'),
     rule: { star: 2, solar: [7], twice: 'pournami' },
     ruleText: B('Karthigai (Krittika) star at sunrise in the Tamil month of Karthigai, usually with the full moon. At Tiruvannamalai, Bharani Deepam is lit at 4 AM and the Maha Deepam on the hill at about 6 PM the same day.', 'கார்த்திகை மாதத்தில் சூரிய உதயத்தில் கார்த்திகை நட்சத்திரம் — பெரும்பாலும் பௌர்ணமியுடன். திருவண்ணாமலையில் அதிகாலை 4 மணிக்குப் பரணி தீபம், அன்று மாலை சுமார் 6 மணிக்கு மலை மேல் மகா தீபம்.'),

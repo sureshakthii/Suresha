@@ -2588,3 +2588,89 @@ body.large .hy-line { font-size: 24px; }
 .fx-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 .fx-chant { font-size: 17px; font-weight: 600; color: var(--gold2); line-height: 1.6; }
 .fx-fast { border-left: 3px solid var(--gold); }
+
+/* QA-C (Oct 2026): results scrolled into view (scrollIntoView, anchors) stop below BOTH pinned bars —
+   the header (--top-h) and the pinned screen title (--sub-h, measured in core.js) — never under them. */
+html { scroll-padding-top: calc(var(--top-h, 60px) + var(--sub-h, 0px) + 8px); }
+/* QA-C: the journey form's chip pickers (who is going, accessibility needs, devotional preference) wrap onto
+   more lines instead of hiding options off-screen in a sideways scroller. */
+#tripForm .member-switch { flex-wrap: wrap; overflow-x: visible; }
+
+/* QA-A final pass: Family today — a long status ("Chandrashtamam — be careful") wraps inside the row instead of
+   pushing past the card on 360 px phones; the name keeps its room. Disabled easy time pickers (birth time Unknown). */
+.fam-row .fam-name { min-width: 0; }
+.fam-row > .tag { flex: 0 1 auto; max-width: 46%; white-space: normal; text-align: center; line-height: 1.35; margin-top: 0; }
+.easy-dt.is-disabled { opacity: .5; }
+.pan-nav .pill { font-size: 13px; padding: 6px 14px; margin: 0; }
+/* QA-C desktop plans: no half-empty rows. Free spans the row; Personal (monthly · yearly) and Family (monthly · yearly)
+   sit as two balanced pairs; the two one-time packages share a row. Four across on wide screens. */
+@media (min-width: 1024px) {
+  #view-plans #planList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #view-plans #planList > .card.plan:not(:has([data-buy])) { grid-column: 1 / -1; }
+}
+@media (min-width: 1600px) {
+  #view-plans #planList { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #view-plans #planList > .card.plan.pkg { grid-column: span 2; }
+}
+/* Large text on phones: a long label (உதயம் / அஸ்தமனம்) no longer squeezes the value column to one word per line. */
+body.large .kv { grid-template-columns: fit-content(42%) minmax(0, 1fr); }
+/* QA-C desktop baby names: the child's details, lucky letters and filters on the left; the names fill the right in
+   two columns (phones: one column, unchanged — .nm-cols is display: contents there). */
+.nm-cols, .nm-side { display: contents; }
+@media (min-width: 1024px) {
+  #view-names .nm-cols { display: grid; grid-template-columns: minmax(320px, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  #view-names .nm-side { display: block; min-width: 0; }
+  #view-names .nm-side > .card { margin-top: 0; }
+  #view-names #nmResults { min-width: 0; }
+  #view-names .nm-list { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); align-items: stretch; }
+  #view-names .nm-card { height: 100%; }
+  #view-names .nm-bar { margin-top: 0; }
+}
+/* QA-C desktop matching forms: the two people side by side (bride | groom, you | your person, partner 1 | 2);
+   everything else — the date, the button and the result — runs across both columns. */
+@media (min-width: 1024px) {
+  :is(#view-couple, #view-lovematch, #view-partners) { max-width: 1100px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; align-content: start; }
+  :is(#view-couple, #view-lovematch, #view-partners) > * { grid-column: 1 / -1; min-width: 0; }
+  :is(#view-couple, #view-lovematch, #view-partners) > .person-block { grid-column: auto; }
+}
+/* QA-C: the shared legal footer (legal.js #appFooter) — shown only when the open screen has no footer of its own. */
+#appFooter { padding: 0 16px 8px; }
+#app:has(#views > .view:not([hidden]) footer.copy) > #appFooter, .app.no-tabs > #appFooter { display: none; }
+@media (min-width: 1024px) {
+  #appFooter { max-width: calc(var(--app-w) + 2 * var(--gutter)); margin: 0 auto; padding: 0 var(--gutter) 8px; }
+  #appFooter footer.copy { text-align: center; }
+  #appFooter footer.copy .ft-links { justify-content: center; }
+  #appFooter footer.copy .ft-note { margin-left: auto; margin-right: auto; }
+}
+/* QA-C desktop: search and code boxes keep a comfortable width on wide screens (no 1300 px text fields). */
+@media (min-width: 1024px) {
+  :is(#view-temples, #view-packages) .ts-wrap { max-width: 720px; }
+  #view-plans #redeemForm { max-width: 640px; width: 100%; justify-self: center; }
+}
+/* QA-C desktop journey form: first day (day · month · year on one line) beside the number of days, travellers beside
+   the budget — the phone layout (one field per row) stays below 1024 px. */
+@media (min-width: 1024px) {
+  #tripForm .row2:has(.trip-date) { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important; }
+  #tripForm .row2 > .trip-date, #tripForm .row2 > .budget-field { grid-column: auto; }
+  #tripForm .trip-date .easy-dt { flex-wrap: nowrap; }
+  #tripForm .trip-date .easy-dt .ed-y { flex: 0 0 110px !important; width: 110px !important; }
+}
+/* QA-C keyboard: a question / trip box shows where the cursor is (the textarea itself has no ring of its own). */
+.chat-form:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(var(--gold-rgb), .18); }
+@media (min-width: 1024px) {
+  #view-plans #planList > .card.plan:not(:has([data-buy])) ul { columns: 2; column-gap: 32px; }
+  #view-plans #planList > .card.plan:not(:has([data-buy])) li { break-inside: avoid; }
+}
+/* QA-C desktop weekly plan and goals: the two columns their markup already carries (.dsk-cols) — add / choose on the
+   left, the week (or your goals) on the right — instead of one long column in the middle of a wide screen. */
+@media (min-width: 1024px) {
+  :is(#view-week, #view-goals):has(> .dsk-cols) { max-width: var(--app-w, 1100px); }
+  :is(#view-week, #view-goals) > .dsk-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  :is(#view-week, #view-goals) > .dsk-cols > .dsk-col { display: block !important; min-width: 0; }
+  :is(#view-week, #view-goals) > .dsk-cols > .dsk-col > :first-child { margin-top: 0; }
+  #view-week > .dsk-cols { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+}
+@media print { :is(#view-week, #view-goals) > .dsk-cols { display: block; } }
+
+/* Ask Thunai: the "limited offline guidance" badge meets WCAG AA (4.5:1) on the light answer bubble too */
+[data-theme="light"] .ans-foot .limited-badge { color: #8f4300; }

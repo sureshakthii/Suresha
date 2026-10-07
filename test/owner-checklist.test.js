@@ -77,7 +77,7 @@ test('permission: saving another adult or sharing a pair result needs "I have th
   const pairShare = between(show, "$('#mcShare')", '\n  });');
   assert.ok(pairShare.indexOf("consented('share')") >= 0 && pairShare.indexOf("consented('share')") < pairShare.indexOf('navigator.share'));
   const print = between(show, "$('#mcPrint')", '\n  });');
-  assert.ok(print.indexOf("consented('export')") >= 0 && print.indexOf("consented('export')") < print.indexOf('window.print'));
+  assert.ok(print.indexOf("consented('export')") >= 0 && print.indexOf("consented('export')") < print.indexOf('printPage('), 'permission before printing (printPage: also the Android app)');
   assert.match(between(show, 'const consented', '};'), /hasConsent\(coupleUi\.ledger, coupleUi\.ids, scope\)/);
   assert.match(show, /recordConsent\(coupleUi\.ledger, \{ participantId: slot, scopes: \['share', 'export'\] \}\)/);
   assert.match(show, /revokeConsent\(coupleUi\.ledger/);

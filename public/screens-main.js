@@ -59,6 +59,12 @@ export const GUIDE_SUGGESTIONS = [
   ['Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'],
 ];
 
+// Another faith (or none): no temple question among the suggestions.
+const GUIDE_SUGGESTIONS_OTHER_FAITH = [
+  ['A short prayer for today in my own faith', 'இன்றைக்கு என் நம்பிக்கைப்படி ஒரு சிறு பிரார்த்தனை'],
+  ...GUIDE_SUGGESTIONS.slice(1),
+];
+
 let today = null; // { key, day } cache of tamilDay for the current local date
 function todayInfo(loc) {
   const now = new Date();
@@ -273,7 +279,7 @@ function renderHome(sec) {
         <textarea id="guideInput" class="grow-in" rows="2" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai your question…', 'உங்கள் கேள்வியைத் துணையிடம் கேளுங்கள்…'))}"></textarea>
         <button class="send" aria-label="${L('Ask', 'கேள்')}">➤</button>
       </form>
-      <div class="guide-sugs">${suggestionsFor(m ? ageOf(m) : ageProfile(null), GUIDE_SUGGESTIONS, { count: 4 }).map((x) => `<button class="sg" type="button">${esc(bi(x))}</button>`).join('')}</div>
+      <div class="guide-sugs">${suggestionsFor(m ? ageOf(m) : ageProfile(null), m && !isHinduFaith(faithOf(m)) ? GUIDE_SUGGESTIONS_OTHER_FAITH : GUIDE_SUGGESTIONS, { count: 4 }).map((x) => `<button class="sg" type="button">${esc(bi(x))}</button>`).join('')}</div>
       <p class="small muted">${L('Type or speak — Tamil, English or Tanglish. You can check the words before sending.', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எழுதலாம் அல்லது பேசலாம். அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
     </section>
 
@@ -315,7 +321,7 @@ function renderHome(sec) {
     ${trialBanner()}
     ${plans.length ? `<div class="card glass"><div class="card-title"><span>${L('Saved plans', 'சேமித்த திட்டங்கள்')}</span><button class="link-btn" data-go="journey">${L('Plan new', 'புதிய திட்டம்')}</button></div>
       ${plans.slice(0, 3).map((p) => `<button class="plan-row" data-go="journey" data-param='${esc(JSON.stringify({ open: p.id }))}'><b>${esc(p.title)}</b><span class="muted small">${esc(p.dates || '')}</span></button>`).join('')}</div>`
-    : `<button class="card glass cta-card journey-cta" data-go="journey"><b>${L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்')}</b><span class="small muted">${L('Plan a temple visit that fits your leave, budget and family — route, timings, weather and stay.', 'உங்கள் விடுப்பு, பட்ஜெட், குடும்பத்திற்கு ஏற்ற கோவில் பயணம் — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.')}</span></button>`}
+    : `<button class="card glass cta-card journey-cta" data-go="journey"><b>${L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்')}</b><span class="small muted">${m && !isHinduFaith(faithOf(m)) ? L('Plan a family trip or pilgrimage that fits your leave, budget and family — route, timings, weather and stay.', 'உங்கள் விடுப்பு, பட்ஜெட், குடும்பத்திற்கு ஏற்ற குடும்பப் பயணம் அல்லது புனிதப் பயணம் — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.') : L('Plan a temple visit that fits your leave, budget and family — route, timings, weather and stay.', 'உங்கள் விடுப்பு, பட்ஜெட், குடும்பத்திற்கு ஏற்ற கோவில் பயணம் — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.')}</span></button>`}
     ${reminderCard()}
     ${familyCard(snap)}
     ${weatherCardHtml()}
@@ -567,7 +573,12 @@ function renderLive(sec) {
   }).join('')}</div>
     </div>
     <div class="card glass"><div class="card-title"><span>${L('Gochara (transit) chart', 'கோசார கட்டம்')}</span><span class="live-dot">${L('LIVE', 'நேரலை')}</span></div><div id="gocharaChart" class="si-chart"></div></div>`;
-  setTimeout(() => $('.hora-item.now')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }), 50);
+  // Centre the current horai inside its own horizontal strip only — scrollIntoView would also scroll the page
+  // down to the strip, so Live sky opened half-way down on phones.
+  setTimeout(() => {
+    const it = $('.hora-item.now'), list = it?.parentElement;
+    if (list) list.scrollTo({ left: Math.max(0, it.offsetLeft - list.offsetLeft - (list.clientWidth - it.offsetWidth) / 2), behavior: 'smooth' });
+  }, 50);
   tickLive();
 }
 const subHeaderLocal = (title, sub) => `<div class="sub-head"><button class="back-btn" data-back="home" aria-label="Back">‹</button><div><h2>${title}</h2><p class="muted small">${sub}</p></div></div>`;

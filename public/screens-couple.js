@@ -6,6 +6,7 @@
 // cards (shared/marriage-context.js buildMatchingReport, rendered by couple-cards.js), a separate Ashtakoota link and an
 // expandable expert view. Each person's marriage context is real-life context only: it never changes any factor.
 import { birthChart } from './shared/astro.js';
+import { birthArgs, UNKNOWN_TIME_PLACEHOLDER } from './shared/birthtime.js';
 import {
   buildMatchingReport, createConsentLedger, recordConsent, revokeConsent, hasConsent, MARRIAGE_MODES, MARRIAGE_MODE_ORDER, MARRIAGE_CONTEXT_TITLE, KEEP_PRIVATE_LABEL,
 } from './shared/marriage-context.js';
@@ -14,10 +15,10 @@ import { marriageReport, partnershipReport, HORIZON_LINES } from './shared/coupl
 import { KEY_FACTORS_TITLE, DETAILED_VIEW_TITLE, DISCUSSION_TOPICS, DISCUSSION_TITLE } from './shared/porutham.js';
 import {
   state, chartOf, hasLagna, stabilityChip, doshamReference, $, $$, L, ta, esc, bi, GLYPH, planetName, nakName, rasiName, fmtIsoDate, registerScreen, subHeader, aiTask, speak, toast,
-  displayName, nameBi, saveFamily, placeName,
+  displayName, nameBi, saveFamily, placeName, printPage,
 } from './core.js';
 import { placeSearch } from './account.js';
-import { isLocked, lockCard, pairKey } from './growth.js';
+import { isLocked, lockCard, pairKey, gate } from './growth.js';
 import { isAdult, MATCH_ADULTS_NOTE, PARTNER_ADULTS_NOTE } from './shared/age-guard.js';
 
 // Marriage, love and partner matching are for adults only (shared/age-guard.js): people under 18 — or without a
@@ -89,9 +90,9 @@ export function personBlock(slot, title, { gender, nth = 0, business = false, co
     : `<div class="row2"><label>${L('Name', 'பெயர்')}<input data-f="name" value="${esc(f.name || '')}" maxlength="60"></label>
         <label>${L('Gender', 'பாலினம்')}<select data-f="gender">${[['male', 'Male', 'ஆண்'], ['female', 'Female', 'பெண்']].map(([id, en, tx]) => `<option value="${id}"${(f.gender || gender) === id ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label></div>
       <div class="row2"><label>${L('Date of birth', 'பிறந்த தேதி')}<input type="date" data-f="date" value="${esc(f.date || '')}"></label>
-        <label>${L('Time of birth', 'பிறந்த நேரம்')}<input type="time" step="1" data-f="time" value="${esc(f.time || '')}"></label></div>
+        <label>${L('Time of birth', 'பிறந்த நேரம்')} <span class="pill">${L('optional', 'விருப்பம்')}</span><input type="time" step="1" data-f="time" value="${esc(f.time || '')}"></label></div>
       <label class="place-wrap">${L('Place of birth', 'பிறந்த இடம்')}<input data-f="place" value="${esc(f.place || '')}" placeholder="${esc(L('Type a city…', 'நகரம் தட்டச்சு செய்க…'))}"><ul class="suggest" hidden></ul></label>
-      ${f.lat != null ? `<p class="muted small">📍 ${esc(placeName(f.place))} · ${Number(f.lat).toFixed(2)}, ${Number(f.lon).toFixed(2)} · ${L('UTC', 'நேர மண்டலம்')}${f.tz >= 0 ? '+' : ''}${f.tz}</p>` : ''}
+      ${f.lat != null ? `<p class="muted small">📍 ${esc(placeName(f.place))} · ${Number(f.lat).toFixed(2)}, ${Number(f.lon).toFixed(2)} · ${f.zone ? esc(f.zone) : `${L('UTC', 'நேர மண்டலம்')}${f.tz >= 0 ? '+' : ''}${f.tz}`}</p>` : ''}
       <label class="check-row"><input type="checkbox" data-f="save"${f.save ? ' checked' : ''}> ${L('Save to my family list', 'என் குடும்பப் பட்டியலில் சேமி')}</label>
       <label class="adult-confirm perm-confirm"${f.save ? '' : ' hidden'} data-perm><input type="checkbox" data-f="consent"${f.consent ? ' checked' : ''}> <span>${esc(PERMISSION_LABEL())} — ${L('needed to save another adult’s details', 'மற்றொருவரின் விவரங்களைச் சேமிக்கத் தேவை')}</span></label>`}
     ${context ? contextField(f) : ''}
@@ -125,13 +126,23 @@ function resolve(slot, label) {
     const m = adultPool().find((x) => x.id === f.memberId) || adultPool()[0];
     return { member: m, chart: chartOf(m), name: nameBi(m) };
   }
-  if (!f.name || !f.date || !f.time || f.lat == null) throw new Error(L(`Please enter ${label}'s name, birth date, time and place (pick the city from the list).`, `${label} — பெயர், பிறந்த தேதி, நேரம், இடம் (பட்டியலிலிருந்து நகரம்) உள்ளிடவும்.`));
-  if (!isAdult(f.date, { tz: state.loc?.tz })) throw new Error(L(`${label}: matching is only for people aged 18 and over.`, `${label}: பொருத்தம் 18 வயதுக்கு மேற்பட்டவர்களுக்கு மட்டும்.`));
+  // Age first: a birth date under 18 is refused before anything else is asked for.
+  if (f.date && !isAdult(f.date, { tz: state.loc?.tz })) throw new Error(L(`${label}: matching is only for people aged 18 and over.`, `${label}: பொருத்தம் 18 வயதுக்கு மேற்பட்டவர்களுக்கு மட்டும்.`));
+  if (!f.name?.trim() || !f.date || f.lat == null) throw new Error(L(`Please enter ${label}'s name, birth date and place (pick the city from the list). Birth time is optional.`, `${label} — பெயர், பிறந்த தேதி, இடம் (பட்டியலிலிருந்து நகரம்) உள்ளிடவும். பிறந்த நேரம் விருப்பம்.`));
   if (f.save && !f.consent) throw new Error(`${label}: ${permissionError()}`);
-  const m = { id: `${slot}_${f.date}_${f.time}`, name: f.name.trim(), gender: f.gender, date: f.date, time: f.time.length === 5 ? `${f.time}:00` : f.time, place: f.place, lat: Number(f.lat), lon: Number(f.lon), tz: Number(f.tz), zone: f.zone || undefined, relation: 'other' };
+  // Birth time not known: never invented — the chart is made without a Lagna (birthArgs, timeCertainty 'unknown') and
+  // every Lagna-based check is shown as "needs birth time".
+  const known = !!f.time;
+  const time = known ? (f.time.length === 5 ? `${f.time}:00` : f.time) : UNKNOWN_TIME_PLACEHOLDER;
+  const m = { id: `${slot}_${f.date}_${time}`, name: f.name.trim(), gender: f.gender, date: f.date, time, timeCertainty: known ? 'exact' : 'unknown', place: f.place, lat: Number(f.lat), lon: Number(f.lon), tz: Number(f.tz), zone: f.zone || undefined, relation: 'other' };
   if (f.save && !state.family.some((x) => x.date === m.date && x.time === m.time && x.name === m.name)) saveWithConsent(m);
-  return { member: m, chart: birthChart(m), name: nameBi(m) };
+  return { member: m, chart: birthChart(birthArgs(m)), name: nameBi(m) };
 }
+
+/** Matching needs two different people: the same profile (or the same typed birth details) on both sides is refused. */
+export const samePerson = (a, b) => !!(a?.member && b?.member && (a.member.id === b.member.id || (a.member.date === b.member.date && a.member.time === b.member.time && String(a.member.name || '').trim().toLowerCase() === String(b.member.name || '').trim().toLowerCase())));
+export const SAME_PERSON_MSG = () => L('Please choose two different people — the same person is selected on both sides.', 'இரண்டு வெவ்வேறு நபர்களைத் தேர்ந்தெடுக்கவும் — இரு பக்கமும் ஒரே நபர் தேர்வாகியுள்ளார்.');
+function assertTwoPeople(a, b) { if (samePerson(a, b)) throw new Error(SAME_PERSON_MSG()); }
 
 // ---------------------------------------------------------------- shared porutham view (also used by screens-tools)
 const statusIcon = (st) => (st === 'uttamam' ? '✅' : st === 'madhyamam' ? '🟡' : '⚪');
@@ -248,7 +259,7 @@ function renderCouple(sec, params = {}) {
   $('#wedDate').addEventListener('change', (e) => { coupleUi.wedding = e.target.value; });
   $('#coupleBtn').addEventListener('click', () => {
     let bride, groom;
-    try { bride = resolve('bride', L('Bride', 'மணமகள்')); groom = resolve('groom', L('Groom', 'மணமகன்')); } catch (e) { $('#coupleErr').textContent = e.message; return; }
+    try { bride = resolve('bride', L('Bride', 'மணமகள்')); groom = resolve('groom', L('Groom', 'மணமகன்')); assertTwoPeople(bride, groom); } catch (e) { $('#coupleErr').textContent = e.message; return; }
     $('#coupleErr').textContent = '';
     $('#coupleOut').innerHTML = '<div class="loader"><i></i><i></i><i></i></div>';
     setTimeout(() => showCouple(bride, groom), 30);
@@ -287,7 +298,9 @@ function showCouple(bride, groom) {
   const mr = coupleMatchingReport(bride, groom);
   if (mr.status !== 'ok') { $('#coupleOut').innerHTML = `<div class="card glass note-box" role="alert">🌱 ${esc(bi(mr.message))}</div>`; return; }
   const r = marriageReport(bride.chart, groom.chart, { weddingDate: wedding, names });
-  const locked = isLocked('predictions');
+  // BILLING_ENFORCE: a paid plan, or the one-time Marriage package bought for THIS couple, opens the detail.
+  const scope = { pairId: pairKey(bride, groom) };
+  const locked = isLocked('matchingReport', { scope });
   const hz = bi(r.reportHorizon.label);
   const lang = ta() ? 'ta' : 'en';
   const houseScore = (h) => (h.available === false || h.score == null ? L('needs birth time', 'பிறந்த நேரம் தேவை') : h.score);
@@ -295,7 +308,7 @@ function showCouple(bride, groom) {
   coupleUi.ledger = createConsentLedger(mr.pairId);
   coupleUi.ids = [...SLOTS];
   const dosha = doshaBlockHtml({ doshas: [r.doshams.bride, r.doshams.groom], names: nm, lagnaUnknown: [!hasLagna(bride.chart), !hasLagna(groom.chart)], charts: [bride.chart, groom.chart], samyam: r.samyam });
-  const timing = { before: `${locked ? lockCard(L(`Supportive periods for the two of you (${hz}) are part of the Personal plan.`, `உங்கள் இருவருக்குமான ஆதரவுக் காலங்கள் (${hz}) தனிநபர் திட்டத்தில் உள்ளன.`))
+  const timing = { before: `${locked ? lockCard(L(`Supportive periods for the two of you (${hz}) are part of the Personal plan or the Marriage package for this couple.`, `உங்கள் இருவருக்குமான ஆதரவுக் காலங்கள் (${hz}) தனிநபர் திட்டத்தில் அல்லது இந்த ஜோடிக்கான திருமணத் தொகுப்பில் உள்ளன.`), 'matchingReport')
     : `<div class="mini-label">🌟 ${L('Supportive periods for the two of you', 'உங்கள் இருவருக்குமான ஆதரவுக் காலங்கள்')} <span class="pill">${esc(hz)}</span></div>${momentsHtml(r.moments)}`}
     <div class="mini-label" style="margin-top:12px">👣 ${L('Next steps', 'அடுத்த படிகள்')}</div>`,
   after: `<div class="mc-links"><button type="button" class="chip-btn" data-go="muhurtham">🗓️ ${L('Find a wedding muhurtham', 'திருமண முகூர்த்தம் தேடு')}</button></div>` };
@@ -308,7 +321,7 @@ function showCouple(bride, groom) {
       <div class="mini-label" style="margin-top:12px">🛡️ ${L('Beyond the 10 poruthams', '10 பொருத்தத்திற்கும் மேலான ஆய்வு')}</div>
       ${r.deep.checks.map((c) => `<div class="deep-row"><span>${c.ok ? '✅' : '🟡'} <b>${esc(bi(c.name))}</b><br><small class="muted">${esc(bi(c.note))}</small></span></div>`).join('')}
       ${(r.deep.needsBirthTime || []).length ? `<div class="deep-row"><span>🕰️ <b>${L('Lagna porutham and the marriage houses', 'லக்னப் பொருத்தம், திருமண பாவங்கள்')}</b> ${NEEDS_TIME_TAG()}</span></div>` : ''}
-      ${locked ? lockCard(L(`Mana porutham, the marriage houses and the year-by-year timeline (${hz}) are part of the Personal plan.`, `மனப் பொருத்தம், திருமண பாவங்கள், ஆண்டுவாரிக் காலவரிசை (${hz}) தனிநபர் திட்டத்தில் உள்ளன.`)) : `
+      ${locked ? lockCard(L(`Mana porutham, the marriage houses and the year-by-year timeline (${hz}) are part of the Personal plan or the Marriage package for this couple.`, `மனப் பொருத்தம், திருமண பாவங்கள், ஆண்டுவாரிக் காலவரிசை (${hz}) தனிநபர் திட்டத்தில் அல்லது இந்த ஜோடிக்கான திருமணத் தொகுப்பில் உள்ளன.`), 'matchingReport') : `
       <div class="mini-label" style="margin-top:12px">💗 ${L('Mana Porutham — mind & life compatibility', 'மனப் பொருத்தம் — மனமும் வாழ்க்கையும்')}</div>${areaRows(r.mana.areas)}
       ${r.mana.karmic ? `<p class="small">✨ ${L('Rahu/Ketu link your charts — tradition calls this a karmic bond; keep honesty and shared prayer at the centre.', 'ராகு/கேது உங்கள் ஜாதகங்களை இணைக்கிறது — மரபு இதைக் கர்ம பந்தம் என்கிறது; நேர்மையும் சேர்ந்த வழிபாடும் மையமாக இருக்கட்டும்.')}</p>` : ''}
       ${r.strengths.length ? `<p class="small">💪 <b>${L('Strengths', 'பலங்கள்')}:</b> ${r.strengths.map((x) => esc(bi(x))).join(', ')}</p>` : ''}${r.challenges.length ? `<p class="small">🌱 <b>${L('Grow together in', 'சேர்ந்து வளர வேண்டியவை')}:</b> ${r.challenges.map((x) => esc(bi(x))).join(', ')}</p>` : ''}
@@ -351,8 +364,12 @@ function showCouple(bride, groom) {
   });
   $('#mcPrint').addEventListener('click', () => {
     if (!consented('export')) return;
-    $$('#coupleOut details').forEach((x) => { x.open = true; });
-    window.print();
+    if (!gate('printReports', { scope, near: $('#mcPrint') })) return; // BILLING_ENFORCE: paid plan or this couple's package
+    // Print every section, then fold back the ones that were closed; printPage also prints natively in the Android app.
+    const closed = $$('#coupleOut details').filter((x) => !x.open);
+    closed.forEach((x) => { x.open = true; });
+    addEventListener('afterprint', () => closed.forEach((x) => { x.open = false; }), { once: true });
+    printPage(L('Marriage matching', 'திருமணப் பொருத்தம்'));
   });
   $('#coupleRead')?.addEventListener('click', async () => {
     $('#coupleAi').hidden = false;
@@ -395,7 +412,7 @@ function renderPartners(sec) {
   $('#bizCo')?.addEventListener('change', (e) => { bizUi.companyId = e.target.value; });
   $('#bizBtn').addEventListener('click', () => {
     let a, b;
-    try { a = resolve('p1', L('Partner 1', 'கூட்டாளி 1')); b = resolve('p2', L('Partner 2', 'கூட்டாளி 2')); } catch (e) { $('#bizErr').textContent = e.message; return; }
+    try { a = resolve('p1', L('Partner 1', 'கூட்டாளி 1')); b = resolve('p2', L('Partner 2', 'கூட்டாளி 2')); assertTwoPeople(a, b); } catch (e) { $('#bizErr').textContent = e.message; return; }
     $('#bizErr').textContent = '';
     $('#bizOut').innerHTML = '<div class="loader"><i></i><i></i><i></i></div>';
     setTimeout(() => showPartners(a, b), 30);

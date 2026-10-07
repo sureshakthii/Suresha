@@ -7,7 +7,7 @@ import { loveMatch } from './shared/love.js';
 import { closingPrayer } from './shared/daily.js';
 import { faithOf, isHinduFaith, faithBlessing } from './shared/faith.js';
 import { state, chartOf, $, L, esc, bi, registerScreen, subHeader, toast, displayName } from './core.js';
-import { personBlock, wirePersonBlocks, forms, adultPool, permissionError, saveWithConsent, permissionCheckbox } from './screens-couple.js';
+import { personBlock, wirePersonBlocks, forms, adultPool, permissionError, saveWithConsent, permissionCheckbox, SAME_PERSON_MSG } from './screens-couple.js';
 import { isAdult } from './shared/age-guard.js';
 
 let result = null;
@@ -68,6 +68,7 @@ function renderLove(sec) {
   $('#lvGo').addEventListener('click', () => {
     try {
       const a = chartFor('loveA'), b = chartFor('loveB');
+      if (forms.loveA.mode === 'family' && forms.loveB.mode === 'family' && adultPool().length && (forms.loveA.memberId || adultPool()[0].id) === (forms.loveB.memberId || adultPool()[0].id)) throw new Error(SAME_PERSON_MSG());
       if (!isAdult(a.chart, { tz: state.loc?.tz }) || !isAdult(b.chart, { tz: state.loc?.tz })) {
         result = null;
         $('#lvOut').innerHTML = `<section class="card glass"><div class="card-title">🌱 ${L('Not for minors', 'சிறு வயதினருக்கு அல்ல')}</div><p>${L('Love and marriage matching is read only when both people are 18 or older. For now, the chart guides studies, health and friendships.', 'காதல் / திருமணப் பொருத்தம் இருவருக்கும் 18 வயது நிறைந்த பிறகே பார்க்கப்படும். இப்போது ஜாதகம் கல்வி, ஆரோக்கியம், நட்புக்கே வழிகாட்டும்.')}</p></section>`;

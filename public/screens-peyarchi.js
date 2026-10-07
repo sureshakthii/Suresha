@@ -20,8 +20,13 @@ const pyFaith = () => { const m = activeMember(); return m && m.relation !== 'or
 const kidView = () => { const m = activeMember(); return Boolean(m && pyRasi === defaultRasi() && ageProfile(m, { tz: state.loc?.tz }).minor); };
 const kidText = (o) => {
   if (!o || !kidView()) return o;
-  const keep = (t) => String(t || '').split(/(?<=[.;।])\s+/).filter((x) => !adultText(x)).join(' ');
-  return { en: keep(o.en), ta: keep(o.ta) };
+  // A dropped adult clause must not leave "…family harmony;" hanging; an all-adult text gets a child line instead.
+  const keep = (t, fallback) => {
+    const src = String(t || '');
+    const out = src.split(/(?<=[.;।])\s+/).filter((x) => !adultText(x)).join(' ').trim().replace(/[;,:]$/, '.');
+    return out || (src.trim() ? fallback : '');
+  };
+  return { en: keep(o.en, 'A steady time — keep studies, play and sleep regular.'), ta: keep(o.ta, 'நிதானமான காலம் — படிப்பு, விளையாட்டு, உறக்கத்தைச் சீராக வையுங்கள்.') };
 };
 
 const localAt = (date, time) => { const [y, mo, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(Date.UTC(y, mo - 1, d, h, mi) - (state.loc?.tz ?? 5.5) * 3600000); };

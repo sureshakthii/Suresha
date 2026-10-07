@@ -77,8 +77,10 @@ async function renderCalendar(sec) {
     <div id="calDay"></div>`;
   $('#calPrev').addEventListener('click', () => { calYM = mo === 0 ? [y - 1, 11] : [y, mo - 1]; calSel = null; renderCalendar(sec); });
   $('#calNext').addEventListener('click', () => { calYM = mo === 11 ? [y + 1, 0] : [y, mo + 1]; calSel = null; renderCalendar(sec); });
-  const key = `${y}-${mo}|${loc.lat}|${loc.lon}|${loc.tz}`;
-  if (!calCache.has(key)) { await wait(); calCache.set(key, tamilMonth(y, mo, loc.lat, loc.lon, loc.tz)); }
+  const key = `${y}-${mo}|${loc.lat}|${loc.lon}|${loc.tz}|${loc.zone || ''}`;
+  // Each day carries its own UTC offset (day.tz): a month across a daylight-saving change (London, Toronto…)
+  // shows every day in the clock time in force that day.
+  if (!calCache.has(key)) { await wait(); calCache.set(key, tamilMonth(y, mo, loc.lat, loc.lon, loc.tz, { zone: loc.zone })); }
   if (state.view !== 'calendar') return;
   const days = calCache.get(key);
   const m = activeMember();
@@ -107,7 +109,7 @@ async function renderCalendar(sec) {
 }
 
 function renderCalDay(d, c) {
-  const loc = state.loc;
+  const loc = { ...state.loc, tz: d.tz ?? state.loc.tz };
   const cs = c && d.chandrashtamaRasi === c.janmaRasi.index;
   $('#calDay').innerHTML = `<div class="card glass">
     <div class="card-title"><span>${fmtIsoDate(d.date)} · ${esc(bi(d.weekday))}</span><span class="pill">${esc(ta() ? `${d.tamil.monthTa} ${d.tamil.day}` : `${d.tamil.monthEn} ${d.tamil.day}`)}</span></div>
@@ -188,6 +190,7 @@ function sideData(who) {
 
 function computePorutham() {
   const g = sideData('girl'), b = sideData('boy');
+  if (g.memberId && g.memberId === b.memberId) { $('#porResult').innerHTML = `<div class="card glass note-box" role="alert">${L('Please choose two different people — the same person is selected on both sides.', 'இரண்டு வெவ்வேறு நபர்களைத் தேர்ந்தெடுக்கவும் — இரு பக்கமும் ஒரே நபர் தேர்வாகியுள்ளார்.')}</div>`; return; }
   const r = matchPorutham(g, b);
   document.dispatchEvent(new CustomEvent('kj:task', { detail: 'porutham' })); // metrics: porutham result shown (consent-gated, growth.js)
   const samyam = g.doshams && b.doshams ? doshaSamyam(g.doshams, b.doshams) : null;
@@ -605,7 +608,7 @@ function todayFacts() {
  */
 function lifeOf(m) {
   if (!m) return {};
-  const life = { memberId: m.id, gender: m.gender, faith: faithOf(m), maritalStatus: m.maritalStatus, marriedYear: m.marriedYear, children: m.children, firstChildYear: m.firstChildYear };
+  const life = { memberId: m.id, relation: m.relation, gender: m.gender, faith: faithOf(m), maritalStatus: m.maritalStatus, marriedYear: m.marriedYear, children: m.children, firstChildYear: m.firstChildYear };
   if (m.relation === 'self') {
     if (!life.maritalStatus && state.family.some((x) => x.relation === 'spouse')) life.maritalStatus = 'married';
     const kids = state.family.filter((x) => ['son', 'daughter'].includes(x.relation));
@@ -654,6 +657,8 @@ function renderAnswerHtml(ans) {
 function renderChat(sec, params = {}) {
   const m = activeMember();
   if (chat.memberId !== (m?.id || null)) { chat.messages = []; chat.memberId = m?.id || null; }
+  // Opened from a festival / hymn page with a general question: answer it in General mode.
+  if (params.mode === 'general' || params.mode === 'chart') setAskMode(params.mode);
   sec.innerHTML = `<div class="chat-main"><div class="seg ask-switch" role="tablist"><button class="sel" role="tab" aria-selected="true">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button role="tab" aria-selected="false" data-go="ask">🔮 ${L('Is now a good time? (Prasnam)', 'இப்போது செய்யலாமா? (பிரசன்னம்)')}</button></div>
     <div class="seg ask-mode" role="radiogroup" aria-label="${esc(L('What is your question about?', 'உங்கள் கேள்வி எதைப் பற்றியது?'))}">
       <button type="button" role="radio" data-mode="chart" class="${chat.mode === 'chart' ? 'sel' : ''}" aria-checked="${chat.mode === 'chart'}">🪐 ${L('About my chart', 'ஜாதகம் பற்றி')}</button>
@@ -712,7 +717,14 @@ function addBubble(role, text, meta = {}) {
   if (meta.answer?.followups?.length) {
     const row = document.createElement('div'); row.className = 'followups';
     row.innerHTML = `<div class="ans-h">${esc(L('Ask next', 'அடுத்துக் கேட்கலாம்'))}</div>`;
-    meta.answer.followups.slice(0, 3).forEach((f) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'sg'; x.textContent = f; x.addEventListener('click', () => send(f)); row.append(x); });
+    // A follow-up is a question string, or (general answers) { label, ask } to send / { label, go, params } to open a screen.
+    meta.answer.followups.slice(0, 3).forEach((f) => {
+      const o = typeof f === 'string' ? { label: f, ask: f } : f;
+      if (!o?.label || (!o.ask && !o.go)) return;
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'sg'; x.textContent = o.go ? `${o.label} ›` : o.label;
+      x.addEventListener('click', () => (o.go ? go(o.go, o.params || {}) : send(o.ask)));
+      row.append(x);
+    });
     b.append(row);
   }
   if (meta.answer?.actions?.length) {

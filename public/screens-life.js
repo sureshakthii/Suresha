@@ -17,6 +17,16 @@ const EXTRA = [
   { id: 'compass', icon: '🧭', en: 'Which study & career suits me? (talent compass)', ta: 'எந்தப் படிப்பு, தொழில் பொருந்தும்? (திறமை வழிகாட்டி)' },
   { id: 'kula', icon: '🛕', en: 'Kula Deivam — how to find out', ta: 'குலதெய்வம் — அறியும் வழி' },
 ];
+/** true = married, false = said not married, null = not known. Explicit profile status wins over the relation. */
+export function marriedOf(m, family = []) {
+  if (!m) return null;
+  if (m.maritalStatus === 'married') return true;
+  if (m.maritalStatus === 'single') return false;
+  if (m.maritalStatus === 'other') return null;
+  if (m.relation === 'spouse') return true;
+  if (m.relation === 'self' && family.some((x) => x.relation === 'spouse' && !x.shared)) return true;
+  return null;
+}
 const ui = { memberId: null, q: null };
 const iso = (d) => new Date(d.getTime() + state.loc.tz * 3600000).toISOString().slice(0, 10);
 const monthYear = (d) => new Date(d).toLocaleDateString(state.lang === 'ta' ? 'ta-IN' : 'en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -30,7 +40,11 @@ function renderLife(sec, params = {}) {
   // Age first: a child sees only the questions that suit the age (studies, Kula Deivam) — never marriage, job, money or court.
   const prof = ageOf(m);
   // …and each timing question only within its own age range (no marriage / child timing for an elder).
-  const qs = [...QUESTIONS, ...EXTRA].filter((q) => lifeQuestionAllowed(q.id, prof) && questionFitsAge(q, prof.age))
+  // Already married (said so in the profile, or added as someone's spouse / has a spouse in the family): no
+  // "when will marriage happen" or "find a bride / groom" — and a single person gets no husband–wife harmony card.
+  const married = marriedOf(m, state.family);
+  const qs = [...QUESTIONS, ...EXTRA].filter((q) => lifeQuestionAllowed(q.id, prof) && questionFitsAge(q, prof.age)
+    && !(married === true && (q.id === 'marriage' || q.id === 'partner')) && !(married === false && q.id === 'harmony'))
     .map((q) => ({ ...q, ...(QUESTIONS.includes(q) ? questionFor(q, m.gender) : {}) }));
   if (ui.q && !qs.some((q) => q.id === ui.q)) ui.q = null;
   sec.innerHTML = `${subHeader(L('Life Questions', 'வாழ்க்கைக் கேள்விகள்'), L('Traditional timing indicators from dasa, bhukti and Guru–Sani transits — not guarantees', 'தசை, புக்தி, குரு–சனி கோசார அடிப்படையிலான பாரம்பரியக் கால அறிகுறிகள் — உத்தரவாதம் அல்ல'))}

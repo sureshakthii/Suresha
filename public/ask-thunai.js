@@ -20,6 +20,8 @@ import { ageProfile, topicAllowed, ageGuardAnswer, guardAnswer, suggestionsFor, 
 import { validateOffline, composeAnswer, classify, SAFETY_INTENTS } from './shared/guidance.js';
 import { questionType, subTopic, whichKind, otherPerson, factualQuestion, generalQuestion, personalQuestion, seedFor, varyAnswer } from './shared/ask-sense.js';
 import { tamilDay } from './shared/tamilcal.js';
+import { hymnById } from './shared/hymns.js';
+import { MANTRAS } from './shared/mantras.js';
 import { careerReading, careerLines, businessLines, directionReading, directionLines, partnerLines, studyLines, luckLines, godLines, gemLines, PLANET_FIELDS, FIELDS } from './shared/ask-which.js';
 
 const DAY = 86400000;
@@ -51,12 +53,12 @@ export const TOPICS = [
   { id: 'marriage', re: new RegExp(`${MARRY}|spouse|alliance|ponnu (kidai|paar|amay)|maa?pp?ill?ai|mapilai|varan\\b|jodi|bride|groom|life ?partner|future (wife|husband)|வரன்|மாப்பிள்ளை|பெண் பார்|மணமகன்|மணமகள்|வாழ்க்கைத் துணை|வருங்கால (கணவர்|மனைவி)`, 'i') },
   { id: 'travel', re: /visa|abroad|foreign|onsite|overseas|immigra|\bpr\b|green card|\bh-?1b\b|dubai|gulf|singapore|canada|australia|\busa\b|\bus visa|\buk\b|velinaa?du|velinaatt?u|velinattu|videsh|videsa|videsam|videsham|vegu dhooram|travel|payanam|பயணம்|வெளிநாடு|வெளிநாட்ட|விசா|அயல்நாடு|விதேச|துபாய்|குடியேற/i },
   { id: 'business', re: /business|busine?ss|start.?up|own (shop|company|firm)|partnership|vyaa?baa?ram|viyabaram|viyaabaaram|yabaram|kadai (vaikk|podu|open)|sontha? ?(tholil|thozhil)|தொழில் தொடங்க|வியாபார|வணிக|கடை (வை|திற)|சொந்த(த்)? தொழில்|கூட்டுத் தொழில்/i },
-  { id: 'job_change', re: /job ?change|change (my )?job|switch(ing)? (job|company)|new company|resign|vela ?maa?(th|r)|velai ?maa?(th|r)|company maa?(th|r)|வேலை மாற்ற|வேலை மாறு|ராஜினாமா|நிறுவனம் மாற/i },
+  { id: 'job_change', re: /retire\w*|\bvrs\b|ஓய்வு பெற|job ?change|change (my )?job|switch(ing)? (job|company)|new company|resign|vela ?maa?(th|r)|velai ?maa?(th|r)|company maa?(th|r)|வேலை மாற்ற|வேலை மாறு|ராஜினாமா|நிறுவனம் மாற/i },
   { id: 'job', re: /get (a |any )?(good |new |better |govt |government )?job|no job|jobless|unemploy|government job|govt job|interview|(lost|lose) (my )?job|job (poi|pochu|poyi|lost|kidai|eppo)|(police|bank|it|private|railway) job|vela ?(kida|kedai|illa|varu|eppo|pochu|poi)|velai ?(kida|kedai|illa|varu|eppo|pochu|poi)|vela kidaikum|velai kidaik|udyogam|uththiyogam|அரசு வேலை|வேலை[^.?!]{0,15}கிடை|வேலை இல்லை|வேலை போய்|நேர்காணல்|உத்தியோக/i },
   { id: 'career', re: /career|promot|transfer|இடமாற்ற|salary|appraisal|\bboss\b|office|\bwork\b|\bjob\b|profession|field|teaching|become a|aavena|ஆவேனா|\bvela\b|\bvelai\b|\bvelaila\b|thozhil|tholil|padhavi|pathavi|தொழில|வேலை|அலுவலக|பதவி|சம்பள/i },
   { id: 'loan', re: /loan|debt|\bemi\b|kadan|kadana|கடன்|கடனை|கடன|அடைக்க|வட்டி/i },
   { id: 'money', re: /money|finance|financial|saving|invest|wealth|stock|share market|income|rich|pension|arrears|\bpanam\b|\bpanum\b|\bkasu\b|kaasu|semippu|varumanam|selvam|dhanam|பணம்|பணத்|பணக்|பண நிலை|பண வரவு|சேமிப்பு|முதலீடு|செல்வ|வருமான|பொருளாதார|தனம்|பென்ஷன்|ஓய்வூதிய/i },
-  { id: 'property', re: /\bhouse\b|\b(own|new|buy|buying|a) home\b|\bland\b|property|\bflat\b|\bplot\b|apartment|construct|\bwill and\b|\bveedu\b|\bveetu\b|sontha? ?veedu|\bnilam\b|\bmanai\b|sothu|soththu|வீடு|நிலம்|சொத்|மனை|பிளாட்|வீடு கட்ட/i },
+  { id: 'property', re: /\bv(ee|i)du ?(vaa?ng|kat)|\bhouse\b|\b(own|new|buy|buying|a) home\b|\bland\b|property|\bflat\b|\bplot\b|apartment|construct|\bwill and\b|\bveedu\b|\bveetu\b|sontha? ?veedu|\bnilam\b|\bmanai\b|sothu|soththu|வீடு|நிலம்|சொத்|மனை|பிளாட்|வீடு கட்ட/i },
   { id: 'vehicle', re: /\bcar\b|bike|vehicle|scooter|\bvandi\b|vaaganam|vaganam|கார்|வாகன|பைக்|ஸ்கூட்டர்|வண்டி/i },
   { id: 'family', re: /family|parents|father|mother|brother|sister|in-?laws?|\bson\b|daughter|grand(son|daughter|children)|kudumbam|kudumba|\b(amma|appa|anna|akka|thambi|thangai|thangachi)\b|maa?miyar|naa?thanaa?r|marumagal|makkal|nimmadhi|peace at home|குடும்ப|அப்பா|அம்மா|அண்ணன்|அக்கா|தம்பி|தங்கை|பெற்றோர்|மாமியார்|நாத்தனார்|மருமகள்|மக்கள்|நிம்மதி|பேரன்|பேத்தி|பேரக்/i },
   { id: 'kuladeivam', re: /kula ?dh?e(i|y)vam|kula ?deiv|family deity|குலதெய்வ|குல தெய்வ/i },
@@ -937,14 +939,17 @@ function saniAnswer({ question, chart, rel, lang, name, life, now }) {
   }
   const faith = faithFor(life.faith, question);
   const M = chart.planets.Moon.rasi;
-  const from = new Date(now.getTime() - 8 * YEAR), to = new Date(now.getTime() + 15 * YEAR);
+  // 32 years ahead, so the next full Ezharai Sani (Saturn's cycle is ~29.5 years) is never cut off by the horizon.
+  const from = new Date(now.getTime() - 8 * YEAR), to = new Date(now.getTime() + 32 * YEAR);
   const spans = signSpans('Saturn', from, to).map((s) => ({ ...s, h: houseOf(M, s.rasi) }));
-  // Group consecutive spans whose house is in `set` (retrograde back-and-forth stays one window).
+  // Group consecutive spans whose house is in `set`. A retrograde step back out of the set and in again (a gap of
+  // under ~14 months) stays ONE window — otherwise "Jun 2027 – Oct 2027" would be called a 7½-year Ezharai Sani.
   const windows = (set) => {
     const out = [];
     for (const s of spans) {
       const last = out[out.length - 1];
-      if (set.includes(s.h)) { if (last && !last.closed) last.end = s.end; else out.push({ start: s.start, end: s.end }); } else if (last) last.closed = true;
+      if (!set.includes(s.h)) continue;
+      if (last && s.start - last.end < 425 * DAY) last.end = s.end; else out.push({ start: s.start, end: s.end });
     }
     return out;
   };
@@ -1211,6 +1216,8 @@ export function askThunai({ text, chart = null, rel = null, facts = null, life =
     if (!x.general) x = faithFilter(x, faith, lang);
     x = { ...x, meter: null, qtype: x.qtype || qt.type };
     if (!keepSame && !x.policy && !['crisis', 'abuse', 'missing', 'death', 'age_guard', 'policy'].includes(x.intent)) x = varyAnswer(x, seed, lang);
+    if (prof.minor && !speaker) x = parentVoice(x, prof, lang, name);
+    if (!speaker && ['daughter', 'son', 'granddaughter', 'grandson'].includes(life.relation) && (prof.minor || prof.band === '0-5')) x = parentize(x, lang, name, /daughter/.test(life.relation) || life.gender === 'female');
     if (x.sections) x = { ...x, text: textOf(x.sections) };
     return validateOffline(x, { lang, inputCertainty: certainty });
   };
@@ -1226,19 +1233,62 @@ export function askThunai({ text, chart = null, rel = null, facts = null, life =
   let topic = detectTopic(text);
   // Asking the baby's sex is never answered (sex determination is illegal in India and a chart cannot tell it).
   if (BABY_SEX.test(normQ(text))) return finish(babySexAnswer(text, lang), 'child', true);
+  // "thanks", "ok", "hi" on their own: a short warm reply, never a chart reading.
+  if (smallTalk(text)) return finish(smallTalkAnswer(text, lang, name, prof), 'smalltalk', true);
   // 2. Policy gate: adult–minor facilitation is declined; a speaker who says they are under 18 gets the child / teen route.
   const gateTopic = /\blove\b|kaa?dh?al|காதல்|crush|girlfriend|boyfriend/i.test(text) ? 'love' : GUARD_TOPIC[topic] || null;
   const gate = policyAnswer(facilitationCheck(text, { turns, speaker }), { lang, question: text, topic: gateTopic, name });
   if (gate) return finish(gate, gate.topic || topic || 'policy', true);
+  // Words naming the open profile itself ("en ponnu" on the daughter's profile, "appa ku" on Appa's) are not
+  // another person: drop them before reading the topic.
+  if (life.relation && life.relation !== 'self') { text = selfRefStrip(text, life.relation); topic = detectTopic(text); }
+  const q0 = normQ(text);
   // 3. General (festival, vratham, scripture, panchangam) or chart question. General questions never get a chart
   // reading — in General mode always, and in chart mode when the question is clearly general (with a switch back).
-  const general = generalQuestion(text);
+  const general = generalQuestion(text) || generalExtraHit(text);
   const personal = personalQuestion(text) || Boolean(topic && LIFE_TOPICS.has(topic) && !general);
+  const gopts = { lang, now, loc: loc || chart, faith, prof, today };
   if (mode === 'general') {
-    if (personal && !general) return finish(modeSwitchAnswer(text, lang), 'mode_switch', true);
-    return finish(generalAnswer(text, { lang, now, loc: loc || chart, faith, prof, auto: false }), 'general_kb');
+    // The general knowledge answers first (a festival named with "sani" or "my" is still a festival question);
+    // only a personal question it cannot answer is offered the switch to "About my chart".
+    const g = generalAnswer(text, { ...gopts, auto: false });
+    if (personal && !general && g.honest) return finish(modeSwitchAnswer(text, lang), 'mode_switch', true);
+    return finish(g, 'general_kb');
   }
-  if (general && !personal) return finish(generalAnswer(text, { lang, now, loc: loc || chart, faith, prof, auto: true }), 'general_kb');
+  // A family word in a ritual question ("appa ku tharpanam eppo") does not make it a chart question.
+  if (general && (!personal || !(topic && LIFE_TOPICS.has(topic)) || (topic === 'family' && matchKB(text)))) return finish(generalAnswer(text, { ...gopts, auto: true }), 'general_kb');
+  // A short follow-up with no topic of its own ("which month is best?", "eppo?", "why?") continues the topic of the
+  // person's previous question in this chat (the follow-up chips are worded this way too).
+  if (!topic && turns?.length && chart && FOLLOW_CUE.test(q0) && q0.split(' ').length <= 10 && !identityQuestion(text) && !MONTH_Q.test(q0) && !TODAY_PALAN.test(q0) && !GURU_Q.test(q0) && !DELAY_Q.test(q0) && !YEAR_Q.test(q0) && classify(text).intent === 'general' && !whichKind(null, text, qt)) {
+    const prev = turns.filter((t) => normQ(t).trim() !== q0.trim()).reverse();
+    for (const t of prev.slice(0, 4)) { const tp = detectTopic(life.relation && life.relation !== 'self' ? selfRefStrip(t, life.relation) : t); if (tp && LIFE_TOPICS.has(tp)) { topic = tp; break; } }
+  }
+  // Everyday questions with their own answers: Rasi / star / Lagnam, today, this month, this year, Guru peyarchi.
+  if (chart && identityQuestion(text)) return finish(identityAnswer({ text, chart, rel, lang, name }), 'identity', true);
+  if (chart && !topic) {
+    let a = null;
+    if (GURU_Q.test(q0)) a = guruAnswer({ text, chart, rel, lang, name, now, faith });
+    else if (TODAY_PALAN.test(q0) && !/neram|time|timing|நேரம்/.test(q0)) a = todayPalanAnswer({ text, chart, rel, lang, name, today, now, loc });
+    else if (MONTH_Q.test(q0)) a = monthAnswer({ text, chart, rel, lang, name, now, loc });
+    else if ((YEAR_Q.test(q0) || DELAY_Q.test(q0)) && !prof.minor) a = overviewAnswer({ text, chart, rel, lang, name, now, shared, delay: DELAY_Q.test(q0) || /\bwhy\b|\byen\b|ஏன்/.test(q0), prof });
+    if (a) return finish(prof.minor ? guardAnswer(a, prof, lang) : a, a.topic);
+    // Rasi / star not known (birth time unknown): say so honestly instead of "I did not understand".
+    if (rel?.rasi === false && (GURU_Q.test(q0) || TODAY_PALAN.test(q0) || MONTH_Q.test(q0) || YEAR_Q.test(q0) || DELAY_Q.test(q0))) return finish(noTimeAnswer(shell('overview', text, [], { followups: [] }), lang, name), 'overview', true);
+  }
+  if (GOLD_Q.test(q0) && !/rate|price|vilai|விலை/.test(q0)) return finish(goldAnswer({ text, lang, now, loc: loc || chart }), 'gold');
+  // "What prayers suit me / him?" → the deities the chart points to.
+  if (chart && !topic && !prof.minor && /\b(what|which|enna|endha|entha)\b[^?]{0,20}\b(prayers?|pray|vazhipadu|valipadu|worship|slokam?|sloka)\b|(எந்த|என்ன)\s*(வழிபாடு|பிரார்த்தனை|ஸ்லோக)/.test(q0)) {
+    try { return finish(luckAnswer({ kind: 'god', text, chart, rel, lang, name, faith, prof, topic }), 'remedy'); } catch (e) { console.warn('ask god', e); }
+  }
+  if (FAITH_PLACE.test(q0)) return finish(faithPlaceAnswer(text, lang, faith), 'faith_place', true);
+  // "Is it a good time for appa to go to Kasi?" — the timing of a pilgrimage, not a temple list.
+  if (PILGRIM_Q.test(q0) && PILGRIM_WHEN.test(q0)) return finish(pilgrimageAnswer({ text, chart, rel, lang, name, now, loc: loc || chart, prof, faith }), 'travel');
+  // Writing a house over to a child / a will / a settlement deed: documentation and registration, not buying.
+  if (PROP_TRANSFER.test(q0) && !/\bcase\b|court|vazhakk|வழக்கு/.test(q0)) return finish(propertyTransferAnswer({ text, chart, rel, lang, name, now, loc: loc || chart, prof }), 'property');
+  // Another faith asking for a parigaram: a full practice in their own tradition (no Hindu remedy, no bare chart tail).
+  if (!isHinduFaith(faith) && REMEDY_Q.test(q0) && (!topic || topic === 'remedy') && !/\bgem|\bstone\b|rathin|ரத்தின/.test(q0)) return finish(faithRemedyAnswer(text, lang, name, faith), 'remedy', true);
+  // "Can I become a doctor?" is a studies / career question, not a health one.
+  if (BECOME.test(q0)) topic = prof.minor || (prof.age != null && prof.age < 23) ? 'education' : 'career';
   // 4. Honesty gate: a question no chart can answer is never given a generic reading.
   if (factualQuestion(text) && (!topic || !personal)) return finish(honestAnswer({ reason: 'factual', text, lang, topic, prof }), 'honest');
   const other = otherPerson(text);
@@ -1258,13 +1308,20 @@ export function askThunai({ text, chart = null, rel = null, facts = null, life =
   if (doshamToo) topic = 'marriage';
   const subj = subjectOf(text);
   if (topic === 'marriage' && life.maritalStatus === 'married' && !subj) topic = 'harmony';
-  const wk = whichKind(topic, text, qt);
+  let wk = whichKind(topic, text, qt);
+  // "Should I wear a gemstone?" is a gem question even without "which".
+  if (!wk && topic === 'remedy' && /\bgem|\bstone\b|rathin|ரத்தின/.test(q0) && !/necessary|\bneed|avasiyam|thevaiya|தேவையா|அவசியம/.test(q0)) wk = 'gem';
   // "Commerce or science — which stream?" names no topic word: the WHICH kind gives it.
   if (!topic && wk) topic = { career: 'career', business: 'business', study: 'education', partner: 'marriage', direction: 'travel' }[wk] || null;
   // WHICH about a son / daughter (field, course, business, partner): their own chart is needed — say so honestly.
   if (subj && ['child', 'grandchild', 'childInLaw'].includes(subj.kind) && ['career', 'business', 'study', 'partner'].includes(wk)) {
     return finish(honestAnswer({ reason: 'child_chart', who: pick(T(subj.en, subj.ta), lang), whoTo: subj.taTo || `${subj.ta}க்கு`, text, lang, topic, prof, kind: wk }), 'honest');
   }
+  // Changing schools is decided on practical grounds; a parent asking about a young child's anger gets parenting help.
+  if (SCHOOL_CHANGE.test(q0)) return finish(schoolChangeAnswer(text, lang, name), 'education', true);
+  if (prof.minor && !speaker && CHILD_BEHAVIOUR.test(q0)) return finish(childBehaviourAnswer(text, lang, name, prof), 'emotional', true);
+  // A child's slokam / prayer question: today's prayer and good habits (never the "ask when you grow up" reply).
+  if (prof.minor && PRAYER_Q.test(q0) && (!topic || ['remedy', 'temple', 'child'].includes(topic))) return finish(childAnswer?.() || childGeneralAnswer({ profile: prof, lang, name, deity, question: text, faith }), 'general');
   if (topic && SHARED_TOPIC[topic] && !(['day', 'colour', 'number', 'god', 'gem'].includes(wk) && chart && topic === 'remedy')) {
     const a = cleanSharedAnswer(shared(text, SHARED_TOPIC[topic]));
     return finish(withAsk(prof.minor ? guardAnswer(a, prof, lang) : a, lang, topic), topic);
@@ -1280,6 +1337,11 @@ export function askThunai({ text, chart = null, rel = null, facts = null, life =
       const qtx = wk === 'prayer' ? { ...qt, type: 'how' } : qt;
       let a = topicAnswer({ topic, question: text, chart, rel: rel || {}, lang, name, life: life2, today, turns, speaker, now, subject: subj, qt: qtx });
       if (a && doshamToo && a.sections?.[0]?.key === 'answer') a = withDoshamNote(a, doshamAnswer({ question: text, chart, rel, lang, name, life: life2, now }));
+      if (a && topic === 'job_change' && /retire|\bvrs\b|ஓய்வு/.test(q0)) a = { ...a, sections: a.sections.map((sx, i) => (i === 0 && sx.key === 'answer' ? { ...sx, lines: [say(lang)('Retiring is a decision of health, savings and family more than of the stars — talk it over with your family and check your pension and savings first. The chart only shows when a change is supported:', 'ஓய்வு பெறுவது கிரகங்களை விட உடல்நலம், சேமிப்பு, குடும்பம் சார்ந்த முடிவு — குடும்பத்துடன் பேசி, ஓய்வூதியம், சேமிப்பை முதலில் பாருங்கள். மாற்றத்துக்கு ஆதரவான காலத்தை மட்டுமே ஜாதகம் காட்டும்:'), ...sx.lines] } : sx)) };
+      if (a && topic === 'child' && HOW_MANY_KIDS.test(q0)) a = { ...a, sections: a.sections.map((sx, i) => (i === 0 && sx.key === 'answer' ? { ...sx, lines: [say(lang)('A horoscope cannot tell how many children someone will have, and Thunai never counts them. What tradition reads is the supportive time for children:', 'எத்தனை குழந்தைகள் என்பதை ஜாதகம் சொல்ல முடியாது; துணை அதை எண்ணிச் சொல்வதில்லை. மரபு பார்ப்பது குழந்தை பாக்கியத்துக்கான சாதகமான காலத்தை மட்டுமே:'), ...sx.lines.filter((l) => l !== pick(EMPATHY.child, lang))] } : sx)) };
+      if (a && topic === 'harmony' && LEAVE_Q.test(q0) && !DIVORCE.test(q0)) a = { ...a, sections: a.sections.map((sx, i) => (i === 0 && sx.key === 'answer' ? { ...sx, lines: leaveLines(lang, name) } : sx)) };
+      if (a && topic === 'harmony' && DIVORCE.test(q0)) a = { ...a, sections: a.sections.map((sx, i) => (i === 0 && sx.key === 'answer' ? { ...sx, lines: [...divorceLines(lang, name), ...(qt.type === 'choice' ? [] : sx.lines)] } : sx)) };
+      if (a && rel?.rasi === false && rel?.nakshatra === false && !TOPIC[topic]?.health) a = noTimeAnswer(a, lang, name);
       if (a) return finish(a, topic);
     } catch (e) { console.warn('ask', e); }
   }
@@ -1287,8 +1349,12 @@ export function askThunai({ text, chart = null, rel = null, facts = null, life =
     const a = ageGuardAnswer({ topic: GUARD_TOPIC[topic] || topic, profile: ageProfile(null), lang, name, question: text, faith });
     return finish(a, topic);
   }
-  const base = shared(text);
+  let base = shared(text);
   if (base.policy) return finish(base, 'policy', true);
+  if (base.intent === 'dasa' && chart) {
+    const note = planetDasaNote(text, chart, rel, lang, now);
+    if (note) base = { ...base, sections: base.sections.map((sx) => (sx.key === 'answer' ? { ...sx, lines: [note, ...sx.lines] } : sx)) };
+  }
   if (['pain', 'emotional'].includes(base.intent)) return finish(withAsk(cleanSharedAnswer(base), lang, base.intent), base.intent);
   if (prof.minor) {
     // Children: no dasa reading for open questions — a warm, simple answer with today's prayer and good habits.
@@ -1348,13 +1414,13 @@ function honestAnswer({ reason, text, lang, topic = null, prof = null, who = '',
   if (reason === 'child_chart' && kind === 'study') next.push(L('Meanwhile: their interest, last two years’ marks and a free aptitude test say more than any chart.', 'அதுவரை: அவருடைய ஆர்வம், கடந்த இரண்டு ஆண்டு மதிப்பெண்கள், ஒரு இலவசத் திறனறி தேர்வு — இவை எந்த ஜாதகத்தையும் விட அதிகம் சொல்லும்.'));
   if (reason === 'factual') next.push(L('For prices, results and news, use the official website or app of that service.', 'விலை, முடிவுகள், செய்திகளுக்கு அந்தச் சேவையின் அதிகாரப்பூர்வ இணையதளம் / செயலியைப் பாருங்கள்.'));
   if (reason === 'general_unknown') next.push(L('Open the Tamil calendar for festival and vratham dates, or ask about a specific festival by name.', 'பண்டிகை, விரத நாட்களுக்குத் தமிழ் நாட்காட்டியைத் திறக்கலாம், அல்லது ஒரு குறிப்பிட்ட பண்டிகையின் பெயரைச் சொல்லிக் கேளுங்கள்.'));
-  next.push(L('Or tap one of the questions below — I will answer it from your chart, clearly.', 'அல்லது கீழே உள்ள கேள்விகளில் ஒன்றைத் தொடுங்கள் — உங்கள் ஜாதகப்படி தெளிவான பதில் தருகிறேன்.'));
+  next.push(reason === 'general_unknown' ? L('Or tap one of the questions below.', 'அல்லது கீழே உள்ள கேள்விகளில் ஒன்றைத் தொடுங்கள்.') : L('Or tap one of the questions below — I will answer it from your chart, clearly.', 'அல்லது கீழே உள்ள கேள்விகளில் ஒன்றைத் தொடுங்கள் — உங்கள் ஜாதகப்படி தெளிவான பதில் தருகிறேன்.'));
   const ask = reason === 'other' || reason === 'child_chart'
     ? L('Shall I answer the part of this that concerns you — your own family life or plans?', 'இதில் உங்களைப் பற்றிய பகுதிக்கு — உங்கள் குடும்ப வாழ்க்கை அல்லது திட்டங்களுக்கு — பதில் சொல்லட்டுமா?')
     : reason === 'general_unknown' ? L('Which festival or vratham would you like to know about?', 'எந்தப் பண்டிகை / விரதம் பற்றி அறிய விரும்புகிறீர்கள்?')
       : L('What would you like to know — work, marriage, money, family or health?', 'எதைத் தெரிந்துகொள்ள விரும்புகிறீர்கள் — வேலை, திருமணம், பணம், குடும்பம், உடல்நலம்?');
   const sections = [
-    { key: 'answer', title: L('Answer', 'பதில்'), lines: [L('I cannot give a firm answer to this question from your horoscope — and I will not show a general reading in its place.', 'இந்தக் கேள்விக்கு உங்கள் ஜாதகத்திலிருந்து உறுதியான பதில் தர இயலவில்லை — அதற்குப் பதிலாகப் பொதுவான பலனைக் காட்ட மாட்டேன்.'), honestWhy(reason, text, lang, topic, who, whoTo)] },
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [...(reason === 'general_unknown' ? [L('I do not have a checked answer for this general question yet — it is not in Thunai’s reviewed festival / scripture notes, and I will not guess.', 'இந்தப் பொதுக் கேள்விக்குச் சரிபார்க்கப்பட்ட பதில் இன்னும் என்னிடம் இல்லை — துணையின் சரிபார்க்கப்பட்ட பண்டிகை / புராணக் குறிப்புகளில் இது இல்லை; ஊகித்துச் சொல்ல மாட்டேன்.')] : [L('I cannot give a firm answer to this question from your horoscope — and I will not show a general reading in its place.', 'இந்தக் கேள்விக்கு உங்கள் ஜாதகத்திலிருந்து உறுதியான பதில் தர இயலவில்லை — அதற்குப் பதிலாகப் பொதுவான பலனைக் காட்ட மாட்டேன்.'), honestWhy(reason, text, lang, topic, who, whoTo)])] },
     { key: 'next', title: L('What you can do', 'நீங்கள் செய்யக்கூடியவை'), lines: next },
     { key: 'ask', title: pick(ASK_TITLE, lang), lines: [ask] },
   ];
@@ -1418,10 +1484,13 @@ function calendarDateAnswer(text, { lang, now, loc }) {
   return { intent: 'general_kb', topic: 'festival', general: true, question: text, sections, text: textOf(sections), meter: null, actions: [{ go: 'calendar', label: L('Tamil calendar', 'தமிழ் நாட்காட்டி') }], followups: HONEST_CHIPS.festival.map((x) => pick(x, lang)) };
 }
 const CHART_LINE = /\bdasa\b|\bbhukti\b|\bhouse \d|\d(st|nd|rd|th) house|தசை|புக்தி|-ம் வீடு|-ம் பாவம்|lagna|லக்ன/i;
-function generalAnswer(text, { lang, now, loc, faith, prof, auto }) {
+function generalAnswer(text, { lang, now, loc, faith, prof, auto, today = null }) {
   const L = (en, ta) => (lang === 'ta' ? ta : en);
   let a = null;
-  try {
+  // Another faith asking "which festival this month": that faith's dates first (Thunai's calendar is Hindu).
+  const listMonth = !isHinduFaith(faith) && /festival|pandigai|பண்டிகை|celebrat/.test(normQ(text)) && !matchKB(text);
+  try { a = generalExtra(text, { lang, now, loc, faith, today, listMonth }); } catch (e) { console.warn('general extra', e); }
+  if (!a) try {
     const g = KB?.answerGeneral?.(text, { lang, now, loc, tz: loc?.tz, faith });
     if (g?.sections?.length) {
       // Never a chart line in a general answer, whatever the source.
@@ -1454,7 +1523,8 @@ function luckAnswer({ kind, text, chart, rel, lang, name, faith, prof, topic }) 
   const sections = [
     { key: 'answer', title: L('Answer', 'பதில்'), lines: W.answer },
     { key: 'chart', title: L('Why — what your chart shows', 'ஏன் — உங்கள் ஜாதகம் காட்டுவது'), lines: W.chart },
-    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [pick(kind === 'god' && !isHinduFaith(faith) ? T('Would you like a short daily practice that fits your faith?', 'உங்கள் நம்பிக்கைக்கு ஏற்ற ஒரு சிறு தினசரி வழி வேண்டுமா?') : ask, lang)] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [pick(kind === 'god' && !isHinduFaith(faith) ? T('Would you like a short daily practice that fits your faith?', 'உங்கள் நம்பிக்கைக்கு ஏற்ற ஒரு சிறு தினசரி வழி வேண்டுமா?')
+      : kind === 'colour' && /wear|dress|shirt|saree|\bsari\b|udai|pottu|interview|உடை|போட/i.test(text) ? T('Shall I also find a good time for it?', 'அதற்கு ஒரு நல்ல நேரத்தையும் பார்த்துச் சொல்லட்டுமா?') : ask, lang)] },
     { key: 'uncertainty', title: pick(LIMITS_TITLE, lang), lines: [pick(LIMITS_LINE, lang)] },
   ];
   const out = { intent: kind === 'gem' || kind === 'god' ? 'remedy' : 'luck', topic: kind === 'gem' || kind === 'god' ? 'remedy' : topic || 'luck', question: text, sections, text: textOf(sections), meter: null, qtype: 'which', whichKind: kind, shape: 'which', actions: kind === 'gem' || kind === 'god' ? [{ go: 'parigaram', label: isHinduFaith(faith) ? L('Parigaram & temple', 'பரிகாரம் & கோவில்') : L('Simple practices', 'எளிய வழிமுறைகள்') }] : [], followups: [] };
@@ -1462,7 +1532,7 @@ function luckAnswer({ kind, text, chart, rel, lang, name, faith, prof, topic }) 
 }
 
 // "Boy or girl?" — never predicted.
-const BABY_SEX = /boy or (a )?girl|girl or (a )?boy|aa?n (kuzh|kozh|kul)\w* ?(ah|a)? ?pen|paiyan (pirapp|porapp)\w*|ponnu (pirapp|porapp)\w*|sex of (the|my) baby|gender of (the|my) baby|ஆண் குழந்தை[^?]{0,30}பெண் குழந்தை|ஆணா பெண்ணா/i;
+const BABY_SEX = /boy or (a )?girl|girl or (a )?boy|aa?n (kuzh|kozh|kul)\w* ?(ah|a)? ?pen|paiyan (pirapp|porapp)\w*|ponnu (pirapp|porapp)\w*|sex of (the|my) baby|gender of (the|my) baby|ஆண் குழந்தை[^?]{0,30}பெண் குழந்தை|ஆணா பெண்ணா|\baa?na? ?(ah|a)? ?penn?aa?\b|\bpenn?aa? ?(ah|a)? ?aa?naa?\b|\bponn?(u|a|aa) ?(ah|a|aa)? ?(illa|or|alladhu)? ?paiyan|\bpaiyan(a|aa|ah)? ?(ah|a)? ?(illa|or|alladhu)? ?ponn|is it a (boy|girl)\b|will (it|the baby|my baby) be a (boy|girl)|\b(son|boy) or (a )?(daughter|girl)\b|பையனா ?பொண்ணா|பொண்ணா ?பையனா|ஆண் குழந்தையா|பெண் குழந்தையா/i;
 function babySexAnswer(question, lang) {
   const L = say(lang);
   const sections = [
@@ -1516,6 +1586,590 @@ function safetyClean(a) {
   const sections = (a.sections || []).filter((s) => !['question', 'uncertainty', 'factors', 'interpretation', 'prayer'].includes(s.key));
   return { ...a, sections, meter: null, text: textOf(sections) };
 }
+
+// ------------------------------------------------------------------ everyday questions people actually type
+// Thanks / hello, "what is my Rasi / star / Lagnam", today's palan, this month, this year / "why is everything late",
+// Guru peyarchi for me, a planet's dasa by name, buying gold, church / mosque, divorce, "can I become a doctor",
+// and the general (no chart) extras: today's Rahu Kalam, hymns, mantras, Ithihasa stories, other faiths' festivals.
+const SMALLTALK = /^(thx|thanks?( a lot| so much| thunai)?|thank (you|u)( so much| very much)?|tq|ty|tnx|nandri|nanri|romba nandri|மிக்க நன்றி|நன்றி|ok(ay)?|k|sari|seri|சரி|good|super|nice|great)[\s!.🙏👍❤️]*$/i;
+const HELLO = /^(hi+|hello|hey|vanakkam|vannakkam|namaskaram|namaste|good (morning|evening|afternoon)|வணக்கம்|நமஸ்காரம்)[\s!.,🙏]*(thunai|துணை)?[\s!.🙏]*$/i;
+export const smallTalk = (text) => { const q = normQ(text).trim(); return SMALLTALK.test(q) || HELLO.test(q); };
+function smallTalkAnswer(text, lang, name, prof) {
+  const L = say(lang);
+  const hello = HELLO.test(normQ(text).trim());
+  const line = hello
+    ? L(`Vanakkam${name ? `, ${name}` : ''}! 🙏 Ask me anything — in Tamil, English or Tanglish: work, marriage, money, health, a good day, a festival or a temple visit.`, `வணக்கம்${name ? `, ${name}` : ''}! 🙏 எதையும் கேளுங்கள் — வேலை, திருமணம், பணம், உடல்நலம், நல்ல நாள், பண்டிகை, கோவில் பயணம்.`)
+    : L(`You are welcome${name ? `, ${name}` : ''} 🙏 Ask me anything else whenever you like.`, `மகிழ்ச்சி${name ? `, ${name}` : ''} 🙏 வேறு ஏதாவது தெரிய வேண்டுமானால் கேளுங்கள்.`);
+  const sections = [{ key: 'answer', title: L('Answer', 'பதில்'), lines: [line] }];
+  return { ...shell('smalltalk', text, sections, { followups: generalFollowups(prof).map((f) => pick(f, lang)) }), intent: 'smalltalk' };
+}
+
+// "en ponnu padippu" asked with the daughter's own profile open: "en ponnu" IS the chart owner, not another person.
+const SELF_WORDS = {
+  daughter: /\b(en|my|enga|engal|our|ennoda)?\s*(ponnu|magal|daughter|pullai|kuzhandhai|kuzhanthai|kozhandhai|kozhanthai|baby|papa|paapa)(\s?(ku|kku|ukku|uku|oda|in|'s|s))?\b|(என்|எங்கள்)?\s*(மகள்|பொண்ணு|குழந்தை|பாப்பா)(க்கு|ுக்கு|ின்|உடைய)?/gi,
+  son: /\b(en|my|enga|engal|our|ennoda)?\s*(paiyan|magan|son|pullai|kuzhandhai|kuzhanthai|kozhandhai|kozhanthai|baby|thambi)(\s?(ku|kku|ukku|uku|oda|in|'s|s))?\b|(என்|எங்கள்)?\s*(மகன்|பையன்|குழந்தை)(க்கு|ுக்கு|ின்|உடைய)?/gi,
+  father: /\b(en|my|enga|engal|our|ennoda)?\s*(appa|appaa|father|dad|daddy|thanthai|thandhai)(\s?(ku|kku|ukku|uku|oda|in|'s|s|vukku|vuku))?\b|(என்|எங்கள்)?\s*(அப்பா|தந்தை)(வுக்கு|க்கு|வின்|உடைய)?/gi,
+  mother: /\b(en|my|enga|engal|our|ennoda)?\s*(amma|ammaa|mother|mom|mummy|thaai|thaayar)(\s?(ku|kku|ukku|uku|oda|in|'s|s|vukku|vuku))?\b|(என்|எங்கள்)?\s*(அம்மா|தாய்|தாயார்)(வுக்கு|க்கு|வின்|உடைய)?/gi,
+  spouse: /\b(en|my|ennoda)?\s*(wife|husband|manaivi|purushan|kanavar|pondatti)(\s?(ku|kku|ukku|uku|oda|in|'s|s))?\b|(என்)?\s*(மனைவி|கணவர்|கணவன்)(க்கு|யின்|ின்|உடைய)?/gi,
+  grandfather: /\b(en|my)?\s*(thatha|thaatha|grand ?father|grandpa)(\s?(ku|kku|vukku|oda|'s))?\b|(என்)?\s*தாத்தா(வுக்கு|வின்)?/gi,
+  grandmother: /\b(en|my)?\s*(paati|paatti|grand ?mother|grandma)(\s?(ku|kku|kku|oda|'s))?\b|(என்)?\s*பாட்டி(க்கு|யின்)?/gi,
+};
+const REL_GROUP = { daughter: 'daughter', son: 'son', father: 'father', mother: 'mother', spouse: 'spouse', wife: 'spouse', husband: 'spouse', grandfather: 'grandfather', grandmother: 'grandmother' };
+/** The question with words naming the open profile itself removed (so "appa ku operation" on Appa's chart reads as his own). */
+export function selfRefStrip(text, relation) {
+  const re = SELF_WORDS[REL_GROUP[relation]];
+  if (!re) return text;
+  const out = String(text).replace(re, ' ').replace(/\s+/g, ' ').trim();
+  return out.length >= 3 ? out : text;
+}
+
+// ---- identity: Rasi, star, Lagnam
+const IDENT = /\b(rasi|raasi|rashi|natch?ath?iram|natchathram|nakshatra\w*|nakshath?ram|star|lagna\w*|lagnam|ascendant|moon sign|birth star)\b[^?]{0,14}\b(enna|ena|yenna|what|edhu|ethu|which)\b|\b(what|which)('?s| is)? (is )?my (rasi|raasi|rashi|star|birth star|nakshatra\w*|lagna\w*|moon sign|ascendant)\b|(ராசி|நட்சத்திர\S*|லக்ன\S*)\s*(என்ன|எது)|why (do you|don'?t you|can'?t you|you) (not )?(know|show|tell|give) my (lagna\w*|rasi|star|ascendant)|\b(lagna\w*)\b[^?]{0,20}\b(theriyala|teriyala|kaatala|kaattala|varala|missing|not shown|illa)\b/i;
+export const identityQuestion = (text) => IDENT.test(normQ(text)) && !/palan|பலன்|horoscope today/.test(normQ(text));
+function identityAnswer({ text, chart, rel, lang, name }) {
+  const L = say(lang);
+  const r = rel || {};
+  const q = normQ(text);
+  const lines = [];
+  const rasi = chart.janmaRasi, star = chart.janmaNakshatra, lg = chart.planets.Lagna;
+  const R = (i) => (lang === 'ta' ? RASIS[i].ta : RASIS[i].en);
+  lines.push(r.rasi !== false ? L(`Rasi (Moon sign): ${R(rasi.index)}.`, `ராசி: ${R(rasi.index)}.`)
+    : L('Rasi: not certain — the Moon changed sign on your birth day, so it depends on the birth time.', 'ராசி: உறுதியில்லை — நீங்கள் பிறந்த நாளில் சந்திரன் ராசி மாறியது; அதனால் பிறந்த நேரத்தைப் பொறுத்தது.'));
+  lines.push(r.nakshatra !== false ? L(`Birth star: ${star.name}${r.pada !== false ? `, pada ${star.pada}` : ''}.`, `நட்சத்திரம்: ${star.ta}${r.pada !== false ? `, ${star.pada}-ம் பாதம்` : ''}.`)
+    : L('Birth star: not certain — the star changed during your birth day, so it depends on the birth time.', 'நட்சத்திரம்: உறுதியில்லை — பிறந்த நாளில் நட்சத்திரம் மாறியது; பிறந்த நேரத்தைப் பொறுத்தது.'));
+  const why = [];
+  if (r.lagna !== false) lines.push(L(`Lagnam: ${R(lg.rasi)}${r.certainty === 'approx' ? ' (from your approximate birth time)' : ''}.`, `லக்னம்: ${R(lg.rasi)}${r.certainty === 'approx' ? ' (தோராயமான பிறந்த நேரப்படி)' : ''}.`));
+  else if (r.certainty === 'unknown') {
+    lines.push(L('Lagnam: not shown — it needs the birth time.', 'லக்னம்: காட்டப்படவில்லை — அதற்குப் பிறந்த நேரம் தேவை.'));
+    why.push(L('The Lagnam changes about every two hours, so without a birth time it cannot be calculated honestly. Readings use your Moon sign (Chandra Lagnam) instead.', 'லக்னம் சுமார் இரண்டு மணி நேரத்துக்கு ஒருமுறை மாறும்; பிறந்த நேரம் இல்லாமல் அதை நேர்மையாகக் கணிக்க முடியாது. அதனால் பலன்கள் சந்திர லக்னப்படி (ராசிப்படி) தரப்படுகின்றன.'),
+      L('If you know even roughly when you were born (early morning, afternoon, night), add it in Family as “Approximate” — the Lagnam can then often be shown.', 'சுமாராகவாவது (அதிகாலை, மதியம், இரவு) பிறந்த நேரம் தெரிந்தால், குடும்பம் பகுதியில் “தோராயம்” எனச் சேர்க்கவும் — பல நேரங்களில் லக்னம் காட்டப்படும்.'));
+  } else lines.push(L(`Lagnam: ${R(lg.rasi)} — but it may change within your birth-time window, so treat it as tentative.`, `லக்னம்: ${R(lg.rasi)} — உங்கள் பிறந்த நேர இடைவெளிக்குள் மாறக்கூடும்; தற்காலிகமாகக் கொள்ளவும்.`));
+  // Put the part that was asked first.
+  const askedLagna = /lagna|லக்ன|ascendant/.test(q), askedStar = /natch|naksh|star|நட்சத்திர/.test(q);
+  const order = askedLagna ? [2, 0, 1] : askedStar ? [1, 0, 2] : [0, 1, 2];
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [`${name ? `${name} — ` : ''}${lines[order[0]]}`, ...order.slice(1).map((i) => lines[i]).filter(Boolean)] },
+    ...(why.length ? [{ key: 'why', title: L('Why', 'ஏன்'), lines: why }] : []),
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Shall I tell you what your current period means for work or family?', 'உங்கள் நடப்புக் காலம் வேலைக்கும் குடும்பத்துக்கும் என்ன சொல்கிறது என்று சொல்லட்டுமா?')] },
+  ];
+  return shell('identity', text, sections, { actions: [{ go: 'chart', label: L('Open my chart', 'என் ஜாதகம் திற') }, ...(r.certainty && r.certainty !== 'exact' ? [{ go: 'birthtime', label: L('What depends on birth time?', 'எவை பிறந்த நேரத்தைச் சார்ந்தவை?') }] : [])],
+    followups: [L('Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'), L('How is today for me?', 'இன்று எனக்கு எப்படி?'), L('Which god should I pray to?', 'நான் எந்தத் தெய்வத்தை வணங்க வேண்டும்?')] });
+}
+
+// ---- today (Tara balam + Chandrashtamam), this month, this year / future
+const TARA = [
+  [T('Janma tara', 'ஜன்ம தாரை'), 0, T('a day to go gently — avoid big new starts and arguments', 'மென்மையாகச் செல்ல வேண்டிய நாள் — பெரிய புதிய தொடக்கமும் வாக்குவாதமும் தவிர்க்கவும்')],
+  [T('Sampat tara', 'சம்பத் தாரை'), 1, T('a supportive day — good for money matters and purchases', 'சாதகமான நாள் — பணம், பொருள் வாங்குவதற்கு நல்லது')],
+  [T('Vipat tara', 'விபத் தாரை'), -1, T('a day of small obstacles — postpone big new starts if you can', 'சிறு தடைகளின் நாள் — முடிந்தால் பெரிய தொடக்கங்களைத் தள்ளிவைக்கவும்')],
+  [T('Kshema tara', 'க்ஷேம தாரை'), 1, T('a day of well-being — good for routine work, health and home', 'நலனின் நாள் — வழக்கமான வேலை, உடல்நலம், வீட்டு விஷயங்களுக்கு நல்லது')],
+  [T('Pratyak tara', 'பிரத்யக் தாரை'), -1, T('a day that resists — keep plans simple and stay patient', 'எதிர்ப்பு உள்ள நாள் — திட்டங்களை எளிமையாக வைத்து, பொறுமையாக இருங்கள்')],
+  [T('Sadhana tara', 'சாதக தாரை'), 1, T('a day of achievement — good for effort, interviews and starting work', 'சாதனையின் நாள் — முயற்சி, நேர்காணல், வேலை தொடங்க நல்லது')],
+  [T('Vadha (Naidhana) tara', 'வத (நைதன) தாரை'), -1, T('the most careful day of the cycle — avoid big starts; travel and drive with care', 'சுழற்சியில் மிகக் கவனமான நாள் — பெரிய தொடக்கங்களைத் தவிர்க்கவும்; பயணம், வாகனத்தில் கவனம்')],
+  [T('Mitra tara', 'மித்ர தாரை'), 1, T('a friendly day — good for meetings and asking for help', 'நட்பான நாள் — சந்திப்புகளுக்கும் உதவி கேட்பதற்கும் நல்லது')],
+  [T('Parama Mitra tara', 'பரம மித்ர தாரை'), 1, T('a very friendly day — good for important starts', 'மிக நட்பான நாள் — முக்கியத் தொடக்கங்களுக்கு நல்லது')],
+];
+const taraOf = (birthStar, dayStar) => (((dayStar - birthStar + 27) % 27) % 9);
+const localDay = (now, tz) => Math.floor((now.getTime() + tz * 3600000) / DAY);
+const noonOfDay = (d, tz) => new Date(d * DAY + (12 - tz) * 3600000);
+const dayLabel = (d, lang, wd = true) => { const x = new Date(d * DAY); const W = lang === 'ta' ? ['ஞாயிறு', 'திங்கள்', 'செவ்வாய்', 'புதன்', 'வியாழன்', 'வெள்ளி', 'சனி'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; return `${wd ? `${W[x.getUTCDay()]}, ` : ''}${x.getUTCDate()} ${(lang === 'ta' ? MONTHS_TA : MONTHS_EN)[x.getUTCMonth()]}`; };
+function moonOn(d, tz) { const p = planetPositions(noonOfDay(d, tz)).planets.Moon; return { rasi: p.rasi, star: p.nakshatra }; }
+/** Chandrashtamam spans (Moon in the 8th from the Rasi) in the next `days` days: [{ from, to }] (local day numbers). */
+function chandrashtamaSpans(moonRasi, now, tz, days = 35) {
+  const d0 = localDay(now, tz); const out = [];
+  for (let d = d0; d < d0 + days; d++) {
+    if (houseOf(moonRasi, moonOn(d, tz).rasi) !== 8) continue;
+    const last = out[out.length - 1];
+    if (last && last.to === d - 1) last.to = d; else out.push({ from: d, to: d });
+  }
+  return out;
+}
+const spanText = (s, lang) => (s.from === s.to ? dayLabel(s.from, lang) : `${dayLabel(s.from, lang)} – ${dayLabel(s.to, lang)}`);
+const TODAY_PALAN = /(today|inn?ikk?u|inniki|innaik?ku|indru|indraiya|இன்று|இன்றைய|இன்னைக்கு)\b[^?]{0,30}\b(palan|horoscope|rasi ?palan|eppadi|epdi|good|nalla|lucky|star|how)|\b(palan|horoscope|rasi ?palan)\b[^?]{0,20}(today|inn?ikk?u|indru|இன்று)|daily (palan|horoscope)|இன்றைய (ராசி )?பலன்|இன்று (எனக்கு )?(எப்படி|நல்ல நாளா|நல்லதா)|how is today|is today (good|lucky)/i;
+const MONTH_Q = /\b(this|intha|indha|inda|current)\s*(month|maasam|masam|maadham|madham)\b|இந்த மாத/i;
+const YEAR_Q = /\b(future|ethir ?kaa?lam|my life|vaazhkai|vazhkai|life eppadi|this year|intha varush\w*|indha varush\w*|intha varud\w*|next year|aduth?th?a varush\w*|tell me about me)\b|எதிர்காலம்|இந்த (ஆண்டு|வருட)|அடுத்த (ஆண்டு|வருட)|என் வாழ்க்கை எப்படி/i;
+const DELAY_Q = /(everything|ellam|ellaame|ellame|எல்லாம்|எல்லாமே)[^?]{0,30}(late|delay|thaamath|thamath|thalli|தாமத|தள்ளி|nadakkala|nadakala|நடக்கல|kedaikkala)|\b(neram|time)\s*(sari ?illa|sariyilla|sari illai|bad|kettathu|seriyilla)|நேரம் சரியில்ல|why (am i|is my life) (suffering|struggling)|life la (kashtam|prachanai)|\bkashtama (iruku|irukku)/i;
+function todayPalanAnswer({ text, chart, rel, lang, name, today, now, loc }) {
+  const L = say(lang);
+  const r = rel || {};
+  if (r.nakshatra === false || r.rasi === false) return null;
+  const tz = loc?.tz ?? chart.tz ?? 5.5;
+  const d0 = localDay(now, tz);
+  const m = moonOn(d0, tz);
+  const t = TARA[taraOf(chart.janmaNakshatra.index, m.star)];
+  const ch = houseOf(chart.janmaRasi.index, m.rasi) === 8;
+  const SN = (i) => (lang === 'ta' ? NAKS_TA[i] : NAKS_EN[i]);
+  const lines = [L(`${name ? `${name}, t` : 'T'}oday (${dayLabel(d0, 'en')}) the Moon is in ${SN(m.star)} — ${pick(t[0], 'en')} for your star ${chart.janmaNakshatra.name}: ${pick(t[2], 'en')}.`,
+    `${name ? `${name}, ` : ''}இன்று (${dayLabel(d0, 'ta')}) சந்திரன் ${SN(m.star)} நட்சத்திரத்தில் — உங்கள் ${chart.janmaNakshatra.ta} நட்சத்திரத்துக்கு ${pick(t[0], 'ta')}: ${pick(t[2], 'ta')}.`)];
+  lines.push(ch ? L('Today is Chandrashtamam for you (the Moon in the 8th from your Rasi) — tradition says keep the day calm and postpone big starts if you can.', 'இன்று உங்களுக்குச் சந்திராஷ்டமம் (உங்கள் ராசிக்கு 8-ல் சந்திரன்) — நாளை அமைதியாக வைத்து, முடிந்தால் பெரிய தொடக்கங்களைத் தள்ளிவைக்கலாம் என மரபு.')
+    : L('Not Chandrashtamam for you today.', 'இன்று உங்களுக்குச் சந்திராஷ்டமம் இல்லை.'));
+  const times = [];
+  if (today?.goodTimes?.length) times.push(L(`Good time still ahead today: ${today.goodTimes.join(', ')}.`, `இன்று இன்னும் வரும் நல்ல நேரம்: ${today.goodTimes.join(', ')}.`));
+  if (today?.rahuKalam) times.push(L(`Rahu Kalam: ${today.rahuKalam} · Yamagandam: ${today.yamagandam}.`, `ராகு காலம்: ${today.rahuKalam} · எமகண்டம்: ${today.yamagandam}.`));
+  const next = chandrashtamaSpans(chart.janmaRasi.index, new Date(now.getTime() + DAY), tz, 30)[0];
+  if (next) times.push(L(`Your next Chandrashtamam: ${spanText(next, 'en')}.`, `அடுத்த சந்திராஷ்டமம்: ${spanText(next, 'ta')}.`));
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines },
+    { key: 'today', title: L('Today’s timings', 'இன்றைய நேரங்கள்'), lines: times },
+    { key: 'chart', title: L('How this is read', 'இது எப்படிப் பார்க்கப்படுகிறது'), lines: [L('Tara balam: the day’s star counted from your birth star (a 9-day cycle); Chandrashtamam: the Moon in the 8th from your Rasi. Both are short daily influences, never a verdict on the day.', 'தாரா பலம்: உங்கள் பிறந்த நட்சத்திரத்திலிருந்து அன்றைய நட்சத்திரம் (9 நாள் சுழற்சி); சந்திராஷ்டமம்: உங்கள் ராசிக்கு 8-ல் சந்திரன். இரண்டும் அன்றைய சிறு தாக்கங்கள் மட்டுமே — நாளின் தீர்ப்பு அல்ல.')] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Is there something specific you plan to do today?', 'இன்று குறிப்பாக ஏதாவது செய்யத் திட்டமிடுகிறீர்களா?')] },
+  ].filter((s) => s.lines.length);
+  return shell('today', text, sections, { actions: [{ go: 'ask', label: L('Is now a good time?', 'இப்போது செய்யலாமா?') }], followups: [L('How is this month for me?', 'இந்த மாதம் எனக்கு எப்படி?'), L('Good time today for important work', 'இன்று முக்கிய வேலைக்கு நல்ல நேரம்'), L('Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்')] });
+}
+const NAKS_EN = ['Ashwini', 'Bharani', 'Karthigai', 'Rohini', 'Mrigasirsham', 'Thiruvathirai', 'Punarpoosam', 'Poosam', 'Ayilyam', 'Magam', 'Pooram', 'Uthiram', 'Hastham', 'Chithirai', 'Swathi', 'Visakam', 'Anusham', 'Kettai', 'Moolam', 'Pooradam', 'Uthiradam', 'Thiruvonam', 'Avittam', 'Sathayam', 'Poorattathi', 'Uthirattathi', 'Revathi'];
+const NAKS_TA = ['அஸ்வினி', 'பரணி', 'கார்த்திகை', 'ரோகிணி', 'மிருகசீரிடம்', 'திருவாதிரை', 'புனர்பூசம்', 'பூசம்', 'ஆயில்யம்', 'மகம்', 'பூரம்', 'உத்திரம்', 'அஸ்தம்', 'சித்திரை', 'சுவாதி', 'விசாகம்', 'அனுஷம்', 'கேட்டை', 'மூலம்', 'பூராடம்', 'உத்திராடம்', 'திருவோணம்', 'அவிட்டம்', 'சதயம்', 'பூரட்டாதி', 'உத்திரட்டாதி', 'ரேவதி'];
+const GOOD_FROM_MOON = { Sun: [3, 6, 10, 11], Jupiter: [2, 5, 7, 9, 11], Saturn: [3, 6, 11] };
+function slowStatus(planet, moonRasi, now, lang) {
+  const L = say(lang);
+  const spans = signSpans(planet, new Date(now.getTime() - 3 * YEAR), new Date(now.getTime() + 4 * YEAR));
+  const i = spans.findIndex((s) => s.start <= now && s.end > now);
+  const cur = spans[i]; const nx = spans[i + 1];
+  if (!cur) return null;
+  const h = houseOf(moonRasi, cur.rasi);
+  const good = GOOD_FROM_MOON[planet].includes(h);
+  const nm = planet === 'Jupiter' ? T('Guru (Jupiter)', 'குரு') : T('Sani (Saturn)', 'சனி');
+  return { h, good, cur, next: nx, nextH: nx ? houseOf(moonRasi, nx.rasi) : null,
+    line: L(`${nm.en} is ${ordEn(h)} from your Rasi until ${monthYear(cur.end, 'en')} — ${good ? 'a supportive position' : planet === 'Saturn' && [12, 1, 2].includes(h) ? 'Ezharai Sani (patience and steady work)' : planet === 'Saturn' && h === 8 ? 'Ashtama Sani (go carefully)' : 'an ordinary position'}.`,
+      `${nm.ta} உங்கள் ராசிக்கு ${h}-ம் இடத்தில், ${monthYear(cur.end, 'ta')} வரை — ${good ? 'சாதகமான இடம்' : planet === 'Saturn' && [12, 1, 2].includes(h) ? 'ஏழரைச் சனி (பொறுமை, தொடர் உழைப்பு)' : planet === 'Saturn' && h === 8 ? 'அஷ்டமச் சனி (கவனமாகச் செல்லவும்)' : 'சாதாரணமான இடம்'}.`) };
+}
+function monthAnswer({ text, chart, rel, lang, name, now, loc }) {
+  const L = say(lang);
+  if ((rel || {}).rasi === false) return null;
+  const tz = loc?.tz ?? chart.tz ?? 5.5;
+  const R = chart.janmaRasi.index;
+  const sun = houseOf(R, planetPositions(now).planets.Sun.rasi);
+  const sunGood = GOOD_FROM_MOON.Sun.includes(sun);
+  const ju = slowStatus('Jupiter', R, now, lang), sa = slowStatus('Saturn', R, now, lang);
+  const score = (sunGood ? 1 : 0) + (ju?.good ? 1 : 0) + (sa?.good ? 1 : 0) - (sa && [8].includes(sa.h) ? 1 : 0);
+  const verdict = score >= 2 ? L('a supportive month — a good time to move plans forward', 'சாதகமான மாதம் — திட்டங்களை முன்னெடுக்க நல்ல நேரம்') : score === 1 ? L('a mixed month — steady effort brings results', 'கலவையான மாதம் — தொடர் முயற்சிக்குப் பலன் உண்டு') : L('a month for patience — keep plans simple and avoid big risks', 'பொறுமைக்கான மாதம் — திட்டங்களை எளிமையாக வைத்து, பெரிய அபாயங்களைத் தவிர்க்கவும்');
+  const ch = chandrashtamaSpans(R, now, tz, 31);
+  const d0 = localDay(now, tz);
+  const good = [];
+  if ((rel || {}).nakshatra !== false) for (let d = d0 + 1; d < d0 + 31 && good.length < 5; d++) { const m = moonOn(d, tz); const tt = taraOf(chart.janmaNakshatra.index, m.star); if ([1, 5, 8].includes(tt) && houseOf(R, m.rasi) !== 8) good.push(d); }
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [L(`${name ? `${name}, t` : 'T'}he next 30 days look like ${verdict}.`, `${name ? `${name}, ` : ''}அடுத்த 30 நாட்கள்: ${verdict}.`),
+      ch.length ? L(`Chandrashtamam days (go gently): ${ch.map((s) => spanText(s, 'en')).join('; ')}.`, `சந்திராஷ்டம நாட்கள் (மென்மையாகச் செல்லவும்): ${ch.map((s) => spanText(s, 'ta')).join('; ')}.`) : '',
+      good.length ? L(`Good days for important work: ${good.map((d) => dayLabel(d, 'en')).join('; ')}.`, `முக்கிய வேலைக்கு நல்ல நாட்கள்: ${good.map((d) => dayLabel(d, 'ta')).join('; ')}.`) : ''].filter(Boolean) },
+    { key: 'chart', title: L('What your chart shows', 'உங்கள் ஜாதகம் காட்டுவது'), lines: [
+      L(`Sun is ${ordEn(sun)} from your Rasi this month — ${sunGood ? 'supportive' : 'ordinary'}.`, `இந்த மாதம் சூரியன் உங்கள் ராசிக்கு ${sun}-ம் இடத்தில் — ${sunGood ? 'சாதகம்' : 'சாதாரணம்'}.`), ju?.line, sa?.line].filter(Boolean) },
+    { key: 'dos', title: L('What to do now', 'இப்போது செய்ய வேண்டியவை'), lines: [L('Plan important meetings and purchases on the good days above; keep Chandrashtamam days light.', 'முக்கியச் சந்திப்புகள், வாங்குதல்களை மேலே உள்ள நல்ல நாட்களில் திட்டமிடுங்கள்; சந்திராஷ்டம நாட்களை லேசாக வையுங்கள்.')] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Which matters most to you this month — work, money or family?', 'இந்த மாதம் உங்களுக்கு எது முக்கியம் — வேலை, பணம், குடும்பம்?')] },
+    { key: 'uncertainty', title: pick(LIMITS_TITLE, lang), lines: [pick(LIMITS_LINE, lang)] },
+  ];
+  return shell('month', text, sections, { followups: [L('How is today for me?', 'இன்று எனக்கு எப்படி?'), L('How is my career this year?', 'இந்த ஆண்டு என் தொழில் எப்படி?'), L('When will my money situation improve?', 'என் பண நிலை எப்போது மேம்படும்?')] });
+}
+function overviewAnswer({ text, chart, rel, lang, name, now, shared, delay, prof }) {
+  const L = say(lang);
+  const r = rel || {};
+  if (r.rasi === false) return null;
+  const R = chart.janmaRasi.index;
+  const ju = slowStatus('Jupiter', R, now, lang), sa = slowStatus('Saturn', R, now, lang);
+  const lines = [];
+  if (delay) lines.push(L('I understand — when things keep getting delayed it is tiring. Tradition reads such phases from Saturn and the running period; here is what your chart shows, and none of it is permanent.', 'புரிகிறது — எல்லாம் தாமதமாகும்போது சோர்வாக இருக்கும். மரபுப்படி இத்தகைய காலம் சனியையும் நடப்புத் தசையையும் வைத்துப் பார்க்கப்படுகிறது; உங்கள் ஜாதகம் காட்டுவது இதோ — எதுவும் நிரந்தரம் அல்ல.'));
+  const dasa = r.nakshatra !== false ? (shared(L('Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'), 'dasa').sections || []).find((s) => s.key === 'answer')?.lines?.[0] : null;
+  if (dasa) lines.push(dasa);
+  if (ju) lines.push(ju.line + (ju.next ? L(` Next Guru peyarchi: ${monthYear(ju.cur.end, 'en')}, to the ${ordEn(ju.nextH)} — ${GOOD_FROM_MOON.Jupiter.includes(ju.nextH) ? 'supportive' : 'ordinary'}.`, ` அடுத்த குருப் பெயர்ச்சி: ${monthYear(ju.cur.end, 'ta')}, ${ju.nextH}-ம் இடத்துக்கு — ${GOOD_FROM_MOON.Jupiter.includes(ju.nextH) ? 'சாதகம்' : 'சாதாரணம்'}.`) : ''));
+  if (sa) lines.push(sa.line);
+  const good = (ju?.good ? 1 : 0) + (sa?.good ? 1 : 0);
+  const lead = good === 2 ? L(`${name ? `${name}, y` : 'Y'}our coming months are well supported — both Guru and Sani favour you; move plans forward with care.`, `${name ? `${name}, ` : ''}வரும் மாதங்கள் நல்ல ஆதரவுடன் உள்ளன — குருவும் சனியும் சாதகம்; திட்டங்களைக் கவனத்துடன் முன்னெடுங்கள்.`)
+    : good === 1 ? L(`${name ? `${name}, y` : 'Y'}our coming months are mixed — one of Guru and Sani supports you, so steady effort brings results.`, `${name ? `${name}, ` : ''}வரும் மாதங்கள் கலவையானவை — குரு, சனியில் ஒருவர் சாதகம்; தொடர் முயற்சிக்குப் பலன் உண்டு.`)
+      : L(`${name ? `${name}, t` : 'T'}his is a phase for patience — neither Guru nor Sani is in a supportive place now; slow, steady work and simple routines carry you through, and the next change is noted below.`, `${name ? `${name}, ` : ''}இது பொறுமைக்கான காலம் — இப்போது குருவும் சனியும் சாதகமான இடத்தில் இல்லை; நிதானமான, தொடர் உழைப்பும் எளிய பழக்கங்களும் உதவும்; அடுத்த மாற்றம் கீழே.`);
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [...(delay ? [lines.shift()] : []), lead] },
+    { key: 'chart', title: L('What your chart shows', 'உங்கள் ஜாதகம் காட்டுவது'), lines },
+    { key: 'dos', title: L('What to do now', 'இப்போது செய்ய வேண்டியவை'), lines: [L('Pick one goal for the next three months and work on it a little every day.', 'அடுத்த மூன்று மாதங்களுக்கு ஒரு இலக்கைத் தேர்ந்து, தினமும் கொஞ்சம் உழையுங்கள்.'), L('Ask about one area — work, marriage, money, children or health — for dated periods from your chart.', 'ஒரு பகுதியைப் பற்றிக் கேளுங்கள் — வேலை, திருமணம், பணம், குழந்தை, உடல்நலம் — உங்கள் ஜாதகப்படி தேதிகளுடன் சொல்கிறேன்.')] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Which area feels most important to you right now?', 'இப்போது உங்களுக்கு எந்தப் பகுதி மிக முக்கியம்?')] },
+    { key: 'uncertainty', title: pick(LIMITS_TITLE, lang), lines: [pick(LIMITS_LINE, lang)] },
+  ];
+  return shell('overview', text, sections, { actions: [{ go: 'roadmap', label: L('Life periods road map', 'வாழ்க்கைக் கால வரைபடம்') }], followups: generalFollowups(prof).map((f) => pick(f, lang)) });
+}
+
+// ---- Guru peyarchi for me, and a planet's dasa asked by name
+const GURU_Q = /guru ?(p[ae]y[ae]?rchi|peyarchi|payarchi|balam|bhalam)|jupiter (transit|peyarchi)|குருப் ?பெயர்ச்சி|குரு பலம்/i;
+function guruAnswer({ text, chart, rel, lang, name, now, faith }) {
+  const L = say(lang);
+  if ((rel || {}).rasi === false) return null;
+  const R = chart.janmaRasi.index;
+  const ym = /\b(20[2-4]\d)\b/.exec(text);
+  const spans = signSpans('Jupiter', new Date(now.getTime() - YEAR), new Date(now.getTime() + 4 * YEAR)).filter((s) => s.end > now);
+  const rows = spans.slice(0, 4).map((s) => { const h = houseOf(R, s.rasi); return { s, h, good: GOOD_FROM_MOON.Jupiter.includes(h) }; });
+  const inYear = ym ? rows.filter((x) => x.s.start.getUTCFullYear() <= +ym[1] && x.s.end.getUTCFullYear() >= +ym[1]) : rows.slice(0, 2);
+  const word = (x, lg) => (x.good ? (lg === 'ta' ? 'சாதகம் (குரு பலம்)' : 'supportive (Guru balam)') : (lg === 'ta' ? 'சாதாரணம் — உழைப்பால் முன்னேற்றம்' : 'ordinary — progress through effort'));
+  const line = (x) => L(`${x.s.start <= now ? 'Now' : monthYear(x.s.start, 'en')} – ${monthYear(x.s.end, 'en')}: Jupiter ${ordEn(x.h)} from your Rasi — ${word(x, 'en')}.`, `${x.s.start <= now ? 'இப்போது' : monthYear(x.s.start, 'ta')} – ${monthYear(x.s.end, 'ta')}: குரு உங்கள் ராசிக்கு ${x.h}-ம் இடம் — ${word(x, 'ta')}.`);
+  const anyGood = inYear.some((x) => x.good);
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [L(`${name ? `${name}, ` : ''}${ym ? `in ${ym[1]}` : 'for the coming months'} Guru peyarchi is ${anyGood ? 'supportive for you in the period marked below' : 'ordinary for you — no Guru balam, so steady effort matters most'}.`, `${name ? `${name}, ` : ''}${ym ? `${ym[1]}-ல்` : 'வரும் மாதங்களில்'} குருப் பெயர்ச்சி ${anyGood ? 'கீழே குறித்த காலத்தில் உங்களுக்குச் சாதகம்' : 'உங்களுக்குச் சாதாரணம் — குரு பலம் இல்லை; தொடர் முயற்சியே முக்கியம்'}.`), ...inYear.map(line)] },
+    { key: 'chart', title: L('How this is read', 'இது எப்படிப் பார்க்கப்படுகிறது'), lines: [L(`Your Rasi: ${RASIS[R].en}. Tradition calls Jupiter in the 2nd, 5th, 7th, 9th or 11th from the Rasi “Guru balam” — good for marriage, children, work and money.`, `உங்கள் ராசி: ${RASIS[R].ta}. ராசிக்கு 2, 5, 7, 9, 11-ல் குரு இருப்பது “குரு பலம்” — திருமணம், குழந்தை, வேலை, பணத்துக்கு நல்லது என்பது மரபு.`), L('Peyarchi dates follow Thirukanitham; Vakya almanacs can differ by some weeks.', 'பெயர்ச்சி தேதிகள் திருக்கணிதப்படி; வாக்கியப் பஞ்சாங்கத்தில் சில வாரங்கள் மாறலாம்.')] },
+    { key: 'remedy', title: L('One simple remedy (free)', 'ஒரு எளிய பரிகாரம் (இலவசம்)'), lines: [isHinduFaith(faith) ? L('On Thursdays light a ghee lamp for Dakshinamurthy and respect teachers and elders.', 'வியாழன்தோறும் தட்சிணாமூர்த்திக்கு நெய் தீபம்; ஆசிரியர், பெரியோரை மதியுங்கள்.') : pick(universalPractice('Jupiter'), lang)] },
+    { key: 'uncertainty', title: pick(LIMITS_TITLE, lang), lines: [pick(LIMITS_LINE, lang)] },
+  ];
+  return shell('guru', text, sections, { actions: [{ go: 'peyarchi', label: L('Peyarchi palan', 'பெயர்ச்சி பலன்') }], followups: [L('Sani peyarchi for me', 'எனக்குச் சனிப் பெயர்ச்சி எப்படி?'), L('When will I get married?', 'எனக்கு எப்போது திருமணம் நடக்கும்?'), L('How is my career this year?', 'இந்த ஆண்டு என் தொழில் எப்படி?')] });
+}
+const PLANET_DASA = /\b(rahu|raagu|ragu|ketu|kethu|guru|jupiter|sevvai|chevvai|mars|budhan|buthan|mercury|sukran|sukkiran|venus|suriyan|sooriyan|sun|chandran|moon|saturn)\s*(maha ?)?(dasa|dasai|dhasai|thasai|dasha|dhasa|thisai)\b|(ராகு|கேது|குரு|செவ்வாய்|புதன்|சுக்கிர|சூரிய|சந்திர)\S*\s*(மகா ?)?(தசை|திசை)/i;
+const PLANET_KEY = [[/rahu|raagu|ragu|ராகு/, 'Rahu'], [/ketu|kethu|கேது/, 'Ketu'], [/guru|jupiter|குரு/, 'Jupiter'], [/sevvai|chevvai|mars|செவ்வாய்/, 'Mars'], [/budhan|buthan|mercury|புதன்/, 'Mercury'], [/sukran|sukkiran|venus|சுக்கிர/, 'Venus'], [/suriyan|sooriyan|\bsun\b|சூரிய/, 'Sun'], [/chandran|\bmoon\b|சந்திர/, 'Moon'], [/saturn/, 'Saturn']];
+function planetDasaNote(text, chart, rel, lang, now) {
+  const m = PLANET_DASA.exec(normQ(text));
+  if (!m || (rel || {}).nakshatra === false) return null;
+  const k = PLANET_KEY.find(([re]) => re.test(m[0]))?.[1];
+  if (!k) return null;
+  const L = say(lang);
+  const p = chart.dasa.periods.find((x) => x.lord === k && x.end > now);
+  const cur = chart.dasa.current;
+  if (cur?.lord === k) return null; // the dasa answer itself talks about it
+  const past = chart.dasa.periods.find((x) => x.lord === k && x.end <= now);
+  return p ? L(`You are not in ${k} Dasa now. Your ${k} Dasa runs ${monthYear(p.start, 'en')} – ${monthYear(p.end, 'en')}; until then you are in ${cur?.lord} Dasa.`, `நீங்கள் இப்போது ${pn(k, 'ta')} தசையில் இல்லை. உங்கள் ${pn(k, 'ta')} தசை ${monthYear(p.start, 'ta')} – ${monthYear(p.end, 'ta')}; அதுவரை ${pn(cur?.lord, 'ta')} தசை.`)
+    : L(`You are not in ${k} Dasa now${past ? ` — it ended in ${monthYear(past.end, 'en')}` : ''}; you are in ${cur?.lord} Dasa.`, `நீங்கள் இப்போது ${pn(k, 'ta')} தசையில் இல்லை${past ? ` — அது ${monthYear(past.end, 'ta')}-ல் முடிந்தது` : ''}; இப்போது ${pn(cur?.lord, 'ta')} தசை.`);
+}
+
+// ---- buying gold / jewellery (a muhurtham question, not a price question)
+const GOLD_Q = /\b(gold|thangam|thanga|nagai|jewel\w*|jewellery|silver|velli)\b[^?]{0,25}\b(vaang\w*|vang\w*|buy\w*|purchase|edukk\w*|seiy\w*|seyy\w*)|\bbuy(ing)? (gold|jewel\w*|silver)|(தங்கம்|நகை|வெள்ளி)\s*(வாங்க|எடுக்க|செய்ய)/i;
+function goldAnswer({ text, lang, now, loc }) {
+  const L = say(lang);
+  const tz = loc?.tz ?? 5.5, lat = loc?.lat ?? 13.0827, lon = loc?.lon ?? 80.2707;
+  const d0 = localDay(now, tz);
+  const poosam = [];
+  for (let d = d0; d < d0 + 75 && poosam.length < 3; d++) { try { if (tamilDay(noonOfDay(d, tz), lat, lon, tz).nakshatra.index === 7) poosam.push(d); } catch { /* skip */ } }
+  let akshaya = null;
+  try { const o = KB?.nextOccurrences?.('akshaya-tritiya', { from: now, count: 1, loc: { lat, lon }, tz }); if (o?.[0]) akshaya = o[0].date; } catch { /* optional */ }
+  const iso = (s) => { const [y, mo, d] = s.split('-').map(Number); return Math.floor(Date.UTC(y, mo - 1, d) / DAY); };
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [
+      L('By tradition, gold is bought on Akshaya Tritiya, on Poosam (Pushya) star days, and on Thursdays or Fridays — outside Rahu Kalam and Yamagandam.', 'மரபுப்படி தங்கம் அட்சய திருதியை, பூச நட்சத்திர நாட்கள், வியாழன் / வெள்ளிக்கிழமைகளில் — ராகு காலம், எமகண்டம் தவிர்த்து — வாங்கப்படுகிறது.'),
+      poosam.length ? L(`Next Poosam days at your place: ${poosam.map((d) => dayLabel(d, 'en')).join('; ')}.`, `உங்கள் ஊரில் அடுத்த பூச நாட்கள்: ${poosam.map((d) => dayLabel(d, 'ta')).join('; ')}.`) : '',
+      akshaya ? L(`Next Akshaya Tritiya: ${dayLabel(iso(akshaya), 'en')} ${akshaya.slice(0, 4)}.`, `அடுத்த அட்சய திருதியை: ${dayLabel(iso(akshaya), 'ta')} ${akshaya.slice(0, 4)}.`) : ''].filter(Boolean) },
+    { key: 'dos', title: L('Practical first', 'நடைமுறை முதலில்'), lines: [L('Buy only within your budget and only BIS-hallmarked (HUID) gold with a proper bill; check the day’s official rate — a horoscope cannot tell prices.', 'பட்ஜெட்டுக்குள், BIS ஹால்மார்க் (HUID) உள்ள தங்கத்தை முறையான பில்லுடன் மட்டும் வாங்குங்கள்; அன்றைய அதிகாரப்பூர்வ விலையைப் பாருங்கள் — விலையை ஜாதகம் சொல்லாது.')] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Is this for a wedding or a family function? I can find a date that suits everyone’s star.', 'இது திருமணம் அல்லது குடும்ப விழாவுக்கா? அனைவரின் நட்சத்திரத்துக்கும் ஏற்ற நாளைத் தேடித் தரலாம்.')] },
+  ];
+  return shell('gold', text, sections, { actions: [{ go: 'muhurtham', label: L('Find a good date', 'நல்ல நாள் தேடு') }], followups: [L('Good time today for important work', 'இன்று முக்கிய வேலைக்கு நல்ல நேரம்'), L('When will my money situation improve?', 'என் பண நிலை எப்போது மேம்படும்?')] });
+}
+
+// ---- church / mosque visits, divorce, "can I become a doctor"
+const FAITH_PLACE = /\b(church|chapel|mass|sunday service|mosque|masjid|pallivasal|pallivaasal|dargah|namaz|namaaz|jummah|gurudwara)\b|சர்ச்|தேவாலய|பள்ளிவாசல்|தர்கா|மசூதி/i;
+function faithPlaceAnswer(text, lang, faith) {
+  const L = say(lang);
+  const q = normQ(text);
+  const place = /mosque|masjid|pallivas|பள்ளிவாசல்|மசூதி|namaz|jummah/.test(q) ? T('the mosque', 'பள்ளிவாசலுக்கு') : /dargah|தர்கா/.test(q) ? T('the dargah', 'தர்காவுக்கு') : /gurudwara/.test(q) ? T('the gurudwara', 'குருத்வாராவுக்கு') : T('church', 'ஆலயத்துக்கு (சர்ச்)');
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [L(`Yes — going to ${place.en} to pray is always good, and it needs no auspicious time or horoscope check. Go whenever you can, with a calm mind.`, `ஆம் — ${place.ta} சென்று பிரார்த்திப்பது எப்போதும் நல்லது; அதற்கு நல்ல நேரமோ ஜாதகப் பொருத்தமோ தேவையில்லை. முடிந்தபோதெல்லாம் அமைதியான மனதுடன் செல்லுங்கள்.`), pick(faithBlessing(faith) || faithBlessing('other'), lang)].filter(Boolean) },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Is there something you would like to pray for? I can look at that part of your life.', 'எதற்காகப் பிரார்த்திக்க விரும்புகிறீர்கள்? அந்தப் பகுதியைப் பார்க்கிறேன்.')] },
+  ];
+  return shell('faith_place', text, sections, { followups: [L('How is my career this year?', 'இந்த ஆண்டு என் தொழில் எப்படி?'), L('How is my family life this year?', 'இந்த ஆண்டு என் குடும்ப வாழ்க்கை எப்படி?')] });
+}
+const DIVORCE = /divorce|vivaa?ga ?rath|vivaa?ka ?rath|விவாகரத்து|\bseparat(e|ion)\b|pirinju (poga|vaazh)|pirinji|பிரிந்து (போக|வாழ)|leave (my )?(wife|husband)/i;
+function divorceLines(lang, name) {
+  const L = say(lang);
+  return [L(`${name ? `${name}, ` : ''}divorce is a serious decision that belongs to the two of you — with a family counsellor and, if needed, a lawyer — not to a horoscope. Thunai will not say yes or no to it.`, `${name ? `${name}, ` : ''}விவாகரத்து என்பது நீங்கள் இருவரும் — குடும்ப ஆலோசகர், தேவைப்பட்டால் வழக்கறிஞருடன் — எடுக்க வேண்டிய முக்கிய முடிவு; ஜாதகம் எடுப்பதல்ல. துணை அதற்கு ஆம் / இல்லை சொல்லாது.`),
+    L('If you want to try first: a counsellor helps both of you speak calmly (Tele-MANAS 14416 is free). If you ever feel unsafe at home, call 181 (women helpline) or 112.', 'முதலில் முயற்சி செய்ய விரும்பினால்: ஆலோசகர் இருவரும் அமைதியாகப் பேச உதவுவார் (டெலி-மனஸ் 14416 இலவசம்). வீட்டில் எப்போதாவது பாதுகாப்பில்லை என்று உணர்ந்தால் 181 (மகளிர் உதவி எண்) அல்லது 112 அழையுங்கள்.')];
+}
+const BECOME = /\b(doctor|engineer|lawyer|advocate|teacher|collector|ias|ips|police|pilot|nurse|scientist|actor|actress|cricketer|singer|ca|cop|soldier)\s*(aa?g(a|alaa?ma|uvaa?(la|na|r|n)|uven|uvena|a mudiyuma)|aavaa?(la|na|n|r)|aaven(a)?|aagi)\b|\bbecome an? (doctor|engineer|lawyer|teacher|ias officer|ips officer|police officer|pilot|nurse|scientist|actor|cricketer|singer|ca)\b|(டாக்டர்|மருத்துவர்|பொறியாளர்|வக்கீல்|ஆசிரியர்|கலெக்டர்|போலீஸ்)\s*ஆக/i;
+
+// ---- birth time unknown AND the Moon changed sign that day: no Rasi, no star, no Lagnam — dated periods would be guesses
+function noTimeAnswer(a, lang, name) {
+  const L = say(lang);
+  const honest = [L(`${name ? `${name}, ` : ''}I cannot give honest dates for this yet: your birth time is not known, and on your birth day the Moon changed sign and star — so the Rasi and star that timing is read from are uncertain.`, `${name ? `${name}, ` : ''}இதற்கு இப்போது நேர்மையான தேதிகள் தர இயலாது: உங்கள் பிறந்த நேரம் தெரியவில்லை; நீங்கள் பிறந்த நாளில் சந்திரன் ராசியும் நட்சத்திரமும் மாறியது — அதனால் காலம் கணிக்க உதவும் ராசி, நட்சத்திரம் உறுதியில்லை.`),
+    L('If you know your Rasi or star from a family horoscope, or even roughly when you were born (morning / evening), add it in Family — the dated answer will follow. The decision itself is yours; the practical steps below help in every period.', 'குடும்ப ஜாதகத்தில் ராசி / நட்சத்திரம் தெரிந்தால், அல்லது சுமாராகப் பிறந்த நேரம் (காலை / மாலை) தெரிந்தால், குடும்பம் பகுதியில் சேர்க்கவும் — தேதிகளுடன் பதில் கிடைக்கும். முடிவு உங்களுடையதே; கீழே உள்ள நடைமுறை வழிகள் எல்லாக் காலத்திலும் உதவும்.')];
+  const EMPTY = /no strongly marked window|வலுவாகக் குறிக்கப்பட்ட காலம் இல்லை|வலுவான காலக் குறிப்பு இல்லை/;
+  let replaced = false;
+  let sections = (a.sections || []).map((x) => {
+    if (x.key !== 'answer') return x;
+    const lines = [];
+    for (const l of x.lines) { if (EMPTY.test(l)) { if (!replaced) lines.push(...honest); replaced = true; } else if (!/^(Now|இப்போதைய நிலை): /.test(l)) lines.push(l); }
+    return { ...x, lines };
+  });
+  if (!sections.length) { sections = [{ key: 'answer', title: L('Answer', 'பதில்'), lines: honest }]; replaced = true; }
+  if (!replaced) return a;
+  return { ...a, sections, text: textOf(sections), actions: [{ go: 'family', label: L('Add birth time / Rasi', 'பிறந்த நேரம் / ராசி சேர்') }, ...(a.actions || []).filter((x) => x.go !== 'family')] };
+}
+const FOLLOW_CUE = /\b(eppo\w*|epo|when|which|edhu|ethu|endha|entha|best|month|maasam|maadham|year|varusham|why|yen|how|eppadi|epdi|enna pann\w*|parigaram|pariharam|parikaram|remedy|kidaikuma|nadakkuma|nadakuma|aguma|aaguma|sari ?aaguma)\b|எப்போ|எந்த|ஏன்|எப்படி|பரிகார|மாத|சிறந்த|நடக்குமா|கிடைக்குமா/i;
+const HOW_MANY_KIDS = /how many (kids|children|child|babies)|ethana (kuzh|kozh|kul)\w*|evlo (kuzh|kozh|kul)\w*|எத்தனை (குழந்தை|பிள்ளை)/i;
+const SCHOOL_CHANGE = /school ?(maa?th|maa?r|change)|change (of )?(her|his|my|the)? ?school|new school|பள்ளி (மாற்ற|மாறு)/i;
+function schoolChangeAnswer(text, lang, name) {
+  const L = say(lang);
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [L('A school change is best decided on practical grounds, not by the chart: is the child happy and learning, the teachers, the distance and travel time, the fees, and friends. If you do change, the start of the academic year is easiest for the child.', 'பள்ளி மாற்றம் ஜாதகத்தை விட நடைமுறைக் காரணங்களால் முடிவு செய்வதே சரி: குழந்தை மகிழ்ச்சியாகக் கற்கிறதா, ஆசிரியர்கள், தூரம், பயண நேரம், கட்டணம், நண்பர்கள். மாற்றுவதானால், கல்வியாண்டின் தொடக்கமே குழந்தைக்கு எளிது.'),
+      L('By tradition, a new school is started on a good day — Vijayadasami, or a Wednesday or Thursday morning outside Rahu Kalam.', 'மரபுப்படி புதிய பள்ளியை நல்ல நாளில் தொடங்குவர் — விஜயதசமி, அல்லது ராகு காலம் தவிர்த்து புதன் / வியாழன் காலை.')] },
+    { key: 'dos', title: L('Before deciding', 'முடிவுக்கு முன்'), lines: [L('Talk to the child and to the present class teacher; visit the new school together.', 'குழந்தையிடமும் இப்போதைய வகுப்பு ஆசிரியரிடமும் பேசுங்கள்; புதிய பள்ளியை சேர்ந்து பார்வையிடுங்கள்.')] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('What makes you think of changing — studies, distance or something at school?', 'மாற்ற நினைப்பது ஏன் — படிப்பா, தூரமா, பள்ளியில் ஏதாவது பிரச்சினையா?')] },
+  ];
+  return shell('education', text, sections, { followups: [L('A study routine that works', 'பலன் தரும் படிப்பு அட்டவணை'), L('Which slokam before studying?', 'படிக்கும் முன் எந்த ஸ்லோகம்?')] });
+}
+const CHILD_BEHAVIOUR = /kobam|kovam|anger|angry|adam|adampid|pidivatham|stubborn|tantrum|aluga|azhuga|crying|cries|thookam varala|sleep|padikka maatt|won'?t study|not studying|phone|mobile|screen|கோபம்|அடம்|பிடிவாதம்|அழுகி|படிக்க மாட்ட/i;
+function childBehaviourAnswer(text, lang, name, prof) {
+  const L = say(lang);
+  const who = name || L('your child', 'குழந்தை');
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [L(`At ${prof.age}, anger, crying or stubbornness usually comes from tiredness, hunger, too much screen time or feeling unheard — not from the stars. ${who} needs calm, steady routines more than any remedy.`, `${prof.age} வயதில் கோபம், அழுகை, பிடிவாதம் பொதுவாகச் சோர்வு, பசி, அதிகத் திரை நேரம், தன்னைக் கேட்கவில்லை என்ற உணர்வு — இவற்றால் வரும்; கிரகங்களால் அல்ல. ${who}க்கு எந்தப் பரிகாரத்தையும் விட அமைதியான, சீரான பழக்கங்களே தேவை.`)] },
+    { key: 'dos', title: L('What helps', 'உதவுபவை'), lines: [L('Stay calm yourself; name the feeling (“you are angry because…”) and listen.', 'நீங்கள் அமைதியாக இருங்கள்; உணர்வுக்குப் பெயர் சொல்லுங்கள் (“நீ கோபமாக இருக்கிறாய், ஏனென்றால்…”), கேளுங்கள்.'),
+      L('Fixed sleep and meal times, outdoor play every day, less screen time before bed.', 'நிலையான உறக்கம், உணவு நேரம்; தினமும் வெளியில் விளையாட்டு; இரவில் திரை நேரம் குறைவு.'),
+      L('Praise good behaviour as soon as you see it.', 'நல்ல நடத்தையைக் கண்டவுடன் பாராட்டுங்கள்.'),
+      L('If it is frequent, harmful or sudden, talk to the class teacher, the school counsellor or a paediatrician.', 'அடிக்கடி, ஆபத்தாக அல்லது திடீரென வந்தால் வகுப்பு ஆசிரியர், பள்ளி ஆலோசகர் அல்லது குழந்தை மருத்துவரிடம் பேசுங்கள்.')] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('When does it happen most — mornings, after school or at bedtime?', 'எப்போது அதிகம் — காலையிலா, பள்ளி முடிந்ததும், தூங்கும் நேரத்திலா?')] },
+  ];
+  return shell('emotional', text, sections, { followups: suggestionsFor(prof).slice(0, 3).map((o) => pick(o, lang)) });
+}
+// ---- pilgrimage timing
+const PILGRIM_Q = /yaa?th?irai|yatra|yaathra|pilgrim|\bkaa?si\b|kashi|varanasi|rameswar\w*|tirupat\w*|thirupat\w*|sabari ?mala\w*|pazhani|palani|velankann?i|காசி|யாத்திரை|ராமேஸ்வர|திருப்பதி|சபரிமலை|பழனி/i;
+const PILGRIM_WHEN = /pog?alaa?ma|pogalama|poga ?la+ma|good time|right time|nalla (neram|naal|time)|\beppo\b|\bwhen\b|\bshould\b|\bcan (he|she|i|we)\b|is it (good|ok|safe)|best (time|month|season)|போகலாமா|எப்போ|நல்ல நேரம்|ஏற்ற காலம்/i;
+function goodDaysFor(chart, rel, now, tz, n = 4) {
+  if (!chart || (rel || {}).nakshatra === false || (rel || {}).rasi === false) return [];
+  const d0 = localDay(now, tz); const out = [];
+  for (let d = d0 + 1; d < d0 + 45 && out.length < n; d++) { const m = moonOn(d, tz); if ([1, 3, 5, 7, 8].includes(taraOf(chart.janmaNakshatra.index, m.star)) && houseOf(chart.janmaRasi.index, m.rasi) !== 8) out.push(d); }
+  return out;
+}
+function pilgrimageAnswer({ text, chart, rel, lang, name, now, loc, prof, faith }) {
+  const L = say(lang);
+  const q = normQ(text);
+  const tz = loc?.tz ?? 5.5;
+  const lines = [];
+  const kasi = /kaa?si|kashi|varanasi|காசி/.test(q);
+  // Asked about a parent from one's own profile: their own star decides the days — never read them from this chart.
+  const other = /\b(appa|amma|father|mother|dad|mom|thatha|paati|grand ?(father|mother|pa|ma)|parents?|in-?laws?|maamanaar|maamiyar)\b|அப்பா|அம்மா|தாத்தா|பாட்டி|பெற்றோர்/.test(q);
+  const good = other ? [] : goodDaysFor(chart, rel, now, tz);
+  const ch = !other && chart && (rel || {}).rasi !== false ? chandrashtamaSpans(chart.janmaRasi.index, now, tz, 45) : [];
+  if (good.length) {
+    lines.push(L(`${name ? `${name}: ` : ''}a pilgrimage needs no special yoga — any period is fine for a temple visit. For the start of the journey, good days by the star are ${good.map((d) => dayLabel(d, 'en')).join('; ')}.`, `${name ? `${name}: ` : ''}கோவில் யாத்திரைக்குத் தனி யோகம் தேவையில்லை — எந்தக் காலமும் ஏற்றதே. பயணம் தொடங்க நட்சத்திரப்படி நல்ல நாட்கள்: ${good.map((d) => dayLabel(d, 'ta')).join('; ')}.`));
+    if (ch.length) lines.push(L(`Avoid starting on Chandrashtamam days: ${ch.slice(0, 2).map((x) => spanText(x, 'en')).join('; ')}.`, `சந்திராஷ்டம நாட்களில் பயணம் தொடங்க வேண்டாம்: ${ch.slice(0, 2).map((x) => spanText(x, 'ta')).join('; ')}.`));
+  } else {
+    if (other) lines.push(L('Good days for their journey are read from their own birth star, not from yours — open their profile in Family (or add it) and ask again for dates.', 'அவருடைய பயண நாட்கள் அவருடைய சொந்த நட்சத்திரப்படிதான் — உங்களுடையதால் அல்ல. குடும்பம் பகுதியில் அவருடைய சுயவிவரத்தைத் திறந்து (இல்லையெனில் சேர்த்து) மீண்டும் கேளுங்கள்.'));
+    lines.push(L('A pilgrimage needs no special yoga — any period is fine for a temple visit. Start the journey in the morning, outside Rahu Kalam; the Muhurtham finder can pick a date that suits everyone travelling.', 'கோவில் யாத்திரைக்குத் தனி யோகம் தேவையில்லை — எந்தக் காலமும் ஏற்றதே. ராகு காலம் தவிர்த்து காலையில் பயணம் தொடங்குங்கள்; பயணிக்கும் அனைவருக்கும் ஏற்ற நாளை முகூர்த்தம் பகுதி தேர்ந்தெடுக்கும்.'));
+  }
+  lines.push(kasi ? L('Season: October to March is the most comfortable time for Kasi; avoid the May–June heat and the July–September monsoon floods on the ghats.', 'பருவம்: காசிக்கு அக்டோபர் – மார்ச் மிக வசதியான காலம்; மே – ஜூன் வெயிலும் ஜூலை – செப்டம்பர் மழை வெள்ளமும் (படித்துறைகளில்) தவிர்க்கவும்.')
+    : L('Season: avoid the peak-summer weeks and festival-day crowds if you can; weekday darshan is calmer.', 'பருவம்: முடிந்தால் கடும் வெயில் வாரங்களையும் விழா நாள் கூட்டத்தையும் தவிர்க்கவும்; வார நாள் தரிசனம் அமைதியானது.'));
+  const elder = (prof?.age != null && prof.age >= 60) || other;
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines },
+    { key: 'dos', title: L('Practical first', 'நடைமுறை முதலில்'), lines: [
+      ...(elder ? [L('At this age, check with the family doctor before a long journey; carry all medicines, prescriptions and a medical summary; travel with a companion and plan rest days.', 'இந்த வயதில், நீண்ட பயணத்துக்கு முன் குடும்ப மருத்துவரிடம் ஆலோசனை பெறுங்கள்; எல்லா மருந்துகள், மருந்துச் சீட்டு, மருத்துவக் குறிப்புடன், துணையுடன் பயணம்; ஓய்வு நாட்களையும் திட்டமிடுங்கள்.')] : []),
+      L('Book train / flight and stay early; keep ID cards and emergency numbers with you.', 'ரயில் / விமானம், தங்குமிடத்தை முன்கூட்டியே பதிவு செய்யுங்கள்; அடையாள அட்டை, அவசர எண்களை உடன் வைத்திருங்கள்.')] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Shall I plan the journey — dates, route, stay and cost?', 'பயணத்தைத் திட்டமிடட்டுமா — தேதி, வழி, தங்குமிடம், செலவு?')] },
+  ];
+  return shell('travel', text, sections, { actions: [{ go: 'journey', label: L('Plan the journey', 'பயணத் திட்டம்') }, { go: 'muhurtham', label: L('Find a good date', 'நல்ல நாள் தேடு') }], followups: [] });
+}
+// ---- property transfer / will / settlement
+const PROP_TRANSFER = /(ezhudh?i|ezhuthi|eluthi|eluth|ezhudhi)\s*(vaik\w*|kodu\w*|kudu\w*|thar\w*|vech\w*)|\b(a|my|his|her|registered) will\b(?! (i|he|she|we|they|my|the)\b)|(write|make|register)\b[^?]{0,10}\bwill\b|settlement deed|gift deed|\bsettlement\b|dhaana? ?pathiram|thaana ?pathiram|uyil|transfer (the |my |our )?(property|house|land|flat)|(property|house|land|veedu|sothu|nilam)\b[^?]{0,25}\b(transfer|name ?(ku|la)? ?maath\w*|per ?maath\w*|to (my|our) (son|daughter|children))|உயில்|தான ?பத்திர|செட்டில்மெண்ட்|எழுதி (வை|கொடு|தர)/i;
+function propertyTransferAnswer({ text, chart, rel, lang, name, now, loc, prof }) {
+  const L = say(lang);
+  const good = goodDaysFor(chart, rel, now, loc?.tz ?? 5.5, 4);
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [
+      L(`${name ? `${name}, ` : ''}writing property to the family is a legal step first: a registered will (it takes effect after the person’s lifetime and can be changed) or a registered settlement / gift deed (it transfers ownership now). A lawyer should draft it, and it must be registered at the Sub-Registrar office.`, `${name ? `${name}, ` : ''}சொத்தைக் குடும்பத்துக்கு எழுதி வைப்பது முதலில் சட்டப் படி: பதிவு செய்த உயில் (அவருடைய காலத்துக்குப் பிறகு செல்லும்; மாற்றலாம்) அல்லது பதிவு செய்த செட்டில்மெண்ட் / தான பத்திரம் (இப்போதே உரிமை மாறும்). வழக்கறிஞர் வரைவு செய்து, சார்பதிவாளர் அலுவலகத்தில் பதிவு செய்ய வேண்டும்.`),
+      good.length ? L(`Good days for the registration by the star: ${good.map((d) => dayLabel(d, 'en')).join('; ')} — in the morning, outside Rahu Kalam.`, `நட்சத்திரப்படி பதிவுக்கு நல்ல நாட்கள்: ${good.map((d) => dayLabel(d, 'ta')).join('; ')} — காலையில், ராகு காலம் தவிர்த்து.`)
+        : L('By tradition, register on a good day in the morning, outside Rahu Kalam, avoiding Ashtami, Navami and Amavasai.', 'மரபுப்படி நல்ல நாளில் காலையில், ராகு காலம் தவிர்த்து, அஷ்டமி, நவமி, அமாவாசை தவிர்த்துப் பதிவு செய்யுங்கள்.')] },
+    { key: 'dos', title: L('Practical steps', 'நடைமுறைப் படிகள்'), lines: [
+      L('Talk it through openly with all the children (and in-laws) first, so that nobody is surprised later — most family disputes start here.', 'முதலில் எல்லாப் பிள்ளைகளுடனும் (மருமக்களுடனும்) வெளிப்படையாகப் பேசுங்கள் — பிறகு யாருக்கும் அதிர்ச்சி இருக்கக்கூடாது; பெரும்பாலான குடும்பத் தகராறுகள் இங்கேதான் தொடங்குகின்றன.'),
+      L('Keep the parent doc (patta, EC, previous deeds) ready; ask the lawyer about stamp duty and whether to keep a right of residence for the parents.', 'பட்டா, வில்லங்கச் சான்று, முந்தைய பத்திரங்களைத் தயாராக வையுங்கள்; முத்திரைத் தீர்வை, பெற்றோருக்கு வசிப்பு உரிமை வைத்துக்கொள்வது பற்றி வழக்கறிஞரிடம் கேளுங்கள்.'),
+      L('Two independent witnesses; keep certified copies safely and tell the family where they are.', 'இரண்டு தனிச் சாட்சிகள்; சான்றிட்ட நகல்களைப் பாதுகாப்பாக வைத்து, இருப்பிடத்தைக் குடும்பத்துக்குச் சொல்லுங்கள்.')] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Is it a will for later, or a transfer now?', 'இது பின்னர் செல்லும் உயிலா, இப்போதே மாற்றும் பத்திரமா?')] },
+  ];
+  return shell('property', text, sections, { actions: [{ go: 'muhurtham', label: L('Find a good date', 'நல்ல நாள் தேடு') }], followups: [] });
+}
+// ---- another faith asking for a parigaram
+const REMEDY_Q = /parigar|pariharam|parihar|parikaram|remed|பரிகார|neram sari ?illa|நேரம் சரியில்ல/i;
+function faithRemedyAnswer(text, lang, name, faith) {
+  const L = say(lang);
+  const F = {
+    christian: [T('Pray each morning and night in your own words, read a short passage of the Bible daily, and attend Sunday Mass / service; you may ask your priest or pastor to pray with you.', 'காலை, இரவு உங்கள் சொந்த வார்த்தைகளில் ஜெபியுங்கள்; தினமும் வேதாகமத்தில் ஒரு சிறு பகுதி வாசியுங்கள்; ஞாயிறு திருப்பலி / ஆராதனையில் கலந்துகொள்ளுங்கள்; உங்கள் குருவானவர் / போதகரிடம் உங்களுக்காக ஜெபிக்கக் கேட்கலாம்.'),
+      T('Fasting as your church practises it (for example on Fridays or in Lent), if your health allows.', 'உடல்நலம் அனுமதித்தால், உங்கள் சபை வழக்கப்படி உபவாசம் (உதாரணமாக வெள்ளிக்கிழமை அல்லது தவக்காலத்தில்).')],
+    muslim: [T('Keep the five daily prayers, make dua after each, and read a little of the Qur’an every day.', 'ஐவேளைத் தொழுகையைத் தொடருங்கள்; ஒவ்வொன்றுக்குப் பின்னும் துஆ செய்யுங்கள்; தினமும் குர்ஆனில் சிறிது ஓதுங்கள்.'),
+      T('Give sadaqah (charity) quietly, and keep voluntary fasts (Monday / Thursday) if your health allows.', 'அமைதியாக ஸதகா (தர்மம்) செய்யுங்கள்; உடல்நலம் அனுமதித்தால் விருப்ப நோன்பு (திங்கள் / வியாழன்) வையுங்கள்.')],
+  }[faith] || [T('Spend ten quiet minutes each morning in prayer or meditation in the way of your own faith, and end the day with gratitude.', 'உங்கள் நம்பிக்கையின் வழியில் தினமும் காலை பத்து நிமிடம் அமைதியான பிரார்த்தனை / தியானம்; நாளை நன்றியுணர்வுடன் முடியுங்கள்.')];
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [L(`${name ? `${name}, ` : ''}a remedy is best kept in your own faith — no Hindu parigaram is needed, and nothing has to be bought.`, `${name ? `${name}, ` : ''}பரிகாரத்தை உங்கள் சொந்த நம்பிக்கையிலேயே செய்வது சிறந்தது — இந்துப் பரிகாரம் தேவையில்லை; எதையும் வாங்க வேண்டியதில்லை.`), ...F.map((x) => pick(x, lang))] },
+    { key: 'practice', title: L('Every week', 'ஒவ்வொரு வாரமும்'), lines: [L('Serve someone: feed the hungry, visit the sick or elderly, or help a student — service steadies the mind more than any ritual.', 'யாருக்காவது சேவை செய்யுங்கள்: பசித்தோருக்கு உணவு, நோயுற்றோர் / முதியோரைச் சந்தித்தல், ஒரு மாணவருக்கு உதவி — எந்தச் சடங்கையும் விட சேவை மனதை நிலைப்படுத்தும்.'),
+      L('If worry or sadness is heavy, talk to someone — a counsellor helps (Tele-MANAS 14416, free, 24×7).', 'கவலையோ சோகமோ அதிகமாக இருந்தால் யாரிடமாவது பேசுங்கள் — ஆலோசகர் உதவுவார் (டெலி-மனஸ் 14416, இலவசம், 24×7).')] },
+    { key: 'prayer', title: L('Blessing', 'ஆசி'), lines: [pick(faithBlessing(faith) || faithBlessing('other'), lang)] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Which part of life feels heavy right now — work, money, family or health?', 'இப்போது எது கனமாக உள்ளது — வேலை, பணம், குடும்பம், உடல்நலம்?')] },
+  ];
+  return shell('remedy', text, sections, { followups: [L('How is my career this year?', 'இந்த ஆண்டு என் தொழில் எப்படி?'), L('How is my family life this year?', 'இந்த ஆண்டு என் குடும்ப வாழ்க்கை எப்படி?')] });
+}
+// ---- "is my wife / husband going to leave me"
+const LEAVE_Q = /(wife|husband|manaivi|purushan|purusan|kanavar|pondatti|spouse|மனைவி|கணவர்|கணவன்)\b[^?]{0,30}(leave|leaving|left me|vittu ?(poi|pog|po|poyid)\w*|vittutu|pirinj\w*|பிரிந்து|விட்டு(ப்)? ?போ)|\bleave me\b/i;
+function leaveLines(lang, name) {
+  const L = say(lang);
+  return [L(`${name ? `${name}, ` : ''}no horoscope can tell whether someone will leave, and Thunai will not predict it — that fear is better spoken about than read in a chart.`, `${name ? `${name}, ` : ''}ஒருவர் விட்டுப் போவாரா என்பதை எந்த ஜாதகமும் சொல்லாது; துணை அதைக் கணிக்காது — அந்தப் பயத்தை ஜாதகத்தில் தேடுவதை விட, பேசுவதே நல்லது.`),
+    L('Choose a calm time and talk honestly about what is worrying you; if that is hard, meet a family counsellor together (Tele-MANAS 14416 is free). If there is any violence or threat at home, call 181 (women helpline) or 112.', 'அமைதியான நேரத்தில், உங்களை வருத்துவதை நேர்மையாகப் பேசுங்கள்; அது கடினம் என்றால் இருவரும் சேர்ந்து குடும்ப ஆலோசகரைச் சந்தியுங்கள் (டெலி-மனஸ் 14416 இலவசம்). வீட்டில் வன்முறையோ மிரட்டலோ இருந்தால் 181 (மகளிர் உதவி எண்) அல்லது 112 அழையுங்கள்.')];
+}
+// ---- a parent asking on a child's own profile: speak to the parent about "your daughter / son", not to the child
+function parentize(a, lang, name, daughter) {
+  if (!a?.sections) return a;
+  const childTa = daughter ? 'உங்கள் மகள்' : 'உங்கள் மகன்', childEn = daughter ? 'your daughter' : 'your son';
+  const her = daughter ? 'her' : 'his';
+  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const lead = name ? new RegExp(`^${esc(name)}(, | — |\\s)`) : null;
+  const fix = (l) => {
+    let t = String(l);
+    if (lead && lead.test(t)) t = t.replace(lead, lang === 'ta' ? `${childTa} ${name} — ` : `For ${childEn} ${name}: `);
+    if (name) t = t.replace(new RegExp(`(புரிகிறது|I understand), ${esc(name)}\\.`), lang === 'ta' ? '$1.' : '$1.');
+    return lang === 'ta'
+      ? t.replace(/உங்கள் ஜாதக/g, 'அவருடைய ஜாதக').replace(/உங்கள் ஆரோக்கிய/g, 'அவருடைய ஆரோக்கிய').replace(/உங்கள் மீது/g, 'அவர் மீது')
+      : t.replace(/\byour (horoscope|chart|health)\b/g, `${her} $1`).replace(/\bYour (horoscope|chart|health)\b/g, `${her[0].toUpperCase()}${her.slice(1)} $1`);
+  };
+  const title = (t) => (lang === 'ta' ? String(t).replace(/^உங்கள் ஜாதகம்/, 'அவருடைய ஜாதகம்').replace(/உங்கள் ஜாதகம் காட்டுவது/, 'அவருடைய ஜாதகம் காட்டுவது') : String(t).replace(/\byour chart\b/, `${her} chart`));
+  const sections = a.sections.map((x) => ({ ...x, title: title(x.title || ''), lines: (x.lines || []).map(fix) }));
+  return { ...a, sections, text: textOf(sections) };
+}
+// ---- the person talking is a parent and the open profile is a young child: no "you" addressed to the child
+function parentVoice(a, prof, lang, name) {
+  if (!a?.sections || prof?.band !== '6-12') return a;
+  const L = say(lang);
+  const sections = a.sections.map((s, i) => (s.key === 'answer' && i === 0 ? { ...s, lines: s.lines.map((l) => (/for when you grow up|பெரியவரான பிறகு கேட்க/.test(l)
+    ? L(`${name || 'Your child'} is only ${prof.age} — Thunai does not read this from a child’s chart. At this age what matters is studies, play, kindness and good habits; the chart is used only for gentle things like prayers, the star birthday and study habits.`, `${name || 'குழந்தை'} — வயது ${prof.age} மட்டுமே; குழந்தையின் ஜாதகத்தில் இது பார்க்கப்படுவதில்லை. இந்த வயதில் படிப்பு, விளையாட்டு, அன்பு, நல்ல பழக்கங்கள் — இவையே முக்கியம்; பிரார்த்தனை, நட்சத்திரப் பிறந்தநாள், படிப்புப் பழக்கம் போன்ற மென்மையான விஷயங்களுக்கு மட்டுமே ஜாதகம் பயன்படுத்தப்படுகிறது.`) : l)) } : s));
+  return { ...a, sections, text: textOf(sections) };
+}
+const PRAYER_Q = /slok|slogam|sloka|shloka|stotra|stothra|mantra|manthiram|prayer|\bpray\b|prarthan|pirarthana|kadavul|kumbid|ஸ்லோக|சுலோக|மந்திர|பிரார்த்தனை|கடவுள்|கும்பிட/i;
+
+// ---- general extras (no chart): today's timings, hymns, mantras, Ithihasa stories, other faiths' festivals
+const TIMINGS_Q = /rahu ?kaa?l\w*|raa?gu ?kaa?l\w*|raahu ?kaa?l\w*|ராகு ?கால|yama ?gand\w*|ema ?gand\w*|எமகண்ட|kuligai|gulika\w*|குளிகை|nalla neram|good time today|auspicious time today|gowri|கௌரி|நல்ல நேரம்/i;
+// Rahu Kalam / Yamagandam / Kuligai asked on their own ("nalla neram" alone usually comes with a topic: IVF, land …).
+const TIMINGS_STRICT = /rahu ?kaa?l\w*|raa?gu ?kaa?l\w*|raahu ?kaa?l\w*|ராகு ?கால|yama ?gand\w*|ema ?gand\w*|எமகண்ட|kuligai|gulika\w*|குளிகை|gowri|கௌரி/i;
+const HYMN_Q = {
+  'kanda-sashti-kavasam': /k[ae]n?n?dh?a ?sh?ash?ti ?kavas\w*|kantha ?sashti ?kavas\w*|கந்த ?சஷ்டி ?கவச/i,
+  'vishnu-sahasranamam': /vishnu ?sahasra ?nam\w*|sahasra ?namam|விஷ்ணு ?சகஸ்ர|சகஸ்ரநாம/i,
+  'hanuman-chalisa': /h?anuman ?chal[ie]e?sa|அனுமன் ?சாலீசா|ஹனுமான் ?சாலிசா/i,
+  'aditya-hrudayam': /aditya ?h(ru|ri)dh?ayam|ஆதித்ய ?ஹ/i,
+  'vinayagar-agaval': /vinaya?g\w* ?agaval|விநாயகர் ?அகவல்/i,
+  'rina-vimochana-angaraka-stotram': /rina ?vimochan\w*|angaraka ?stot\w*|ருண ?விமோசன/i,
+  'durga-saptashloki': /durga ?sapta ?sh?loki|durga stot\w*|துர்க்கை துதி/i,
+  'katyayani-mantra': /k[aā]th?yayani|காத்யாயனி/i,
+  'santhana-gopala-mantra': /santh?ana ?gopala|சந்தான ?கோபால/i,
+  'abhirami-anthadhi': /abhirami ?anth\w*|அபிராமி ?அந்தாதி/i,
+};
+const MANTRA_Q = {
+  shiva: /nama?h? ?sh?iva?a?ya|namasivaya|நமசிவாய|நமச்சிவாய|panchakshar\w*|பஞ்சாக்ஷர/i,
+  narayana: /namo ?narayan\w*|நமோ ?நாராயண|ashtakshar\w*|அஷ்டாக்ஷர/i,
+  murugan: /saravana ?bh?ava|சரவணபவ/i,
+  ganesha: /gam ?ganapat\w*|கம் ?கணபத/i,
+  gayatri: /gayat?h?ri|காயத்ரி/i,
+  mrityunjaya: /m(r|ri|ru)th?yunjay\w*|மிருத்யுஞ்ஜய/i,
+  rama: /rama ?jaya ?rama|ராம ?ஜெய/i,
+  navagraha: /navagraha ?mantra|நவகிரக ?மந்திர/i,
+};
+const WOMEN_Q = /pengal|ponnunga|ladies|women|woman|girls?\b|பெண்கள்|பெண்/i;
+const WHO_WROTE = /yaa?ru? ?(ezhuth|eluth|ezhudh|paadin|padin|iyatr)|who (wrote|composed|sang)|author|எழுதிய|இயற்றிய|பாடிய|யார் எழுத/i;
+function hymnGeneral(text, lang, faith) {
+  const q = normQ(text);
+  const id = Object.keys(HYMN_Q).find((k) => HYMN_Q[k].test(q));
+  if (!id) return null;
+  const h = hymnById(id);
+  if (!h) return null;
+  const L = say(lang);
+  const lines = [];
+  if (WHO_WROTE.test(q)) lines.push(L(`${h.title.en} was composed by ${h.author.en}.`, `${h.title.ta} — இயற்றியவர் ${h.author.ta}.`));
+  if (WOMEN_Q.test(q)) lines.push(L(`Yes — anyone may recite ${h.title.en} with devotion, women and girls included. Some families keep their own customs (for example during periods) — follow your family’s practice.`, `ஆம் — ${h.title.ta} பக்தியுடன் யார் வேண்டுமானாலும் சொல்லலாம்; பெண்களும் சிறுமிகளும் உட்பட. சில குடும்பங்களில் (உதாரணமாக மாதவிடாய் நாட்களில்) தனி வழக்கம் உண்டு — உங்கள் குடும்ப வழக்கத்தைப் பின்பற்றுங்கள்.`));
+  lines.push(pick(h.intro, lang));
+  const sections = [
+    ...(isHinduFaith(faith) ? [] : [{ key: 'note', title: L('For information', 'தகவலுக்காக'), lines: [L('This is information about a Hindu hymn, shared respectfully. Please follow your own faith and family practice.', 'இது ஓர் இந்துப் பாடல் பற்றிய தகவல் மட்டுமே, மரியாதையுடன் பகிரப்படுகிறது. உங்கள் சொந்த நம்பிக்கை, குடும்ப வழக்கத்தைப் பின்பற்றுங்கள்.')] }]),
+    { key: 'answer', title: pick(h.title, lang), lines },
+    { key: 'how', title: L('When it is recited', 'எப்போது சொல்லப்படுகிறது'), lines: [pick(h.when, lang), L(`Author: ${h.author.en} · Deity: ${h.deity.en}`, `இயற்றியவர்: ${h.author.ta} · தெய்வம்: ${h.deity.ta}`)] },
+  ];
+  if (h.status !== 'complete') sections.push({ key: 'note2', title: L('Full text', 'முழுப் பாடல்'), lines: [L('The checked full text of this hymn is still being added — the reader shows its meaning for now.', 'இந்தப் பாடலின் சரிபார்க்கப்பட்ட முழு உரை இன்னும் சேர்க்கப்படுகிறது — இப்போது அதன் பொருள் மட்டும் காட்டப்படும்.')] });
+  return { intent: 'general_kb', topic: 'hymn', general: true, question: text, sections, text: textOf(sections), meter: null,
+    actions: [{ go: 'hymn', param: { id }, label: L(h.status === 'complete' ? 'Read / listen to the full text' : 'Open the hymn', h.status === 'complete' ? 'முழுப் பாடலைப் படிக்க / கேட்க' : 'பாடலைத் திற') }],
+    followups: [{ label: L('All hymns & stotras', 'எல்லாப் பாடல்களும் ஸ்தோத்திரங்களும்'), go: 'hymns' }] };
+}
+function mantraGeneral(text, lang, faith) {
+  const q = normQ(text);
+  const id = Object.keys(MANTRA_Q).find((k) => MANTRA_Q[k].test(q));
+  const m = id && MANTRAS.find((x) => x.id === id);
+  if (!m) return null;
+  const L = say(lang);
+  const sections = [
+    ...(isHinduFaith(faith) ? [] : [{ key: 'note', title: L('For information', 'தகவலுக்காக'), lines: [L('This is information about a Hindu mantra, shared respectfully.', 'இது ஓர் இந்து மந்திரம் பற்றிய தகவல் மட்டுமே, மரியாதையுடன் பகிரப்படுகிறது.')] }]),
+    { key: 'answer', title: pick(m.title, lang), lines: [`${m.text} (${m.translit})`, pick(m.meaning, lang)] },
+    { key: 'how', title: L('How to chant (simple)', 'எப்படிச் சொல்வது (எளிய முறை)'), lines: [L('Sit calmly, chant slowly 9, 27 or 108 times — morning or evening. No special rules are needed; a sincere mind matters most.', 'அமைதியாக அமர்ந்து, காலை அல்லது மாலை 9, 27 அல்லது 108 முறை மெதுவாகச் சொல்லுங்கள். சிறப்பு விதிகள் தேவையில்லை; உண்மையான மனமே முக்கியம்.'), ...(WOMEN_Q.test(q) ? [L('Women and girls can chant it too.', 'பெண்களும் சிறுமிகளும் இதைச் சொல்லலாம்.')] : [])] },
+  ];
+  return { intent: 'general_kb', topic: 'mantra', general: true, question: text, sections, text: textOf(sections), meter: null, actions: [{ go: 'mantras', label: L('Listen in Mantras', 'மந்திரங்களில் கேளுங்கள்') }], followups: [] };
+}
+function storyGeneral(text, lang) {
+  const q = normQ(text);
+  const series = /ramayan\w*|ராமாயண/.test(q) ? 'ramayanam' : /mahabharat\w*|மகாபாரத/.test(q) ? 'mahabharatham' : null;
+  if (!series) return null;
+  const L = say(lang);
+  const line = series === 'ramayanam'
+    ? L('The Ramayanam is the story of Sri Rama, prince of Ayodhya: his exile to the forest with Sita and Lakshmana, Sita carried away by Ravana, Hanuman’s search across the sea, the battle in Lanka and Rama’s return to Ayodhya. It teaches dharma, loyalty and devotion.', 'இராமாயணம் — அயோத்தி இளவரசர் ஸ்ரீ ராமரின் கதை: சீதை, லட்சுமணனுடன் வனவாசம், ராவணன் சீதையைக் கவர்ந்து சென்றது, கடல் தாண்டிய அனுமனின் தேடல், இலங்கைப் போர், ராமர் அயோத்தி திரும்புதல். தர்மம், விசுவாசம், பக்தியைக் கற்பிக்கும் காவியம்.')
+    : L('The Mahabharatham is the story of the Pandavas and the Kauravas: the game of dice, the thirteen years of exile, Krishna’s Bhagavad Gita at Kurukshetra and the great war. It teaches dharma, duty and the cost of greed.', 'மகாபாரதம் — பாண்டவர்கள், கௌரவர்களின் கதை: சூதாட்டம், பதின்மூன்று ஆண்டு வனவாசம், குருக்ஷேத்திரத்தில் கண்ணனின் பகவத் கீதை, மாபெரும் போர். தர்மம், கடமை, பேராசையின் விலையைக் கற்பிக்கும் காவியம்.');
+  const sections = [
+    { key: 'answer', title: L(series === 'ramayanam' ? 'Ramayanam' : 'Mahabharatham', series === 'ramayanam' ? 'இராமாயணம்' : 'மகாபாரதம்'), lines: [line] },
+    { key: 'how', title: L('Read it day by day', 'தினம் ஒரு பகுதி'), lines: [L(`Thunai tells the whole story in ${series === 'ramayanam' ? 30 : 40} short Tamil episodes — one a day, with read-aloud.`, `துணை முழுக் கதையையும் ${series === 'ramayanam' ? 30 : 40} சிறு தமிழ்ப் பகுதிகளாகச் சொல்கிறது — தினம் ஒன்று, வாசித்துக் காட்டுதலுடன்.`)] },
+  ];
+  return { intent: 'general_kb', topic: 'ithihasa', general: true, question: text, sections, text: textOf(sections), meter: null, actions: [{ go: 'ithihasa', param: { series }, label: L('Open the daily episodes', 'தினசரிப் பகுதிகளைத் திற') }], followups: [] };
+}
+/** Western (Gregorian) Easter Sunday for a year (anonymous Gregorian algorithm) as a UTC day number. */
+function easterDay(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+  return Math.floor(Date.UTC(y, month - 1, day) / DAY);
+}
+const OTHER_FEST_Q = /christmas|xmas|கிறிஸ்துமஸ்|easter|ஈஸ்டர்|good friday|புனித வெள்ளி|ash wednesday|palm sunday|velankann?i|வேளாங்கண்ணி|ramz[aa]n|ramad[aa]n|ரம்ஜான்|ரமலான்|\beid\b|bakri?d|பக்ரீத்|milad|muharram|மொஹரம்/i;
+function otherFaithFestival(text, lang, now, tz, faith, listMonth = false) {
+  const q = normQ(text);
+  const L = say(lang);
+  const d0 = localDay(now, tz);
+  const y0 = new Date(d0 * DAY).getUTCFullYear();
+  const ym = /\b(20[2-4]\d)\b/.exec(q);
+  const yr = ym ? +ym[1] : null;
+  const next = (fn) => { for (const y of yr ? [yr] : [y0, y0 + 1]) { const d = fn(y); if (yr || d >= d0) return d; } return fn(y0 + 1); };
+  const lines = [];
+  const add = (en, ta, d, end = null) => lines.push(L(`${en}: ${dayLabel(d, 'en')} ${new Date(d * DAY).getUTCFullYear()}${end ? ` – ${dayLabel(end, 'en')}` : ''}`, `${ta}: ${dayLabel(d, 'ta')} ${new Date(d * DAY).getUTCFullYear()}${end ? ` – ${dayLabel(end, 'ta')}` : ''}`));
+  const all = listMonth;
+  if (all && faith === 'christian') add('All Saints’ Day', 'அனைத்துப் புனிதர்கள் தினம்', next((y) => Math.floor(Date.UTC(y, 10, 1) / DAY)));
+  if (all || /christmas|xmas|கிறிஸ்துமஸ்/.test(q)) add('Christmas', 'கிறிஸ்துமஸ்', next((y) => Math.floor(Date.UTC(y, 11, 25) / DAY)));
+  if (/ash wednesday/.test(q)) add('Ash Wednesday', 'சாம்பல் புதன்', next((y) => easterDay(y) - 46));
+  if (/palm sunday/.test(q)) add('Palm Sunday', 'குருத்தோலை ஞாயிறு', next((y) => easterDay(y) - 7));
+  if (all || /good friday|புனித வெள்ளி/.test(q)) add('Good Friday', 'புனித வெள்ளி', next((y) => easterDay(y) - 2));
+  if (all || /easter|ஈஸ்டர்/.test(q)) add('Easter Sunday', 'ஈஸ்டர் ஞாயிறு', next((y) => easterDay(y)));
+  if (/velankann?i|வேளாங்கண்ணி/.test(q)) add('Velankanni Annai feast (flag hoisting to the feast)', 'வேளாங்கண்ணி அன்னை திருவிழா (கொடியேற்றம் முதல் திருநாள் வரை)', next((y) => Math.floor(Date.UTC(y, 7, 29) / DAY)), next((y) => Math.floor(Date.UTC(y, 8, 8) / DAY)));
+  const moonNote = L('Islamic dates follow the sighting of the new moon — the exact day is announced by your local Jamaat / Hilal committee and can differ by a day.', 'இஸ்லாமியப் பண்டிகைத் தேதிகள் பிறை பார்த்தலைப் பொறுத்தவை — சரியான நாளை உங்கள் ஊர் ஜமாஅத் / ஹிலால் குழு அறிவிக்கும்; ஒரு நாள் மாறலாம்.');
+  const islamic = /ramz[aa]n|ramad[aa]n|ரம்ஜான்|ரமலான்|\beid\b|bakri?d|பக்ரீத்|milad|muharram|மொஹரம்/.test(q) || (all && faith === 'muslim');
+  if (islamic) {
+    if (all || /ramad[aa]n|ரமலான்|fast|nonbu|நோன்பு/.test(q)) lines.push(L('Ramadan fasting 2027: begins around 8 February 2027.', 'ரமலான் நோன்பு 2027: சுமார் 8 பிப்ரவரி 2027 தொடக்கம்.'));
+    if (all || /ramz[aa]n|ரம்ஜான்|eid ?(ul|al)?[ -]?fit|\beid\b/.test(q)) lines.push(L('Ramzan (Eid al-Fitr) 2027: around 9–10 March 2027.', 'ரம்ஜான் (ஈதுல் பித்ர்) 2027: சுமார் 9–10 மார்ச் 2027.'));
+    if (all || /bakri?d|பக்ரீத்|adha|zuha/.test(q)) lines.push(L('Bakrid (Eid al-Adha) 2027: around 16–17 May 2027.', 'பக்ரீத் (ஈதுல் அழ்ஹா) 2027: சுமார் 16–17 மே 2027.'));
+    if (/milad/.test(q)) lines.push(L('Milad-un-Nabi 2027: around 14 August 2027.', 'மீலாது நபி 2027: சுமார் 14 ஆகஸ்ட் 2027.'));
+    if (/muharram|மொஹரம்/.test(q)) lines.push(L('Muharram (Ashura) 2027: around 15 June 2027.', 'மொஹரம் (ஆஷுரா) 2027: சுமார் 15 ஜூன் 2027.'));
+    lines.push(moonNote);
+  }
+  if (!lines.length) return null;
+  if (all) lines.unshift(L('From your faith’s calendar, the coming days to keep:', 'உங்கள் நம்பிக்கையின் நாட்காட்டிப்படி வரவிருக்கும் நாட்கள்:'));
+  const sections = [{ key: 'answer', title: L('Answer', 'பதில்'), lines }];
+  if (all) sections.push({ key: 'note', title: L('Good to know', 'தெரிந்துகொள்ள'), lines: [L('Thunai’s festival calendar lists Hindu festivals and vratham days, shared for information; please follow your own faith’s calendar and your church / mosque announcements.', 'துணையின் பண்டிகை நாட்காட்டி இந்துப் பண்டிகைகள், விரத நாட்களைத் தகவலுக்காகக் காட்டுகிறது; உங்கள் சொந்த நம்பிக்கையின் நாட்காட்டியையும் ஆலய / பள்ளிவாசல் அறிவிப்புகளையும் பின்பற்றுங்கள்.')] });
+  return { intent: 'general_kb', topic: 'other_faith', general: true, question: text, sections, text: textOf(sections), meter: null, actions: [], followups: [] };
+}
+function timingsGeneral(text, lang, today) {
+  if (!today?.rahuKalam) return null;
+  const L = say(lang);
+  const sections = [
+    { key: 'answer', title: L('Today', 'இன்று'), lines: [L(`Rahu Kalam: ${today.rahuKalam}`, `ராகு காலம்: ${today.rahuKalam}`), L(`Yamagandam: ${today.yamagandam}`, `எமகண்டம்: ${today.yamagandam}`),
+      today.goodTimes?.length ? L(`Good time (Gowri nalla neram) still ahead: ${today.goodTimes.join(', ')}`, `இன்னும் வரும் நல்ல நேரம் (கௌரி): ${today.goodTimes.join(', ')}`) : L('No more Gowri nalla neram today — tomorrow morning is the next.', 'இன்று இனி கௌரி நல்ல நேரம் இல்லை — நாளை காலை அடுத்தது.')] },
+    { key: 'note', title: L('Good to know', 'தெரிந்துகொள்ள'), lines: [L('These are for your place (sunrise rule). Tradition avoids Rahu Kalam for new starts — but never delay medical care, exams or official deadlines for it.', 'இவை உங்கள் ஊருக்கானவை (சூரிய உதய விதி). புதிய தொடக்கங்களுக்கு ராகு காலம் தவிர்ப்பது மரபு — ஆனால் மருத்துவம், தேர்வு, அரசுக் காலக்கெடுவை அதற்காக ஒருபோதும் தள்ளிப்போடாதீர்கள்.')] },
+  ];
+  return { intent: 'general_kb', topic: 'timings', general: true, question: text, sections, text: textOf(sections), meter: null, actions: [], followups: [{ label: L('Full panchangam', 'முழு பஞ்சாங்கம்'), go: 'panchangam' }, { label: L('Is now a good time?', 'இப்போது செய்யலாமா?'), go: 'ask' }] };
+}
+const MUHURTHAM_GEN = /gr[iau]h?a ?pravesam|house ?warming|கிரகப்பிரவேச|புதுமனை|muhur\w*|முகூர்த்த|good day for|nalla naal/i;
+function muhurthamGeneral(text, lang, now, loc) {
+  const L = say(lang);
+  let today = null;
+  try { today = KB?.answerGeneral?.(lang === 'ta' ? 'இன்று பஞ்சாங்கம்' : 'today panchangam', { lang, now, loc, tz: loc?.tz }); } catch { /* optional */ }
+  const sections = [
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: [L('Whether a day suits a griha pravesam, wedding or other function depends on the stars of the people involved — tap “Find dates” and Thunai checks everyone’s star and lists good muhurtham days and times.', 'கிரகப்பிரவேசம், திருமணம் போன்ற விழாவுக்கு ஒரு நாள் ஏற்றதா என்பது சம்பந்தப்பட்டவர்களின் நட்சத்திரத்தைப் பொறுத்தது — “நாள் தேடு” அழுத்தினால் துணை அனைவரின் நட்சத்திரத்தையும் பார்த்து நல்ல முகூர்த்த நாட்களையும் நேரங்களையும் பட்டியலிடும்.')] },
+    ...((today?.sections || []).filter((s) => s.key === 'today' || s.key === 'special')),
+  ];
+  return { intent: 'general_kb', topic: 'muhurtham', general: true, question: text, sections, text: textOf(sections), meter: null, actions: [{ go: 'muhurtham', label: L('Find dates', 'நாள் தேடு') }], followups: [] };
+}
+/** General questions the reviewed KB does not cover, answered from the app's own data (null when none fits). */
+function generalExtra(text, { lang, now, loc, faith, today, listMonth = false }) {
+  const q = normQ(text);
+  const tz = loc?.tz ?? 5.5;
+  if (TIMINGS_Q.test(q) && !/festival|pandigai|பண்டிகை/.test(q)) { const a = timingsGeneral(text, lang, today); if (a) return a; }
+  return hymnGeneral(text, lang, faith) || mantraGeneral(text, lang, faith)
+    || (OTHER_FEST_Q.test(q) || listMonth ? otherFaithFestival(text, lang, now, tz, faith, listMonth) : null)
+    || (GOLD_Q.test(q) ? goldAnswer({ text, lang, now, loc }) : null)
+    || (MUHURTHAM_GEN.test(q) && !matchKB(text) ? muhurthamGeneral(text, lang, now, loc) : null)
+    || (!matchKB(text) ? storyGeneral(text, lang) : null);
+}
+const matchKB = (text) => { try { const m = KB?.matchQuestion?.(text); return Boolean(m?.entry); } catch { return false; } };
+/** Words that make a question general even though the topic router may not know them (hymns, mantras, other faiths …). */
+export const generalExtraHit = (text) => { const q = normQ(text); return (TIMINGS_STRICT.test(q) && !detectTopic(text)) || OTHER_FEST_Q.test(q) || Object.values(HYMN_Q).some((re) => re.test(q)) || Object.values(MANTRA_Q).some((re) => re.test(q)) || /\b(story|kathai|kadhai|katha)\b|கதை/.test(q) && /ramayan|mahabharat|ராமாயண|மகாபாரத/.test(q); };
 
 export { ageProfile, guardAnswer, ageGuardAnswer, topicAllowed };
 export { childGeneralAnswer, suggestionsFor, facilitationCheck, policyAnswer, LIMITED_LABEL, LIMITS_LINE } from './shared/age-guard.js';

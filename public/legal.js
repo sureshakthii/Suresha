@@ -63,3 +63,18 @@ function renderLegal(sec, params = {}) {
   if (params.open) requestAnimationFrame(() => document.getElementById(`legal-${params.open}`)?.scrollIntoView({ block: 'start' }));
 }
 registerScreen('legal', { render: renderLegal, parent: 'more' });
+
+// One legal footer on every screen: screens that end with their own copyright() keep it; for every other screen a
+// shared footer (© 2026 Thunai … Concept & Developed by AG TECHNOLOGY SOLUTIONS · Privacy · Terms · Grievance) sits
+// below the page content. styles.css hides it while the open screen has its own footer, so it never shows twice.
+if (typeof document !== 'undefined') {
+  const paint = () => requestAnimationFrame(() => {
+    const views = document.getElementById('views');
+    if (!views) return;
+    let f = document.getElementById('appFooter');
+    if (!f) { f = document.createElement('div'); f.id = 'appFooter'; views.after(f); }
+    f.innerHTML = copyright();
+  });
+  document.addEventListener('kj:screen', paint);
+  document.addEventListener('kj:lang', paint);
+}

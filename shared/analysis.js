@@ -9,6 +9,7 @@ import { houseRoles as computeHouseRoles } from './rules/roles.js';
 import { runningDasa } from './daily.js';
 import { isHinduFaith } from './faith.js';
 import { adultText } from './age-guard.js';
+const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 const KENDRA = [1, 4, 7, 10];
 const TRIKONA = [1, 5, 9];
@@ -191,16 +192,22 @@ export function transitStatus(chart, now = new Date(), { faith = 'hindu', age = 
   if (satPhase) status.push({ id: 'ezharai', kind: 'care', en: `Ezharai Sani (Sade Sati), phase ${satPhase} of 3`, ta: `ஏழரைச் சனி — ${['', 'விரய', 'ஜென்ம', 'பாத'][satPhase]} சனி`, adviceEn: 'A period of hard work that builds maturity. Avoid shortcuts, keep health routines, and light a sesame-oil lamp on Saturdays.', adviceTa: 'உழைப்பால் முதிர்ச்சி தரும் காலம். குறுக்கு வழிகளைத் தவிர்த்து, ஆரோக்கியம் பேணி, சனிக்கிழமை நல்லெண்ணெய் தீபம் ஏற்றவும்.' });
   else if (sat === 8) status.push({ id: 'ashtama', kind: 'care', en: 'Ashtama Sani (Saturn 8th from Moon)', ta: 'அஷ்டமச் சனி', adviceEn: 'Go slow on big risks and lending; patience and service bring protection.', adviceTa: 'பெரிய அபாயங்கள், கடன் கொடுப்பதில் நிதானம்; பொறுமையும் சேவையும் காக்கும்.' });
   else if (sat === 4) status.push({ id: 'ardhashtama', kind: 'care', en: 'Ardhashtama Sani (Saturn 4th from Moon)', ta: 'அர்த்தாஷ்டமச் சனி', adviceEn: 'Care for home and mother\'s health; avoid property disputes.', adviceTa: 'வீடு, தாயின் ஆரோக்கியத்தில் கவனம்; சொத்து பிரச்சினைகளைத் தவிர்க்கவும்.' });
-  else if ([3, 6, 11].includes(sat)) status.push({ id: 'sani_good', kind: 'good', en: `Saturn transits the ${sat}th from your Moon — a rewarding period`, ta: `சனி ${sat}-ல் — பலன் தரும் காலம்`, adviceEn: 'Effort is rewarded; good for steady career growth.', adviceTa: 'உழைப்புக்குப் பலன்; தொழிலில் நிலையான வளர்ச்சி.' });
+  else if ([3, 6, 11].includes(sat)) status.push({ id: 'sani_good', kind: 'good', en: `Saturn transits the ${ordEn(sat)} from your Moon — a rewarding period`, ta: `சனி ${sat}-ல் — பலன் தரும் காலம்`, adviceEn: 'Effort is rewarded; good for steady career growth.', adviceTa: 'உழைப்புக்குப் பலன்; தொழிலில் நிலையான வளர்ச்சி.' });
   const guruBalam = [2, 5, 7, 9, 11].includes(jup);
   status.push(guruBalam
-    ? { id: 'guru_balam', kind: 'good', en: `Guru Balam: Jupiter ${jup}th from your Moon`, ta: `குரு பலம் உண்டு (${jup}-ல் குரு)`, adviceEn: 'Favourable for marriage, children, new ventures and learning.', adviceTa: 'திருமணம், குழந்தை, புதிய முயற்சி, கல்விக்குச் சாதகம்.' }
-    : { id: 'guru_weak', kind: 'mild', en: `Jupiter ${jup}th from your Moon (Guru Balam weak)`, ta: `குரு ${jup}-ல் (குரு பலம் குறைவு)`, adviceEn: 'Pray to Dakshinamurthy on Thursdays; choose muhurthams carefully for big events.', adviceTa: 'வியாழன் தட்சிணாமூர்த்தி வழிபாடு; பெரிய நிகழ்வுகளுக்கு முகூர்த்தத்தைக் கவனமாகத் தேர்வு செய்யவும்.' });
-  if ([1, 7].includes(rahu)) status.push({ id: 'rahu', kind: 'mild', en: `Rahu transits the ${rahu}th from your Moon`, ta: `ராகு ${rahu}-ல் சஞ்சாரம்`, adviceEn: 'Avoid confusion in partnerships; Durga worship on Tuesdays/Fridays helps.', adviceTa: 'கூட்டு முயற்சிகளில் தெளிவு தேவை; செவ்வாய்/வெள்ளி துர்க்கை வழிபாடு நன்று.' });
+    ? { id: 'guru_balam', kind: 'good', en: `Guru Balam: Jupiter ${ordEn(jup)} from your Moon`, ta: `குரு பலம் உண்டு (${jup}-ல் குரு)`, adviceEn: 'Favourable for marriage, children, new ventures and learning.', adviceTa: 'திருமணம், குழந்தை, புதிய முயற்சி, கல்விக்குச் சாதகம்.' }
+    : { id: 'guru_weak', kind: 'mild', en: `Jupiter ${ordEn(jup)} from your Moon (Guru Balam weak)`, ta: `குரு ${jup}-ல் (குரு பலம் குறைவு)`, adviceEn: 'Pray to Dakshinamurthy on Thursdays; choose muhurthams carefully for big events.', adviceTa: 'வியாழன் தட்சிணாமூர்த்தி வழிபாடு; பெரிய நிகழ்வுகளுக்கு முகூர்த்தத்தைக் கவனமாகத் தேர்வு செய்யவும்.' });
+  if ([1, 7].includes(rahu)) status.push({ id: 'rahu', kind: 'mild', en: `Rahu transits the ${ordEn(rahu)} from your Moon`, ta: `ராகு ${rahu}-ல் சஞ்சாரம்`, adviceEn: 'Avoid confusion in partnerships; Durga worship on Tuesdays/Fridays helps.', adviceTa: 'கூட்டு முயற்சிகளில் தெளிவு தேவை; செவ்வாய்/வெள்ளி துர்க்கை வழிபாடு நன்று.' });
   if (!isHinduFaith(faith)) for (const st of status) if (ADVICE_ALL_FAITHS[st.id]) [st.adviceEn, st.adviceTa] = ADVICE_ALL_FAITHS[st.id];
   // Under 18: advice that talks about property, partnerships, marriage or money becomes a study-and-routine line.
   if (age != null && Number(age) < 18) {
-    for (const st of status) if (adultText({ en: st.adviceEn, ta: st.adviceTa })) [st.adviceEn, st.adviceTa] = ['Keep studies, sleep and prayer steady — this passes gently.', 'படிப்பு, உறக்கம், வழிபாட்டைச் சீராக வைத்தால் இது மென்மையாகக் கடக்கும்.'];
+    for (const st of status) {
+      if (!adultText({ en: st.adviceEn, ta: st.adviceTa })) continue;
+      // A favourable transit is not something to "pass through": say so positively.
+      [st.adviceEn, st.adviceTa] = st.kind === 'good'
+        ? ['A good time to build steady study, sleep and prayer habits.', 'படிப்பு, உறக்கம், வழிபாட்டில் நல்ல பழக்கங்களை வளர்க்க ஏற்ற காலம்.']
+        : ['Keep studies, sleep and prayer steady — this passes gently.', 'படிப்பு, உறக்கம், வழிபாட்டைச் சீராக வைத்தால் இது மென்மையாகக் கடக்கும்.'];
+    }
   }
   const gb = status.find((st) => st.id === 'guru_balam');
   if (gb && Number(age) >= 60) [gb.adviceEn, gb.adviceTa] = ['Favourable for family functions, learning and gatherings with loved ones.', 'குடும்ப விழாக்கள், கற்றல், அன்புக்குரியவர்களுடன் ஒன்றுகூடலுக்குச் சாதகம்.'];

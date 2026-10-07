@@ -4,16 +4,19 @@
 // automatically: the original input stays in the form, hidden, and always holds the number in E.164 form
 // (+94771234567), so existing code that reads it keeps working. Add data-native to an input to opt out.
 import { COUNTRIES, countryByCode, guessCountry, searchCountries, toE164, parseE164 } from './shared/countries.js';
-import { L, ta, esc, store } from './core.js';
+import { L, ta, esc, store, state } from './core.js';
+import { countryOfLoc } from './shared/residence.js';
 
 const PREF_KEY = 'kj_phone_cc';
 // Countries most of our users dial from, shown first in the picker.
 const TOP = ['IN', 'LK', 'MY', 'SG', 'AE', 'GB', 'US', 'CA', 'AU', 'QA', 'SA', 'OM', 'KW', 'BH', 'FR', 'DE', 'CH', 'ZA', 'MU', 'NZ'];
 
-/** The country the picker starts with: the last one chosen on this phone, else the device's locale / time zone. */
+/** The country the picker starts with: the last one chosen on this phone, else where the person lives, else the device's locale / time zone. */
 export function defaultCountry() {
   const saved = countryByCode(store.get(PREF_KEY, ''));
-  return saved || guessCountry();
+  // Then where the person lives (set on first run), so a laptop with a foreign locale still starts at +91 in Chennai.
+  let home = null; try { home = countryByCode(countryOfLoc(state.residence) || ''); } catch { home = null; }
+  return saved || home || guessCountry();
 }
 
 const countryName = (c) => (ta() ? c.ta : c.en);

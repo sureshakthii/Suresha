@@ -245,6 +245,10 @@ export function sharePreview(title, text) {
     <pre class="share-pre">${esc(text)}</pre>
     <div class="btn-row"><button class="chip-btn" data-sp="cancel">${L('Cancel', 'ரத்து')}</button><button class="btn-gold" data-sp="ok">${L('Share', 'பகிர்')}</button></div></div>`;
   document.body.append(wrap);
+  // Keyboard: focus moves into the dialog (Share) and back to the button that opened it when it closes (Esc: desktop-nav.js).
+  const opener = document.activeElement;
+  wrap.querySelector('[data-sp="ok"]')?.focus();
+  new MutationObserver((_, mo) => { if (!wrap.isConnected) { mo.disconnect(); opener?.focus?.({ preventScroll: true }); } }).observe(document.body, { childList: true });
   wrap.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-sp]');
     if (!b && e.target !== wrap) return;

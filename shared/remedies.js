@@ -3,6 +3,7 @@
 import { RASIS, PLANETS } from './astro.js';
 import { isHinduFaith, universalPractice, CHILD_PRACTICE, TRADITIONAL_OPTIONAL } from './faith.js';
 import { adultText } from './age-guard.js';
+const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 export const NAVAGRAHA = {
   Sun: {
@@ -182,11 +183,11 @@ export function grahaStrength(planets) {
     if (lagna != null) {
       const house = ((p.rasi - lagna + 12) % 12) + 1;
       if (node) {
-        if ([3, 6, 11].includes(house)) r(12, `Well placed in the ${house}th house`, `${house}-ம் வீட்டில் நன்று`);
-        else if ([1, 7, 8, 12].includes(house)) r(-10, `In the ${house}th house`, `${house}-ம் வீடு`);
-      } else if ([6, 8, 12].includes(house)) r(-10, `In the ${house}th house (dusthana)`, `${house}-ம் வீடு (மறைவு ஸ்தானம்)`);
-      else if ([1, 4, 7, 10].includes(house)) r(8, `In a kendra (${house}th house)`, `கேந்திரம் (${house})`);
-      else if ([5, 9].includes(house)) r(8, `In a trikona (${house}th house)`, `திரிகோணம் (${house})`);
+        if ([3, 6, 11].includes(house)) r(12, `Well placed in the ${ordEn(house)} house`, `${house}-ம் வீட்டில் நன்று`);
+        else if ([1, 7, 8, 12].includes(house)) r(-10, `In the ${ordEn(house)} house`, `${house}-ம் வீடு`);
+      } else if ([6, 8, 12].includes(house)) r(-10, `In the ${ordEn(house)} house (dusthana)`, `${house}-ம் வீடு (மறைவு ஸ்தானம்)`);
+      else if ([1, 4, 7, 10].includes(house)) r(8, `In a kendra (${ordEn(house)} house)`, `கேந்திரம் (${house})`);
+      else if ([5, 9].includes(house)) r(8, `In a trikona (${ordEn(house)} house)`, `திரிகோணம் (${house})`);
     }
     score = Math.max(0, Math.min(100, score));
     out.push({

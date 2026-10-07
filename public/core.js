@@ -528,6 +528,10 @@ if (typeof document !== 'undefined' && typeof ResizeObserver !== 'undefined') {
   const ro = new ResizeObserver(fitTop);
   const hook = () => { const t = document.querySelector('.topbar'); if (t) { ro.observe(t); fitTop(); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hook); else hook();
+  // The screen title (.sub-head) is pinned too: --sub-h keeps scrollIntoView / anchor jumps from landing under it.
+  const fitSub = () => requestAnimationFrame(() => { const h = document.querySelector('.view:not([hidden]) .sub-head'); document.documentElement.style.setProperty('--sub-h', `${h ? Math.round(h.getBoundingClientRect().height) : 0}px`); });
+  document.addEventListener('kj:screen', fitSub);
+  addEventListener('resize', fitSub);
 }
 
 // Question boxes are textareas so the full hint is always readable; they grow with the text,

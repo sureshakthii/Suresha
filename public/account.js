@@ -197,8 +197,31 @@ async function verifyOtp() {
   }
 }
 
+// The screen (and its params) the person was on when sign-in was asked for — a package request, an order, a
+// seva — so that after signing in they return there instead of Today. Kept in sessionStorage too, so a Facebook
+// redirect that reloads the page still knows where to return.
+const LOGIN_FROM_KEY = 'kj_login_from';
+let screenBeforeLogin = null;
+export function rememberLoginOrigin(view, params = {}) {
+  if (!view || view === 'login') return;
+  screenBeforeLogin = { view, params: params || {} };
+}
+document.addEventListener('kj:screen', (e) => {
+  if (e.detail === 'login') {
+    if (screenBeforeLogin) try { sessionStorage.setItem(LOGIN_FROM_KEY, JSON.stringify(screenBeforeLogin)); } catch { /* private mode */ }
+  } else rememberLoginOrigin(e.detail, state.params);
+});
+export function loginReturnTarget() {
+  let from = screenBeforeLogin;
+  if (!from) try { from = JSON.parse(sessionStorage.getItem(LOGIN_FROM_KEY) || 'null'); } catch { from = null; }
+  return from && from.view && from.view !== 'login' ? from : null;
+}
 function afterLogin(name) {
+  const from = loginReturnTarget();
+  screenBeforeLogin = null;
+  try { sessionStorage.removeItem(LOGIN_FROM_KEY); } catch { /* ignore */ }
   if (!state.family.length) go('family', { add: true, first: true, name });
+  else if (from) go(from.view, from.params || {});
   else go('home');
 }
 registerScreen('login', { render: renderLogin, fullscreen: true });

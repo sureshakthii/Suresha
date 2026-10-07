@@ -289,3 +289,9 @@ test('19. A Tamil calendar date written beside an ambiguous DD/MM date settles i
   assert.equal(d.tamilYear, 57);
   assert.equal(mayCalculate(d), false);
 });
+
+test('a period word whose last vowel sign OCR dropped still gives morning / evening', () => {
+  assert.equal(readClockTime('கால 10.35 மணி').value, '10:35');
+  assert.equal(readClockTime('மால 6.20').value, '18:20');
+  assert.equal(readClockTime('காலம் 10.35').candidates.length, 2, 'காலம் is not காலை');
+});

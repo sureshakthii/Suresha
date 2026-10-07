@@ -17,6 +17,7 @@ import { RASIS, PLANETS, planetPositions } from './astro.js';
 import { grahaStrength, NAVAGRAHA } from './remedies.js';
 import { isHinduFaith, universalPractice, TRADITIONAL_OPTIONAL } from './faith.js';
 import { MANTRAS } from './mantras.js';
+const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 const T = (en, ta) => ({ en, ta });
 const YEAR = 365.25 * 86400000;
@@ -351,19 +352,19 @@ function natalAreas(chart, st, ref) {
   const lordH = houseOf(R, P[refLord].rasi);
   if ([6, 8, 12].includes(lordH)) {
     viaSign(P[refLord].rasi, 1.5, ref.hasLagna
-      ? T(`Lagna lord ${refLord} in the ${lordH}th house (${RASIS[P[refLord].rasi].en})`, `லக்னாதிபதி ${PLANETS[refLord].ta} ${lordH}-ம் வீட்டில் (${RASIS[P[refLord].rasi].ta})`)
-      : T(`Moon-sign lord ${refLord} in the ${lordH}th from the Moon (${RASIS[P[refLord].rasi].en})`, `ராசியாதிபதி ${PLANETS[refLord].ta} சந்திரனிலிருந்து ${lordH}-ம் இடத்தில் (${RASIS[P[refLord].rasi].ta})`), rb);
+      ? T(`Lagna lord ${refLord} in the ${ordEn(lordH)} house (${RASIS[P[refLord].rasi].en})`, `லக்னாதிபதி ${PLANETS[refLord].ta} ${lordH}-ம் வீட்டில் (${RASIS[P[refLord].rasi].ta})`)
+      : T(`Moon-sign lord ${refLord} in the ${ordEn(lordH)} from the Moon (${RASIS[P[refLord].rasi].en})`, `ராசியாதிபதி ${PLANETS[refLord].ta} சந்திரனிலிருந்து ${lordH}-ம் இடத்தில் (${RASIS[P[refLord].rasi].ta})`), rb);
   }
   for (const [h, w] of [[6, 2], [8, 1.5], [12, 1]]) {
     const s = (R + h - 1) % 12;
-    const hn = ref.hasLagna ? HOUSE_NAME[h] : T(`${h}th from the Moon`, `சந்திரனிலிருந்து ${h}-ம் இடம்`);
+    const hn = ref.hasLagna ? HOUSE_NAME[h] : T(`${ordEn(h)} from the Moon`, `சந்திரனிலிருந்து ${h}-ம் இடம்`);
     viaSign(s, w, T(`${hn.en} falls in ${RASIS[s].en} — ${SIGN_PARTS[s].en}`, `${hn.ta} ${RASIS[s].ta} — ${SIGN_PARTS[s].ta}`), rb);
     const lord = lordOf(R, h);
     if (lord !== refLord) {
       viaPlanet(lord, w * 0.6, T(`${lord} rules the ${hn.en}`, `${PLANETS[lord].ta} ${hn.ta} அதிபதி`), rb);
-      viaSign(P[lord].rasi, w * 0.4, T(`${h}th lord ${lord} sits in ${RASIS[P[lord].rasi].en} — ${SIGN_PARTS[P[lord].rasi].en}`, `${h}-ம் அதிபதி ${PLANETS[lord].ta} ${RASIS[P[lord].rasi].ta} ராசியில் — ${SIGN_PARTS[P[lord].rasi].ta}`), rb);
+      viaSign(P[lord].rasi, w * 0.4, T(`${ordEn(h)} lord ${lord} sits in ${RASIS[P[lord].rasi].en} — ${SIGN_PARTS[P[lord].rasi].en}`, `${h}-ம் அதிபதி ${PLANETS[lord].ta} ${RASIS[P[lord].rasi].ta} ராசியில் — ${SIGN_PARTS[P[lord].rasi].ta}`), rb);
     }
-    const inH = ref.hasLagna ? T(`in the ${h}th house`, `${h}-ம் வீட்டில்`) : T(`${h}th from the Moon`, `சந்திரனிலிருந்து ${h}-ம் இடத்தில்`);
+    const inH = ref.hasLagna ? T(`in the ${ordEn(h)} house`, `${h}-ம் வீட்டில்`) : T(`${ordEn(h)} from the Moon`, `சந்திரனிலிருந்து ${h}-ம் இடத்தில்`);
     for (const k of GRAHAS.filter((g) => g !== 'Moon' || ref.hasLagna).filter((g) => P[g].rasi === s)) {
       viaPlanet(k, MALEFICS.includes(k) ? w * 0.9 : w * 0.5, T(`${k} ${inH.en}`, `${PLANETS[k].ta} ${inH.ta}`), rb);
     }
@@ -409,14 +410,14 @@ function lordAreas(chart, lord, ref) {
     const s = (ref.rasi + h - 1) % 12;
     add(SIGN_PARTS[s].area, h === 6 ? 1.75 : h === 8 ? 1.5 : 1, ref.hasLagna
       ? T(`${lord} rules the ${HOUSE_NAME[h].en} (${RASIS[s].en} — ${SIGN_PARTS[s].en})`, `${PLANETS[lord].ta} ${HOUSE_NAME[h].ta} அதிபதி (${RASIS[s].ta} — ${SIGN_PARTS[s].ta})`)
-      : T(`${lord} rules the ${h}th from the Moon (${RASIS[s].en} — ${SIGN_PARTS[s].en})`, `${PLANETS[lord].ta} சந்திரனிலிருந்து ${h}-ம் இட அதிபதி (${RASIS[s].ta} — ${SIGN_PARTS[s].ta})`), ref.basis);
+      : T(`${lord} rules the ${ordEn(h)} from the Moon (${RASIS[s].en} — ${SIGN_PARTS[s].en})`, `${PLANETS[lord].ta} சந்திரனிலிருந்து ${h}-ம் இட அதிபதி (${RASIS[s].ta} — ${SIGN_PARTS[s].ta})`), ref.basis);
   }
   const h = houseOf(ref.rasi, P[lord].rasi);
   if ([6, 8, 12].includes(h)) {
     const s = P[lord].rasi;
     add(SIGN_PARTS[s].area, 1, ref.hasLagna
-      ? T(`${lord} sits in the ${h}th house (${RASIS[s].en} — ${SIGN_PARTS[s].en})`, `${PLANETS[lord].ta} ${h}-ம் வீட்டில் (${RASIS[s].ta} — ${SIGN_PARTS[s].ta})`)
-      : T(`${lord} sits ${h}th from the Moon (${RASIS[s].en} — ${SIGN_PARTS[s].en})`, `${PLANETS[lord].ta} சந்திரனிலிருந்து ${h}-ம் இடத்தில் (${RASIS[s].ta} — ${SIGN_PARTS[s].ta})`), ref.basis);
+      ? T(`${lord} sits in the ${ordEn(h)} house (${RASIS[s].en} — ${SIGN_PARTS[s].en})`, `${PLANETS[lord].ta} ${h}-ம் வீட்டில் (${RASIS[s].ta} — ${SIGN_PARTS[s].ta})`)
+      : T(`${lord} sits ${ordEn(h)} from the Moon (${RASIS[s].en} — ${SIGN_PARTS[s].en})`, `${PLANETS[lord].ta} சந்திரனிலிருந்து ${h}-ம் இடத்தில் (${RASIS[s].ta} — ${SIGN_PARTS[s].ta})`), ref.basis);
   }
   out.sort((a, b) => b.w - a.w);
   return { areas: out, why, dusthanaLord: ruled.length > 0 };
@@ -468,11 +469,11 @@ function gocharaCare(chart, date, ref, { spans = false, tz = 5.5 } = {}) {
   };
   if ([12, 1, 2].includes(sat)) {
     const ph = sat === 12 ? 1 : sat === 1 ? 2 : 3;
-    add('Saturn', 'ezharai', ['joints', 'mind'], `Ezharai Sani (phase ${ph} of 3) — Saturn ${sat}th from your Moon`, `ஏழரைச் சனி (${sat === 12 ? 'விரயச் சனி' : sat === 1 ? 'ஜென்மச் சனி' : 'பாதச் சனி'}) — சனி உங்கள் ராசியிலிருந்து ${sat}-ம் இடத்தில்`);
+    add('Saturn', 'ezharai', ['joints', 'mind'], `Ezharai Sani (phase ${ph} of 3) — Saturn ${ordEn(sat)} from your Moon`, `ஏழரைச் சனி (${sat === 12 ? 'விரயச் சனி' : sat === 1 ? 'ஜென்மச் சனி' : 'பாதச் சனி'}) — சனி உங்கள் ராசியிலிருந்து ${sat}-ம் இடத்தில்`);
   } else if (sat === 8) add('Saturn', 'ashtama', ['joints', 'stomach'], 'Ashtama Sani — Saturn 8th from your Moon', 'அஷ்டமச் சனி — சனி உங்கள் ராசிக்கு 8-ம் இடத்தில்');
   else if (sat === 4) add('Saturn', 'ardhashtama', ['chest', 'mind'], 'Ardhashtama Sani — Saturn 4th from your Moon', 'அர்த்தாஷ்டமச் சனி — சனி உங்கள் ராசிக்கு 4-ம் இடத்தில்');
   if (fl('Saturn') === 1 && ![12, 1, 2].includes(sat)) add('Saturn', 'sani_lagna', ['joints'], 'Saturn over your Lagna', 'சனி உங்கள் லக்னத்தின் மேல்', 'lagna');
-  if ([6, 8, 12].includes(jup)) add('Jupiter', 'guru_weak', ['liver'], `Jupiter ${jup}th from your Moon`, `குரு உங்கள் ராசிக்கு ${jup}-ம் இடத்தில்`);
+  if ([6, 8, 12].includes(jup)) add('Jupiter', 'guru_weak', ['liver'], `Jupiter ${ordEn(jup)} from your Moon`, `குரு உங்கள் ராசிக்கு ${jup}-ம் இடத்தில்`);
   if (rahu === 1) add('Rahu', 'rahu', ['allergy'], 'Rahu over your Moon sign', 'ராகு உங்கள் ராசியின் மேல்');
   else if (fl('Rahu') === 1) add('Rahu', 'rahu_lagna', ['allergy'], 'Rahu over your Lagna', 'ராகு உங்கள் லக்னத்தின் மேல்', 'lagna');
   if (ketu === 1) add('Ketu', 'ketu', ['infection'], 'Ketu over your Moon sign', 'கேது உங்கள் ராசியின் மேல்');

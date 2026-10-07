@@ -40,6 +40,7 @@ const phoneStation = (lat, lon) => stationObservation(lat, lon, getJsonNative);
 import { tamilDay } from './shared/tamilcal.js';
 import { remindBtn } from './remind.js';
 import { upcomingReminders, deleteReminder } from './remind.js';
+const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 const loader = (msg = '') => `<div class="loader"><i></i><i></i><i></i></div>${msg ? `<p class="muted center">${msg}</p>` : ''}`;
 const todayIso = () => new Date(Date.now() + state.loc.tz * 3600000).toISOString().slice(0, 10);
@@ -289,6 +290,8 @@ async function travelPlaylist() {
 function stopAll() { mantraUi.travelMode = false; mantraUi.playing = null; stopSpeaking(); keepAwake(false); drawMantraState(); }
 function drawMantraState() {
   $$('.mantra-card').forEach((c) => c.classList.toggle('playing', c.dataset.id === mantraUi.playing));
+  // Only the mantra playing now shows a count (a stopped one does not keep a stale "6 / 11").
+  $$('.mantra-card .pill[id^="mc-"]').forEach((p) => { if (p.id !== `mc-${mantraUi.playing}`) p.textContent = ''; });
   const t = $('#travelBtn');
   if (t) t.textContent = mantraUi.travelMode ? `⏹ ${L('Stop travel mantras', 'பயண மந்திரத்தை நிறுத்து')}` : `🚗 ${L('Travel mode — play continuously', 'பயண முறை — தொடர்ந்து ஒலிக்கும்')}`;
 }
@@ -694,7 +697,7 @@ function rolesCard(r, c) {
   const row = (lord, title, meaning) => `<div class="pari-row"><span class="pg" style="color:${COLOR[lord]}">${GLYPH[lord]}</span><div><b>${title}</b><p>${meaning}</p>
     <p class="small">⏳ ${esc(lordPeriods(lord, c).join(' · ') || bi(HORIZON_LINES.periods(AN_YEARS)))}</p><p class="small">🪔 ${hymnText(bi(NAVAGRAHA[lord].free))}</p></div></div>`;
   return `<div class="card glass"><div class="card-title">🧭 ${L('Badhakathipathi & Marakathipathi', 'பாதகாதிபதி & மாரகாதிபதி')} <span class="pill horizon-label">${esc(bi(horizonLabel(AN_YEARS)))}</span>${stabilityChip(c, 'lagna')}</div>
-    ${row(b.lord, `${L('Badhakathipathi', 'பாதகாதிபதி')}: ${esc(planetName(b.lord))} · ${L(`lord of the ${b.house}th house`, `${b.house}-ம் வீட்டு அதிபதி`)}`,
+    ${row(b.lord, `${L('Badhakathipathi', 'பாதகாதிபதி')}: ${esc(planetName(b.lord))} · ${L(`lord of the ${ordEn(b.house)} house`, `${b.house}-ம் வீட்டு அதிபதி`)}`,
     esc(L('The planet tradition links with delays and unexpected hurdles. In its periods, plan early, stay patient and do its parigaram — hurdles turn into lessons and growth.', 'தாமதம், எதிர்பாராத தடைகளுடன் மரபு இணைக்கும் கிரகம். அதன் காலங்களில் முன்கூட்டியே திட்டமிட்டு, பொறுமையுடன், அதன் பரிகாரம் செய்தால் தடைகள் பாடமாகவும் வளர்ச்சியாகவும் மாறும்.')))}
     ${marakas.map((k) => row(k, `${L('Marakathipathi', 'மாரகாதிபதி')}: ${esc(planetName(k))} · ${L(`lord of the ${[2, 7].filter((h) => (h === 2 ? mk.second.lord : mk.seventh.lord) === k).join(' & ')} house`, `${[2, 7].filter((h) => (h === 2 ? mk.second.lord : mk.seventh.lord) === k).join(', ')}-ம் வீட்டு அதிபதி`)}`,
     esc(L('Lord of the 2nd / 7th house from the Lagna. In the tradition these are the Maraka houses; the line below lists when this planet\'s periods run.', 'லக்னத்திலிருந்து 2 / 7-ம் வீட்டு அதிபதி. மரபில் இவை மாரக ஸ்தானங்கள்; இந்தக் கிரகத்தின் காலங்கள் கீழே உள்ளன.')))).join('')}

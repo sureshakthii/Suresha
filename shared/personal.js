@@ -6,6 +6,7 @@ import { RASIS, PLANETS, NAKSHATRAS } from './astro.js';
 import { NAVAGRAHA, grahaStrength, PRIMARY } from './remedies.js';
 import { ayulBalam } from './lifecheck.js';
 import { isHinduFaith, universalPractice, faithBlessing } from './faith.js';
+const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 const T = (en, ta) => ({ en, ta });
 const SEVEN = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
@@ -43,6 +44,8 @@ export function luckyNumbers(dateStr) {
 // One primary deity and mantra per planet, shared with every surface (shared/remedies.js PRIMARY).
 export const PLANET_DEITY = Object.fromEntries(Object.entries(PRIMARY).map(([k, v]) => [k, T(v.deity.en, v.deity.ta)]));
 export const DEITY_MANTRA = Object.fromEntries(Object.entries(PRIMARY).map(([k, v]) => [k, v.mantra.ta]));
+/** The same mantras in Latin letters, for the English screens (the Tamil script stays for Tamil voice / readers). */
+export const DEITY_MANTRA_EN = Object.fromEntries(Object.entries(PRIMARY).map(([k, v]) => [k, v.mantra.en]));
 
 /** Traditional worship deity for each birth star (நட்சத்திர வழிபாட்டுத் தெய்வம்). */
 export const STAR_DEITY = [
@@ -69,7 +72,7 @@ export function ishtaTheivam(chart) {
   const inTwelfth = Object.keys(P).filter((k) => k !== 'Lagna' && P[k].navamsaRasi === twelfth);
   const planet = inTwelfth.find((k) => k === 'Jupiter' || k === 'Venus') || inTwelfth[0] || RASIS[twelfth].lord;
   return {
-    planet, deity: PLANET_DEITY[planet], mantra: DEITY_MANTRA[planet], atmakaraka: ak,
+    planet, deity: PLANET_DEITY[planet], mantra: DEITY_MANTRA[planet], mantraEn: DEITY_MANTRA_EN[planet], atmakaraka: ak,
     starDeity: STAR_DEITY[chart.janmaNakshatra.index],
     optional: true,
     method: T('Jaimini Karakamsa method (12th from the Atmakaraka\'s navamsa) — one traditional method among several',
@@ -129,12 +132,12 @@ export function gemstones(chart) {
   const avoid = [];
   for (const h of [6, 8, 12]) {
     const p = lordOf(L, h);
-    if (!trineLords.includes(p) && !avoid.some((a) => a.planet === p)) avoid.push({ planet: p, gem: NAVAGRAHA[p].gem, role: T(`Lord of the ${h}th house`, `${h}-ம் அதிபதி`) });
+    if (!trineLords.includes(p) && !avoid.some((a) => a.planet === p)) avoid.push({ planet: p, gem: NAVAGRAHA[p].gem, role: T(`Lord of the ${ordEn(h)} house`, `${h}-ம் அதிபதி`) });
   }
   // Rahu / Ketu stones only when they sit in good houses (3, 6, 11).
   for (const k of ['Rahu', 'Ketu']) {
     const h = houseOf(L, chart.planets[k].rasi);
-    if (![3, 6, 11].includes(h)) avoid.push({ planet: k, gem: NAVAGRAHA[k].gem, role: T(`${k} in the ${h}th house`, `${PLANETS[k].ta} ${h}-ல்`) });
+    if (![3, 6, 11].includes(h)) avoid.push({ planet: k, gem: NAVAGRAHA[k].gem, role: T(`${k} in the ${ordEn(h)} house`, `${PLANETS[k].ta} ${h}-ல்`) });
   }
   const weakGood = good.filter((g) => st[g.planet].level === 'weak');
   return {
@@ -161,6 +164,8 @@ export const SIDDHARS = {
   Ketu: { ...T('Idaikadar', 'இடைக்காடர்'), place: T('Tiruvannamalai', 'திருவண்ணாமலை'), mantra: 'ஓம் ஸ்ரீ இடைக்காடர் திருவடிகளே போற்றி' },
 };
 
+for (const sd of Object.values(SIDDHARS)) sd.mantraEn = `Om Sri ${sd.en} Thiruvadigale Potri`;
+
 /** Proposed Siddhar: the janma-star lord's Siddhar, with the Atmakaraka's Siddhar as the second. */
 export function proposeSiddhar(chart) {
   const starLord = chart.janmaNakshatra.lord || NAKSHATRAS[chart.janmaNakshatra.index].lord;
@@ -181,20 +186,23 @@ export function proposeSiddhar(chart) {
 export function personalPlaylist(chart, now = new Date()) {
   const L = refRasi(chart);
   const list = [];
-  const add = (key, title, text, why, repeat = 9) => { if (!list.some((x) => x.text === text)) list.push({ key, title, text, why, repeat }); };
+  // text: Tamil script (spoken with the Tamil voice); textEn: the same mantra in Latin letters for English screens.
+  const add = (key, title, text, why, repeat = 9, textEn = text) => { if (!list.some((x) => x.text === text)) list.push({ key, title, text, textEn, why, repeat }); };
+  const grahaEn = (p) => String(NAVAGRAHA[p].mantra.en || '').split(' · ')[0];
   const ishta = ishtaTheivam(chart);
+  const starDeityEn = String(ishta.starDeity.en).split(' (')[0].split(' / ')[0].replace(/^(Lord|Goddess|Sri) /, '');
   const siddhar = proposeSiddhar(chart);
   const lagnaLord = lordOf(L, 1);
   const weak = grahaStrength(chart.planets).filter((g) => g.level === 'weak').sort((a, b) => a.score - b.score).slice(0, 2);
   const dasa = chart.dasa?.periods?.find((p) => now >= p.start && now < p.end);
-  add('start', T('Vinayagar — to begin', 'விநாயகர் — தொடக்கம்'), 'ஓம் கம் கணபதயே நமஹ', T('Removes obstacles before every prayer', 'எந்த வழிபாட்டிற்கும் முன் தடைகளை நீக்க'), 3);
-  add('ishta', T(`Ishta Theivam (Karakamsa method) — ${ishta.deity.en}`, `இஷ்ட தெய்வம் (காரகாம்ச முறை) — ${ishta.deity.ta}`), ishta.mantra, T('Suggested by the Karakamsa method — optional', 'காரகாம்ச முறையின் பரிந்துரை — விருப்பத்திற்குரியது'), 27);
-  add('star', T(`Birth-star deity — ${ishta.starDeity.en}`, `நட்சத்திரத் தெய்வம் — ${ishta.starDeity.ta}`), `ஓம் ${ishta.starDeity.ta.split(' (')[0].split(' / ')[0]} போற்றி`, T('Deity of your janma nakshatra', 'ஜன்ம நட்சத்திர வழிபாட்டுத் தெய்வம்'), 9);
-  if (chart.planets.Lagna) add('lagna', T(`Lagna lord — ${lagnaLord}`, `லக்னாதிபதி — ${PLANETS[lagnaLord].ta}`), NAVAGRAHA[lagnaLord].mantra.ta.split(' · ')[0], T('Strengthens health and confidence', 'ஆரோக்கியம், தன்னம்பிக்கை வலுப்பெற'), 9);
-  if (dasa) add('dasa', T(`Running dasa — ${dasa.lord}`, `நடப்பு தசை — ${PLANETS[dasa.lord].ta}`), NAVAGRAHA[dasa.lord].mantra.ta.split(' · ')[0], T('Brings out the best of the current Maha Dasa', 'நடப்பு மகா தசையின் நற்பலனுக்கு'), 9);
-  for (const w of weak) add(`weak_${w.planet}`, T(`Strengthen ${w.planet}`, `${PLANETS[w.planet].ta} பலம் பெற`), NAVAGRAHA[w.planet].mantra.ta.split(' · ')[0], T(`${w.planet} is weak in your chart`, `உங்கள் ஜாதகத்தில் ${PLANETS[w.planet].ta} பலம் குறைவு`), 9);
-  add('siddhar', T(`Siddhar — ${siddhar.main.en}`, `சித்தர் — ${siddhar.main.ta}`), siddhar.main.mantra, T('Your guiding Siddhar', 'உங்கள் வழிகாட்டும் சித்தர்'), 9);
-  add('navagraha', T('Navagraha — all nine', 'நவகிரகம் — ஒன்பதும்'), 'ஆதித்யாய ச சோமாய மங்களாய புதாய ச குரு சுக்ர சனிப்யஶ்ச ராஹவே கேதவே நமஹ', T('Balance of all planets', 'அனைத்து கிரகங்களின் சமநிலை'), 3);
+  add('start', T('Vinayagar — to begin', 'விநாயகர் — தொடக்கம்'), 'ஓம் கம் கணபதயே நமஹ', T('Removes obstacles before every prayer', 'எந்த வழிபாட்டிற்கும் முன் தடைகளை நீக்க'), 3, 'Om Gam Ganapataye Namaha');
+  add('ishta', T(`Ishta Theivam (Karakamsa method) — ${ishta.deity.en}`, `இஷ்ட தெய்வம் (காரகாம்ச முறை) — ${ishta.deity.ta}`), ishta.mantra, T('Suggested by the Karakamsa method — optional', 'காரகாம்ச முறையின் பரிந்துரை — விருப்பத்திற்குரியது'), 27, ishta.mantraEn);
+  add('star', T(`Birth-star deity — ${ishta.starDeity.en}`, `நட்சத்திரத் தெய்வம் — ${ishta.starDeity.ta}`), `ஓம் ${ishta.starDeity.ta.split(' (')[0].split(' / ')[0]} போற்றி`, T('Deity of your janma nakshatra', 'ஜன்ம நட்சத்திர வழிபாட்டுத் தெய்வம்'), 9, `Om ${starDeityEn} Potri`);
+  if (chart.planets.Lagna) add('lagna', T(`Lagna lord — ${lagnaLord}`, `லக்னாதிபதி — ${PLANETS[lagnaLord].ta}`), NAVAGRAHA[lagnaLord].mantra.ta.split(' · ')[0], T('Strengthens health and confidence', 'ஆரோக்கியம், தன்னம்பிக்கை வலுப்பெற'), 9, grahaEn(lagnaLord));
+  if (dasa) add('dasa', T(`Running dasa — ${dasa.lord}`, `நடப்பு தசை — ${PLANETS[dasa.lord].ta}`), NAVAGRAHA[dasa.lord].mantra.ta.split(' · ')[0], T('Brings out the best of the current Maha Dasa', 'நடப்பு மகா தசையின் நற்பலனுக்கு'), 9, grahaEn(dasa.lord));
+  for (const w of weak) add(`weak_${w.planet}`, T(`Strengthen ${w.planet}`, `${PLANETS[w.planet].ta} பலம் பெற`), NAVAGRAHA[w.planet].mantra.ta.split(' · ')[0], T(`${w.planet} is weak in your chart`, `உங்கள் ஜாதகத்தில் ${PLANETS[w.planet].ta} பலம் குறைவு`), 9, grahaEn(w.planet));
+  add('siddhar', T(`Siddhar — ${siddhar.main.en}`, `சித்தர் — ${siddhar.main.ta}`), siddhar.main.mantra, T('Your guiding Siddhar', 'உங்கள் வழிகாட்டும் சித்தர்'), 9, siddhar.main.mantraEn);
+  add('navagraha', T('Navagraha — all nine', 'நவகிரகம் — ஒன்பதும்'), 'ஆதித்யாய ச சோமாய மங்களாய புதாய ச குரு சுக்ர சனிப்யஶ்ச ராஹவே கேதவே நமஹ', T('Balance of all planets', 'அனைத்து கிரகங்களின் சமநிலை'), 3, 'Adityaya cha Somaya Mangalaya Budhaya cha Guru Shukra Shanibhyashcha Rahave Ketave Namaha');
   return list;
 }
 

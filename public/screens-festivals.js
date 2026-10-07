@@ -17,7 +17,7 @@ const FILTERS = [
   { id: 'vratham', en: 'Vratham', ta: 'விரதங்கள்' },
   { id: 'monthly', en: 'Monthly days', ta: 'மாதாந்திர நாட்கள்' },
 ];
-const ui = { filter: 'all' };
+const ui = { filter: 'all', fromList: false, listY: 0 };
 const cache = new Map(); // place|day -> rows
 const LOADER = '<div class="loader"><i></i><i></i><i></i></div>';
 const tz = () => state.loc?.tz ?? 5.5;
@@ -87,7 +87,9 @@ function draw(sec) {
       }).join('')}</section>`;
   }
   box.innerHTML = html || `<div class="card glass"><p class="muted">${L('Nothing in this filter.', 'இந்த வகையில் எதுவும் இல்லை.')}</p></div>`;
-  $$('[data-fx-id]', box).forEach((b) => b.addEventListener('click', () => go('festivals', { id: b.dataset.fxId })));
+  $$('[data-fx-id]', box).forEach((b) => b.addEventListener('click', () => { ui.fromList = true; ui.listY = scrollY; go('festivals', { id: b.dataset.fxId }); }));
+  // Back from a detail page opened from this list: return to the same place in the list.
+  if (ui.restoreY != null) { const y = ui.restoreY; ui.restoreY = null; requestAnimationFrame(() => scrollTo({ top: y })); }
 }
 
 function renderDetail(sec, id) {
@@ -129,8 +131,14 @@ function renderDetail(sec, id) {
     </div><p class="small muted">${L('Traditional / puranic accounts — practices vary by family and region.', 'மரபு / புராணச் செய்திகள் — குடும்பம், பகுதிக்கு ஏற்ப வழக்கங்கள் மாறலாம்.')}</p></div>`;
   $('#fxSpeak', sec)?.addEventListener('click', () => speak(spoken, { rate: 0.8 }));
   $$('[data-fx-temple]', sec).forEach((b) => b.addEventListener('click', () => go('temples', { temple: b.dataset.fxTemple })));
-  $('#fxAsk', sec).addEventListener('click', () => go('chat', { q: ta() ? `${e.names.ta} ஏன், எப்படி?` : `Why and how is ${e.names.en} observed?` }));
-  $('#fxBack', sec).addEventListener('click', () => go('festivals'));
+  $('#fxAsk', sec).addEventListener('click', () => go('chat', { q: ta() ? `${e.names.ta} ஏன், எப்படி?` : `Why and how is ${e.names.en} observed?`, mode: 'general' }));
+  const toList = () => { ui.restoreY = ui.fromList ? ui.listY : null; ui.fromList = false; go('festivals', {}, { back: true }); };
+  $('#fxBack', sec).addEventListener('click', toList);
+  // List and detail are one screen id, so the shared back stack has no entry for the list: ‹ returns to it directly
+  // when the detail was opened from the list (from Ask or a link, ‹ keeps going back to where the person came from).
+  if (ui.fromList) { const back = $('.back-btn', sec); back?.removeAttribute('data-back'); back?.addEventListener('click', toList); }
 }
 
+// Leaving the screen forgets that a detail page was opened from the list.
+document.addEventListener('kj:screen', (e) => { if (e.detail !== 'festivals') ui.fromList = false; });
 registerScreen('festivals', { render, parent: 'home', needsLoc: true });

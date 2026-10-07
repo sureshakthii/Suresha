@@ -232,7 +232,7 @@ async function renderNames(sec) {
   const info = birthInfo();
   if (nf.mode === 'family' && info.gender && nf.genderFor !== nf.memberId) { nf.gender = info.gender; nf.genderFor = nf.memberId; }
   sec.innerHTML = `${subHeader(L('Baby Names', 'குழந்தை பெயர்கள்'), L('Names by birth star and numerology', 'நட்சத்திரமும் எண்கணிதமும் பார்த்துப் பெயர்கள்'))}
-    ${formCard(info)}${luckyCard(info)}${filterCard()}<div id="nmResults"></div>
+    <div class="nm-cols"><div class="nm-side">${formCard(info)}${luckyCard(info)}${filterCard()}</div><div id="nmResults"></div></div>
     <p class="small muted nm-note">${L('Meanings are short, commonly accepted ones. Numerology follows the Chaldean (Cheiro) system used across the app.', 'பொருள்கள் சுருக்கமான, பொதுவாக ஏற்கப்பட்டவை. எண்கணிதம் செயலி முழுவதும் பயன்படும் கல்டியன் (கீரோ) முறைப்படி.')}</p>`;
   drawResults(sec, info);
   const rerender = () => { nf.shown = PAGE; renderNames(sec); };

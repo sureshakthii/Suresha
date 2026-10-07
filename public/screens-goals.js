@@ -68,7 +68,9 @@ export function goalsCardHtml() {
   let s; try { s = loadGoals(); } catch { s = emptyGoals(); }
   const g = topGoal(s);
   if (!g) {
-    return `<button type="button" class="goal-set-row" data-go="goals" data-param='{"new":true}'>🎯 <span>${L('Set a goal — marriage, journey, career…', 'ஓர் இலக்கை அமையுங்கள் — திருமணம், பயணம், வேலை…')}</span> <span aria-hidden="true">›</span></button>`;
+    // A child is active on Today: no marriage / career examples (QA-A).
+    const minor = activeMember() && ageProfile(activeMember(), { tz: tz() }).minor;
+    return `<button type="button" class="goal-set-row" data-go="goals" data-param='{"new":true}'>🎯 <span>${minor ? L('Set a goal — studies, journey, health…', 'ஓர் இலக்கை அமையுங்கள் — படிப்பு, பயணம், ஆரோக்கியம்…') : L('Set a goal — marriage, journey, career…', 'ஓர் இலக்கை அமையுங்கள் — திருமணம், பயணம், வேலை…')}</span> <span aria-hidden="true">›</span></button>`;
   }
   const ns = nextStep(g);
   const pc = progress(g);

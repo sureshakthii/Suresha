@@ -1,7 +1,7 @@
 // Personal guide (என் வழிகாட்டி) for every family member, and a big, simple Panchangam (பஞ்சாங்கம்)
 // for elders with a quick "vibe" card for the young generation.
 import { NAKSHATRAS, RASIS, panchang } from './shared/astro.js';
-import { tamilDay } from './shared/tamilcal.js';
+import { tamilDay, offsetOnDay } from './shared/tamilcal.js';
 import { personalGuide, DAY_COLOR } from './shared/personal.js';
 import { faithOf, TRADITIONAL_OPTIONAL } from './shared/faith.js';
 import {
@@ -16,6 +16,8 @@ const WEEK_TA = ['ஞாயிறு', 'திங்கள்', 'செவ்வ
 const WEEK_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const dayName = (i) => (ta() ? WEEK_TA[i] : WEEK_EN[i]);
 const people = () => state.family.filter((m) => m.relation !== 'organization');
+// A mantra: Tamil script on Tamil screens; on English screens the Latin-letter form first, the Tamil script under it.
+const mantraHtml = (taText, enText) => (ta() || !enText || enText === taText ? esc(taText) : `${esc(enText)}<br><span class="muted" lang="ta">${esc(taText)}</span>`);
 const swatch = (c, big = false) => `<span class="swatch${big ? ' big' : ''}" style="background:${c.hex}" aria-hidden="true"></span>`;
 
 /** "Guru Vakku" — today's personal word from Thunai for the active member: outlook, colour, number. Used on home. */
@@ -29,7 +31,7 @@ export function todayColorCard() {
   const word = {
     good: L('A strong day — begin important work with confidence.', 'நல்ல நாள் — முக்கிய வேலைகளைத் தைரியமாகத் தொடங்குங்கள்.'),
     warn: !g.hindu ? L('A steady day — plan well and keep a quiet moment of prayer in your own way.', 'நிதானமான நாள் — திட்டமிட்டுச் செயல்படுங்கள்; உங்கள் வழியில் சிறிது நேரம் அமைதியான பிரார்த்தனை.') : L('A steady day — plan well and remember your Ishta Theivam.', 'நிதானமான நாள் — திட்டமிட்டுச் செயல்படுங்கள், இஷ்ட தெய்வத்தை நினையுங்கள்.'),
-    bad: !g.hindu ? L('A day to stay calm — postpone new starts and take a few quiet minutes of prayer in your own faith.', 'அமைதி காக்கும் நாள் — புதிய முயற்சிகளைத் தள்ளிவைத்து, உங்கள் நம்பிக்கைப்படி சில நிமிட அமைதியான பிரார்த்தனை.') : L(`A day to stay calm — postpone new starts and chant ${g.ishta.mantra}.`, `அமைதி காக்கும் நாள் — புதிய முயற்சிகளைத் தள்ளிவைத்து "${g.ishta.mantra}" சொல்லுங்கள்.`),
+    bad: !g.hindu ? L('A day to stay calm — postpone new starts and take a few quiet minutes of prayer in your own faith.', 'அமைதி காக்கும் நாள் — புதிய முயற்சிகளைத் தள்ளிவைத்து, உங்கள் நம்பிக்கைப்படி சில நிமிட அமைதியான பிரார்த்தனை.') : L(`A day to stay calm — postpone new starts and chant ${g.ishta.mantraEn || g.ishta.mantra}.`, `அமைதி காக்கும் நாள் — புதிய முயற்சிகளைத் தள்ளிவைத்து "${g.ishta.mantra}" சொல்லுங்கள்.`),
   }[o.overall];
   return `<div class="card glass color-today guru" data-go="guide">${swatch(g.today, true)}
     <div style="flex:1;min-width:0"><div class="mini-label">🙏 ${L('Guru Vakku for', 'குரு வாக்கு')} · ${esc(displayName(m))}</div>
@@ -38,7 +40,7 @@ export function todayColorCard() {
 }
 
 // ================================================================ PERSONAL GUIDE
-const guideUi = { id: null, playing: false };
+const guideUi = { id: null, active: null, playing: false };
 let wakeLock = null;
 async function keepAwake(on) {
   try {
@@ -49,16 +51,20 @@ async function keepAwake(on) {
 
 function renderGuide(sec) {
   const pool = people();
+  // A person picked on this screen is kept while it is open, but switching the active person elsewhere wins.
+  if (guideUi.active !== state.activeId) { guideUi.active = state.activeId; guideUi.id = null; }
   const m = pool.find((x) => x.id === guideUi.id) || (activeMember()?.relation !== 'organization' ? activeMember() : pool[0]);
   if (!m) { sec.innerHTML = `${subHeader(L('My Guide', 'என் வழிகாட்டி'))}<p class="muted center">${L('Add a family member first.', 'முதலில் குடும்ப உறுப்பினரைச் சேர்க்கவும்.')}</p>`; return; }
   guideUi.id = m.id;
   const c = chartOf(m);
   const g = personalGuide(c, { date: m.date, faith: faithOf(m) });
+  // Unknown birth time: no Lagna (chart.lagna / planets.Lagna are empty) — say so instead of failing.
+  const lagnaRasi = c.lagna?.rasi ?? c.planets?.Lagna?.rasi ?? null;
   const locked = isLocked('predictions');
   sec.innerHTML = `${subHeader(L('My Guide', 'என் வழிகாட்டி'), L('Lucky number, colour, Ishta Theivam, gemstones, Siddhar and your own mantra playlist', 'அதிர்ஷ்ட எண், நிறம், இஷ்ட தெய்வம், ரத்தினம், சித்தர், உங்கள் மந்திரப் பட்டியல்'))}
     ${pool.length > 1 ? `<div class="member-switch">${pool.map((x) => `<button class="mchip${x.id === m.id ? ' sel' : ''}" data-gid="${esc(x.id)}">${esc(displayName(x))}</button>`).join('')}</div>` : ''}
-    <div class="card glass guide-head"><div class="g-avatar">${GLYPH[g.lagnaLord]}</div><div><b>${esc(displayName(m))}</b>
-      <div class="muted small">${L('Lagna', 'லக்னம்')}: ${esc(rasiName(c.lagna.rasi ?? c.planets.Lagna.rasi))} · ${L('Star', 'நட்சத்திரம்')}: ${esc(nakName(c.janmaNakshatra.index))} · ${L('Rasi', 'ராசி')}: ${esc(rasiName(c.janmaRasi.index))}</div></div></div>
+    <div class="card glass guide-head"><div class="g-avatar">${GLYPH[g.lagnaLord || RASIS[c.janmaRasi.index].lord] || '☽'}</div><div><b>${esc(displayName(m))}</b>
+      <div class="muted small">${lagnaRasi == null ? L('Lagna needs the birth time', 'லக்னத்திற்குப் பிறந்த நேரம் தேவை') : `${L('Lagna', 'லக்னம்')}: ${esc(rasiName(lagnaRasi))}`} · ${L('Star', 'நட்சத்திரம்')}: ${esc(nakName(c.janmaNakshatra.index))} · ${L('Rasi', 'ராசி')}: ${esc(rasiName(c.janmaRasi.index))}</div></div></div>
 
     <div class="card glass"><div class="card-title">👕 ${L('Colour to wear today', 'இன்று அணிய வேண்டிய நிறம்')}</div>
       <div class="color-big">${swatch(g.today, true)}<div><b>${esc(bi(g.today))}</b><p class="small">${esc(bi(g.today.note))}</p></div></div>
@@ -75,7 +81,7 @@ function renderGuide(sec) {
     ${g.hindu ? '' : `<div class="card glass"><div class="card-title">🙏 ${L('A practice for you', 'உங்களுக்கான எளிய வழி')}</div><p>${esc(bi(g.practice))}</p>${g.blessing ? `<p class="small">${esc(bi(g.blessing))}</p>` : ''}</div>`}
     ${g.hindu ? '' : `<details class="card glass disclose"><summary>${L('Traditional Hindu guidance (optional)', 'இந்து மரபு வழிகாட்டல் (விருப்பம்)')}</summary><p class="small muted">${esc(bi(TRADITIONAL_OPTIONAL))}</p>`}
     <div class="card glass"><div class="card-title">🙏 ${L('Ishta Theivam', 'இஷ்ட தெய்வம்')}</div>
-      <p class="big-line">${esc(bi(g.ishta.deity))}</p><p class="small">🕉️ ${esc(g.ishta.mantra)}</p>
+      <p class="big-line">${esc(bi(g.ishta.deity))}</p><p class="small">🕉️ ${mantraHtml(g.ishta.mantra, g.ishta.mantraEn)}</p>
       <p class="small">⭐ ${L('Your birth-star deity', 'உங்கள் நட்சத்திர வழிபாட்டுத் தெய்வம்')}: <b>${esc(bi(g.ishta.starDeity))}</b></p>
       <p class="muted small">${L('How we found it', 'கணக்கு')}: ${esc(bi(g.ishta.why))}</p></div>
     ${g.hindu ? '' : '</details>'}
@@ -91,7 +97,7 @@ function renderGuide(sec) {
     ${g.hindu ? '' : `<details class="card glass disclose"><summary>${L('Siddhar tradition (optional)', 'சித்தர் மரபு (விருப்பம்)')}</summary>`}
     <div class="card glass siddhar"><div class="card-title">🧘 ${L('Your Siddhar', 'உங்கள் சித்தர்')} <span class="pill">${L('Our proposal', 'எங்கள் பரிந்துரை')}</span></div>
       <p class="big-line">${esc(bi(g.siddhar.main))}</p><p class="small">📍 ${L('Jeeva Samadhi', 'ஜீவ சமாதி')}: ${esc(bi(g.siddhar.main.place))}</p>
-      <p class="small">🕉️ ${esc(g.siddhar.main.mantra)}</p>
+      <p class="small">🕉️ ${mantraHtml(g.siddhar.main.mantra, g.siddhar.main.mantraEn)}</p>
       ${g.siddhar.second ? `<p class="small">➕ ${L('Also', 'மேலும்')}: <b>${esc(bi(g.siddhar.second))}</b> (${esc(bi(g.siddhar.second.place))})</p>` : ''}
       <p class="muted small">${esc(bi(g.siddhar.why))}</p><p class="small">${esc(bi(g.siddhar.howTo))}</p></div>
     ${g.hindu ? '' : '</details>'}
@@ -101,7 +107,7 @@ function renderGuide(sec) {
       <p class="muted small">${L('Made from your chart — listen in the morning, while travelling or before sleep.', 'உங்கள் ஜாதகத்திலிருந்து உருவானது — காலையில், பயணத்தில், உறங்கும் முன் கேளுங்கள்.')}</p>
       <button class="btn-gold" id="plAll">${guideUi.playing ? `⏹ ${L('Stop', 'நிறுத்து')}` : `▶️ ${L('Play all', 'அனைத்தையும் ஒலி')}`}</button>
       ${g.playlist.map((p, i) => `<div class="pl-item" id="pl-${i}"><button class="play-btn" data-pl="${i}" aria-label="${esc(L('Play', 'ஒலி'))}">▶</button>
-        <div style="flex:1;min-width:0"><b>${esc(bi(p.title))}</b><div class="small">${esc(p.text)}</div><div class="muted small">${esc(bi(p.why))} · ×${p.repeat}</div></div><span class="pl-count" id="plc-${i}"></span></div>`).join('')}
+        <div style="flex:1;min-width:0"><b>${esc(bi(p.title))}</b><div class="small">${mantraHtml(p.text, p.textEn)}</div><div class="muted small">${esc(bi(p.why))} · ×${p.repeat}</div></div><span class="pl-count" id="plc-${i}"></span></div>`).join('')}
       <p class="muted small">${L('Uses your phone\'s Tamil voice. If silent: Settings → Google Text-to-speech → install Tamil.', 'உங்கள் கைப்பேசியின் தமிழ் குரலைப் பயன்படுத்தும். ஒலிக்காவிட்டால்: Settings → Google Text-to-speech → தமிழ் நிறுவவும்.')}</p></div>` : ''}`}
     <div class="btn-row"><button class="chip-btn" data-go="parigaram">🪔 ${L('Parigaram', 'பரிகாரம்')}</button>${g.hindu ? `<button class="chip-btn" data-go="temples">🛕 ${L('Temples', 'கோவில்கள்')}</button>` : ''}<button class="chip-btn" data-go="analysis">📜 ${L('Full analysis', 'முழு ஆய்வு')}</button></div>`;
 
@@ -161,13 +167,15 @@ function dayFor(offset) {
   const loc = state.loc;
   const [d, m, y] = fmtDate(new Date(Date.now() + offset * 86400000), loc.tz).split('-').map(Number); // local DD-MM-YYYY
   const base = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  const noon = new Date(Date.UTC(y, m - 1, d, 12) - loc.tz * 3600000);
-  return { iso: base, noon, td: tamilDay(noon, loc.lat, loc.lon, loc.tz) };
+  // The clock offset in force on THAT day (London after the clocks go back, Toronto in March…), not today's.
+  const tz = offset ? offsetOnDay(y, m - 1, d, loc.tz, loc.zone) : loc.tz;
+  const noon = new Date(Date.UTC(y, m - 1, d, 12) - tz * 3600000);
+  return { iso: base, noon, tz, td: tamilDay(noon, loc.lat, loc.lon, tz) };
 }
 
 function renderPanchangam(sec) {
-  const loc = state.loc;
-  const { iso, noon, td } = dayFor(panUi.offset);
+  const { iso, noon, td, tz } = dayFor(panUi.offset);
+  const loc = { ...state.loc, tz };
   const isToday = panUi.offset === 0;
   const snapNow = isToday ? (state.snap || panchang(new Date(), loc.lat, loc.lon, loc.tz)) : panchang(noon, loc.lat, loc.lon, loc.tz);
   const wd = td.weekday.index;
@@ -181,9 +189,9 @@ function renderPanchangam(sec) {
   const spokenTa = `${td.tamil.year.ta} வருடம், ${td.tamil.monthTa} ${td.tamil.day}, ${td.weekday.ta}. திதி ${td.tithi.ta}. நட்சத்திரம் ${NAKSHATRAS[td.nakshatra.index].ta}. யோகம் ${td.yoga.ta || td.yoga.name}. ராகு காலம் ${t(td.rahuKalam.start)} முதல் ${t(td.rahuKalam.end)} வரை. எமகண்டம் ${t(td.yamagandam.start)} முதல் ${t(td.yamagandam.end)} வரை. சூலம் ${so[1]}, பரிகாரம் ${so[3]}. சந்திராஷ்டமம் ${starsInRasi(cRasi).map((s) => NAKSHATRAS[s].ta).join(', ')}.`;
   const spokenEn = `${td.weekday.en}, ${td.tamil.monthEn} ${td.tamil.day}. Tithi ${td.tithi.name}. Star ${NAKSHATRAS[td.nakshatra.index].en}. Rahu kalam ${t(td.rahuKalam.start)} to ${t(td.rahuKalam.end)}. Soolam ${so[0]}.`;
   sec.innerHTML = `${subHeader(L('Panchangam', 'பஞ்சாங்கம்'), `📍 ${esc(placeName(loc.name))}`)}
-    <div class="pan-nav"><button class="chip-btn" id="panPrev" aria-label="${esc(L('Previous day', 'முந்தைய நாள்'))}">‹ ${L('Yesterday', 'முந்தைய')}</button>
+    <div class="pan-nav"><button class="chip-btn" id="panPrev" aria-label="${esc(L('Previous day', 'முந்தைய நாள்'))}">‹ ${isToday ? L('Yesterday', 'நேற்று') : L('Previous day', 'முந்தைய')}</button>
       ${isToday ? `<span class="pill">${L('Today', 'இன்று')}</span>` : `<button class="chip-btn" id="panToday">${L('Today', 'இன்று')}</button>`}
-      <button class="chip-btn" id="panNext" aria-label="${esc(L('Next day', 'அடுத்த நாள்'))}">${L('Tomorrow', 'அடுத்த')} ›</button></div>
+      <button class="chip-btn" id="panNext" aria-label="${esc(L('Next day', 'அடுத்த நாள்'))}">${isToday ? L('Tomorrow', 'நாளை') : L('Next day', 'அடுத்த')} ›</button></div>
     <div class="btn-row"><button class="chip-btn" id="panBig">🔠 ${state.settings.large ? L('Normal text', 'சாதாரண எழுத்து') : L('Big text', 'பெரிய எழுத்து')}</button>
       <button class="chip-btn" id="panSpeak">🔊 ${L('Read aloud', 'வாசித்துக்காட்டு')}</button><button class="chip-btn" id="panShare">📤 ${L('Share', 'பகிர்')}</button></div>
 

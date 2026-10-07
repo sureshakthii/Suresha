@@ -6,6 +6,7 @@ import { PLANET_DEITY, DEITY_MANTRA, STAR_DEITY } from './personal.js';
 import { PRIMARY } from './remedies.js';
 import { ageProfile } from './age-guard.js';
 import { isHinduFaith, universalPractice, faithBlessing } from './faith.js';
+const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 const T = (en, ta) => ({ en, ta });
 const WEEKDAY_LORD = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
@@ -97,9 +98,9 @@ export function dailyReview(chart, snap, now = new Date(), { faith = 'hindu' } =
   let score = 0;
   const why = [];
   if (chandrashtamam) { score -= 3; why.push(T(`Chandrashtamam: today's Moon in ${RASIS[snap.moonRasi.index].en} is 8th from your rasi ${RASIS[jr].en}`, `சந்திராஷ்டமம்: இன்றைய சந்திரன் ${RASIS[snap.moonRasi.index].ta} — உங்கள் ${RASIS[jr].ta} ராசிக்கு 8-ம் இடம்`)); }
-  else if (CHANDRA_GOOD.has(chandra)) { score += 2; why.push(T(`Chandra balam: Moon in the ${chandra}th from your rasi — supportive`, `சந்திர பலம்: சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — சாதகம்`)); }
-  else if (CHANDRA_BAD.has(chandra)) { score -= 1; why.push(T(`Moon in the ${chandra}th from your rasi — go gently`, `சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — நிதானம்`)); }
-  else why.push(T(`Moon in the ${chandra}th from your rasi — neutral`, `சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — சமம்`));
+  else if (CHANDRA_GOOD.has(chandra)) { score += 2; why.push(T(`Chandra balam: Moon in the ${ordEn(chandra)} from your rasi — supportive`, `சந்திர பலம்: சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — சாதகம்`)); }
+  else if (CHANDRA_BAD.has(chandra)) { score -= 1; why.push(T(`Moon in the ${ordEn(chandra)} from your rasi — go gently`, `சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — நிதானம்`)); }
+  else why.push(T(`Moon in the ${ordEn(chandra)} from your rasi — neutral`, `சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — சமம்`));
   const taraName = TARA[taraN - 1];
   if (TARA_GOOD.has(taraN)) { score += 2; why.push(T(`Tara balam: today's star ${NAKSHATRAS[snap.nakshatra.index].en} is ${taraName.en} tara for you — favourable`, `தாரா பலம்: இன்றைய ${NAKSHATRAS[snap.nakshatra.index].ta} உங்களுக்கு ${taraName.ta} தாரை — சாதகம்`)); }
   else if (TARA_BAD.has(taraN)) { score -= 2; why.push(T(`Today's star ${NAKSHATRAS[snap.nakshatra.index].en} is ${taraName.en} tara for you — avoid new beginnings`, `இன்றைய ${NAKSHATRAS[snap.nakshatra.index].ta} உங்களுக்கு ${taraName.ta} தாரை — புதிய தொடக்கம் தவிர்க்கவும்`)); }

@@ -268,6 +268,8 @@ export function readClockTime(v) {
   let period = null;
   if (suffix && /^a/.test(suffix)) period = 'am'; else if (suffix && /^p/.test(suffix)) period = 'pm'; else if (suffix && /^h/.test(suffix)) period = '24h';
   if (!period) for (const [w, p] of PERIODS) if (s.includes(w) || ls.includes(w)) { period = p; break; }
+  // OCR often drops the final vowel sign: "கால 10.35" for காலை, "மால 6.20" for மாலை (a whole word only, never காலம்).
+  if (!period) { if (/(^|[\s:])கால(?=[\s\d.]|$)/.test(s)) period = 'am'; else if (/(^|[\s:])மால(?=[\s\d.]|$)/.test(s)) period = 'pm'; }
   const hh = (x) => String(x % 24).padStart(2, '0'), mm = String(min).padStart(2, '0');
   let hours;
   let candidates = null;

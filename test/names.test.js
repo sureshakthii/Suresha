@@ -131,3 +131,13 @@ test('luck summary lists birth, destiny and lucky numbers with matching letters'
   const text = shareText(suggestNames({ star: 7, pada: 2 }).results.slice(0, 3), 'ta');
   assert.equal(text.split('\n').length, 3);
 });
+
+test('name search forgives common English misspellings only when nothing matches exactly', async () => {
+  const { suggestNames, looseKey } = await import('../shared/baby-names.js');
+  assert.equal(looseKey('Murugan'), looseKey('murgan'));
+  assert.ok(suggestNames({ query: 'murgan' }).results.some((r) => r.name.en === 'Murugan'));
+  assert.ok(suggestNames({ query: 'kartik' }).results.some((r) => /^Karthik/.test(r.name.en)));
+  // An exact hit keeps the strict list (no loose extras).
+  assert.ok(suggestNames({ query: 'Karthik' }).results.every((r) => /karthi/i.test(r.name.en) || /karthi/i.test(r.name.meaning.en)));
+  assert.equal(suggestNames({ query: 'xyzzy' }).results.length, 0);
+});

@@ -1,9 +1,9 @@
 // Trust & privacy screens: birth-time dependence, "Why this result?", calculation conventions,
 // and the privacy centre (what stays on the phone, what reaches servers, consent, export, deletion).
 import { TIME_DEPENDENCE } from './shared/birthtime.js';
-import { CONVENTIONS } from './shared/version.js';
+import { CONVENTIONS, CONVENTIONS_TA } from './shared/version.js';
 import {
-  state, $, $$, L, esc, bi, STATIC, store, api, go, registerScreen, subHeader, toast, activeMember, displayName, saveFamily, BRAND,
+  state, $, $$, L, ta, esc, bi, STATIC, store, api, go, registerScreen, subHeader, toast, activeMember, displayName, saveFamily, BRAND,
 } from './core.js';
 import { reliabilityOf } from './screens-main.js';
 
@@ -44,7 +44,7 @@ registerScreen('why', { render: renderWhy, parent: 'chart' });
 function renderCalc(sec) {
   const label = { ephemeris: ['Ephemeris', 'கிரகக் கணிப்பு'], ayanamsa: ['Ayanamsa', 'அயனாம்சம்'], nodes: ['Rahu / Ketu', 'ராகு / கேது'], houses: ['Houses', 'பாவங்கள்'], lagna: ['Lagnam', 'லக்னம்'], sunrise: ['Sunrise', 'சூரிய உதயம்'], vedicDay: ['Panchangam day', 'பஞ்சாங்க நாள்'], timezone: ['Time zone & daylight saving', 'நேர மண்டலம்'], dasa: ['Dasa', 'தசை'], horai: ['Horai', 'ஓரை'], rahuKalam: ['Rahu Kalam', 'ராகு காலம்'] };
   sec.innerHTML = `${subHeader(L('Calculation methods', 'கணிப்பு முறைகள்'), '', 'more')}
-    <div class="card glass"><dl class="kv">${Object.entries(CONVENTIONS).map(([k, v]) => `<dt>${L(...label[k])}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
+    <div class="card glass"><dl class="kv">${Object.entries(CONVENTIONS).map(([k, v]) => `<dt>${L(...label[k])}</dt><dd>${esc(ta() ? CONVENTIONS_TA[k] || v : v)}</dd>`).join('')}</dl></div>
     <div class="note-box">${L('Coordinates come from the built-in gazetteer or what you enter. With a known time zone (built-in places, or a zone you choose) the historical UTC offset and daylight saving in force on the birth date are applied automatically from the time-zone database — including India’s war-time +6:30. A clock time that did not exist or happened twice when clocks changed is flagged (a repeated hour uses the earlier time). Reference checks against published positions and panchangam boundaries run in the automated tests (docs/CALCULATIONS.md).', 'அட்ச/தீர்க்க ரேகைகள் உள்ளமைந்த பட்டியலிலிருந்து அல்லது நீங்கள் உள்ளிடுவதிலிருந்து. நேர மண்டலம் தெரிந்தால் (உள்ளமைந்த இடங்கள் அல்லது நீங்கள் தேர்ந்த மண்டலம்), பிறந்த நாளில் நடைமுறையில் இருந்த UTC நேர வேறுபாடும் பகல் சேமிப்பு நேரமும் நேர மண்டலத் தரவுத்தளத்திலிருந்து தானாகப் பயன்படுத்தப்படும் — இந்தியாவின் போர்க்கால +6:30 உட்பட. கடிகாரம் மாற்றப்பட்டபோது இல்லாத அல்லது இருமுறை வந்த நேரம் தனியாகக் குறிக்கப்படும் (இருமுறை வந்த நேரத்திற்கு முந்தையது எடுக்கப்படும்).')}</div>`;
 }
 registerScreen('calc', { render: renderCalc, parent: 'more' });

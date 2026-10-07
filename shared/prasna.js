@@ -2,6 +2,7 @@
 // Rules follow common Tamil panchangam practice: Horai, Rahu Kalam / Yamagandam / Guligai,
 // Tara Bala, Chandra Bala / Chandrashtamam, Nakshatra nature, Tithi, Yoga, weekday and Prasna Lagna.
 import { panchang, RASIS, NAKSHATRAS } from './astro.js';
+const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 export const CATEGORIES = [
   {
@@ -473,8 +474,8 @@ export function scoreSnapshot(snap, category, birth, opts = {}) {
     if (mal.length) add('lagna_malefic', `Malefic ${mal.join(', ')} in Prasna Lagna`, 'பிரசன்ன லக்னத்தில் பாபர்', -5 * mal.length);
     const lord = RASIS[lagna.rasi].lord;
     const house = ((snap.planets[lord].rasi - lagna.rasi + 12) % 12) + 1;
-    if ([6, 8, 12].includes(house)) add('lagna_lord', `Lagna lord ${lord} in ${house}th house (dusthana)`, `லக்னாதிபதி ${house}-ல் — பலவீனம்`, -6);
-    else if ([1, 4, 5, 7, 9, 10].includes(house)) add('lagna_lord', `Lagna lord ${lord} strong in ${house}th house`, `லக்னாதிபதி ${house}-ல் — பலம்`, 5);
+    if ([6, 8, 12].includes(house)) add('lagna_lord', `Lagna lord ${lord} in ${ordEn(house)} house (dusthana)`, `லக்னாதிபதி ${house}-ல் — பலவீனம்`, -6);
+    else if ([1, 4, 5, 7, 9, 10].includes(house)) add('lagna_lord', `Lagna lord ${lord} strong in ${ordEn(house)} house`, `லக்னாதிபதி ${house}-ல் — பலம்`, 5);
   }
 
   if (lagna && cat.goodLagna) {
@@ -750,7 +751,7 @@ export function prasnaSummary(result, category) {
     : practical ? T2('Keep to your real deadline.', 'உங்கள் உண்மையான காலக்கெடுப்படி செய்யுங்கள்.')
       : result.verdict === 'CAUTION' ? T2('You can go ahead with care.', 'கவனத்துடன் செய்யலாம்.')
         : T2('Prepare now and begin at the better time.', 'இப்போது தயார் செய்து, நல்ல நேரத்தில் தொடங்குங்கள்.');
-  const doNow = T2(`${lead} ${step.en}`, `${lead.ta} ${step.ta}`);
+  const doNow = T2(`${lead.en} ${step.en}`, `${lead.ta} ${step.ta}`);
   const parigaram = go ? null : (PARIGARAM[cat?.group] || PARIGARAM.default);
   return { reasons, doNow, parigaram };
 }

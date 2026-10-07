@@ -75,7 +75,8 @@ function renderGunaMilan(sec) {
   injectCss();
   sec.innerHTML = `${subHeader(L('Guna Milan (36 Gunas)', 'குண மிலன் (36 குணங்கள்)'), L('North-Indian Ashtakoota matching — for NRI and inter-state marriages', 'வட இந்திய அஷ்டகூட பொருத்தம் — வெளிநாடு, பிற மாநிலத் திருமணங்களுக்கு'))}
     <div class="card glass"><div class="card-title">${L('Bride & groom', 'மணமகள் & மணமகன்')}</div>
-      ${adults().length < people().length ? `<p class="small muted age-note">🌱 ${esc(bi(MATCH_ADULTS_NOTE))}</p>` : ''}<div class="por-grid">${gmForm('bride')}${gmForm('groom')}</div></div>
+      ${adults().length < people().length ? `<p class="small muted age-note">🌱 ${esc(bi(MATCH_ADULTS_NOTE))}</p>` : ''}<div class="por-grid">${gmForm('bride')}${gmForm('groom')}</div>
+      ${gmStarUsed() ? `<label class="adult-confirm"><input type="checkbox" id="gmAdults"${gmSide.adultsOk ? ' checked' : ''}> ${L('I confirm both people are adults (18 or older). Marriage matching is never done for anyone under 18.', 'இருவரும் 18 வயது அல்லது அதற்கு மேற்பட்டவர்கள் என்று உறுதி செய்கிறேன். 18 வயதுக்குக் குறைவானவர்களுக்குத் திருமணப் பொருத்தம் பார்க்கப்படுவதில்லை.')}</label>` : ''}</div>
     <div id="gmResult"></div>
     <div class="card glass"><p class="small">🪔 ${L('Tamil tradition looks at the 10 poruthams (Rajju and Vedhai as key factors to discuss). Guna Milan is a separate North-Indian system with its own points — it is never added to the poruthams.', 'தமிழ் மரபில் 10 பொருத்தங்கள் பார்க்கப்படுகின்றன (ரஜ்ஜு, வேதை — பேச வேண்டிய முக்கியக் காரணிகள்). குண மிலன் தனி வட இந்திய முறை, அதன் சொந்தப் புள்ளிகள் — பொருத்தங்களுடன் ஒருபோதும் கூட்டப்படுவதில்லை.')}</p>
       <div class="btn-row"><button type="button" class="btn-gold" data-go="couple">💑 ${L('Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்')}</button>
@@ -86,11 +87,16 @@ function renderGunaMilan(sec) {
     s[el.dataset.f] = el.dataset.f === 'memberId' ? el.value : Number(el.value);
     showGuna(sec);
   }));
+  $('#gmAdults', sec)?.addEventListener('change', (e) => { gmSide.adultsOk = e.target.checked; showGuna(sec); });
   showGuna(sec);
 }
+/** True when either side is entered by star: there is no birth date to check the age, so the person confirms both are adults. */
+const gmStarUsed = () => ['bride', 'groom'].some((w) => gmSide[w].mode !== 'member');
 
 function showGuna(sec) {
   let b, g;
+  if (gmStarUsed() && !gmSide.adultsOk) { $('#gmResult', sec).innerHTML = `<div class="card glass"><p class="small">🌱 ${L('Please confirm above that both people are 18 or older to see the Guna Milan.', 'குண மிலன் பார்க்க, இருவரும் 18 வயது அல்லது அதற்கு மேற்பட்டவர்கள் என்று மேலே உறுதி செய்யவும்.')}</p></div>`; return; }
+  if (gmSide.bride.mode === 'member' && gmSide.groom.mode === 'member' && gmSide.bride.memberId === gmSide.groom.memberId) { $('#gmResult', sec).innerHTML = `<div class="card glass note-box" role="alert">${L('Please choose two different people — the same person is selected on both sides.', 'இரண்டு வெவ்வேறு நபர்களைத் தேர்ந்தெடுக்கவும் — இரு பக்கமும் ஒரே நபர் தேர்வாகியுள்ளார்.')}</div>`; return; }
   try { b = gmData('bride'); g = gmData('groom'); } catch { toast(L('Could not read the birth details.', 'பிறப்பு விவரங்களைப் படிக்க முடியவில்லை.')); return; }
   for (const [who, d] of [['bride', b], ['groom', g]]) {
     const el = $(`#gm-${who}-info`, sec);

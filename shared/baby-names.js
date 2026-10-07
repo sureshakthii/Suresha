@@ -182,6 +182,8 @@ export function luckSummary(dateStr, star, pada) {
 // ---------------------------------------------------------------- suggestions
 const LEVEL_SCORE = { excellent: 30, good: 20, neutral: 10, avoid: 0 };
 const fold = (s) => String(s || '').toLowerCase().normalize('NFC');
+/** Spelling-tolerant key for English names: first letter kept, then vowels, h, y, w dropped and doubled letters merged. */
+export const looseKey = (s) => { const t = fold(s).replace(/[^a-z]/g, ''); return t ? t[0] + t.slice(1).replace(/[aeiouhyw]/g, '').replace(/(.)\1+/g, '$1') : ''; };
 
 /**
  * Suggest names.
@@ -203,12 +205,18 @@ export function suggestNames({ star = null, pada = 1, date = '', gender = 'any',
   const others = hasStar ? [1, 2, 3, 4].filter((p) => p !== pada).map((p) => padaSound(star, p)) : [];
   const q = fold(query).trim();
   const results = [];
+  // Exact text first; when nothing matches, a forgiving English match (murgan → Murugan, kartik → Karthik).
+  const strictQ = (n) => fold(n.en).includes(q) || n.ta.includes(query.trim()) || fold(n.meaning.en).includes(q) || n.meaning.ta.includes(query.trim());
+  const lq = looseKey(q);
+  const looseQ = (n) => lq.length >= 3 && looseKey(n.en).includes(lq);
+  for (const queryHit of q ? (/^[a-z .'-]+$/.test(q) ? [strictQ, looseQ] : [strictQ]) : [null]) {
+  if (results.length) break;
   for (const n of allNames()) {
     if (gender === 'boy' && n.gender === 'girl') continue;
     if (gender === 'girl' && n.gender === 'boy') continue;
     if (style !== 'all' && !n.tags.includes(style)) continue;
     if (style === 'god' && deity && n.deity !== deity) continue;
-    if (q && !(fold(n.en).includes(q) || n.ta.includes(query.trim()) || fold(n.meaning.en).includes(q) || n.meaning.ta.includes(query.trim()))) continue;
+    if (queryHit && !queryHit(n)) continue;
     let match = 'search';
     let sound = null;
     if (target) {
@@ -222,6 +230,7 @@ export function suggestNames({ star = null, pada = 1, date = '', gender = 'any',
     if (date && num.level === 'avoid') continue;
     const score = (match === 'pada' ? 100 : match === 'alt' ? 80 : match === 'star' ? 50 : 0) + LEVEL_SCORE[num.level];
     results.push({ name: n, id: nameId(n), match, sound, num, score });
+  }
   }
   results.sort((a, b) => b.score - a.score || a.name.en.length - b.name.en.length || a.name.en.localeCompare(b.name.en));
   // One card per Tamil name: the best-scoring English spelling leads, other spellings are listed with their numbers.

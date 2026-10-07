@@ -260,6 +260,11 @@ test('weekly plan: dated goal steps appear as tasks — deadline-type fixed, oth
   const m = make(emptyGoals(), { template: 'marriage', title: 'Wedding', deadline: '2026-10-10' });
   const mw = buildWeek({ start: TODAY, loc, now: NOW, profile: { minor: true, age: 12 }, goalSteps: weekSteps(m.state) });
   assert.equal(mw.days.flatMap((d) => d.fixed).length, 0);
+  // A flexible step the person gave a clock time is kept at that time (an appointment), not turned into "good times".
+  const timed = buildWeek({ start: TODAY, loc, now: NOW, goalSteps: [{ id: 's1', goalId: g.id, title: 'Call the mandapam', type: 'flexible', date: '2026-10-09', time: '10:30' }] });
+  const call = timed.days.flatMap((d) => d.fixed).find((x) => x.title === 'Call the mandapam');
+  assert.ok(call && call.time === '10:30' && call.type === 'appointment');
+  assert.ok(!timed.days.flatMap((d) => d.optional).some((x) => x.title === 'Call the mandapam'));
 });
 
 test('backup: goals ride along only with consent, never goals of private profiles; deletions are kept', () => {

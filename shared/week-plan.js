@@ -181,7 +181,8 @@ export function buildWeek(o = {}) {
   const chosen = new Set((o.chosenObservances || []).filter((x) => OBS_IDS.has(x)));
   const goalTasks = (o.goalSteps || []).map((x) => {
     if (!x || !x.goalId) return null;
-    const t = normaliseTask({ id: `goal:${x.goalId}:${x.id}`, title: x.title, type: x.type === 'deadline' ? 'deadline' : 'flexible', date: x.date, time: x.time, topic: x.topic });
+    // A step the person gave a clock time is an appointment at that time (kept fixed, never "optional good time").
+    const t = normaliseTask({ id: `goal:${x.goalId}:${x.id}`, title: x.title, type: x.type === 'deadline' ? 'deadline' : x.time ? 'appointment' : 'flexible', date: x.date, time: x.time, topic: x.topic });
     return t && t.date ? { ...t, goalId: String(x.goalId) } : null; // only dated steps belong in a week
   }).filter(Boolean);
   const tasksIn = [...(o.tasks || []).map(normaliseTask).filter(Boolean), ...goalTasks];

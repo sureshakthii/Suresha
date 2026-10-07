@@ -555,7 +555,7 @@ function characterAnswer(c, lang, intents) {
   if (c.lesson) sections.push(sec('lesson', T(lang, 'What we learn', 'நாம் கற்பது'), [pick(c.lesson, lang)]));
   const epic = { ramayanam: T(lang, 'Ramayanam', 'இராமாயணம்'), mahabharatham: T(lang, 'Mahabharatham', 'மகாபாரதம்'), puranam: T(lang, 'Puranam', 'புராணம்') }[c.epic];
   sections.push(sec('source', T(lang, 'Source', 'மூலம்'), [`${epic}${c.note ? ` — ${pick(c.note, lang)}` : ''}`]));
-  const followups = [{ label: T(lang, 'Read the Ithihasa series', 'இதிகாசத் தொடர் படிக்க'), go: 'ithihasa', params: { epic: c.epic, character: c.id } }];
+  const followups = [{ label: T(lang, 'Read the Ithihasa series', 'இதிகாசத் தொடர் படிக்க'), go: 'ithihasa', params: c.epic === 'puranam' ? {} : { series: c.epic, character: c.id } }];
   for (const id of c.related || []) { const r = CHAR_BY_ID.get(id); if (r) followups.push({ label: T(lang, `Who is ${r.names.en}?`, `${r.names.ta} யார்?`), ask: T(lang, `who is ${r.names.en}`, `${r.names.ta} யார்`) }); }
   return finish('ithihasa', sections, followups.slice(0, 4), [T(lang, `${epic} (traditional retellings; versions differ)`, `${epic} (மரபுக் கதைகள்; பதிப்புகள் வேறுபடலாம்)`)], { id: c.id, intents });
 }

@@ -468,8 +468,11 @@ function showPlan(p) {
     const all = savedPlans();
     const { savedOn: _s, savedId: _i, ...clean } = p;
     const endIso = p.date ? tripEndDate(p.date, p.inputs.days) : null;
-    all.unshift({ id, savedAt: new Date().toISOString(), title: `${o.key}. ${bi(o.title)} — ${p.inputs.start.name}`, dates: p.date ? `${fmtIsoDate(p.date)}${endIso && endIso !== p.date ? ` → ${fmtIsoDate(endIso)}` : ''} · ${p.inputs.days} ${L('days', 'நாள்')}` : '', travellers: names, plan: clean, form: { ...form } });
+    all.unshift({ id, savedAt: new Date().toISOString(), title: `${o.key}. ${bi(o.title)} — ${placeName(p.inputs.start.name)}`, dates: p.date ? `${fmtIsoDate(p.date)}${endIso && endIso !== p.date ? ` → ${fmtIsoDate(endIso)}` : ''} · ${p.inputs.days} ${L('days', 'நாள்')}` : '', travellers: names, plan: clean, form: { ...form } });
     savePlans(all.slice(0, 20));
+    // The print buttons now name this saved journey, so a Journey package bought for it covers printing.
+    p.savedId = id;
+    $$('#tripResult [data-print-gated]').forEach((x) => { x.dataset.printGated = JSON.stringify({ journeyId: id }); });
     document.dispatchEvent(new CustomEvent('kj:task', { detail: 'journey' })); // metrics: journey saved (consent-gated, growth.js)
     toast(L('Saved to your plans (on this phone)', 'உங்கள் திட்டங்களில் சேமிக்கப்பட்டது (இந்தக் கைப்பேசியில்)'));
     // Refresh the saved list at the top of the screen.
@@ -481,7 +484,7 @@ function showPlan(p) {
   }));
   $$('[data-share]').forEach((b) => b.addEventListener('click', () => {
     const o = p.options[Number(b.dataset.share)];
-    const lines = [`🛕 ${bi(o.title)} — ${L('from', 'புறப்பாடு')} ${p.inputs.start.name}${p.date ? ` · ${fmtIsoDate(p.date)}` : ''}`,
+    const lines = [`🛕 ${bi(o.title)} — ${L('from', 'புறப்பாடு')} ${placeName(p.inputs.start.name)}${p.date ? ` · ${fmtIsoDate(p.date)}` : ''}`,
       ...o.itinerary.map((d) => `${L('Day', 'நாள்')} ${d.day}: ${d.stops.map((s) => bi(s.temple.name)).join(' → ')}`),
       ...(o.flight ? [`✈️ ${p.flight.out.from.code} → ${p.flight.out.to.code} ${flightHrs(p.flight.out)} · ${tzNote()}`, `${L('Flights', 'விமானம்')}: ${moneyRange(o.flightCost.low, o.flightCost.high, p.cur || cur())} (${L('check airline', 'விமான நிறுவனத்திடம் உறுதி செய்யவும்')})`] : []),
       `${L('Estimated cost', 'மதிப்பீட்டுச் செலவு')}: ${o.flight ? moneyRange(o.totalRange.low, o.totalRange.high, p.cur || cur()) : money(o.cost.total, p.cur || cur())} (${L('estimate', 'மதிப்பீடு')})`,

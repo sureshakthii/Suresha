@@ -2,6 +2,7 @@
 // Gowri Nalla Neram, festivals and vratham days, Subha Muhurtha days.
 import { panchang, sunSidereal, findCrossing, vedicDay, NAKSHATRAS } from './astro.js';
 import { occurrencesBetween } from './spiritual-kb.js';
+import { isValidZone, zoneOffsetMinutes } from './datetime.js';
 
 export const TAMIL_MONTHS = [
   { en: 'Chithirai', ta: 'சித்திரை' }, { en: 'Vaikasi', ta: 'வைகாசி' }, { en: 'Aani', ta: 'ஆனி' },
@@ -199,8 +200,11 @@ export function tamilDay(dateLocalNoon, lat, lon, tz) {
   const td = tamilDate(new Date(day.sunset.getTime() - 60000), lat, lon, tz);
   const gowri = gowriPanchangam(day, p.weekday.index);
   const pakshaTithi = p.tithi.index % 15;
+  // Aadi, Purattasi and Margazhi carry no wedding muhurtham in Tamil practice (the same months Prasnam avoids for
+  // marriage and griha pravesam — shared/prasna.js avoidMonths), so the calendar does not mark them.
   const muhurthaDay = MUHURTHA_STARS.has(p.nakshatra.index) && !BAD_TITHI_IN_PAKSHA.has(pakshaTithi)
-    && p.tithi.index !== 29 && ![2, 6].includes(p.weekday.index) && !BAD_YOGA_IDX.has(p.yoga.index);
+    && p.tithi.index !== 29 && ![2, 6].includes(p.weekday.index) && !BAD_YOGA_IDX.has(p.yoga.index)
+    && !NO_MUHURTHAM_MONTHS.has(td.month);
   const iso = ymd(dateLocalNoon, tz);
   return {
     date: iso,
@@ -220,14 +224,26 @@ export function tamilDay(dateLocalNoon, lat, lon, tz) {
 }
 
 const BAD_YOGA_IDX = new Set([0, 5, 8, 9, 12, 14, 16, 18, 26]);
+/** Tamil months without wedding muhurtham: Aadi (3), Purattasi (5), Margazhi (8). */
+export const NO_MUHURTHAM_MONTHS = new Set([3, 5, 8]);
 
-/** All days of a Gregorian month in the Tamil calendar. */
-export function tamilMonth(year, month0, lat, lon, tz) {
+/**
+ * UTC offset (hours) in force at a place on a given calendar day: the zone's own offset that day (daylight saving
+ * changes during a month or between today and a later date), else the fixed `tz`.
+ */
+export function offsetOnDay(year, month0, day, tz, zone) {
+  if (!zone || !isValidZone(zone)) return tz;
+  try { return zoneOffsetMinutes(zone, Date.UTC(year, month0, day, 12) - tz * 3600000) / 60; } catch { return tz; }
+}
+
+/** All days of a Gregorian month in the Tamil calendar. With `zone`, each day uses that day's own UTC offset (`day.tz`). */
+export function tamilMonth(year, month0, lat, lon, tz, { zone = null } = {}) {
   const days = [];
   const count = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
   for (let d = 1; d <= count; d++) {
-    const noon = new Date(Date.UTC(year, month0, d, 12) - tz * 3600000);
-    days.push(tamilDay(noon, lat, lon, tz));
+    const dtz = offsetOnDay(year, month0, d, tz, zone);
+    const noon = new Date(Date.UTC(year, month0, d, 12) - dtz * 3600000);
+    days.push({ ...tamilDay(noon, lat, lon, dtz), tz: dtz });
   }
   return days;
 }

@@ -221,7 +221,9 @@ document.addEventListener('click', (e) => {
   let scope = {};
   try { scope = JSON.parse(b.dataset.printGated || '{}') || {}; } catch { scope = {}; }
   if (!gate('printReports', { scope, near: b })) return;
-  document.querySelectorAll('.view:not([hidden]) details').forEach((d) => { d.open = true; });
+  const closed = [...document.querySelectorAll('.view:not([hidden]) details')].filter((d) => !d.open);
+  closed.forEach((d) => { d.open = true; });
+  addEventListener('afterprint', () => closed.forEach((d) => { d.open = false; }), { once: true });
   printPage();
 });
 

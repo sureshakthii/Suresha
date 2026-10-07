@@ -81,3 +81,11 @@ test('the Temples list filter uses the same forgiving matcher', () => {
   assert.ok(ids.includes('tiruchendur'));
   assert.equal(templesNear(CHENNAI.lat, CHENNAI.lon, { query: '' }).length, TEMPLES.length);
 });
+
+test('search forgives common typing slips: a missed doubled letter, y for i, and the category name', () => {
+  assert.ok(has('திருசெந்தூர்', 'tiruchendur'));
+  assert.ok(has('palany', 'palani'));
+  assert.ok(has('Pazani', 'palani'));
+  assert.ok(searchTemples('navagraha', { limit: 20 }).length >= 8);
+  assert.equal(searchTemples('zzzz').filter((t) => t.tier < 3 && !/z/i.test(JSON.stringify(t))).length, 0, 'gibberish does not fall back to every "l" temple');
+});

@@ -3,6 +3,7 @@
 // fights or separation and never exposes another person's private chart details — only the pair's own
 // traditional factors are listed, as reasons for choosing a gentler tone.
 // `level` keys are kept for older screens: 'harmony' | 'careful' | 'avoid' (= "extra gentle"); use `levelLabel`.
+const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 const houseFrom = (from, to) => ((to - from + 12) % 12) + 1;
 
 const REL_TA = { self: 'நான்', spouse: 'வாழ்க்கைத் துணை', son: 'மகன்', daughter: 'மகள்', father: 'தந்தை', mother: 'தாய்', other: 'உறவினர்', organization: 'நிறுவனம்' };
@@ -51,7 +52,7 @@ export function relationToday(ca, cb, snap) {
   for (const c of [ca, cb]) {
     const pos = houseFrom(c.janmaRasi.index, snap.moonRasi.index);
     if (pos === 8) add(3, `Chandrashtamam for ${c.name} — tradition suggests a calm, unhurried day`, `${c.name} — சந்திராஷ்டமம், மரபுப்படி அமைதியான நாள்`);
-    else if ([6, 12].includes(pos)) add(1, `Moon ${pos}th from ${c.name}'s rasi`, `${c.name} ராசிக்கு ${pos}-ல் சந்திரன்`);
+    else if ([6, 12].includes(pos)) add(1, `Moon ${ordEn(pos)} from ${c.name}'s rasi`, `${c.name} ராசிக்கு ${pos}-ல் சந்திரன்`);
     const mars = houseFrom(c.janmaRasi.index, snap.planets.Mars.rasi);
     if ([1, 8].includes(mars)) add(1, `Mars transits ${mars === 1 ? 'over' : 'the 8th from'} ${c.name}'s Moon — tradition suggests patience`, `${c.name} ராசிக்கு ${mars}-ல் செவ்வாய் — மரபுப்படி பொறுமை நல்லது`);
     const tara = ((snap.nakshatra.index - c.janmaNakshatra.index + 27) % 27) % 9;

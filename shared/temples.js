@@ -239,14 +239,20 @@ export function foldText(s) {
   let x = String(s || '').normalize('NFC').toLowerCase().replace(ZW, '');
   x = x.normalize('NFD').replace(/[̀-ͯ]/g, '');
   x = x.replace(/[ணந]/g, 'ன').replace(/[ளழ]/g, 'ல').replace(/ற/g, 'ர');
+  // Pulli dropped and a doubled consonant merged, so திருசெந்தூர் meets திருச்செந்தூர் and a half-typed தில் meets தில்லை.
+  x = x.replace(/்/g, '').replace(/([க-ஹ])\1+/g, '$1');
   // Long / short vowels are merged too (e→i, o→u), so a half-typed "Kapale…" still meets "Kapaleeshwarar".
-  x = x.replace(/zh?/g, 'l').replace(/x/g, 'ks').replace(/q/g, 'k').replace(/w/g, 'v')
+  // zh (and z after a vowel, "Pazani") is ழ → l; y not before a vowel is the vowel i ("Palany", "Tirupathy").
+  x = x.replace(/zh/g, 'l').replace(/([aeiou])z/g, '$1l').replace(/y(?![aeiou])/g, 'i').replace(/x/g, 'ks').replace(/q/g, 'k').replace(/w/g, 'v')
     .replace(/([tdskpbgc])h/g, '$1').replace(/e/g, 'i').replace(/o/g, 'u')
     .replace(/([a-z])\1+/g, '$1');
   return x.replace(/[^\p{L}\p{M}\p{N}]+/gu, '');
 }
 const words = (s) => String(s || '').split(/[\s,()–\-/&.]+/).filter(Boolean).map(foldText).filter(Boolean);
 const HONORIFIC = /^(sri|shri|arulmigu|ஸ்ரீ|அருல்மிகு)/;
+
+// The temple's category chips (Navagraha, Divya Desam …) in both languages, so typing "navagraha" finds those temples.
+const tagWords = (t) => (t.tags || []).flatMap((id) => { const g = TEMPLE_TAGS.find((x) => x.id === id); return g ? [g.en, g.ta] : [id.replace(/_/g, ' ')]; });
 
 // Pre-folded search keys per temple: names (both languages) and alternates are "primary"; town and deity "secondary".
 const KEYS = new Map();
@@ -255,7 +261,7 @@ function keysOf(t) {
   if (k) return k;
   const townTa = placeTa(t.town);
   const primary = [t.name.en, t.name.ta, t.id.replace(/_/g, ' '), ...t.alt];
-  const secondary = [t.town, townTa, t.deity.en, t.deity.ta, `${t.town.split(',')[0]} ${t.name.en}`, `${townTa.split(',')[0]} ${t.name.ta}`];
+  const secondary = [t.town, townTa, t.deity.en, t.deity.ta, `${t.town.split(',')[0]} ${t.name.en}`, `${townTa.split(',')[0]} ${t.name.ta}`, ...tagWords(t)];
   k = {
     primary: primary.map(foldText).flatMap((x) => [x, x.replace(HONORIFIC, '')]),
     secondary: secondary.map(foldText),

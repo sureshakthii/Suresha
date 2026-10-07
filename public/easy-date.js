@@ -73,7 +73,30 @@ function enhance(root = document) {
     input.addEventListener('focus', () => { input.blur(); box.querySelector('select, input')?.focus(); });
     input.addEventListener('click', (e) => e.preventDefault());
     input.after(box);
+    mirrorState(input, box);
   });
+}
+
+// The form may switch the hidden input on and off later (birth time "Unknown" disables it and drops `required`).
+// Mirror that onto the pickers: a disabled / no-longer-required field must never block saving with a hidden
+// "Please select an item" on the Hour box, and switching back to Exact makes the pickers required again.
+function mirrorState(input, box) {
+  const pickers = [...box.querySelectorAll('select, input')];
+  const needed = pickers.filter((el) => !el.classList.contains('et-p')); // AM/PM always has a value
+  let wantRequired = pickers.some((el) => el.required);
+  let own = false; // our own `input.required = false` below is not the form's choice
+  const apply = (records) => {
+    if (own) own = false;
+    else if (records && records.some((r) => r.attributeName === 'required')) wantRequired = input.required;
+    if (input.required) { own = true; input.required = false; }
+    const off = input.disabled;
+    box.classList.toggle('is-disabled', off);
+    pickers.forEach((el) => { el.disabled = off; });
+    needed.forEach((el) => { el.required = wantRequired && !off; });
+    if (off && input.type === 'time') needed.forEach((el) => { el.value = ''; });
+  };
+  apply();
+  new MutationObserver(apply).observe(input, { attributes: true, attributeFilter: ['disabled', 'required'] });
 }
 
 if (typeof document !== 'undefined') {

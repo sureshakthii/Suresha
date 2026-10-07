@@ -2515,6 +2515,8 @@ fieldset.name-show .seg-opt input { accent-color: var(--btn-gold, var(--gold)); 
 .ith-rem { display: inline-flex; gap: 10px; align-items: center; }
 .ith-rem input[type="time"] { min-height: 40px; padding: 4px 8px; border-radius: 10px; border: 1px solid var(--glass-b); background: var(--surface-soft); color: var(--text); }
 .ith-row .ith-n { min-width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; font-weight: 700; font-size: 13px; background: rgba(var(--gold-rgb), .16); color: var(--gold2); flex: none; }
+.menu.ith-list > button.ith-row > span.ith-n.ith-n, .menu.ith-list > button.ith-row > span.tag.tag, .menu.ith-list > button.ith-row > span.badge { flex: 0 0 auto; margin-top: 0; white-space: nowrap; }
+.menu.ith-list > button.ith-row > span.ith-n.ith-n { width: 30px; }
 .ith-row.locked { opacity: .78; cursor: default; }
 .ith-row.locked .row-name { color: var(--muted); }
 .ith-read { padding: 4px 2px 8px; }

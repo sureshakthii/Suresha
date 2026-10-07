@@ -223,7 +223,11 @@ function renderHome(sec, series, seriesId) {
 function epRow(e, prog, up, full) {
   const done = !!prog.done?.[e.n];
   const open = e.n <= up;
-  const state_ = done ? `<span class="tag good">✓ ${L('Done', 'நிறைவு')}</span>` : open ? (episodeAccess(e.n, full) === 'preview' ? `<span class="badge unv">🔒 ${L('Preview', 'முன்னோட்டம்')}</span>` : `<span class="tag warn">${L('Open', 'திறந்தது')}</span>`) : `<span class="badge unv">${L('Opens later', 'பின்னர் திறக்கும்')}</span>`;
+  const lockedTxt = L('Opens after the previous episode', 'முந்தைய பகுதிக்குப் பின் திறக்கும்');
+  const state_ = done ? `<span class="tag good" aria-label="${esc(L('Done', 'நிறைவு'))}">✓</span>`
+    : !open ? `<span class="badge unv" title="${esc(lockedTxt)}" aria-label="${esc(lockedTxt)}">⏳</span>`
+      : episodeAccess(e.n, full) === 'preview' ? `<span class="badge unv" title="${esc(L('2-minute preview', '2 நிமிட முன்னோட்டம்'))}">🔒 2′</span>`
+        : `<span class="tag warn">${L('Today', 'இன்று')}</span>`;
   return `<button class="row ith-row${open ? '' : ' locked'}" ${open ? `data-open="${e.n}"` : 'disabled aria-disabled="true"'}><span class="ith-n">${e.n}</span><span class="row-txt"><span class="row-name">${esc(bi(e.title))}</span><small>${esc(bi(e.part))} · ${minsText(minutesOf(e))}</small></span>${state_}</button>`;
 }
 
@@ -270,6 +274,10 @@ function renderEpisode(sec, series, n, params) {
     </div>
     ${copyright()}`;
 
+  // Episode and series home are the same screen id, so the shared back stack has no entry for the home: go there directly.
+  const back = $('.back-btn', sec);
+  back?.removeAttribute('data-back');
+  back?.addEventListener('click', () => { stopAudio(); go('ithihasa', { series: series.id }, { back: true }); scrollTo({ top: 0 }); });
   const paras = $$('.ith-p', sec);
   const playBtn = $('#ithPlay', sec);
   const note = $('#ithVoiceNote', sec);
@@ -280,7 +288,7 @@ function renderEpisode(sec, series, n, params) {
     paras.forEach((p, k) => p.classList.toggle('cur', k === i));
     pos.textContent = L(`¶ ${i + 1} / ${max}`, `பத்தி ${i + 1} / ${max}`);
     const cur = paras[i];
-    if (cur && loadPrefs().autoScroll !== false) cur.scrollIntoView?.({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    if (cur && i > 0 && loadPrefs().autoScroll !== false) cur.scrollIntoView?.({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     prog = savePosition(prog, n, i, today());
     setProgress(series.id, prog);
   };

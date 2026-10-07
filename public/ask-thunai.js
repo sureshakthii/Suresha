@@ -214,7 +214,7 @@ const TOPIC = {
     follow: [T('When will I get PR / permanent visa?', 'நிரந்தர விசா (PR) எப்போது?'), T('Job abroad — is it good for me?', 'வெளிநாட்டு வேலை எனக்கு நல்லதா?'), T('Good date to travel', 'பயணத்திற்கு நல்ல நாள்')] },
   property: { houses: [4, 11, 2], negate: [3, 12], key: 4, karakas: ['Mars', 'Venus'],
     name: T('House & property', 'வீடு & சொத்து'), houseWhy: T('4th (home, land), 11th (gains), 2nd (savings); Mars is the karaka for land', '4-ம் வீடு (வீடு, நிலம்), 11-ம் வீடு (லாபம்), 2-ம் வீடு (சேமிப்பு); நிலத்திற்குக் காரகர் செவ்வாய்'),
-    dos: [T('Before paying any advance, get the title documents and approvals checked by a lawyer and the budget by your bank', 'முன்பணம் தரும் முன் உரிமை ஆவணங்கள், அனுமதிகளை வழக்கறிஞரிடமும், பட்ஜெட்டை வங்கியிடமும் முழுமையாகச் சரிபாருங்கள்'), T('Register on a Muhurtham day in the favourable period', 'சாதகமான காலத்தில் முகூர்த்த நாளில் பதிவு செய்யுங்கள்'), T('Do Bhoomi Pooja before construction', 'கட்டுமானத்திற்கு முன் பூமி பூஜை')],
+    dos: [T('Before paying any advance, get the title documents and approvals checked by a lawyer and the budget by your bank', 'முன்பணம் தரும் முன் உரிமை ஆவணங்கள், அனுமதிகளை வழக்கறிஞரிடமும், செலவுத் திட்டத்தை வங்கியிடமும் முழுமையாகச் சரிபாருங்கள்'), T('Register on a Muhurtham day in the favourable period', 'சாதகமான காலத்தில் முகூர்த்த நாளில் பதிவு செய்யுங்கள்'), T('Do Bhoomi Pooja before construction', 'கட்டுமானத்திற்கு முன் பூமி பூஜை')],
     donts: [T('Avoid property deals on Chandrashtamam or in Rahu Kalam', 'சந்திராஷ்டமம், ராகு காலத்தில் சொத்து ஒப்பந்தம் தவிர்க்கவும்'), T('Do not stretch the loan beyond a comfortable EMI', 'சௌகரியமான மாதத் தவணையைத் தாண்டிக் கடன் வாங்க வேண்டாம்')],
     remedy: T('Pray to Lord Murugan on Tuesdays with red flowers; worship Bhoomi Devi before buying land.', 'செவ்வாய்தோறும் முருகனுக்குச் சிவப்பு மலர்; நிலம் வாங்கும் முன் பூமாதேவி வழிபாடு.'),
     follow: [T('Good date for house-warming', 'கிரகப்பிரவேசத்திற்கு நல்ல நாள்'), T('When can I buy a vehicle?', 'வாகனம் எப்போது வாங்கலாம்?'), T('When will my debts clear?', 'கடன் எப்போது தீரும்?')],
@@ -1282,16 +1282,30 @@ const ADULT_CHIPS = {
     T('A calm daily prayer for peace of mind', 'மன அமைதிக்கு ஒரு எளிய தினசரி பிரார்த்தனை'),
   ],
 };
+const SPARE_CHIPS = [
+  T('Peace at home — what can we do?', 'வீட்டில் நிம்மதிக்கு என்ன செய்யலாம்?'),
+  T('When can I buy my own house?', 'சொந்த வீடு எப்போது வாங்கலாம்?'),
+  T('Help our family choose a good date', 'எங்கள் குடும்பத்திற்கு ஏற்ற நாளைத் தேர்வு செய்ய உதவுங்கள்'),
+  T('A calm daily prayer for peace of mind', 'மன அமைதிக்கு ஒரு எளிய தினசரி பிரார்த்தனை'),
+];
 /**
  * Suggested-question chips for the Ask Thunai screen, by the chart owner's age band: 18–25 (job, marriage, studies
  * abroad), 26–59 (child delay, debts, house, promotion, Sani), 60+ (children's marriage, spouse's health, pension).
  * Minors and an unknown age get the reviewed band chips (shared/age-guard.js). Other faiths never see temple chips.
  */
-export function askSuggestions(profile, { faith = 'hindu', count = 6 } = {}) {
+export function askSuggestions(profile, { faith = 'hindu', count = 6, married = false, single = false } = {}) {
   const band = profile?.band || 'unknown';
   if (band !== 'adult') return suggestionsFor(profile, [], { count });
   const age = profile.age;
   let list = age == null ? ADULT_CHIPS.middle : age <= 25 ? ADULT_CHIPS.young : age >= 60 ? ADULT_CHIPS.elder : ADULT_CHIPS.middle;
+  // A married person is never offered "when will I marry" / "love or arranged"; a person marked single is not
+  // offered child-delay or spouse questions. Freed places take the next common questions.
+  const ownMarriage = (x) => /\bI get married\b|^Love marriage/.test(x.en);
+  const spouseOrChild = (x) => /child is getting delayed|spouse’s health/.test(x.en);
+  if (married || single) {
+    const drop = married ? ownMarriage : spouseOrChild;
+    list = [...list.filter((x) => !drop(x)), ...SPARE_CHIPS.filter((x) => !drop(x) && !list.some((y) => y.en === x.en))];
+  }
   if (!isHinduFaith(faith)) list = list.map((x) => (hinduText(x.en) || /temple|கோவில்/i.test(x.en) ? T('A calm daily prayer in my own faith', 'என் நம்பிக்கைப்படி அமைதிக்கு ஒரு தினசரி பிரார்த்தனை') : x));
   return list.slice(0, count);
 }
@@ -1895,7 +1909,7 @@ function overviewAnswer({ text, chart, rel, lang, name, now, shared, delay, prof
     { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Which area feels most important to you right now?', 'இப்போது உங்களுக்கு எந்தப் பகுதி மிக முக்கியம்?')] },
     { key: 'uncertainty', title: pick(LIMITS_TITLE, lang), lines: [pick(LIMITS_LINE, lang)] },
   ];
-  return shell('overview', text, sections, { actions: [{ go: 'roadmap', label: L('Life periods road map', 'வாழ்க்கைக் கால வரைபடம்') }], followups: generalFollowups(prof).map((f) => pick(f, lang)) });
+  return shell('overview', text, sections, { actions: [{ go: 'roadmap', label: L('Dasa Road Map', 'தசா வரைபடம்') }], followups: generalFollowups(prof).map((f) => pick(f, lang)) });
 }
 
 // ---- Guru peyarchi for me, and a planet's dasa asked by name
@@ -1951,7 +1965,7 @@ function goldAnswer({ text, lang, now, loc }) {
       L('By tradition, gold is bought on Akshaya Tritiya, on Poosam (Pushya) star days, and on Thursdays or Fridays — outside Rahu Kalam and Yamagandam.', 'மரபுப்படி தங்கம் அட்சய திருதியை, பூச நட்சத்திர நாட்கள், வியாழன் / வெள்ளிக்கிழமைகளில் — ராகு காலம், எமகண்டம் தவிர்த்து — வாங்கப்படுகிறது.'),
       poosam.length ? L(`Next Poosam days at your place: ${poosam.map((d) => dayLabel(d, 'en')).join('; ')}.`, `உங்கள் ஊரில் அடுத்த பூச நாட்கள்: ${poosam.map((d) => dayLabel(d, 'ta')).join('; ')}.`) : '',
       akshaya ? L(`Next Akshaya Tritiya: ${dayLabel(iso(akshaya), 'en')} ${akshaya.slice(0, 4)}.`, `அடுத்த அட்சய திருதியை: ${dayLabel(iso(akshaya), 'ta')} ${akshaya.slice(0, 4)}.`) : ''].filter(Boolean) },
-    { key: 'dos', title: L('Practical first', 'நடைமுறை முதலில்'), lines: [L('Buy only within your budget and only BIS-hallmarked (HUID) gold with a proper bill; check the day’s official rate — a horoscope cannot tell prices.', 'பட்ஜெட்டுக்குள், BIS ஹால்மார்க் (HUID) உள்ள தங்கத்தை முறையான பில்லுடன் மட்டும் வாங்குங்கள்; அன்றைய அதிகாரப்பூர்வ விலையைப் பாருங்கள் — விலையை ஜாதகம் சொல்லாது.')] },
+    { key: 'dos', title: L('Practical first', 'நடைமுறை முதலில்'), lines: [L('Buy only within your budget and only BIS-hallmarked (HUID) gold with a proper bill; check the day’s official rate — a horoscope cannot tell prices.', 'செலவுத் திட்டத்துக்குள், BIS ஹால்மார்க் (HUID) உள்ள தங்கத்தை முறையான பில்லுடன் மட்டும் வாங்குங்கள்; அன்றைய அதிகாரப்பூர்வ விலையைப் பாருங்கள் — விலையை ஜாதகம் சொல்லாது.')] },
     { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Is this for a wedding or a family function? I can find a date that suits everyone’s star.', 'இது திருமணம் அல்லது குடும்ப விழாவுக்கா? அனைவரின் நட்சத்திரத்துக்கும் ஏற்ற நாளைத் தேடித் தரலாம்.')] },
   ];
   return shell('gold', text, sections, { actions: [{ go: 'muhurtham', label: L('Find a good date', 'நல்ல நாள் தேடு') }], followups: [L('Good time today for important work', 'இன்று முக்கிய வேலைக்கு நல்ல நேரம்'), L('When will my money situation improve?', 'என் பண நிலை எப்போது மேம்படும்?')] });

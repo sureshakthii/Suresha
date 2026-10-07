@@ -151,7 +151,7 @@ export const inviteSpec = () => base('invite', {
  * hasConsent(ledger, ids, 'share')). Names, the factor count and the conversation topics — no stars, no birth data.
  */
 export const matchSpec = ({ names, agree, total, topics = [], closing = '' }) => base('match', {
-  kicker: L('Thirumana Porutham', 'திருமணப் பொருத்தம்'),
+  kicker: L('Marriage Porutham', 'திருமணப் பொருத்தம்'),
   title: `${names[0]} · ${names[1]}`,
   subtitle: L(`${agree} of ${total} traditional factors agree`, `${total} மரபுக் காரணிகளில் ${agree} பொருந்துகின்றன`),
   lines: topics.map(noEmoji).slice(0, 5),
@@ -260,7 +260,7 @@ function delightCardHtml(m, loc, td, s) {
   if (s.sharePrompt && !j.prompt.never && !dis(`share:${today}`) && (shownToday || J.sharePromptDue(j, { now: new Date(), enabled: s.sharePrompt }))) {
     if (!shownToday) { j = J.promptShown(j); saveJournal(j); }
     return dlCard(`share:${today}`, '💛', `<p>${L('Glad Thunai helped. Would you like to share it with someone you care about?', 'துணை உதவியதில் மகிழ்ச்சி. நீங்கள் அக்கறை கொண்ட ஒருவருடன் இதைப் பகிர விரும்புகிறீர்களா?')}</p>`,
-      `<button class="chip-btn" type="button" data-grow="invite">💌 ${L('Invite family & friends', 'குடும்பம், நண்பர்களை அழை')}</button><button class="chip-btn" type="button" data-grow="dismiss" data-id="share:${today}">${L('Not now', 'இப்போது வேண்டாம்')}</button><button class="link-btn" type="button" data-grow="never">${L('Don’t ask again', 'மீண்டும் கேட்க வேண்டாம்')}</button>`);
+      `<button class="chip-btn" type="button" data-grow="invite">💌 ${L('Invite family & friends', 'குடும்பம், நண்பர்களை அழையுங்கள்')}</button><button class="chip-btn" type="button" data-grow="dismiss" data-id="share:${today}">${L('Not now', 'இப்போது வேண்டாம்')}</button><button class="link-btn" type="button" data-grow="never">${L('Don’t ask again', 'மீண்டும் கேட்க வேண்டாம்')}</button>`);
   }
   return '';
 }
@@ -303,7 +303,7 @@ function openMarkSheet(item, btn) {
   const s = settings();
   const box = document.createElement('div');
   box.className = 'modal';
-  box.innerHTML = `<form class="modal-card card glass mark-sheet" role="dialog" aria-modal="true" aria-labelledby="mkTitle">
+  box.innerHTML = `<form novalidate class="modal-card card glass mark-sheet" role="dialog" aria-modal="true" aria-labelledby="mkTitle">
     <div class="card-title"><span id="mkTitle">🌼 ${L('Add to my diary', 'என் நாட்குறிப்பில் சேர்')}</span><button type="button" class="link-btn" data-mk="x" aria-label="${esc(L('Close', 'மூடு'))}">✕</button></div>
     ${item.title ? `<p class="small muted">“${esc(item.title.slice(0, 140))}${item.title.length > 140 ? '…' : ''}”</p>` : ''}
     <div class="seg" role="radiogroup" aria-label="${esc(L('What happened', 'என்ன நடந்தது'))}">${kinds.map((k) => `<button type="button" role="radio" data-kind="${k}" class="${k === kind ? 'sel' : ''}" aria-checked="${k === kind}">${J.KINDS[k].icon} ${esc(bi(J.KINDS[k]))}</button>`).join('')}</div>
@@ -430,7 +430,7 @@ async function openInvite() {
   const box = document.createElement('div');
   box.className = 'modal';
   box.innerHTML = `<div class="modal-card card glass sc-sheet" role="dialog" aria-modal="true" aria-labelledby="ivTitle">
-    <div class="card-title"><span id="ivTitle">💌 ${L('Invite family & friends', 'குடும்பம், நண்பர்களை அழை')}</span><button class="link-btn" data-iv="x" aria-label="${esc(L('Close', 'மூடு'))}">✕</button></div>
+    <div class="card-title"><span id="ivTitle">💌 ${L('Invite family & friends', 'குடும்பம், நண்பர்களை அழையுங்கள்')}</span><button class="link-btn" data-iv="x" aria-label="${esc(L('Close', 'மூடு'))}">✕</button></div>
     ${info.referral ? `<p>${L('Your code', 'உங்கள் குறியீடு')}: <b class="invite-code">${esc(info.code)}</b></p><p class="small">${esc(rewardLine(info))}</p>`
     : `<p class="small">${L('Share the app link with a card. (Sign in to get your own invite code.)', 'செயலி இணைப்பை ஒரு அட்டையுடன் பகிருங்கள். (உங்கள் சொந்த அழைப்புக் குறியீட்டிற்கு உள்நுழையவும்.)')}</p>`}
     <div class="btn-row"><button class="btn-gold" data-iv="card">🖼️ ${L('Share a card', 'அட்டையைப் பகிர்')}</button>${info.referral ? `<button class="chip-btn" data-go="invite" data-iv="x">${L('Invite page', 'அழைப்புப் பக்கம்')}</button>` : ''}</div>
@@ -457,7 +457,7 @@ function renderDiary(sec, params = {}) {
   const plans = store.get('kj_plans', []).slice(0, 5);
   const s = settings();
   const nameOf = (id) => { const m = state.family.find((x) => x.id === id); return m ? displayName(m) : ''; };
-  sec.innerHTML = `${subHeader(L('My Thunai diary', 'என் துணை நாட்குறிப்பு'), L('Good things that happened — your own notes, on this phone', 'நல்லது நடந்தது — உங்கள் சொந்தக் குறிப்புகள், இந்தக் கைப்பேசியில்'))}
+  sec.innerHTML = `${subHeader(L('My Thunai Diary', 'என் துணை நாட்குறிப்பு'), L('Good things that happened — your own notes, on this phone', 'நல்லது நடந்தது — உங்கள் சொந்தக் குறிப்புகள், இந்தக் கைப்பேசியில்'))}
     ${people.length > 1 ? `<div class="who-row member-switch" role="group" aria-label="${esc(L('Whose diary', 'யாருடைய குறிப்புகள்'))}"><button class="mchip who${diaryUi.person === 'all' ? ' sel' : ''}" data-dp="all" aria-pressed="${diaryUi.person === 'all'}">${L('Everyone', 'அனைவரும்')}</button>${people.map((m) => `<button class="mchip who${diaryUi.person === m.id ? ' sel' : ''}" data-dp="${esc(m.id)}" aria-pressed="${diaryUi.person === m.id}">${esc(displayName(m))}</button>`).join('')}</div>` : ''}
     <button class="btn-gold diary-add" type="button" data-grow="mark" data-mark="${esc(JSON.stringify({ source: 'diary', title: '', kind: 'good', personId: diaryUi.person === 'all' ? '' : diaryUi.person }))}">🌼 ${L('Write a good thing that happened', 'நடந்த ஒரு நல்லதை எழுது')}</button>
     <section class="card glass" aria-labelledby="dmTitle">
@@ -489,7 +489,7 @@ function renderDiary(sec, params = {}) {
     : `<p class="small muted">${L('Your diary is empty. It fills only with what you choose to mark.', 'உங்கள் நாட்குறிப்பு காலியாக உள்ளது. நீங்கள் குறிப்பவை மட்டுமே இதில் சேரும்.')}</p>`}
     </section>
     <p class="small muted center">🔒 ${s.journalBackup && backupConsent() && state.user ? L('Backed up to your account (you can switch this off).', 'உங்கள் கணக்கில் பாதுகாக்கப்படுகிறது (நிறுத்தலாம்).') : L('Stays only on this phone.', 'இந்தக் கைப்பேசியில் மட்டுமே இருக்கும்.')} <button class="link-btn" data-go="dailyset">${L('Settings', 'அமைப்புகள்')}</button></p>
-    <button class="btn-soft" type="button" data-grow="invite">💌 ${L('Invite family & friends', 'குடும்பம், நண்பர்களை அழை')}</button>
+    <button class="btn-soft" type="button" data-grow="invite">💌 ${L('Invite family & friends', 'குடும்பம், நண்பர்களை அழையுங்கள்')}</button>
     ${copyright()}`;
   $$('[data-dp]', sec).forEach((b) => b.addEventListener('click', () => { diaryUi.person = b.dataset.dp; renderDiary(sec); }));
   $$('[data-ddel]', sec).forEach((b) => b.addEventListener('click', () => {
@@ -511,7 +511,7 @@ function renderDailySet(sec) {
   const native = Boolean(window.Capacitor?.isNativePlatform?.());
   const row = (id, en, taText, subEn = '', subTa = '') => `<label class="set-row"><span>${L(en, taText)}${subEn ? `<small>${L(subEn, subTa)}</small>` : ''}</span><input type="checkbox" data-ds="${id}"${s[id] ? ' checked' : ''}></label>`;
   const rem = store.get('kj_reminders', {});
-  sec.innerHTML = `${subHeader(L('Daily brief & reminders', 'தினசரி குறிப்பு & நினைவூட்டல்கள்'), L('Everything Thunai shows or sends you each day — switch any of it off here', 'துணை தினமும் காட்டுவது, அனுப்புவது எல்லாம் — எதையும் இங்கே நிறுத்தலாம்'), 'more')}
+  sec.innerHTML = `${subHeader(L('Daily Brief & Reminders', 'தினசரி குறிப்பு & நினைவூட்டல்கள்'), L('Everything Thunai shows or sends you each day — switch any of it off here', 'துணை தினமும் காட்டுவது, அனுப்புவது எல்லாம் — எதையும் இங்கே நிறுத்தலாம்'), 'more')}
     <section class="card glass ds-group"><div class="card-title">🌅 ${L('Morning brief', 'காலைக் குறிப்பு')}</div>
       ${row('showBrief', 'Show the morning brief on Today', 'காலைக் குறிப்பை இன்று பக்கத்தில் காட்டு', 'Three short lines for the selected person', 'தேர்ந்தெடுத்தவருக்கு மூன்று சிறு வரிகள்')}
       ${row('notify', 'Phone notification each morning', 'தினமும் காலையில் அறிவிப்பு', native ? 'Made on this phone — works offline' : 'In the browser it appears only while Thunai is open; the installed app notifies every day', native ? 'இந்தக் கைப்பேசியிலேயே தயாராகிறது — இணையம் தேவையில்லை' : 'உலாவியில் துணை திறந்திருக்கும்போது மட்டும்; நிறுவிய செயலியில் தினமும் வரும்')}

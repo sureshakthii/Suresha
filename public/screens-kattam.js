@@ -6,12 +6,17 @@
 // is always shown before anything is calculated (mayCalculate in shared/horoscope-parse.js guards the save).
 import { NAKSHATRAS, RASIS, PLANETS, vedicDay } from './shared/astro.js';
 import { KATTAM_PLANETS, kattamWarnings } from './shared/kattam.js';
-import { state, $, $$, L, esc, bi, registerScreen, subHeader, toast, saveFamily, go, RELATIONS, nakName, fmtIsoDate, rasiName } from './core.js';
+import { state, $, $$, L, esc, bi, registerScreen, subHeader, toast, saveFamily, go, RELATIONS, nakName, rasiName } from './core.js';
 import { placeSearch } from './account.js';
 import { searchLocalPlaces, placeLabel, zoneOffsetHours } from './shared/places.js';
 import { TAMIL_YEARS } from './shared/tamilcal.js';
 import { parseWrittenDate, tamilYearCheck } from './shared/written-date.js';
 import { parseHoroscopeText, importToDraft, mayCalculate, nazhigaiToClock } from './shared/horoscope-parse.js';
+import { fmtDay, fmtClock } from './shared/fmt.js';
+// Dates and times the one way the app writes them (shared/fmt.js), in the app language.
+const lgx = () => (state.lang === 'en' ? 'en' : 'ta');
+const fDay = (iso) => fmtDay(iso, lgx());
+
 
 // South Indian layout: fixed sign positions in a 4 × 4 grid (centre 2 × 2 is the title).
 const GRID = [[11, 0, 1, 2], [10, null, null, 3], [9, null, null, 4], [8, 7, 6, 5]];
@@ -58,7 +63,8 @@ const weekdayOf = (iso) => L(...WEEKDAY[new Date(`${iso}T12:00:00Z`).getUTCDay()
 const fold = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 const T2 = (en, ta) => ({ en, ta });
-const fmtClock = (t) => { const [h, m] = t.split(':').map(Number); return `${t} (${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? L('AM', 'காலை') : L('PM', 'மாலை/இரவு')})`; };
+// "காலை 6:45" / "6:45 AM" — 12-hour with the day part, the way the rest of the app writes times (shared/fmt.js).
+const fmtClockHM = (t) => { const [h, m] = t.split(':').map(Number); return fmtClock(new Date(Date.UTC(2000, 0, 1, h, m)), lgx(), 0); };
 // Flags the confirmation panel already shows in its own rows; the rest are listed under the auto-read note.
 const SHOWN_IN_ROWS = ['day-month', 'two-digit-year', 'unreadable', 'ampm', 'nazhigai', 'tamil-cycle', 'place-choose', 'place-missing', 'no-date'];
 
@@ -119,8 +125,8 @@ function confirmHtml() {
   const flag = (t) => `<p class="small kt-flag">⚠️ ${esc(bi(t))}</p>`;
   const lowDd = (...keys) => (a && keys.some((x) => a.low.includes(x)) ? ' class="kt-low"' : '');
   const dateBlock = r.wd && (r.dates.length > 1 || r.wd.flags.length)
-    ? `${r.wd.flags.map(flag).join('')}${r.dates.length ? `<div class="kt-choices" role="radiogroup" aria-label="${esc(L('Which date?', 'எந்தத் தேதி?'))}">${r.dates.map((c) => `<label class="seg-opt"><input type="radio" name="ktDate" value="${c.iso}"${draft.dateChoice === c.iso ? ' checked' : ''}> ${esc(fmtIsoDate(c.iso))} · ${esc(weekdayOf(c.iso))}</label>`).join('')}</div>` : ''}`
-    : r.date ? `<b>${esc(fmtIsoDate(r.date))}</b> · ${esc(weekdayOf(r.date))}` : flag({ en: 'Please enter the date of birth.', ta: 'பிறந்த தேதியை உள்ளிடவும்.' });
+    ? `${r.wd.flags.map(flag).join('')}${r.dates.length ? `<div class="kt-choices" role="radiogroup" aria-label="${esc(L('Which date?', 'எந்தத் தேதி?'))}">${r.dates.map((c) => `<label class="seg-opt"><input type="radio" name="ktDate" value="${c.iso}"${draft.dateChoice === c.iso ? ' checked' : ''}> ${esc(fDay(c.iso))} · ${esc(weekdayOf(c.iso))}</label>`).join('')}</div>` : ''}`
+    : r.date ? `<b>${esc(fDay(r.date))}</b> · ${esc(weekdayOf(r.date))}` : flag({ en: 'Please enter the date of birth.', ta: 'பிறந்த தேதியை உள்ளிடவும்.' });
   const placeBlock = r.place.status === 'picked' || r.place.status === 'matched'
     ? `<b>${esc(r.place.status === 'matched' ? placeLabel(r.place.options[0]) : draft.place)}</b>${draft.lat != null || r.place.options[0] ? ` <span class="muted small">(${Number(draft.lat ?? r.place.options[0].lat).toFixed(2)}, ${Number(draft.lon ?? r.place.options[0].lon).toFixed(2)})</span>` : ''}`
     : r.place.status === 'choose'
@@ -131,8 +137,8 @@ function confirmHtml() {
   const nz = draft.nazhigai;
   const timeBlock = r.timeVia === 'clock'
     ? (r.timeAmbiguous
-      ? `${flag(T2(`The time “${draft.autoTime}” was read without AM/PM — please choose.`, `“${draft.autoTime}” நேரம் காலை/மாலை இல்லாமல் படிக்கப்பட்டது — தேர்வு செய்யவும்.`))}<div class="kt-choices" role="radiogroup" aria-label="${esc(L('Which time?', 'எந்த நேரம்?'))}">${draft.timeOptions.map((t) => `<label class="seg-opt"><input type="radio" name="ktTime" value="${t}"${draft.timeChoice === t ? ' checked' : ''}> ${esc(fmtClock(t))}</label>`).join('')}</div>`
-      : `<b>${esc(fmtClock(r.time))}</b>`)
+      ? `${flag(T2(`The time “${draft.autoTime}” was read without AM/PM — please choose.`, `“${draft.autoTime}” நேரம் காலை/மாலை இல்லாமல் படிக்கப்பட்டது — தேர்வு செய்யவும்.`))}<div class="kt-choices" role="radiogroup" aria-label="${esc(L('Which time?', 'எந்த நேரம்?'))}">${draft.timeOptions.map((t) => `<label class="seg-opt"><input type="radio" name="ktTime" value="${t}"${draft.timeChoice === t ? ' checked' : ''}> ${esc(fmtClockHM(t))}</label>`).join('')}</div>`
+      : `<b>${esc(fmtClockHM(r.time))}</b>`)
     : r.timeVia === 'nazhigai'
       ? `${flag(T2(`Written as ${nz.nazhigai} nazhigai ${nz.vinadi} vinadi after sunrise. Sunrise at this place on this date: ${r.conv.sunrise} → about ${r.conv.time}${r.conv.nextDay ? ' (after midnight, the next calendar day)' : ''}. Needs your confirmation.`, `சூரிய உதயத்திலிருந்து ${nz.nazhigai} நாழிகை ${nz.vinadi} விநாடி என எழுதப்பட்டுள்ளது. இந்த ஊரில் அன்று சூரிய உதயம் ${r.conv.sunrise} → சுமார் ${r.conv.time}${r.conv.nextDay ? ' (நள்ளிரவுக்குப் பின், அடுத்த நாள்)' : ''}. உறுதிசெய்ய வேண்டும்.`))}<label class="set-row"><span>${L(`Use about ${r.conv.time} as the birth time`, `சுமார் ${r.conv.time} ஐப் பிறந்த நேரமாகக் கொள்`)}</span><input type="checkbox" id="ktNz"${draft.nazhigaiAccept ? ' checked' : ''}></label>`
       : nz ? flag(T2(`Written as ${nz.nazhigai} nazhigai ${nz.vinadi} vinadi after sunrise — confirm the date and the place first; then it is converted to a clock time here.`, `சூரிய உதயத்திலிருந்து ${nz.nazhigai} நாழிகை ${nz.vinadi} விநாடி — முதலில் தேதியையும் இடத்தையும் உறுதிசெய்யவும்; பின் இங்கு மணியாக மாற்றப்படும்.`))
@@ -162,7 +168,7 @@ function confirmHtml() {
 function importCardHtml() {
   const busy = ocrJob;
   return `<div class="card glass kt-import">
-      <div class="card-title">📥 ${L('Import the horoscope', 'ஜாதகத்தை இறக்கு')}</div>
+      <div class="card-title">📥 ${L('Import the horoscope', 'ஜாதகத்தை இறக்குமதி செய்யுங்கள்')}</div>
       <p class="small">${L('Take a photo, or choose a photo or PDF of the jathagam. It is read on this phone — nothing is uploaded — and only fills the form below for you to check.', 'புகைப்படம் எடுக்கவும், அல்லது ஜாதகப் புகைப்படம் / PDF தேர்வு செய்யவும். இந்தக் கைப்பேசியிலேயே படிக்கப்படும் — எதுவும் பதிவேற்றப்படாது — கீழே உள்ள படிவத்தை நிரப்பும்; நீங்கள் சரிபார்க்க வேண்டும்.')}</p>
       <div class="btn-row kt-import-btns">
         <label class="chip-btn kt-photo-btn">📷 ${L('Take a photo', 'புகைப்படம் எடு')}<input type="file" accept="image/*" capture="environment" id="ktPhoto" hidden${busy ? ' disabled' : ''}></label>
@@ -205,7 +211,7 @@ function render(sec) {
   const warn = k.star != null ? kattamWarnings(k) : [];
   const starLord = k.star != null ? NAKSHATRAS[k.star].lord : null;
   const nz = draft.nazhigai;
-  sec.innerHTML = `${subHeader(L('From the written jathagam', 'எழுதிய ஜாதகத்திலிருந்து'), L('For families who have the Rasi Kattam but not the birth time', 'ராசி கட்டம் உள்ளது, பிறந்த நேரம் தெரியாதவர்களுக்கு'), 'family')}
+  sec.innerHTML = `${subHeader(L('From a Written Jathagam', 'எழுதிய ஜாதகத்திலிருந்து'), L('For families who have the Rasi Kattam but not the birth time', 'ராசி கட்டம் உள்ளது, பிறந்த நேரம் தெரியாதவர்களுக்கு'), 'family')}
     ${importCardHtml()}
     ${autoNoteHtml()}
     <form id="ktForm" class="card glass" novalidate>
@@ -344,7 +350,7 @@ function review(sec) {
 }
 
 function renderConfirm(sec) {
-  sec.innerHTML = `${subHeader(L('From the written jathagam', 'எழுதிய ஜாதகத்திலிருந்து'), L('Confirm the details', 'விவரங்களை உறுதிசெய்யவும்'), 'family')}${confirmHtml()}`;
+  sec.innerHTML = `${subHeader(L('From a Written Jathagam', 'எழுதிய ஜாதகத்திலிருந்து'), L('Confirm the details', 'விவரங்களை உறுதிசெய்யவும்'), 'family')}${confirmHtml()}`;
   $$('input[name="ktDate"]', sec).forEach((x) => x.addEventListener('change', () => { draft.dateChoice = x.value; renderConfirm(sec); }));
   $$('input[name="ktPlace"]', sec).forEach((x) => x.addEventListener('change', () => { draft.placeChoice = Number(x.value); renderConfirm(sec); }));
   $$('input[name="ktTime"]', sec).forEach((x) => x.addEventListener('change', () => { draft.timeChoice = x.value; renderConfirm(sec); }));

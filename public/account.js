@@ -1,6 +1,8 @@
 // Account: login (mobile OTP, email OTP, Facebook), family profiles and settings.
 import { FAITHS } from './shared/faith.js';
-import { searchLocalPlaces, placeLabel, placeText, offsetLabel, fromNominatim, nominatimUrl, zoneOffsetHours, nearestPlace } from './shared/places.js';
+import { searchLocalPlaces, placeLabel, placeText, offsetLabel, fromNominatim, nominatimUrl, zoneOffsetHours, nearestPlace, resolveTypedPlace } from './shared/places.js';
+import { initialOf } from './shared/relations.js';
+import { fmtBirth, fmtDay } from './shared/fmt.js';
 import { zonedToUtc, isValidZone } from './shared/datetime.js';
 import { guessCountry, formatPhone } from './shared/countries.js';
 import { enhancePhone, phoneError, startPhoneInputs } from './phone-input.js';
@@ -18,6 +20,8 @@ import { syncShares, pendingJoinCode, mountSharedFamily, pushSharedEdit } from '
 import { mergeGoals } from './shared/goals.js';
 import { isPrivateProfile } from './shared/sync-policy.js';
 import { canDeleteMember, deleteMember, undoDelete } from './shared/family-delete.js';
+
+const lg = () => (ta() ? 'ta' : 'en');
 
 startPhoneInputs(); // every mobile-number field in the app gets the country-code picker
 
@@ -73,18 +77,17 @@ function renderLogin(sec) {
   if (login.step === 'choose') {
     body = `<button class="login-btn phone" data-ch="sms">📱 ${L('Continue with mobile number', 'மொபைல் எண் மூலம் தொடரவும்')}</button>
       <button class="login-btn email" data-ch="email">✉️ ${L('Continue with email', 'மின்னஞ்சல் மூலம் தொடரவும்')}</button>
-      <button class="login-btn fb" id="fbBtn"${fbOk ? '' : ' aria-disabled="true"'}><span class="fb-f">f</span> ${L('Continue with Facebook', 'Facebook மூலம் தொடரவும்')}</button>
-      ${fbOk ? '' : `<p class="muted small center">${L('Facebook sign-in will be enabled once the app\'s Facebook ID is configured.', 'Facebook App ID அமைக்கப்பட்டதும் Facebook உள்நுழைவு இயங்கும்.')}</p>`}`;
+      ${fbOk ? `<button class="login-btn fb" id="fbBtn"><span class="fb-f">f</span> ${L('Continue with Facebook', 'Facebook மூலம் தொடரவும்')}</button>` : ''}`;
   } else if (login.step === 'enter') {
-    body = `<form id="toForm"><label>${login.channel === 'sms' ? L('Mobile number', 'மொபைல் எண்') : L('Email address', 'மின்னஞ்சல் முகவரி')}
+    body = `<form id="toForm" novalidate><label>${login.channel === 'sms' ? L('Mobile number', 'மொபைல் எண்') : L('Email address', 'மின்னஞ்சல் முகவரி')}
         ${login.channel === 'sms' ? `<input id="loginTo" name="loginPhone" type="tel" inputmode="tel" value="${esc(login.channel === 'sms' && /^\+/.test(login.to) ? login.to : '')}" required>`
     : '<input id="loginTo" type="email" autocomplete="email" required placeholder="name@example.com">'}</label>
         <button class="btn-gold" id="sendOtp">${L('Send OTP', 'OTP அனுப்பு')}</button>
         <button type="button" class="link-btn center-block" data-step="choose">‹ ${L('Other ways to sign in', 'வேறு வழிகள்')}</button>
         <p class="err" id="loginErr"></p></form>`;
   } else if (login.step === 'otp') {
-    body = `<form id="otpForm"><p class="center">${L('Enter the 6-digit code sent to', '6 இலக்க குறியீடு அனுப்பப்பட்டது')} <b>${esc(login.masked || login.to)}</b></p>
-        <div class="otp-boxes">${[0, 1, 2, 3, 4, 5].map((i) => `<input class="otp" inputmode="numeric" maxlength="1" aria-label="Digit ${i + 1}" data-i="${i}">`).join('')}</div>
+    body = `<form id="otpForm" novalidate><p class="center">${L('Enter the 6-digit code sent to', '6 இலக்க குறியீடு அனுப்பப்பட்டது')} <b>${esc(login.masked || login.to)}</b></p>
+        <div class="otp-boxes">${[0, 1, 2, 3, 4, 5].map((i) => `<input class="otp" inputmode="numeric" maxlength="1" aria-label="${esc(L(`Digit ${i + 1}`, `இலக்கம் ${i + 1}`))}" data-i="${i}">`).join('')}</div>
         ${login.devCode ? `<p class="demo-note">🧪 ${STATIC ? L('Demo mode — no SMS is sent.', 'மாதிரி முறை — SMS அனுப்பப்படாது.') : L('Test mode — SMS provider not configured.', 'சோதனை முறை — SMS சேவை அமைக்கப்படவில்லை.')} ${L('Your code', 'உங்கள் குறியீடு')}: <b>${esc(login.devCode)}</b></p>` : ''}
         <label>${L('Your name (for new accounts)', 'உங்கள் பெயர் (புதிய கணக்கிற்கு)')}<input id="loginName" maxlength="60" autocomplete="name"></label>
         <button class="btn-gold" id="verifyOtp">${L('Verify & sign in', 'சரிபார்த்து உள்நுழை')}</button>
@@ -106,10 +109,8 @@ function renderLogin(sec) {
   if (phoneEl) login.phone = enhancePhone(phoneEl);
   $$('[data-ch]', sec).forEach((b) => b.addEventListener('click', () => { login.channel = b.dataset.ch; login.step = 'enter'; renderLogin(sec); $('#loginTo')?.focus(); }));
   $$('[data-step]', sec).forEach((b) => b.addEventListener('click', () => { login.step = b.dataset.step; renderLogin(sec); }));
-  $('#fbBtn')?.addEventListener('click', () => {
-    if (!fbOk) { toast(L('Facebook sign-in is not configured yet', 'Facebook உள்நுழைவு இன்னும் அமைக்கப்படவில்லை')); return; }
-    location.href = '/api/auth/facebook/start';
-  });
+  // Facebook appears only when the server has a Facebook app configured (no button, no developer note otherwise).
+  $('#fbBtn')?.addEventListener('click', () => { location.href = '/api/auth/facebook/start'; });
   $('#skipLogin').addEventListener('click', () => { store.set('kj_skip_login', true); afterLogin(); });
   $('#toForm')?.addEventListener('submit', (e) => { e.preventDefault(); requestOtp(); });
   $('#otpForm')?.addEventListener('submit', (e) => { e.preventDefault(); verifyOtp(); });
@@ -148,7 +149,10 @@ async function requestOtp(resend = false) {
       const r = login.phone.get();
       if (!r.ok) { const e = $('#loginErr'); if (e) e.textContent = phoneError(r.country); return; }
       login.to = r.e164; // E.164, e.g. +94771234567
-    } else login.to = $('#loginTo').value.trim().replace(/\s/g, '');
+    } else {
+      login.to = $('#loginTo').value.trim().replace(/\s/g, '');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(login.to)) { const e = $('#loginErr'); if (e) e.textContent = L('Please enter a valid email address', 'சரியான மின்னஞ்சல் முகவரியை உள்ளிடுங்கள்'); $('#loginTo')?.focus(); return; }
+    }
   }
   const err = $('#loginErr');
   try {
@@ -367,7 +371,7 @@ function bindNameFields(f, m) {
 }
 
 function memberForm(m, first) {
-  return `<form id="memberForm" autocomplete="off">
+  return `<form id="memberForm" autocomplete="off" novalidate>
     ${nameFields(m)}
     <p class="muted small">${L('For a company or team, choose "Company / Team" and enter its founding (incorporation) date, time and place.', 'நிறுவனம் / குழுவிற்கு "நிறுவனம் / குழு" தேர்வு செய்து, தொடங்கிய தேதி, நேரம், இடம் உள்ளிடவும்.')}</p>
     <div class="row2">
@@ -399,9 +403,9 @@ function memberForm(m, first) {
     <label class="place-wrap">${L('Place of birth (any town in the world)', 'பிறந்த இடம் (உலகின் எந்த ஊரும்)')}<input name="place" required placeholder="${esc(L('Chennai, Jaffna, Toronto…', 'சென்னை, யாழ்ப்பாணம், டொரன்டோ…'))}" value="${esc(m.place || '')}"><ul id="placeList" class="suggest" hidden></ul></label>
     <input type="hidden" name="zone" value="${esc(m.zone || '')}">
     <div class="row3">
-      <label>${L('Latitude', 'அட்சரேகை')}<input name="lat" type="number" step="0.0001" required value="${m.lat ?? ''}"></label>
-      <label>${L('Longitude', 'தீர்க்கரேகை')}<input name="lon" type="number" step="0.0001" required value="${m.lon ?? ''}"></label>
-      <label>${L('UTC offset', 'நேர மண்டலம்')}<input name="tz" type="number" step="0.25" required value="${m.tz ?? 5.5}"></label>
+      <label>${L('Latitude', 'அட்சரேகை')}<input name="lat" type="number" step="0.0001" value="${m.lat ?? ''}"></label>
+      <label>${L('Longitude', 'தீர்க்கரேகை')}<input name="lon" type="number" step="0.0001" value="${m.lon ?? ''}"></label>
+      <label>${L('UTC offset', 'நேர மண்டலம்')}<input name="tz" type="number" step="0.25" value="${m.tz ?? 5.5}"></label>
     </div>
     <p class="small muted zone-note" id="zoneNote"></p>
     <div class="note-box dst-box" id="dstBox" role="note" hidden></div>
@@ -416,7 +420,9 @@ function renderFamily(sec, params = {}) {
   if (editing?.shared && editing.shared.permission !== 'edit') editing = null; // shared with me view-only: no editing
   const first = params.first || !state.family.length;
   if (editing) {
-    sec.innerHTML = `${first ? '' : subHeader(editing.id ? L('Edit details', 'விவரம் திருத்து') : L('Add a family member', 'குடும்ப உறுப்பினர் சேர்'), '', 'family')}
+    // No one saved yet (first run, or a personal screen opened before anyone was added): a titled "add a person
+    // first" page with a way back, never a bare form.
+    sec.innerHTML = `${first ? subHeader(L('Add a Person First', 'முதலில் ஒருவரைச் சேருங்கள்'), L('Charts and personal guidance need one person’s birth details. The calendar works without them.', 'ஜாதகமும் தனிப்பட்ட வழிகாட்டலும் ஒருவரின் பிறப்பு விவரங்களுடன் இயங்கும். நாட்காட்டி அவை இல்லாமலும் இயங்கும்.'), 'home') : subHeader(editing.id ? L('Edit Details', 'விவரங்களைத் திருத்துங்கள்') : L('Add a Family Member', 'குடும்ப உறுப்பினரைச் சேருங்கள்'), '', 'family')}
       <div class="card glass hero-card">${first ? `<h2>${L('Your birth details', 'உங்கள் பிறப்பு விவரங்கள்')}</h2><p class="muted">${L('Enter the date and place of birth, and the time if you know it.', 'பிறந்த தேதி, இடம், தெரிந்தால் நேரம் உள்ளிடவும்.')}</p>` : ''}
       ${editing.id ? '' : `<button type="button" class="card glass cta-card kattam-cta" data-go="kattam"><b>📜 ${L('Only have the written jathagam (Rasi Kattam)?', 'எழுதிய ஜாதகம் (ராசி கட்டம்) மட்டும் உள்ளதா?')}</b><span class="small">${L('No birth time needed — fill the 12 boxes and the birth star, with the photo beside you.', 'பிறந்த நேரம் தேவையில்லை — புகைப்படத்தைப் பார்த்து 12 கட்டங்களையும் நட்சத்திரத்தையும் நிரப்புங்கள்.')}</span></button>`}
       ${memberForm(editing, first)}</div>`;
@@ -454,16 +460,32 @@ function renderFamily(sec, params = {}) {
         : L('Pick the place from the list to fill the time zone automatically.', 'நேர மண்டலம் தானாக நிரம்ப, பட்டியலிலிருந்து இடத்தைத் தேர்வு செய்யவும்.');
       if (!$('#dstBox')?.contains(document.activeElement)) showDst();
     };
-    placeSearch(f.elements.place, $('#placeList'), (p) => {
+    // A place counts as chosen once it is picked from the list (or was saved before); typing over it clears the
+    // old coordinates, and Save then picks the one clear match itself or asks (never a browser bubble).
+    const usePlace = (p) => {
       f.elements.place.value = p.text || p.name; f.elements.lat.value = p.lat; f.elements.lon.value = p.lon;
       f.elements.zone.value = p.zone || ''; if (!p.zone && p.tz != null) f.elements.tz.value = p.tz;
+      f.dataset.placePicked = f.elements.place.value;
       showZone();
+    };
+    if (editing.place && Number.isFinite(Number(editing.lat)) && editing.lat !== '') f.dataset.placePicked = editing.place;
+    placeSearch(f.elements.place, $('#placeList'), usePlace);
+    f.elements.place.addEventListener('input', () => {
+      if (f.dataset.placePicked && f.elements.place.value.trim() !== f.dataset.placePicked) {
+        f.dataset.placePicked = ''; f.elements.lat.value = ''; f.elements.lon.value = ''; f.elements.zone.value = ''; showZone();
+      }
     });
     f.elements.tz.addEventListener('input', (e) => { if (e.isTrusted) { f.elements.zone.value = ''; showZone(); } }); // typed by hand: keep the fixed offset
     for (const k of ['date', 'time']) f.elements[k].addEventListener('change', showZone);
     showZone();
     const names = bindNameFields(f, editing);
-    f.addEventListener('submit', (e) => { e.preventDefault(); saveMember(f, names.read()); });
+    f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const bad = checkMemberForm(f, usePlace);
+      if (bad) { showFormErr(f, bad.field, bad.msg); return; }
+      saveMember(f, names.read());
+    });
+    f.addEventListener('input', (e) => { if (e.target.getAttribute('aria-invalid')) { e.target.removeAttribute('aria-invalid'); $('#formErr').textContent = ''; } });
     f.addEventListener('change', (e) => {
       if (e.target.name !== 'timeCertainty') return;
       const v = e.target.value;
@@ -476,12 +498,12 @@ function renderFamily(sec, params = {}) {
     $('#delMember')?.addEventListener('click', () => askDelete(editing.id));
     return;
   }
-  sec.innerHTML = `${subHeader(L('Family profiles', 'குடும்ப சுயவிவரங்கள்'), L('Everyone\'s charts in one place', 'அனைவரின் ஜாதகமும் ஒரே இடத்தில்'), 'familyhub')}
+  sec.innerHTML = `${subHeader(L('Family Profiles', 'குடும்ப சுயவிவரங்கள்'), L('Everyone\'s charts in one place', 'அனைவரின் ஜாதகமும் ஒரே இடத்தில்'), 'familyhub')}
     ${state.family.map((m) => { const c = chartOf(m); return `<div class="card glass fam-card${m.id === state.activeId ? ' active' : ''}">
-      <span class="avatar">${esc(([...displayName(m)][0] || '').toUpperCase())}</span>
+      <span class="avatar">${esc(initialOf(displayName(m)))}</span>
       <div style="flex:1"><b>${esc(displayName(m))}</b> <span class="pill">${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))}</span>
         ${m.shared ? `<div class="small"><span class="tag ${m.shared.permission === 'edit' ? 'good' : 'warn'}">${L('Shared by', 'பகிர்ந்தவர்')} ${esc(nameInLang(m.shared.by) || L('family', 'குடும்பம்'))} · ${m.shared.permission === 'edit' ? L('can edit', 'திருத்தலாம்') : L('view only', 'பார்வைக்கு மட்டும்')}</span></div>` : ''}
-        <div class="muted small">${esc(m.date)} · ${certaintyOf(m) === 'unknown' ? L('time unknown', 'நேரம் தெரியாது') : `${esc(m.time.slice(0, 5))}${certaintyOf(m) === 'approx' ? ` (± ${m.timeWindowMin || 60} ${L('min', 'நிமி')})` : ''}`} · ${esc(placeName(m.place))}</div>
+        <div class="muted small">${certaintyOf(m) === 'unknown' ? `${esc(fmtBirth(m.date, null, lg()))} · ${L('time unknown', 'நேரம் தெரியாது')}` : `${esc(fmtBirth(m.date, m.time.slice(0, 5), lg()))}${certaintyOf(m) === 'approx' ? ` (± ${m.timeWindowMin || 60} ${L('min', 'நிமி')})` : ''}`} · ${esc(placeName(m.place))}</div>
         <div class="small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}${certaintyOf(m) === 'exact' ? ` · ${L('Lagnam', 'லக்னம்')} ${esc(rasiName(c.lagna.rasi))}` : ''}</div></div>
       <div class="fam-actions">${m.id === state.activeId ? `<span class="tag good">${L('Active', 'தேர்வு')}</span>` : `<button class="chip-btn" data-use="${esc(m.id)}">${L('Use', 'தேர்வு')}</button>`}
         <div class="fam-row-btns">${!m.shared || m.shared.permission === 'edit' ? `<button class="link-btn" data-edit="${esc(m.id)}">${L('Edit', 'திருத்து')}</button>` : ''}
@@ -640,6 +662,40 @@ function showUndo(name, snapshot) {
   });
 }
 
+/**
+ * The family form's own checks, in the app language (the form is novalidate — no English browser bubbles).
+ * A typed birth place that was not picked is matched here: one clear built-in match is used; otherwise the person
+ * is asked to pick from the list. Returns { field, msg } for the first problem, or null.
+ */
+export function checkMemberForm(f, usePlace) {
+  const el = f.elements;
+  if (!el.name.value.trim()) return { field: 'name', msg: L('Please enter the name.', 'பெயரை உள்ளிடுங்கள்.') };
+  if (!el.date.value) return { field: 'date', msg: L('Please enter the date of birth.', 'பிறந்த தேதியை உள்ளிடுங்கள்.') };
+  if (el.timeCertainty.value !== 'unknown' && !el.time.value) return { field: 'time', msg: L('Please enter the time of birth — or choose “Unknown”.', 'பிறந்த நேரத்தை உள்ளிடுங்கள் — தெரியாவிட்டால் “தெரியாது” என்பதைத் தேர்ந்தெடுங்கள்.') };
+  const typed = el.place.value.trim();
+  if (!typed) return { field: 'place', msg: L('Please enter the place of birth.', 'பிறந்த இடத்தை உள்ளிடுங்கள்.') };
+  const haveCoords = el.lat.value !== '' && el.lon.value !== '' && !(Number(el.lat.value) === 0 && Number(el.lon.value) === 0);
+  if (!haveCoords) {
+    const p = resolveTypedPlace(typed, { preferCc: userCc() });
+    if (p) usePlace({ ...p, text: placeText(p) });
+    else {
+      el.place.dispatchEvent(new Event('input', { bubbles: true })); // show the suggestions again
+      return { field: 'place', msg: L('Please pick the birth place from the list below the box (or enter latitude and longitude).', 'பிறந்த இடத்தைப் பெட்டியின் கீழுள்ள பட்டியலிலிருந்து தேர்ந்தெடுங்கள் (அல்லது அட்சரேகை, தீர்க்கரேகை உள்ளிடுங்கள்).') };
+    }
+  }
+  const lat = Number(el.lat.value), lon = Number(el.lon.value);
+  if (!(Math.abs(lat) <= 90) || !(Math.abs(lon) <= 180)) return { field: 'lat', msg: L('Latitude must be between −90 and 90, longitude between −180 and 180.', 'அட்சரேகை −90 முதல் 90 வரை, தீர்க்கரேகை −180 முதல் 180 வரை இருக்க வேண்டும்.') };
+  if (el.tz.value === '' || !(Math.abs(Number(el.tz.value)) <= 14)) return { field: 'tz', msg: L('Please enter the UTC offset (for India 5.5).', 'நேர மண்டலத்தை உள்ளிடுங்கள் (இந்தியாவுக்கு 5.5).') };
+  return null;
+}
+/** Show a form message in #formErr and move focus to the field it is about. */
+function showFormErr(f, field, msg) {
+  const err = $('#formErr');
+  if (err) { err.textContent = msg; err.setAttribute('role', 'alert'); }
+  const el = f.elements[field];
+  if (el) { el.setAttribute('aria-invalid', 'true'); el.focus(); el.scrollIntoView?.({ block: 'center', behavior: 'smooth' }); }
+}
+
 function saveMember(f, names) {
   const timeCertainty = f.elements.timeCertainty.value || 'exact';
   const raw = f.elements.time.value;
@@ -681,11 +737,13 @@ registerScreen('family', { render: renderFamily, parent: 'more' });
 
 // ================================================================ MORE / SETTINGS
 /** The owner dashboard is shown only to admins: a server-marked admin account, or a phone that has opened it with an admin token. */
-export const isAdmin = () => !!(state.user?.admin || state.user?.isAdmin || ['admin', 'owner'].includes(state.user?.role) || store.get('kj_admin', ''));
+// Never reads an admin token: a server-marked admin account, or this tab's session flag set after the dashboard opened.
+const adminSession = () => { try { return sessionStorage.getItem('kj_admin_session') === '1'; } catch { return false; } };
+export const isAdmin = () => !!(state.user?.admin || state.user?.isAdmin || ['admin', 'owner'].includes(state.user?.role) || adminSession());
 function renderMore(sec) {
   const u = state.user;
-  sec.innerHTML = `${subHeader(L('Settings & account', 'அமைப்புகள் & கணக்கு'), '', 'home')}<div class="card glass account-card">
-      <span class="avatar big">${esc(u ? ([...(displayName(state.family.find((m) => m.relation === 'self')) || nameInLang(u.name))][0] || '🙏').toUpperCase() : '🙏')}</span>
+  sec.innerHTML = `${subHeader(L('Settings & Account', 'அமைப்புகள் & கணக்கு'), '', 'home')}<div class="card glass account-card">
+      <span class="avatar big">${esc(u ? (initialOf(displayName(state.family.find((m) => m.relation === 'self')) || nameInLang(u.name)) || '🙏') : '🙏')}</span>
       <div style="flex:1">${u ? `<b>${esc(displayName(state.family.find((m) => m.relation === 'self')) || nameInLang(u.name) || L('Signed in', 'உள்நுழைந்துள்ளீர்கள்'))}</b><div class="muted small">${esc(u.phone ? formatPhone(u.phone) : u.email || (u.hasFacebook ? 'Facebook' : ''))}${u.demo ? ' · demo' : ''}</div>`
     : `<b>${L('Not signed in', 'உள்நுழையவில்லை')}</b><div class="muted small">${L('Sign in to back up your family', 'குடும்ப விவரங்களைப் பாதுகாக்க உள்நுழையவும்')}</div>`}</div>
       ${u ? `<button class="chip-btn" id="signOut">${L('Sign out', 'வெளியேறு')}</button>` : `<button class="chip-btn" data-go="login">${L('Sign in', 'உள்நுழை')}</button>`}</div>
@@ -708,11 +766,11 @@ function renderMore(sec) {
       <button data-go="value">${iconChip('plans', { size: 20, cls: 'mi-icon' })}<span>${L('Your Thunai so far (optional summary)', 'என் பயன் (விருப்பச் சுருக்கம்)')}</span></button>
       <button data-go="legal">${iconChip('legal', { size: 20, cls: 'mi-icon' })}<span>${L('Terms, renewals, cancellation & refunds', 'விதிமுறைகள், புதுப்பித்தல், ரத்து, பணத்திருப்பம்')}</span></button>
       <button data-go="feedback">${iconChip('feedback', { size: 20, cls: 'mi-icon' })}<span>${L('Rate & comment', 'மதிப்பீடு & கருத்து')}</span></button>
-      <button data-go="invite">${iconChip('invite', { size: 20, cls: 'mi-icon' })}<span>${L('Invite family', 'குடும்பத்தினரை அழை')}</span></button>
+      <button data-go="invite">${iconChip('invite', { size: 20, cls: 'mi-icon' })}<span>${L('Invite family & friends', 'குடும்பம், நண்பர்களை அழையுங்கள்')}</span></button>
       <button data-go="about">${iconChip('about', { size: 20, cls: 'mi-icon' })}<span>${L(`About ${BRAND.name}`, `${BRAND.nameTa} பற்றி`)}</span></button>
     </div>
     ${supportCard()}
-    ${isAdmin() ? `<div class="menu list"><button class="row" data-go="admin">${iconChip('admin', { size: 20, cls: 'mi-icon' })}<span class="row-txt"><span class="row-name">${L('Owner dashboard', 'உரிமையாளர் டாஷ்போர்டு')}</span></span></button></div>` : ''}
+    ${isAdmin() ? `<div class="menu list"><button class="row" data-go="admin">${iconChip('admin', { size: 20, cls: 'mi-icon' })}<span class="row-txt"><span class="row-name">${L('Owner dashboard', 'உரிமையாளர் முகப்புப் பலகை')}</span></span></button></div>` : ''}
     ${copyright()}`;
   $('#signOut')?.addEventListener('click', signOut);
   $$('[data-lang]', sec).forEach((b) => b.addEventListener('click', () => { state.lang = b.dataset.lang; store.set('kj_lang', state.lang); document.dispatchEvent(new Event('kj:lang')); }));

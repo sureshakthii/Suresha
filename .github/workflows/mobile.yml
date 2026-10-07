@@ -4,10 +4,10 @@
 #   • KJ_APP_URL NOT set  → STANDALONE offline app: the whole app is bundled inside the APK / iOS app,
 #     all astrology runs on the phone; login, payments and bookings are disabled ("needs server" card).
 #   • KJ_APP_URL set      → server-backed app that opens the deployed website (login, payments, bookings).
-#     Set it under Settings → Secrets and variables → Actions → Variables, e.g. https://kaippesi.example.com
+#     Set it under Settings → Secrets and variables → Actions → Variables, e.g. https://thunai.example
 #
 # Quick phone test (Android, no signing needed): Actions → "Mobile apps" → Run workflow → download the
-# artifact `kaippesi-android-debug-apk` → unzip → copy app-debug.apk to the phone → install.
+# artifact `thunai-android-debug-apk` → unzip → copy app-debug.apk to the phone → install.
 # Huawei: the same APK installs on Huawei phones; AppGallery accepts the signed APK or AAB.
 # iPhone: see the notes on the ios job below and docs/INSTALL-TA.md.
 name: Mobile apps
@@ -78,25 +78,27 @@ jobs:
       # (enable "Install unknown apps"). For your own testing and for relatives' trials.
       - uses: actions/upload-artifact@v4
         with:
-          name: kaippesi-android-debug-apk
+          name: thunai-android-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
       # Phone-friendly download: a direct .apk link (no ZIP, no sign-in needed on a public repo):
-      #   https://github.com/<owner>/<repo>/releases/download/test-latest/Kaippesi-Jothidar.apk
+      #   https://github.com/<owner>/<repo>/releases/download/test-latest/Thunai.apk
+      # Kaippesi-Jothidar.apk (the old name) is still attached, so links already shared keep working.
       - name: Publish test APK as the "test-latest" release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk Kaippesi-Jothidar.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk Thunai.apk
           # Same APK under a build-numbered name: a fresh file name, so phones never re-use an old cached download.
-          cp Kaippesi-Jothidar.apk Thunai-build-${{ github.run_number }}.apk
+          cp Thunai.apk Thunai-build-${{ github.run_number }}.apk
+          cp Thunai.apk Kaippesi-Jothidar.apk   # legacy link only
           gh release delete test-latest --yes --cleanup-tag || true
-          gh release create test-latest Kaippesi-Jothidar.apk Thunai-build-${{ github.run_number }}.apk \
-            --title "கைப்பேசி ஜோதிடர் — test build ${{ github.run_number }}" \
-            --notes "Test APK for Android / Samsung / Huawei. Tap Kaippesi-Jothidar.apk below to download and install. Build ${{ github.run_number }} from ${GITHUB_SHA::7}." \
+          gh release create test-latest Thunai.apk Thunai-build-${{ github.run_number }}.apk Kaippesi-Jothidar.apk \
+            --title "துணை · Thunai — test build ${{ github.run_number }}" \
+            --notes "Test APK for Android / Samsung / Huawei. Tap Thunai.apk below to download and install. Build ${{ github.run_number }} from ${GITHUB_SHA::7}." \
             --prerelease --target "$GITHUB_SHA"
-          echo "### 📲 Download on the phone: https://github.com/${{ github.repository }}/releases/download/test-latest/Kaippesi-Jothidar.apk" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 📲 Download on the phone: https://github.com/${{ github.repository }}/releases/download/test-latest/Thunai.apk" >> "$GITHUB_STEP_SUMMARY"
       # Time-limited review APK for outside testers: works for review_hours after its first launch on each phone
       # and never after review_days from this build; then it shows "contact the administrator".
       - name: Build and publish the time-limited review APK

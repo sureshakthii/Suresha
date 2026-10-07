@@ -1,7 +1,7 @@
 // Residence & travelling place — the first-run question, the "are you in Dubai now?" prompt and the
 // Location section of Settings. Birth places stay with each family member and are never changed here.
 import {
-  state, $, L, esc, bi, store, toast, go, setResidence, setTravel, clearTravel, zoneText, placeName, fmtIsoDate,
+  state, $, L, esc, bi, store, toast, go, setResidence, setTravel, clearTravel, zoneText, placeName, fmtIsoDate, untilL,
 } from './core.js';
 import { placeSearch } from './account.js';
 import { devicePlace, nearestPlace, placeText } from './shared/places.js';
@@ -134,7 +134,7 @@ export function zonePrompt({ force = false } = {}) {
   </div>`);
   const done = (msg) => { closeModal(box); if (msg) { toast(msg, 4000); redraw(); } };
   $('#zpLive', box).addEventListener('click', () => { setResidence(here); done(`🏠 ${placeName(state.loc.name)} · ${zoneText()}`); });
-  $('#zpVisit', box).addEventListener('click', () => { const u = $('#zpUntil', box).value || until; setTravel(here, u); done(`✈️ ${placeName(state.loc.name)} ${L('until', 'வரை')} ${fmtIsoDate(u)}`); });
+  $('#zpVisit', box).addEventListener('click', () => { const u = $('#zpUntil', box).value || until; setTravel(here, u); done(`✈️ ${placeName(state.loc.name)} · ${untilL(fmtIsoDate(u))}`); });
   $('#zpOther', box).addEventListener('click', () => { closeModal(box); residenceStep({}); });
   $('#zpKeep', box).addEventListener('click', () => done(''));
   return true;
@@ -150,7 +150,7 @@ export function locationSettingsHtml() {
       <label class="place-wrap"><input id="locSearch" placeholder="${esc(L('Change — search a city…', 'மாற்ற — நகரத்தைத் தேடுக…'))}" autocomplete="off"><ul id="locList" class="suggest" hidden></ul></label>
       <button type="button" class="link-btn" id="geoBtn">📡 ${L('Use my current location (GPS)', 'என் தற்போதைய இருப்பிடம் (GPS)')}</button></div>
     <div class="loc-block"><div class="mini-label">✈️ ${L('Temporary / travelling location', 'தற்காலிக / பயண இடம்')}</div>
-      ${t ? `<b>${esc(placeName(t.name))}</b><span class="small">${L('until', 'வரை')} ${esc(fmtIsoDate(t.until))} · 🕒 ${esc(bi(zoneLabel(t)))}</span>
+      ${t ? `<b>${esc(placeName(t.name))}</b><span class="small">${esc(untilL(fmtIsoDate(t.until)))} · 🕒 ${esc(bi(zoneLabel(t)))}</span>
         <span class="small muted">${L('Daily timings use this place now and return to your home place after this date.', 'தினசரி நேரங்கள் இப்போது இந்த இடத்திற்கு; இந்தத் தேதிக்குப் பின் உங்கள் வசிப்பிடத்திற்குத் திரும்பும்.')}</span>
         <button type="button" class="chip-btn" id="travelEnd">🏠 ${L('I am back home — end now', 'வீடு திரும்பினேன் — இப்போதே முடி')}</button>`
     : `<span class="small muted">${L('Visiting India or another city for a while? Daily timings switch to that place until the date you choose, then switch back.', 'சில நாட்கள் இந்தியா அல்லது வேறு ஊருக்குச் செல்கிறீர்களா? நீங்கள் தேர்வு செய்யும் தேதி வரை தினசரி நேரங்கள் அந்த இடத்திற்கு மாறி, பின் திரும்பும்.')}</span>
@@ -183,7 +183,7 @@ export function bindLocationSettings(sec, rerender) {
       const u = $('#travelUntil', sec).value;
       if (!tp || !u) return;
       setTravel(tp, u);
-      toast(`✈️ ${placeName(state.loc.name)} ${L('until', 'வரை')} ${fmtIsoDate(u)}`, 4000);
+      toast(`✈️ ${placeName(state.loc.name)} · ${untilL(fmtIsoDate(u))}`, 4000);
       rerender();
     });
   }

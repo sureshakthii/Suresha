@@ -31,9 +31,9 @@ export const TAMIL_YEARS = YEARS_EN.map((en, i) => ({ index: i, en, ta: YEARS_TA
 // Gowri Panchangam: 8 daytime and 8 night-time slots per weekday.
 export const GOWRI = [
   { en: 'Uthi', ta: 'உத்தி', good: true },
-  { en: 'Amirdha', ta: 'அமிர்தம்', good: true },
+  { en: 'Amirtham', ta: 'அமிர்தம்', good: true },
   { en: 'Rogam', ta: 'ரோகம்', good: false },
-  { en: 'Laabam', ta: 'லாபம்', good: true },
+  { en: 'Labham', ta: 'லாபம்', good: true },
   { en: 'Dhanam', ta: 'தனம்', good: true },
   { en: 'Sugam', ta: 'சுகம்', good: true },
   { en: 'Soram', ta: 'சோரம்', good: false },

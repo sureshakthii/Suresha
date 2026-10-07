@@ -6,13 +6,14 @@ import {
   state, $, $$, L, ta, esc, bi, STATIC, store, api, go, registerScreen, subHeader, toast, activeMember, displayName, saveFamily, BRAND,
 } from './core.js';
 import { reliabilityOf } from './screens-main.js';
+import { supportContact } from './shared/brand.js';
 
 // ================================================================ BIRTH TIME
 function renderBirthTime(sec) {
   const m = activeMember();
   const rel = m ? reliabilityOf(m) : null;
   const need = { exact: L('needs an exact time', 'துல்லிய நேரம் தேவை'), approx: L('works with an approximate time (marked)', 'தோராய நேரத்திலும் இயங்கும் (குறிப்புடன்)'), date: L('usually needs only the date', 'பொதுவாகத் தேதி போதும்'), none: L('needs no birth time', 'பிறந்த நேரம் தேவையில்லை') };
-  sec.innerHTML = `${subHeader(L('What depends on birth time?', 'எவை பிறந்த நேரத்தைச் சார்ந்தவை?'), L('We never invent a birth time', 'பிறந்த நேரத்தை நாங்கள் ஒருபோதும் ஊகிப்பதில்லை'))}
+  sec.innerHTML = `${subHeader(L('What Depends on Birth Time?', 'எவை பிறந்த நேரத்தைச் சார்ந்தவை?'), L('We never invent a birth time', 'பிறந்த நேரத்தை நாங்கள் ஒருபோதும் ஊகிப்பதில்லை'))}
     ${rel ? `<div class="note-box"><b>${esc(displayName(m))}:</b> ${rel.certainty === 'exact' ? L('exact time recorded.', 'துல்லிய நேரம் பதிவு.') : rel.certainty === 'approx' ? L(`approximate time (± ${rel.windowMin} min).`, `தோராய நேரம் (± ${rel.windowMin} நிமி).`) : L('time unknown.', 'நேரம் தெரியாது.')}
       <ul class="small">${rel.notes.map((n) => `<li>${esc(bi(n))}</li>`).join('') || `<li>${L('All results are available.', 'அனைத்து முடிவுகளும் கிடைக்கும்.')}</li>`}</ul>
       <button class="link-btn" data-go="family" data-param='${esc(JSON.stringify({ edit: m.id }))}'>${L('Change birth-time certainty', 'பிறந்த நேர உறுதியை மாற்று')}</button></div>` : ''}
@@ -29,7 +30,7 @@ registerScreen('birthtime', { render: renderBirthTime, parent: 'chart' });
 
 // ================================================================ WHY THIS RESULT?
 function renderWhy(sec) {
-  sec.innerHTML = `${subHeader(L('How Thunai reads your chart', 'துணை ஜாதகத்தைப் படிக்கும் முறை'), L('How Thunai turns the sky into guidance', 'வானத்தை வழிகாட்டலாக மாற்றும் முறை'))}
+  sec.innerHTML = `${subHeader(L('How Thunai Reads Your Chart', 'துணை ஜாதகத்தைப் படிக்கும் முறை'), L('How Thunai turns the sky into guidance', 'வானத்தை வழிகாட்டலாக மாற்றும் முறை'))}
     <div class="card glass"><ol class="why-steps">
       <li><b>${L('Astronomy (measured)', 'வானியல் (அளவிடப்பட்டது)')}</b> — ${L('Planet positions for your birth moment and place are computed by an astronomy library. This part is precise and checkable.', 'பிறந்த நேரம், இடத்திற்கான கிரக நிலைகள் வானியல் நூலகத்தால் கணிக்கப்படுகின்றன. இது துல்லியமானது, சரிபார்க்கக்கூடியது.')}</li>
       <li><b>${L('Conventions (chosen)', 'முறைகள் (தேர்ந்தெடுக்கப்பட்டவை)')}</b> — ${L('Lahiri ayanamsa, whole-sign houses, mean node, Vimshottari dasa. Other schools choose differently — see “Calculation methods”.', 'லாஹிரி அயனாம்சம், முழு ராசி பாவம், சராசரி ராகு, விம்சோத்தரி தசை. பிற மரபுகள் வேறுபடலாம் — “கணிப்பு முறைகள்” பார்க்கவும்.')}</li>
@@ -43,7 +44,7 @@ registerScreen('why', { render: renderWhy, parent: 'chart' });
 // ================================================================ CALCULATION METHODS
 function renderCalc(sec) {
   const label = { ephemeris: ['Ephemeris', 'கிரகக் கணிப்பு'], ayanamsa: ['Ayanamsa', 'அயனாம்சம்'], nodes: ['Rahu / Ketu', 'ராகு / கேது'], houses: ['Houses', 'பாவங்கள்'], lagna: ['Lagnam', 'லக்னம்'], sunrise: ['Sunrise', 'சூரிய உதயம்'], vedicDay: ['Panchangam day', 'பஞ்சாங்க நாள்'], timezone: ['Time zone & daylight saving', 'நேர மண்டலம்'], dasa: ['Dasa', 'தசை'], horai: ['Horai', 'ஓரை'], rahuKalam: ['Rahu Kalam', 'ராகு காலம்'] };
-  sec.innerHTML = `${subHeader(L('Calculation methods', 'கணிப்பு முறைகள்'), '', 'more')}
+  sec.innerHTML = `${subHeader(L('Calculation Methods', 'கணிப்பு முறைகள்'), '', 'more')}
     <div class="card glass"><dl class="kv">${Object.entries(CONVENTIONS).map(([k, v]) => `<dt>${L(...label[k])}</dt><dd>${esc(ta() ? CONVENTIONS_TA[k] || v : v)}</dd>`).join('')}</dl></div>
     <div class="note-box">${L('Coordinates come from the built-in gazetteer or what you enter. With a known time zone (built-in places, or a zone you choose) the historical UTC offset and daylight saving in force on the birth date are applied automatically from the time-zone database — including India’s war-time +6:30. A clock time that did not exist or happened twice when clocks changed is flagged (a repeated hour uses the earlier time). Reference checks against published positions and panchangam boundaries run in the automated tests (docs/CALCULATIONS.md).', 'அட்ச/தீர்க்க ரேகைகள் உள்ளமைந்த பட்டியலிலிருந்து அல்லது நீங்கள் உள்ளிடுவதிலிருந்து. நேர மண்டலம் தெரிந்தால் (உள்ளமைந்த இடங்கள் அல்லது நீங்கள் தேர்ந்த மண்டலம்), பிறந்த நாளில் நடைமுறையில் இருந்த UTC நேர வேறுபாடும் பகல் சேமிப்பு நேரமும் நேர மண்டலத் தரவுத்தளத்திலிருந்து தானாகப் பயன்படுத்தப்படும் — இந்தியாவின் போர்க்கால +6:30 உட்பட. கடிகாரம் மாற்றப்பட்டபோது இல்லாத அல்லது இருமுறை வந்த நேரம் தனியாகக் குறிக்கப்படும் (இருமுறை வந்த நேரத்திற்கு முந்தையது எடுக்கப்படும்).')}</div>`;
 }
@@ -68,7 +69,7 @@ function renderPrivacy(sec) {
     ['🎫', 'Bookings & payments', 'முன்பதிவு & கட்டணம்', 'When live: name, phone and booking details go to our server and the payment gateway (Razorpay). Card details never touch our server.', 'இயங்கும்போது: பெயர், தொலைபேசி, முன்பதிவு விவரம் எங்கள் சேவையகம், கட்டண நுழைவாயிலுக்கு (Razorpay). அட்டை விவரம் எங்கள் சேவையகத்திற்கு வராது.', false],
   ];
   const c = store.get('kj_consent', {});
-  sec.innerHTML = `${subHeader(L('Privacy & data', 'தனியுரிமை & தரவு'), L('What stays on your phone and what reaches servers', 'எது கைப்பேசியில், எது சேவையகத்திற்கு'), 'more')}
+  sec.innerHTML = `${subHeader(L('Privacy & Data', 'தனியுரிமை & தரவு'), L('What stays on your phone and what reaches servers', 'எது கைப்பேசியில், எது சேவையகத்திற்கு'), 'more')}
     <div class="card glass">${flows.map(([i, en, tx, wen, wta, local]) => `<div class="tb-row" style="margin-bottom:12px"><span class="tb-label">${i} ${L(en, tx)}</span><span class="badge ${local ? 'ok' : 'est'}">${local ? L('On device', 'கைப்பேசியில்') : L('May reach servers', 'சேவையகம் செல்லலாம்')}</span><span class="tb-note">${L(wen, wta)}</span></div>`).join('')}</div>
     <div class="card glass"><div class="card-title">${L('Your choices', 'உங்கள் தேர்வுகள்')}</div>
       ${CONSENT_KEYS.map((k) => `<label class="set-row"><span>${L(k.en, k.ta)}</span><input type="checkbox" data-consent="${k.id}"${(c[k.id] ?? k.def) ? ' checked' : ''}></label>`).join('')}
@@ -79,7 +80,7 @@ function renderPrivacy(sec) {
       <button class="btn-soft" id="delProfile"${state.family.length ? '' : ' disabled'}>🗑️ ${L('Delete selected profile', 'தேர்ந்த சுயவிவரத்தை நீக்கு')}</button>
       <button class="btn-soft danger" id="delAll">⚠️ ${L('Delete everything on this phone' + (STATIC ? '' : ' and my account'), 'இந்தக் கைப்பேசியிலுள்ள அனைத்தையும்' + (STATIC ? '' : ', என் கணக்கையும்') + ' நீக்கு')}</button>
       <p class="small muted">${L('Children’s profiles are kept on the phone and in your private backup only; they are never shared or used for analytics.', 'குழந்தைகளின் சுயவிவரங்கள் கைப்பேசியிலும் உங்கள் தனிப்பட்ட காப்பிலும் மட்டுமே; பகிரப்படாது, பகுப்பாய்வுக்குப் பயன்படாது.')}</p></div>
-    <p class="small muted center">${L('Questions: ', 'கேள்விகள்: ')}${esc(BRAND.supportEmail)}</p>`;
+    <p class="small muted center">${L('Questions', 'கேள்விகள்')}: ${esc(L(supportContact('en'), supportContact('ta')))}</p>`;
   $$('[data-consent]', sec).forEach((x) => x.addEventListener('change', async () => {
     const cur = store.get('kj_consent', {}); cur[x.dataset.consent] = x.checked; store.set('kj_consent', cur);
     if (x.dataset.consent === 'backup' && !STATIC && state.user) {

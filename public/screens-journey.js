@@ -12,7 +12,7 @@ import { locName, zoneDiffText, countryOfLoc } from './shared/residence.js';
 import { countryByCode } from './shared/countries.js';
 import { inPlaceTa } from './residence-ui.js';
 import {
-  state, $, $$, L, esc, bi, store, go, registerScreen, subHeader, toast, activeMember, chartOf, displayName, planetName, fmtIsoDate, placeName,
+  state, $, $$, L, esc, bi, store, go, registerScreen, subHeader, toast, activeMember, chartOf, displayName, planetName, placeName,
 } from './core.js';
 import { reliabilityOf, setupVoiceInput } from './screens-main.js';
 import { placeSearch } from './account.js';
@@ -21,6 +21,11 @@ import { remindBtn } from './remind.js';
 import { templeSearchField, attachTempleSearch } from './temple-search.js';
 import { sharePreview } from './screens-hubs.js';
 import { chartFacts } from './shared/guidance.js';
+import { fmtDay, fmtClock } from './shared/fmt.js';
+// Dates and times the one way the app writes them (shared/fmt.js), in the app language.
+const lgx = () => (state.lang === 'en' ? 'en' : 'ta');
+const fDay = (iso) => fmtDay(iso, lgx());
+
 
 const form = {
   startName: '', lat: null, lon: null, date: '', days: null, travellers: null, who: [], transport: 'bus', tier: 'economy',
@@ -64,7 +69,7 @@ function savedListHtml(open) {
   return `<details class="card glass saved-journeys" id="savedJourneys"${open ? ' open' : ''}><summary class="card-title">🗂️ ${L('My saved journeys', 'என் பயணத் திட்டங்கள்')} <span class="pill">${all.length}</span></summary>
     <ul class="saved-list">${all.map((x) => `<li class="saved-item" data-id="${esc(x.id)}">
       <div class="saved-main"><b>${esc(x.title)}</b>
-        <div class="small muted">${x.dates ? `${esc(x.dates)} · ` : ''}${savedOnOf(x) ? L(`saved on ${fmtIsoDate(savedOnOf(x))}`, `${fmtIsoDate(savedOnOf(x))} அன்று சேமித்தது`) : L('saved earlier', 'முன்பு சேமித்தது')}${(x.travellers || []).length ? ` · ${esc(x.travellers.join(', '))}` : ''}</div></div>
+        <div class="small muted">${x.dates ? `${esc(x.dates)} · ` : ''}${savedOnOf(x) ? L(`saved on ${fDay(savedOnOf(x))}`, `${fDay(savedOnOf(x))} அன்று சேமித்தது`) : L('saved earlier', 'முன்பு சேமித்தது')}${(x.travellers || []).length ? ` · ${esc(x.travellers.join(', '))}` : ''}</div></div>
       <div class="btn-row"><button type="button" class="chip-btn" data-open-plan="${esc(x.id)}">📂 ${L('Open', 'திற')}</button><button type="button" class="chip-btn" data-rename-plan="${esc(x.id)}">✏️ ${L('Rename', 'பெயர் மாற்று')}</button><button type="button" class="chip-btn" data-delete-plan="${esc(x.id)}">🗑️ ${L('Delete', 'நீக்கு')}</button></div></li>`).join('')}</ul>
     <p class="small muted">${L('Saved plans stay on this phone. Costs and times in them are as estimated on the saved date.', 'சேமித்த திட்டங்கள் இந்தக் கைப்பேசியில் மட்டும். அவற்றின் செலவு, நேரம் சேமித்த நாளின் மதிப்பீடு.')}</p></details>`;
 }
@@ -89,7 +94,7 @@ function wireSavedList(sec) {
 function endDateText() {
   const end = tripEndDate(form.date, form.days);
   if (!end) return '';
-  return `🗓️ ${fmtIsoDate(form.date)} → ${fmtIsoDate(end)} · ${L(`${form.days} day${form.days > 1 ? 's' : ''}`, `${form.days} நாள்`)}`;
+  return `🗓️ ${fDay(form.date)} → ${fDay(end)} · ${L(`${form.days} day${form.days > 1 ? 's' : ''}`, `${form.days} நாள்`)}`;
 }
 
 /** Chart planets most relevant for worship: current dasa lord, then the weakest planet (only when reliable). */
@@ -145,13 +150,13 @@ function renderJourney(sec, params = {}) {
     <div class="card glass">
       <label for="tripText">${L('Describe your trip (optional — type or speak)', 'உங்கள் பயணத்தை விவரிக்கவும் (விருப்பம் — எழுதவும் / பேசவும்)')}</label>
       <div class="chat-form"><button type="button" id="tripMic" class="mic" aria-label="${L('Speak', 'பேசுங்கள்')}">🎙️</button>
-        <textarea id="tripText" class="grow-in" rows="2" data-enter="tripParse" placeholder="${esc(L('e.g. 4 days from Madurai, 3 people, ₹15000', 'எ.கா. மதுரையிலிருந்து 4 நாள், 3 பேர், ₹15000'))}"></textarea>
+        <textarea id="tripText" class="grow-in" rows="2" data-enter="tripParse" placeholder="${esc(L('e.g. 4 days from Madurai, 3 people, ₹15,000', 'எ.கா. மதுரையிலிருந்து 4 நாள், 3 பேர், ₹15,000'))}"></textarea>
         <button type="button" class="send" id="tripParse" aria-label="${L('Fill the form', 'படிவத்தில் நிரப்பு')}">➤</button></div>
       <p class="small muted">${L('We fill the form below from your words. Please check every highlighted value — especially dates, names and places.', 'உங்கள் சொற்களிலிருந்து கீழே உள்ள படிவம் நிரப்பப்படும். ஒளிரும் ஒவ்வொரு மதிப்பையும் — குறிப்பாகத் தேதி, பெயர், இடம் — சரிபாருங்கள்.')}</p>
     </div>
     <form id="tripForm" class="card glass" novalidate>
       <label class="place-wrap ${form.confirmed.start === false ? 'check' : ''}">${L('Starting city', 'புறப்படும் ஊர்')}
-        <input name="start" value="${esc(form.startName || '')}" autocomplete="off" required><ul id="tripPlaces" class="suggest" hidden></ul></label>
+        <input name="start" value="${esc(placeName(form.startName || ''))}" autocomplete="off" required><ul id="tripPlaces" class="suggest" hidden></ul></label>
       <div class="row2">
         <label class="trip-date ${form.confirmed.date === false ? 'check' : ''}">${L('First day', 'முதல் நாள்')}<input name="date" type="date" value="${esc(form.date)}" required></label>
         <label class="${form.confirmed.days === false ? 'check' : ''}">${abroad() ? L('Days (incl. travel)', 'நாட்கள் (பயணம் உட்பட)') : L('Number of days', 'நாட்கள்')}<select name="days">${['', 1, 2, 3, 4, 5, 6, 7, ...(abroad() || form.transport === 'flight' ? [8, 9, 10, 12, 14] : [])].map((d) => `<option value="${d}"${Number(form.days) === d ? ' selected' : ''}>${d || '—'}</option>`).join('')}</select></label>
@@ -159,8 +164,8 @@ function renderJourney(sec, params = {}) {
       <p class="small trip-end" id="tripEnd" aria-live="polite">${endDateText()}</p>
       <div class="row2">
         <label class="${form.confirmed.travellers === false ? 'check' : ''}">${L('Travellers', 'பயணிகள்')}<select name="travellers">${['', 1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((d) => `<option value="${d}"${Number(form.travellers) === d ? ' selected' : ''}>${d || '—'}</option>`).join('')}</select></label>
-        <div class="${form.confirmed.budget === false ? 'check' : ''} budget-field"><label for="tripBudget">${L('Budget (optional)', 'பட்ஜெட் (விருப்பம்)')}</label>
-          <div class="budget-in"><select name="budgetCur" aria-label="${esc(L('Budget currency', 'பட்ஜெட் நாணயம்'))}">${BUDGET_CURRENCIES.map((c) => `<option value="${c}"${cur() === c ? ' selected' : ''}>${c === 'INR' ? '₹ INR' : c}</option>`).join('')}</select><input id="tripBudget" name="budget" inputmode="numeric" value="${esc(form.budget)}" placeholder="${cur() === 'INR' ? '15000' : '2000'}"></div></div>
+        <div class="${form.confirmed.budget === false ? 'check' : ''} budget-field"><label for="tripBudget">${L('Budget (optional)', 'செலவுத் திட்டம் (விருப்பம்)')}</label>
+          <div class="budget-in"><select name="budgetCur" aria-label="${esc(L('Budget currency', 'செலவுத் திட்ட நாணயம்'))}">${BUDGET_CURRENCIES.map((c) => `<option value="${c}"${cur() === c ? ' selected' : ''}>${c === 'INR' ? '₹ INR' : c}</option>`).join('')}</select><input id="tripBudget" name="budget" inputmode="numeric" value="${esc(form.budget)}" placeholder="${cur() === 'INR' ? '15000' : '2000'}"></div></div>
       </div>
       ${abroad() && !form.focus.length ? `<div class="mini-label">${L('Where are the temples?', 'கோவில்கள் எங்கே?')}</div>
       <div class="dest-pick" role="radiogroup" aria-label="${esc(L('Where are the temples?', 'கோவில்கள் எங்கே?'))}">
@@ -190,7 +195,7 @@ function renderJourney(sec, params = {}) {
     const wasAbroad = abroad();
     form.startName = p.text || p.name; form.lat = p.lat; form.lon = p.lon; form.startCc = p.cc; form.startZone = p.zone || null; form.confirmed.start = true;
     if (abroad() !== wasAbroad) { readForm(f); form.dest = abroad() && !LOCAL_PILGRIM.has(form.startCc) ? 'india' : 'home'; renderJourney(sec); return; }
-    f.elements.start.value = p.text || p.name; f.elements.start.closest('label').classList.remove('check');
+    f.elements.start.value = placeName(p.text || p.name); f.elements.start.closest('label').classList.remove('check');
   });
   f.elements.start.addEventListener('input', () => { form.lat = null; });
   f.addEventListener('change', (e) => {
@@ -235,7 +240,9 @@ function applyParsed(p, fromQuestion) {
 }
 
 function readForm(f) {
-  form.startName = f.elements.start.value.trim();
+  // The box shows the town in the app language (சென்னை); an unchanged box keeps the stored name.
+  const typed = f.elements.start.value.trim();
+  form.startName = typed === placeName(form.startName || '') ? form.startName : typed;
   form.date = f.elements.date.value;
   form.days = Number(f.elements.days.value) || null;
   form.travellers = Number(f.elements.travellers.value) || null;
@@ -270,8 +277,7 @@ function submit() {
 }
 
 // 'H:MM' (24 h) → '7:45 AM' / 'காலை 7:45'
-const clock = (t) => { if (!t) return ''; const [h, m] = t.split(':').map(Number); const hh = ((h + 11) % 12) + 1; const mm = String(m).padStart(2, '0');
-  return L(`${hh}:${mm} ${h < 12 ? 'AM' : 'PM'}`, `${h < 12 ? 'காலை' : h < 16 ? 'மதியம்' : h < 19 ? 'மாலை' : 'இரவு'} ${hh}:${mm}`); };
+const clock = (t) => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return fmtClock(new Date(Date.UTC(2000, 0, 1, h, m)), lgx(), 0); };
 function timeLine(s) {
   const base = `🕘 ${L('Reach', 'சென்றடைதல்')} ~${clock(s.arrive)} · ${L('darshan till', 'தரிசனம்')} ~${clock(s.leave)} · ${L('temple closes', 'நடை சாத்தல்')} ~${clock(s.closes)}`;
   const warn = s.closedToday ? `<div class="trip-warn">⚠️ ${L('You would reach after the temple closes for the day — start earlier or move this temple to the next morning.', 'கோவில் நடை சாத்திய பின் சென்றடைவீர்கள் — முன்னதாகப் புறப்படுங்கள் அல்லது அடுத்த நாள் காலைக்கு மாற்றுங்கள்.')}</div>`
@@ -356,7 +362,7 @@ async function fillDayWeather() {
 
 function dayDate(i, raw = false) {
   if (!plan.date) return '';
-  return fmtIsoDate(dayIso(i, raw));
+  return fDay(dayIso(i, raw));
 }
 
 // ---------------------------------------------------------------- flights (journeys from abroad)
@@ -387,13 +393,13 @@ function optionHtml(o, idx) {
   const c = plan.cur || cur();
   const totalDays = fl ? fl.outboundDays + o.itinerary.length + 1 : o.itinerary.length;
   return `<article class="card glass trip-opt" aria-labelledby="opt-${o.key}">
-    <div class="card-title"><span id="opt-${o.key}">${o.key}. ${esc(bi(o.title))}</span>${o.overBudget ? `<span class="badge unv">${L('Above your budget', 'பட்ஜெட்டை மீறுகிறது')}</span>` : ''}</div>
+    <div class="card-title"><span id="opt-${o.key}">${o.key}. ${esc(bi(o.title))}</span>${o.overBudget ? `<span class="badge unv">${L('Above your budget', 'செலவுத் திட்டத்தை மீறுகிறது')}</span>` : ''}</div>
     <div class="tb-list">
       ${fl ? `<div class="tb-row tb-range"><span class="tb-label">✈️ ${L(`Flights, return · ${plan.inputs.travellers} ${plan.inputs.travellers > 1 ? 'people' : 'person'}`, `விமானம், போய்வர · ${plan.inputs.travellers} பேர்`)}</span><span class="tb-value">${moneyRange(o.flightCost.low, o.flightCost.high, c)}</span><span class="tb-note">${est()} ${L('typical economy range (check airline) — not a quote, nothing booked', 'வழக்கமான எகானமி வரம்பு (விமான நிறுவனத்திடம் உறுதி செய்யவும்) — விலைப்புள்ளி அல்ல, முன்பதிவு இல்லை')}</span></div>` : ''}
       <div class="tb-row"><span class="tb-label">${fl ? L(`Trip in ${destName().en} (road, stay, food)`, `${taIn(destName())} பயணம் (சாலை, தங்குமிடம், உணவு)`) : L('Estimated total', 'மொத்த மதிப்பீடு')} ${est()}</span><span class="tb-value">${o.cost.total ? money(o.cost.total, c) : L('Free', 'இலவசம்')}</span><span class="tb-note">${o.cost.total ? L(`about ${money(o.cost.perPerson, c)} per person · ~${o.totalKm} km by road`, `ஒருவருக்குச் சுமார் ${money(o.cost.perPerson, c)} · சாலை வழி ~${o.totalKm} கி.மீ`) : L('Prayer at home or at a temple near you', 'வீட்டில் அல்லது அருகிலுள்ள கோவிலில் வழிபாடு')}</span></div>
       ${fl ? `<div class="tb-row tb-total"><span class="tb-label">${L('Total with flights', 'விமானத்துடன் மொத்தம்')} ${est()}</span><span class="tb-value">${moneyRange(o.totalRange.low, o.totalRange.high, c)}</span><span class="tb-note">${L(`${totalDays} days including travel days`, `பயண நாட்கள் உட்பட ${totalDays} நாள்`)}</span></div>` : ''}
     </div>
-    ${o.cost.lines.length ? `<details><summary class="small">${L('How the estimate is calculated', 'மதிப்பீடு கணக்கிடும் முறை')}</summary><ul class="small">${o.cost.lines.map((l) => `<li>${esc(bi(l))} = ${money(l.amount, c)}</li>`).join('')}${fl ? `<li>${L(`Flights: ≈ ${moneyRange(fl.fare.perPersonLow, fl.fare.perPersonHigh, c)} per person, return economy — a typical range for ~${fl.out.km.toLocaleString()} km, not a fare quote`, `விமானம்: ஒருவருக்கு ≈ ${moneyRange(fl.fare.perPersonLow, fl.fare.perPersonHigh, c)}, போய்வர எகானமி — ~${fl.out.km.toLocaleString()} கி.மீக்கு வழக்கமான வரம்பு, கட்டண விலைப்புள்ளி அல்ல`)}</li>` : ''}</ul>
+    ${o.cost.lines.length ? `<details><summary class="small">${L('How the estimate is calculated', 'மதிப்பீடு கணக்கிடும் முறை')}</summary><ul class="small">${o.cost.lines.map((l) => `<li>${esc(bi(l))} = ${money(l.amount, c)}</li>`).join('')}${fl ? `<li>${L(`Flights: ≈ ${moneyRange(fl.fare.perPersonLow, fl.fare.perPersonHigh, c)} per person, return economy — a typical range for ~${fl.out.km.toLocaleString('en-IN')} km, not a fare quote`, `விமானம்: ஒருவருக்கு ≈ ${moneyRange(fl.fare.perPersonLow, fl.fare.perPersonHigh, c)}, போய்வர எகானமி — ~${fl.out.km.toLocaleString('en-IN')} கி.மீக்கு வழக்கமான வரம்பு, கட்டண விலைப்புள்ளி அல்ல`)}</li>` : ''}</ul>
       <p class="small muted">${L('Road distance ≈ straight line × 1.3; prices are typical 2026 figures, not quotes.', 'சாலை தூரம் ≈ நேர்கோடு × 1.3; விலைகள் 2026 வழக்கமான மதிப்புகள், விலைப்புள்ளி அல்ல.')}${c !== 'INR' ? ` ${L('Exchange rate is approximate.', 'நாணய மாற்று விகிதம் தோராயமானது.')}` : ''}</p></details>` : ''}
     <div class="ans-sec"><div class="ans-h">${L('Chosen for you', 'உங்களுக்காகத் தேர்ந்தெடுத்தது')}</div><ul class="small">
       ${o.key === 'A' ? `<li>${L('Closest relevant temples with the least travel and cost.', 'குறைந்த பயணம், செலவில் அருகிலுள்ள பொருத்தமான கோவில்கள்.')}</li>` : ''}
@@ -454,7 +460,7 @@ function showPlan(p) {
   $('#tripResult').innerHTML = `
     ${offlineBanner()}
     ${p.savedOn ? `<div class="note-box saved-banner" role="note">${provBadge(prov('saved', { savedOn: p.savedOn }))} ${L('This plan was saved earlier. Costs, crowds and times are as estimated then — weather is fetched fresh when online.', 'இந்தத் திட்டம் முன்பு சேமிக்கப்பட்டது. செலவு, கூட்டம், நேரம் அப்போதைய மதிப்பீடு — இணைப்பில் வானிலை புதிதாகப் பெறப்படும்.')}</div>` : ''}
-    ${end ? `<p class="trip-dates"><b>🗓️ ${fmtIsoDate(p.date)} → ${fmtIsoDate(end)}</b> <span class="muted small">· ${L(`${days} day${days > 1 ? 's' : ''}`, `${days} நாள்`)}</span></p>` : ''}
+    ${end ? `<p class="trip-dates"><b>🗓️ ${fDay(p.date)} → ${fDay(end)}</b> <span class="muted small">· ${L(`${days} day${days > 1 ? 's' : ''}`, `${days} நாள்`)}</span></p>` : ''}
     ${notes.length ? `<div class="card glass access-notes"><div class="card-title">♿ ${L('For your accessibility needs', 'உங்கள் அணுகல் தேவைகளுக்கு')}</div><ul class="small">${notes.map((n) => `<li><b>${esc(bi(ACCESS_NEEDS[n.need]))}:</b> ${esc(bi(n))}</li>`).join('')}</ul></div>` : ''}
     <div class="note-box" role="note">🙏 ${L('Your journey plan — temples, route, timings, weather and stay for each day. Go with faith and a calm mind.', 'உங்கள் பயணத் திட்டம் — ஒவ்வொரு நாளுக்கும் கோவில், வழி, நேரம், வானிலை, தங்குமிடம். நம்பிக்கையுடனும் அமைதியான மனதுடனும் செல்லுங்கள்.')}${p.chartNote ? `<br>${esc(p.chartNote)}` : ''}</div>
     ${p.flight ? flightSummary(p) : ''}
@@ -468,7 +474,7 @@ function showPlan(p) {
     const all = savedPlans();
     const { savedOn: _s, savedId: _i, ...clean } = p;
     const endIso = p.date ? tripEndDate(p.date, p.inputs.days) : null;
-    all.unshift({ id, savedAt: new Date().toISOString(), title: `${o.key}. ${bi(o.title)} — ${placeName(p.inputs.start.name)}`, dates: p.date ? `${fmtIsoDate(p.date)}${endIso && endIso !== p.date ? ` → ${fmtIsoDate(endIso)}` : ''} · ${p.inputs.days} ${L('days', 'நாள்')}` : '', travellers: names, plan: clean, form: { ...form } });
+    all.unshift({ id, savedAt: new Date().toISOString(), title: `${o.key}. ${bi(o.title)} — ${placeName(p.inputs.start.name)}`, dates: p.date ? `${fDay(p.date)}${endIso && endIso !== p.date ? ` → ${fDay(endIso)}` : ''} · ${p.inputs.days} ${L('days', 'நாள்')}` : '', travellers: names, plan: clean, form: { ...form } });
     savePlans(all.slice(0, 20));
     // The print buttons now name this saved journey, so a Journey package bought for it covers printing.
     p.savedId = id;
@@ -484,7 +490,7 @@ function showPlan(p) {
   }));
   $$('[data-share]').forEach((b) => b.addEventListener('click', () => {
     const o = p.options[Number(b.dataset.share)];
-    const lines = [`🛕 ${bi(o.title)} — ${L('from', 'புறப்பாடு')} ${placeName(p.inputs.start.name)}${p.date ? ` · ${fmtIsoDate(p.date)}` : ''}`,
+    const lines = [`🛕 ${bi(o.title)} — ${L('from', 'புறப்பாடு')} ${placeName(p.inputs.start.name)}${p.date ? ` · ${fDay(p.date)}` : ''}`,
       ...o.itinerary.map((d) => `${L('Day', 'நாள்')} ${d.day}: ${d.stops.map((s) => bi(s.temple.name)).join(' → ')}`),
       ...(o.flight ? [`✈️ ${p.flight.out.from.code} → ${p.flight.out.to.code} ${flightHrs(p.flight.out)} · ${tzNote()}`, `${L('Flights', 'விமானம்')}: ${moneyRange(o.flightCost.low, o.flightCost.high, p.cur || cur())} (${L('check airline', 'விமான நிறுவனத்திடம் உறுதி செய்யவும்')})`] : []),
       `${L('Estimated cost', 'மதிப்பீட்டுச் செலவு')}: ${o.flight ? moneyRange(o.totalRange.low, o.totalRange.high, p.cur || cur()) : money(o.cost.total, p.cur || cur())} (${L('estimate', 'மதிப்பீடு')})`,

@@ -219,11 +219,11 @@ test('answers carry one headline percentage whose wording matches the verdict', 
     assert.ok(a.meter && a.meter.pct >= 20 && a.meter.pct <= 92, q);
     assert.match(a.text, new RegExp(`${a.meter.pct}%`), q);
   }
-  // Health is never scored from the chart: general wellbeing (needs medical review) + an optional practice only.
+  // Health is never scored from the chart: general wellbeing (with a see-a-doctor line) + an optional practice only.
   const h = ask('How is my health?');
   assert.equal(h.meter, null);
   assert.doesNotMatch(h.text, /\d+\s*%|Eat more|Avoid \/ reduce|Protect:|Fasting day/);
-  assert.match(h.text, /needs medical review/);
+  assert.match(h.text, /see a doctor/);
   const c = ask('How is my career this year?');
   const ans = c.sections.find((s) => s.key === 'answer').lines[0];
   if (c.meter.pct < 45) assert.match(ans, /patience/); else assert.doesNotMatch(ans, /slow for now/);

@@ -8,7 +8,7 @@ import { faithOf } from './shared/faith.js';
 import { ageProfile } from './shared/age-guard.js';
 import {
   state, $, $$, L, esc, bi, GLYPH, COLOR, planetName, activeMember, chartOf, registerScreen, subHeader,
-  speak, displayName, saveFamily, stabilityChip,
+  speak, displayName, saveFamily, stabilityChip, emergencyLine, dasaName,
 } from './core.js';
 import { remindBtn } from './remind.js';
 
@@ -95,7 +95,7 @@ const trad = (note) => `<p class="hl-trad">⚕️ ${esc(bi(note))}</p>`;
 const pcol = (k) => `<b style="color:${COLOR[k]}">${GLYPH[k]} ${esc(planetName(k))}</b>`;
 
 function checkupsCard(h, m, at) {
-  return `<div class="card glass"><div class="card-title"><span>🩺 ${L('Check-ups for your age', 'உங்கள் வயதுக்கான பரிசோதனைகள்')}</span><span class="hl-review">⚕️ ${esc(bi(h.wellbeing.reviewLabel))}</span></div>
+  return `<div class="card glass"><div class="card-title"><span>🩺 ${L('Check-ups for your age', 'உங்கள் வயதுக்கான பரிசோதனைகள்')}</span></div>
     ${h.stage.checklist.map((x) => `<div class="hl-check"><span>✔️ ${esc(bi(x))}${x.forGender === 'female' && !m.gender ? ` <span class="pill">${L('women', 'பெண்கள்')}</span>` : ''}</span>${remindBtn({ title: `${bi(x)} — ${L('check-up', 'பரிசோதனை')}`, at })}</div>`).join('')}
     <p class="muted small">👨‍⚕️ ${esc(bi(h.stage.note))}</p></div>`;
 }
@@ -118,8 +118,8 @@ function remediesCard(h) {
 function drawMinor(h, m, at) {
   const spoken = [`${displayName(m)}. ${L('Age', 'வயது')} ${h.age}.`, ...h.kidTips.map((x) => bi(x)), bi(h.minorNote)].join(' ');
   $('#hlBody').innerHTML = `
-    <div class="hl-note">⚕️ ${esc(bi(h.minorNote))} ${L('Emergency: 112.', 'அவசரம்: 112.')}</div>
-    <div class="card glass"><div class="card-title"><span>🌿 ${esc(displayName(m))}</span><button class="link-btn" id="hlSpeak" aria-label="${esc(L('Read aloud', 'வாசித்துக்காட்டு'))}">🔊</button></div>
+    <div class="hl-note">⚕️ ${esc(bi(h.minorNote))} ${esc(emergencyLine())}</div>
+    <div class="card glass"><div class="card-title"><span>🌿 ${esc(displayName(m))}</span><button class="link-btn" id="hlSpeak" aria-label="${esc(L('Read aloud', 'சத்தமாக வாசி'))}">🔊</button></div>
       <div class="mini-label">${L('Age', 'வயது')} ${h.age} · ${L('Life stage', 'வாழ்க்கைப் பருவம்')}</div>
       <div class="big-line">${esc(bi(h.stage))}</div></div>
     <div class="card glass"><div class="card-title">☀️ ${L('Good habits', 'நல்ல பழக்கங்கள்')}</div>
@@ -140,7 +140,7 @@ function drawHealth(m) {
   if (h.minor) { drawMinor(h, m, at); return; }
   const o = h.outlook, con = h.constitution, d = h.diet;
   const chip = (x) => (x?.mayChange ? stabilityChip(c, 'lagna') : '');
-  const per = (p, extra = '') => `<div class="hl-per"><p>${pcol(p.lord)} ${esc(bi(p.kind === 'dasa' ? { en: 'Dasa', ta: 'தசை' } : { en: 'Bhukti', ta: 'புக்தி' }))} <span class="muted small">· ${esc(bi(p.dates))}</span>${extra}${chip(p)}</p>
+  const per = (p, extra = '') => `<div class="hl-per"><p><b style="color:${COLOR[p.lord]}">${GLYPH[p.lord]} ${esc(dasaName(p.lord))}</b> ${esc(bi(p.kind === 'dasa' ? { en: 'Dasa', ta: 'தசை' } : { en: 'Bhukti', ta: 'புக்தி' }))} <span class="muted small">· ${esc(bi(p.dates))}</span>${extra}${chip(p)}</p>
     <p>${esc(bi(p.line))}</p>${p.why.map((w) => `<small>• ${esc(bi(w))}</small>`).join('')}<small>💡 ${esc(bi(p.tips[0]))}</small></div>`;
   const li = (x) => `<li>${esc(bi(x))}${x.from ? ` <small>· ${esc(bi(x.from))}</small>` : ''}</li>`;
   const spoken = [
@@ -152,10 +152,10 @@ function drawHealth(m) {
   ].filter(Boolean).join(' ');
 
   $('#hlBody').innerHTML = `
-    <div class="hl-note">⚕️ ${esc(bi(o.note))} ${L('Emergency: 112.', 'அவசரம்: 112.')}</div>
+    <div class="hl-note">⚕️ ${esc(bi(o.note))} ${esc(emergencyLine())}</div>
     ${h.birthTimeNote ? `<p class="note-box small${h.needsBirthTime ? ' unv needs-time' : ''}" role="note">🕰️ ${esc(bi(h.birthTimeNote))} ${h.lagnaMayChange ? stabilityChip(c, 'lagna') : ''}</p>` : ''}
 
-    ${h.now ? `<div class="card glass hl-now"><div class="card-title"><span>🌿 ${esc(bi(h.now.label))} · ${esc(displayName(m))}</span><button class="link-btn" id="hlSpeak" aria-label="${esc(L('Read aloud', 'வாசித்துக்காட்டு'))}">🔊</button></div>
+    ${h.now ? `<div class="card glass hl-now"><div class="card-title"><span>🌿 ${esc(bi(h.now.label))} · ${esc(displayName(m))}</span><button class="link-btn" id="hlSpeak" aria-label="${esc(L('Read aloud', 'சத்தமாக வாசி'))}">🔊</button></div>
       <div class="mini-label">${L('Age', 'வயது')} ${h.age} · ${esc(bi(h.stage))}</div>
       <div class="big-line">${esc(bi(o.line))}</div>
       ${o.tips.map((t) => `<p class="small">💡 ${esc(bi(t))}</p>`).join('')}

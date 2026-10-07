@@ -104,7 +104,8 @@ test('health screens: no eat / avoid, body-part warnings or injury lines on Toda
   assert.match(card, /wellbeing|reviewLabel/);
   assert.match(card, /reflection|r\.label/);
   assert.match(card, /healthNowHtml\(m[,)]/);
-  assert.match(screen, /reviewLabel/);
+  // The internal "Needs medical review" flag is never shown to people (detail audit #4).
+  assert.doesNotMatch(card + screen, /reviewLabel/);
   assert.match(screen, /h\.disclaimer/);
   assert.match(screen, /trad\(/);
   assert.doesNotMatch(screen, /injur|காயம்/);

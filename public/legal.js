@@ -1,8 +1,11 @@
 // Privacy policy, terms of use, astrology disclaimer and refund policy (required by app stores and payment gateways).
 // The owner must fill in the legal entity name and support contact before publishing to the stores.
 import { L, registerScreen, subHeader, copyright } from './core.js';
+import { SUPPORT_EMAIL, supportContact, grievanceContact } from './shared/brand.js';
 
-const CONTACT = 'support@kaippesi.app';
+// One support address (shared/brand.js). Until the owner publishes it, the text says so instead of naming one.
+const WRITE_EN = SUPPORT_EMAIL ? `Write to ${SUPPORT_EMAIL}.` : 'Write to our support address (it will be published at launch).';
+const WRITE_TA = SUPPORT_EMAIL ? `${SUPPORT_EMAIL}-க்கு எழுதுங்கள்.` : 'எங்கள் உதவி முகவரிக்கு எழுதுங்கள் (செயலி வெளியீட்டின்போது அறிவிக்கப்படும்).';
 
 const SECTIONS = [
   {
@@ -41,25 +44,25 @@ const SECTIONS = [
     id: 'grievance', icon: '📮', en: 'Grievance Officer', ta: 'குறைதீர் அலுவலர்',
     body: [
       ['Grievance Officer', 'குறைதீர் அலுவலர்', 'Under the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021 and the Digital Personal Data Protection Act, 2023, you may raise any complaint about the app, your data or content with our Grievance Officer. Complaints are acknowledged within 24 hours and resolved within 15 days.', 'தகவல் தொழில்நுட்ப (இடைநிலை வழிகாட்டுதல்கள் மற்றும் டிஜிட்டல் ஊடக நெறிமுறை) விதிகள் 2021, டிஜிட்டல் தனிநபர் தரவுப் பாதுகாப்புச் சட்டம் 2023-இன்படி, செயலி, உங்கள் தரவு அல்லது உள்ளடக்கம் குறித்த எந்தப் புகாரையும் எங்கள் குறைதீர் அலுவலரிடம் தெரிவிக்கலாம். புகார் 24 மணி நேரத்தில் ஒப்புக்கொள்ளப்பட்டு 15 நாட்களில் தீர்க்கப்படும்.'],
-      ['Contact details', 'தொடர்பு விவரம்', 'Name, e-mail, phone and postal address of the Grievance Officer: to be filled in by AG Technology Solutions before public release.', 'குறைதீர் அலுவலரின் பெயர், மின்னஞ்சல், தொலைபேசி, அஞ்சல் முகவரி: பொது வெளியீட்டிற்கு முன் AG Technology Solutions நிரப்பும்.'],
+      ['Contact details', 'தொடர்பு விவரம்', `${grievanceContact('en')}.`, `${grievanceContact('ta')}.`],
     ],
   },
   {
     id: 'refunds', icon: '💳', en: 'Refunds & cancellations', ta: 'பணத்திருப்பம் & ரத்து',
     body: [
-      ['Subscriptions', 'சந்தா', `Full refund on request within 7 days of purchase; after that, a pro-rata refund for unused whole months of a yearly plan. Write to ${CONTACT}. Plans do not auto-renew, so there is nothing to cancel — access ends on the expiry date. Failed or duplicate payments are refunded automatically to the original method within 5–7 working days. Refunds are paid in the currency you paid in (₹, AED or $), for the amount you paid.`, `வாங்கிய 7 நாட்களுக்குள் கோரினால் முழுப் பணத்திருப்பம்; அதன் பின் ஆண்டுத் திட்டத்தில் பயன்படுத்தாத முழு மாதங்களுக்கு விகிதாசாரப் பணத்திருப்பம். ${CONTACT}-க்கு எழுதுங்கள். திட்டங்கள் தானாகப் புதுப்பிக்கப்படாது; ரத்து செய்ய வேண்டியதில்லை — காலாவதி நாளில் அணுகல் முடியும். தோல்வியுற்ற / இரட்டைக் கட்டணங்கள் 5–7 வேலை நாட்களில் அசல் முறைக்குத் திருப்பப்படும். பணத்திருப்பம் நீங்கள் செலுத்திய அதே நாணயத்தில் (₹, AED அல்லது $), செலுத்திய தொகைக்கு.`],
+      ['Subscriptions', 'சந்தா', `Full refund on request within 7 days of purchase; after that, a pro-rata refund for unused whole months of a yearly plan. ${WRITE_EN} Plans do not auto-renew, so there is nothing to cancel — access ends on the expiry date. Failed or duplicate payments are refunded automatically to the original method within 5–7 working days. Refunds are paid in the currency you paid in (₹, AED or $), for the amount you paid.`, `வாங்கிய 7 நாட்களுக்குள் கோரினால் முழுப் பணத்திருப்பம்; அதன் பின் ஆண்டுத் திட்டத்தில் பயன்படுத்தாத முழு மாதங்களுக்கு விகிதாசாரப் பணத்திருப்பம். ${WRITE_TA} திட்டங்கள் தானாகப் புதுப்பிக்கப்படாது; ரத்து செய்ய வேண்டியதில்லை — காலாவதி நாளில் அணுகல் முடியும். தோல்வியுற்ற / இரட்டைக் கட்டணங்கள் 5–7 வேலை நாட்களில் அசல் முறைக்குத் திருப்பப்படும். பணத்திருப்பம் நீங்கள் செலுத்திய அதே நாணயத்தில் (₹, AED அல்லது $), செலுத்திய தொகைக்கு.`],
       ['One-time packages', 'ஒருமுறைத் தொகுப்புகள்', 'The Marriage package (one couple, 90 days) and the Journey package (one saved journey, 60 days) are one-time payments at initial test prices. They are not subscriptions and never renew; access ends on the date shown. Each covers only the couple or journey chosen at purchase, and its stated number of detailed answers. Full refund on request within 7 days of purchase, the same as plans. Features marked “coming soon” are not part of what you pay for.', 'திருமணத் தொகுப்பு (ஒரு ஜோடி, 90 நாள்), யாத்திரைத் தொகுப்பு (ஒரு சேமித்த பயணம், 60 நாள்) — தொடக்கச் சோதனை விலையில் ஒருமுறைக் கட்டணம். இவை சந்தா அல்ல, புதுப்பிக்கப்படாது; காட்டிய நாளில் அணுகல் முடியும். வாங்கும்போது தேர்ந்தெடுத்த ஜோடி / பயணத்திற்கும், குறிப்பிட்ட விரிவான பதில்களுக்கும் மட்டும். திட்டங்களைப் போலவே, வாங்கிய 7 நாட்களுக்குள் கோரினால் முழுப் பணத்திருப்பம். “விரைவில்” எனக் குறித்தவை கட்டணத்தில் சேராது.'],
       ['Store orders', 'கடை ஆர்டர்கள்', 'The store is not open yet (sample catalogue). When it opens: unopened items can be returned within 7 days of delivery; damaged items are replaced free.', 'திறக்காத பொருட்களை விநியோகத்திலிருந்து 7 நாட்களுக்குள் திருப்பலாம். சேதமான பொருட்கள் இலவசமாக மாற்றித் தரப்படும்.'],
-      ['Poojas, priests & packages', 'பூஜை, புரோகிதர், பேக்கேஜ்', 'Cancel up to 48 hours before for a full refund; later cancellations may carry the partner\'s charges.', '48 மணி நேரத்திற்கு முன் ரத்து செய்தால் முழுத் தொகை; அதன் பிறகு கூட்டாளர் கட்டணம் பிடிக்கப்படலாம்.'],
+      ['Poojas, priests & packages', 'பூஜை, புரோகிதர், தொகுப்புகள்', 'Cancel up to 48 hours before for a full refund; later cancellations may carry the partner\'s charges.', '48 மணி நேரத்திற்கு முன் ரத்து செய்தால் முழுத் தொகை; அதன் பிறகு கூட்டாளர் கட்டணம் பிடிக்கப்படலாம்.'],
     ],
   },
 ];
 
 function renderLegal(sec, params = {}) {
-  sec.innerHTML = `${subHeader(L('Privacy, terms & refunds', 'தனியுரிமை, விதிமுறைகள், பணத்திருப்பம்'), L('Last updated: October 2026', 'கடைசியாகப் புதுப்பித்தது: அக்டோபர் 2026'), 'more')}
+  sec.innerHTML = `${subHeader(L('Privacy, Terms & Refunds', 'தனியுரிமை & விதிமுறைகள்'), L('Last updated: October 2026', 'கடைசியாகப் புதுப்பித்தது: அக்டோபர் 2026'), 'more')}
     ${SECTIONS.map((s, i) => `<details class="card glass legal" id="legal-${s.id}"${(params.open ? params.open === s.id : i === 0) ? ' open' : ''}><summary>${s.icon} <b>${L(s.en, s.ta)}</b></summary>
       ${s.body.map(([hEn, hTa, en, tx]) => `<h4>${L(hEn, hTa)}</h4><p>${L(en, tx)}</p>`).join('')}</details>`).join('')}
-    <p class="muted small center">${L('Contact', 'தொடர்புக்கு')}: ${CONTACT}</p>${copyright()}`;
+    <p class="muted small center" id="legalContact">${L('Contact', 'தொடர்புக்கு')}: ${L(supportContact('en'), supportContact('ta'))}</p>${copyright()}`;
   if (params.open) requestAnimationFrame(() => document.getElementById(`legal-${params.open}`)?.scrollIntoView({ block: 'start' }));
 }
 registerScreen('legal', { render: renderLegal, parent: 'more' });

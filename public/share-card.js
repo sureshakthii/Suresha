@@ -5,13 +5,14 @@
 // → download + WhatsApp text. Nothing is uploaded by Thunai; the person chooses where the image goes.
 import { state, L, esc, api, STATIC, toast, BRAND } from './core.js';
 import { layoutCard, assertShareable, SIZES, COLORS, approxMeasure } from './shared/share-card-layout.js';
+import { APP_URL } from './shared/brand.js';
 
 /**
  * The link put on cards. Configure with window.KJ_SHARE_URL (set by the hosting page / native shell); a web
- * deployment uses its own address; otherwise this placeholder download page (replace when the domain is final —
- * docs/BRAND.md lists the other placeholders such as the support e-mail).
+ * deployment uses its own address; otherwise APP_URL from shared/brand.js — empty until the domain is final, and
+ * then no link is printed (never a placeholder domain).
  */
-export const DEFAULT_SHARE_URL = 'https://example.com/thunai';
+export const DEFAULT_SHARE_URL = APP_URL;
 export function shareUrl() {
   if (typeof window !== 'undefined' && typeof window.KJ_SHARE_URL === 'string' && /^https:\/\//.test(window.KJ_SHARE_URL)) return window.KJ_SHARE_URL;
   try {
@@ -43,6 +44,7 @@ export async function inviteInfo() {
 export function inviteLine(info, lang = state.lang) {
   if (!info) return '';
   if (info.referral && info.code) return lang === 'en' ? `Join me on Thunai — code ${info.code} · ${info.link}` : `துணையில் இணையுங்கள் — அழைப்புக் குறியீடு ${info.code} · ${info.link}`;
+  if (!info.link) return lang === 'en' ? 'Made with the Thunai app' : 'துணை செயலியில் உருவாக்கப்பட்டது';
   return lang === 'en' ? `Get the Thunai app: ${info.link}` : `துணை செயலியைப் பெற: ${info.link}`;
 }
 /** Honest reward line for the invite screen / prompt (only when the server runs referrals). */

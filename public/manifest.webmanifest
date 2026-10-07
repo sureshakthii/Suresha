@@ -10,7 +10,7 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
-  "background_color": "#141016",
+  "background_color": "#3d0d1f",
   "theme_color": "#18131a",
   "categories": ["lifestyle", "education", "personalization"],
   "prefer_related_applications": false,
@@ -28,9 +28,9 @@
     { "src": "/screenshots/wide-today.jpg", "sizes": "1280x800", "type": "image/jpeg", "form_factor": "wide", "label": "Thunai on a laptop — Today" }
   ],
   "shortcuts": [
-    { "name": "இன்று · Today", "short_name": "இன்று", "url": "/?source=shortcut#today", "icons": [{ "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png" }] },
-    { "name": "கேள் · Ask Thunai", "short_name": "கேள்", "url": "/?source=shortcut#ask", "icons": [{ "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png" }] },
-    { "name": "பஞ்சாங்கம் · Panchangam", "short_name": "பஞ்சாங்கம்", "url": "/?source=shortcut#panchangam", "icons": [{ "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png" }] },
-    { "name": "பண்டிகைகள் · Festivals", "short_name": "பண்டிகை", "url": "/?source=shortcut#festivals", "icons": [{ "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png" }] }
+    { "name": "இன்று · Today", "short_name": "இன்று", "url": "/?source=shortcut#today", "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }, { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }] },
+    { "name": "கேள் · Ask Thunai", "short_name": "கேள்", "url": "/?source=shortcut#ask", "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }, { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }] },
+    { "name": "பஞ்சாங்கம் · Panchangam", "short_name": "பஞ்சாங்கம்", "url": "/?source=shortcut#panchangam", "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }, { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }] },
+    { "name": "பண்டிகைகள் · Festivals", "short_name": "பண்டிகை", "url": "/?source=shortcut#festivals", "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }, { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }] }
   ]
 }

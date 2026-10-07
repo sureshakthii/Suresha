@@ -6,6 +6,7 @@
 // Every card: light brand theme, the logo, the card text, a small "Thunai · துணை" footer and an invite line.
 // Privacy: a card carries only the text the caller passes — callers never pass birth dates / times / places of
 // anyone; cardText() refuses a spec that contains a birth-data pattern, and health-guide content is never used.
+import { fmtDay, fmtClock, fmtClockRange, until, WEEKDAYS_TA, WEEKDAYS_EN } from './fmt.js';
 export const SIZES = Object.freeze({ portrait: { w: 1080, h: 1350 }, square: { w: 1080, h: 1080 } });
 
 export const COLORS = Object.freeze({
@@ -19,7 +20,7 @@ export const FONT = Object.freeze({
 const font = (weight, px, fam = FONT.sans) => `${weight} ${px}px ${fam}`;
 
 /** Card kinds the app makes. */
-export const CARD_KINDS = ['today', 'festival', 'match', 'starbday', 'diary', 'invite', 'week', 'month', 'milestone', 'reflection'];
+export const CARD_KINDS = ['today', 'panchangam', 'festival', 'match', 'starbday', 'diary', 'invite', 'week', 'month', 'milestone', 'reflection'];
 
 // A date of birth, a birth time or "born on/at" wording must never be printed on a card.
 const BIRTH_DATA = /\b(19|20)\d{2}-\d{2}-\d{2}\b|\b\d{1,2}:\d{2}(:\d{2})?\s*(am|pm)?\s*(birth|born)|\bborn (on|at|in)\b|\bbirth (time|date|place)\b|பிறந்த\s*(நேரம்|தேதி|இடம்)/i;
@@ -144,14 +145,16 @@ function content(spec, { M, maxW, top, titlePx, bodyPx, measure }) {
     y += bodyPx * 0.75;
   }
   const bf = font(500, bodyPx);
+  // dense: a list of short facts (the day's panchangam) — tighter rows so ten of them fit a square card.
+  const lh = spec.dense ? 1.34 : 1.5, gap = spec.dense ? 0.14 : 0.45;
   for (const line of spec.lines || []) {
     const ls = wrap(line, maxW - 46, bf, measure);
     ls.forEach((ln, i) => {
-      y += bodyPx * 1.5;
+      y += bodyPx * lh;
       if (i === 0) items.push({ t: 'dot', x: M + 12, y: y - bodyPx * 0.36, r: 9, color: COLORS.gold });
       items.push({ t: 'text', text: ln, x: M + 46, y, font: bf, color: COLORS.text, base: 'alphabetic', role: 'body' });
     });
-    y += bodyPx * 0.45;
+    y += bodyPx * gap;
   }
   if (spec.closing) {
     const cf = font(600, Math.round(bodyPx * 0.9));
@@ -168,3 +171,60 @@ export const approxMeasure = (text, f) => {
   for (const ch of String(text)) wsum += /[஀-௿]/.test(ch) ? (/[ா-்ௗ]/.test(ch) ? 0.45 : 0.78) : /[A-Z0-9]/.test(ch) ? 0.66 : ch === ' ' ? 0.28 : 0.55;
   return wsum * px;
 };
+
+// ---------------------------------------------------------------- the day's panchangam card
+/**
+ * Merge back-to-back time slots (one slot's end is the next one's start) into ranges:
+ * Gowri "6:13–7:41, 7:41–9:09, 9:09–10:38" → one range 6:13–10:38. Slots are { start, end } Dates (or ms).
+ */
+export function mergeSlots(slots) {
+  const out = [];
+  for (const s of [...(slots || [])].sort((a, b) => +a.start - +b.start)) {
+    const last = out[out.length - 1];
+    if (last && Math.abs(+s.start - +last.end) < 60000) last.end = s.end;
+    else out.push({ start: s.start, end: s.end });
+  }
+  return out;
+}
+
+/**
+ * Card spec for one day's panchangam, entirely in one language (Tamil in Tamil mode).
+ * d: { date 'YYYY-MM-DD', tz (hours), place, weekday (0–6), tamil: { day, monthTa, monthEn, year: { ta, en } },
+ *      festivals: [{ ta, en }], star: { ta, en, endsAt }, tithi: { ta, en, endsAt }, yoga: { ta, en },
+ *      sunrise, sunset, rahu: { start, end }, yama, guli, good: [{ start, end }], chandrashtamam: { ta, en } }
+ */
+export function panchangamSpec(d, lang = 'ta') {
+  const isTa = lang !== 'en';
+  const T = (en, ta) => (isTa ? ta : en);
+  const clock = (x) => fmtClock(x, lang, d.tz);
+  const range = (r) => fmtClockRange(r.start, r.end, lang, d.tz);
+  const nm = (x) => (x ? (isTa ? x.ta : x.en) : '');
+  const good = mergeSlots(d.good).slice(0, 3).map(range).join(', ');
+  const lines = [
+    d.festivals?.length ? `${T('Festival', 'பண்டிகை')}: ${d.festivals.map(nm).join(', ')}` : '',
+    `${T('Star', 'நட்சத்திரம்')}: ${nm(d.star)}${d.star?.endsAt ? ` — ${until(clock(d.star.endsAt), lang)}` : ''}`,
+    `${T('Tithi', 'திதி')}: ${nm(d.tithi)}${d.tithi?.endsAt ? ` — ${until(clock(d.tithi.endsAt), lang)}` : ''}`,
+    d.yoga ? `${T('Yogam', 'யோகம்')}: ${nm(d.yoga)}` : '',
+    `${T('Sunrise', 'சூரிய உதயம்')} ${clock(d.sunrise)} · ${T('Sunset', 'அஸ்தமனம்')} ${clock(d.sunset)}`,
+    `${T('Rahu Kalam', 'ராகு காலம்')}: ${range(d.rahu)}`,
+    `${T('Yamagandam', 'எமகண்டம்')}: ${range(d.yama)}`,
+    `${T('Guligai', 'குளிகை')}: ${range(d.guli)}`,
+    good ? `${T('Good time', 'நல்ல நேரம்')}: ${good}` : '',
+    d.chandrashtamam ? `${T('Chandrashtamam', 'சந்திராஷ்டமம்')}: ${nm(d.chandrashtamam)} ${T('rasi', 'ராசி')}` : '',
+  ].filter(Boolean);
+  const wd = isTa ? WEEKDAYS_TA[d.weekday] : WEEKDAYS_EN[d.weekday];
+  return {
+    kind: 'panchangam',
+    dense: true,
+    lang: isTa ? 'ta' : 'en',
+    brand: isTa ? 'துணை · Thunai' : 'Thunai · துணை',
+    tagline: T('Daily Panchangam', 'தினசரி பஞ்சாங்கம்'),
+    kicker: [fmtDay(d.date, lang), d.place].filter(Boolean).join(' · '),
+    title: `${isTa ? d.tamil.monthTa : d.tamil.monthEn} ${d.tamil.day}, ${wd}`,
+    subtitle: d.tamil.year ? T(`${d.tamil.year.en} year`, `${d.tamil.year.ta} வருடம்`) : '',
+    lines,
+  };
+}
+
+/** File name for a day's panchangam image: thunai-YYYY-MM-DD.png. */
+export const panchangamFilename = (iso) => `thunai-${String(iso).slice(0, 10)}.png`;

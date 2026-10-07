@@ -1,13 +1,19 @@
 // Hubs for the five-destination navigation (Family and Services tabs) and the searchable tools launcher.
 // The tool list itself lives in tool-registry.js (grouped by intent, searchable in Tamil / English / Tanglish).
 import {
-  state, $, $$, L, ta, esc, STATIC, api, toast, fmtIsoDate, needsServerCard, go, registerScreen, subHeader, saveFamily, copyright, store,
+  state, $, $$, L, ta, esc, STATIC, api, toast, needsServerCard, go, registerScreen, subHeader, saveFamily, copyright, store,
   activeMember, chartOf, displayName, nameInLang, nakName, rasiName, RELATIONS, bi, BRAND,
 } from './core.js';
 import { icon, iconChip } from './icons.js';
 import { GROUPS, TOOLS, toolById, searchTools } from './tool-registry.js';
+import { initialOf } from './shared/relations.js';
 import { savedJourneysHtml } from './screens-journey.js';
 import { syncShares, sharedHubLine } from './family-share.js';
+import { fmtDay, fmtClock, until } from './shared/fmt.js';
+// Dates and times the one way the app writes them (shared/fmt.js), in the app language.
+const lgx = () => (state.lang === 'en' ? 'en' : 'ta');
+const fDay = (iso) => fmtDay(iso, lgx());
+
 
 export { GROUPS, TOOLS, searchTools };
 
@@ -47,7 +53,7 @@ if (typeof document !== 'undefined') {
 // ================================================================ ALL TOOLS (searchable launcher)
 function renderTools(sec, params = {}) {
   const recent = recentTools();
-  sec.innerHTML = `${subHeader(L('All tools', 'அனைத்து கருவிகள்'), '', 'home')}
+  sec.innerHTML = `${subHeader(L('All Tools', 'அனைத்துக் கருவிகள்'), '', 'home')}
     <div class="tl-search" role="search">${icon('search', { size: 20 })}
       <label class="sr-only" for="toolSearch">${L('Search tools', 'கருவிகளைத் தேடு')}</label>
       <input id="toolSearch" type="search" enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="${esc(L('What are you looking for?', 'எதைத் தேடுகிறீர்கள்?'))}" value="${esc(params.q || '')}">
@@ -85,9 +91,9 @@ function renderFamilyHub(sec, opts = {}) {
   const people = fam.filter((m) => m.relation !== 'organization' && !m.shared); // shared with me: not in my 8
   sec.innerHTML = `<div class="sub-head hub-head"><div><h2>${L('Family', 'குடும்பம்')}</h2></div></div>
     <div class="card glass">
-      <div class="card-title"><span>${L('Profiles', 'சுயவிவரங்கள்')} (${people.length}/8)</span><button class="link-btn" data-go="family">${L('Manage', 'நிர்வகி')}</button></div>
+      <div class="card-title"><span>${L('Profiles', 'சுயவிவரங்கள்')} (${people.length}/8)</span><button class="link-btn" data-go="family">${L('Manage', 'நிர்வகியுங்கள்')}</button></div>
       ${fam.length ? fam.map((m) => { const c = chartOf(m); return `<button class="fam-row${m.id === state.activeId ? ' active' : ''}" data-id="${esc(m.id)}">
-        <span class="avatar">${esc(([...displayName(m)][0] || '').toUpperCase())}</span>
+        <span class="avatar">${esc(initialOf(displayName(m)))}</span>
         <span class="fam-name">${esc(displayName(m))}${m.private ? ' 🔒' : ''}<small>${m.shared ? `${L('Shared by', 'பகிர்ந்தவர்')} ${esc(nameInLang(m.shared.by) || L('family', 'குடும்பம்'))}${m.shared.permission === 'edit' ? '' : ` (${L('view only', 'பார்வைக்கு மட்டும்')})`} · ` : `${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))} · `}${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}</small></span>
         ${m.id === state.activeId ? `<span class="tag good">${L('Active', 'தேர்வு')}</span>` : ''}</button>`; }).join('')
     : `<p class="muted">${L('No profiles yet. The calendar works without one; add birth details for personal guidance.', 'இன்னும் சுயவிவரம் இல்லை. நாட்காட்டிக்குத் தேவையில்லை; தனிப்பட்ட வழிகாட்டலுக்குப் பிறப்பு விவரம் சேர்க்கவும்.')}</p>`}
@@ -112,7 +118,7 @@ registerScreen('familyhub', { render: renderFamilyHub });
 function renderServices(sec) {
   sec.innerHTML = `<div class="sub-head hub-head"><div><h2>${L('Services', 'சேவைகள்')}</h2></div></div>
     ${searchPill()}
-    <button class="row-card" data-go="tools">${iconChip('tools', { size: 22, cls: 'mi-icon' })}<span class="row-txt"><span class="row-name">${L('All tools', 'அனைத்து கருவிகள்')}</span><small>${L('Every feature, grouped by what you want to do', 'எல்லா வசதிகளும், தேவை வாரியாக')}</small></span><span class="row-go" aria-hidden="true">${icon('chevron-right', { size: 18 })}</span></button>
+    <button class="row-card" data-go="tools">${iconChip('tools', { size: 22, cls: 'mi-icon' })}<span class="row-txt"><span class="row-name">${L('All Tools', 'அனைத்துக் கருவிகள்')}</span><small>${L('Every feature, grouped by what you want to do', 'எல்லா வசதிகளும், தேவை வாரியாக')}</small></span><span class="row-go" aria-hidden="true">${icon('chevron-right', { size: 18 })}</span></button>
     <button class="card glass cta-card journey-cta" data-go="journey"><b>${L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்')}</b>
       <span class="small muted">${L('Nearby, matching your leave, or close to home — with route, timings, weather and stay.', 'அருகில், உங்கள் விடுப்புக்கு ஏற்ப, அல்லது வீட்டருகே — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.')}</span></button>
     ${savedJourneysHtml()}
@@ -160,14 +166,14 @@ async function storeOrdersHtml() {
     return `<article class="card glass"><div class="card-title"><span>₹${Number(o.total).toLocaleString('en-IN')} · ${fmtAt(o.createdAt)}</span><span class="badge ${['refunded', 'cancelled', 'payment_failed'].includes(o.status) ? 'unv' : o.status === 'delivered' ? 'ok' : 'est'}">${esc(orderStatus(o.status))}</span></div>
       <p class="small">${o.items.map((i) => `${esc(bi(i.name))} × ${i.qty}`).join(', ')}</p>
       ${rq ? `<p class="small muted">${L('Refund request', 'பணத்திருப்பக் கோரிக்கை')}: ${esc(rq.status === 'open' ? L('sent — our team will review it', 'அனுப்பப்பட்டது — எங்கள் குழு பரிசீலிக்கும்') : orderStatus(rq.status))}</p>` : ''}
-      ${canAsk ? `<button class="chip-btn" data-refund="${esc(o.id)}">↩ ${L('Request a refund', 'பணத்திருப்பம் கோரு')}</button>${o.refundableUntil ? ` <span class="small muted">${L('until', 'வரை')} ${fmtAt(o.refundableUntil)}</span>` : ''}` : ''}
+      ${canAsk ? `<button class="chip-btn" data-refund="${esc(o.id)}">↩ ${L('Request a refund', 'பணத்திருப்பம் கோரு')}</button>${o.refundableUntil ? ` <span class="small muted">${until(fmtAt(o.refundableUntil), lgx())}</span>` : ''}` : ''}
     </article>`;
   }).join('')}`;
 }
-const fmtAt = (t) => new Date(t).toLocaleString(ta() ? 'ta-IN' : 'en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const fmtAt = (t) => { const tz = state.loc?.tz ?? 5.5; return `${fmtDay(new Date(t), lgx(), tz, { year: false })}, ${fmtClock(new Date(t), lgx(), tz)}`; };
 
 async function renderBookings(sec) {
-  sec.innerHTML = `${subHeader(L('My bookings', 'என் முன்பதிவுகள்'), L('Every request with its status history', 'ஒவ்வொரு கோரிக்கையும் அதன் நிலை வரலாற்றுடன்'))}<div id="bkBody"></div>`;
+  sec.innerHTML = `${subHeader(L('My Bookings', 'என் முன்பதிவுகள்'), L('Every request with its status history', 'ஒவ்வொரு கோரிக்கையும் அதன் நிலை வரலாற்றுடன்'))}<div id="bkBody"></div>`;
   const body = $('#bkBody');
   if (STATIC) { body.innerHTML = needsServerCard(L('Your seva, priest and yatra requests will be tracked here once bookings open.', 'முன்பதிவுகள் தொடங்கியதும் உங்கள் சேவை, புரோகிதர், யாத்திரைக் கோரிக்கைகளின் நிலை இங்கு தெரியும்.')); return; }
   if (!state.user) { body.innerHTML = `<div class="card glass cta-card" data-go="login">${L('Sign in to see your bookings', 'உங்கள் முன்பதிவுகளைப் பார்க்க உள்நுழையவும்')} ›</div>`; return; }
@@ -176,7 +182,7 @@ async function renderBookings(sec) {
   const orders = await storeOrdersHtml();
   if (!requests.length) { body.innerHTML = `<p class="muted">${L('No bookings yet.', 'இன்னும் முன்பதிவு இல்லை.')}</p><button class="btn-soft" data-go="seva">🛕 ${L('Seva requests', 'சேவைக் கோரிக்கைகள்')}</button>${orders}`; wireRefunds(sec); return; }
   body.innerHTML = requests.map((r) => `<article class="card glass">
-      <div class="card-title"><span>${esc(r.service || r.type)} · ${fmtIsoDate(r.date)}</span><span class="badge ${stepBadge(r.status)}">${esc(stepName(r.status))}</span></div>
+      <div class="card-title"><span>${esc(r.service || r.type)} · ${fDay(r.date)}</span><span class="badge ${stepBadge(r.status)}">${esc(stepName(r.status))}</span></div>
       <ol class="bk-timeline">${(r.history?.length ? r.history : [{ status: r.status, at: r.updatedAt }]).map((h) => `<li><b>${esc(stepName(h.status))}</b> <span class="muted small">${fmtAt(h.at)}</span></li>`).join('')}</ol>
       ${CANCELLABLE.includes(r.status) ? `<button class="chip-btn" data-cancel="${esc(r.id)}">✕ ${L('Cancel this request', 'இந்தக் கோரிக்கையை ரத்து செய்')}</button>` : ''}
     </article>`).join('') + `<p class="small muted">${L('You get a notification when the status changes (if notifications are switched on).', 'நிலை மாறும்போது அறிவிப்பு வரும் (அறிவிப்புகள் இயக்கத்தில் இருந்தால்).')}</p>${orders}`;
@@ -197,7 +203,7 @@ registerScreen('bookings', { render: renderBookings, parent: 'services' });
 
 // ================================================================ HUMAN CONSULTATION (prepared, not live)
 function renderConsult(sec) {
-  sec.innerHTML = `${subHeader(L('Talk to a human astrologer', 'ஜோதிடருடன் நேரில் பேச'), L('Fixed price · fixed duration · written summary', 'நிலையான கட்டணம் · நிலையான நேரம் · எழுத்துச் சுருக்கம்'))}
+  sec.innerHTML = `${subHeader(L('Talk to an Astrologer', 'ஜோதிடருடன் பேசுங்கள்'), L('Fixed price · fixed duration · written summary', 'நிலையான கட்டணம் · நிலையான நேரம் · எழுத்துச் சுருக்கம்'))}
     <div class="card glass">
       <div class="card-title">${L('How it will work', 'இது எப்படி இயங்கும்')}</div>
       <div class="tb-list">
@@ -217,7 +223,7 @@ registerScreen('consult', { render: renderConsult, parent: 'services' });
 // ================================================================ FAMILY SHARED PLANS
 function renderFamilyPlan(sec) {
   const saved = savedJourneysHtml(); // dated list lives on the journey screen (saved-on date, open, rename, delete)
-  sec.innerHTML = `${subHeader(L('Shared events & journeys', 'பகிர்ந்த நிகழ்வுகள் & பயணங்கள்'), L('Plan together — share only what is needed', 'சேர்ந்து திட்டமிடுங்கள் — தேவையானதை மட்டும் பகிருங்கள்'))}
+  sec.innerHTML = `${subHeader(L('Shared Events & Journeys', 'பகிர்ந்த நிகழ்வுகள் & பயணங்கள்'), L('Plan together — share only what is needed', 'சேர்ந்து திட்டமிடுங்கள் — தேவையானதை மட்டும் பகிருங்கள்'))}
     <div class="menu">
       <button data-go="muhurtham" data-param='{"category":"graha_pravesam","allFamily":true}'>${iconChip('muhurtham', { size: 20, cls: 'mi-icon' })}<span>${L('Choose dates for a family event (e.g. housewarming)', 'குடும்ப நிகழ்வுக்கு நாள் தேர்வு (எ.கா. கிரகப்பிரவேசம்)')}</span></button>
       <button data-go="journey">${iconChip('journey', { size: 20, cls: 'mi-icon' })}<span>${L('Plan a family temple journey', 'குடும்பக் கோவில் பயணம் திட்டமிடு')}</span></button>

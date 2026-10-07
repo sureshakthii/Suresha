@@ -17,6 +17,7 @@ import { RASIS, PLANETS, planetPositions } from './astro.js';
 import { grahaStrength, NAVAGRAHA } from './remedies.js';
 import { isHinduFaith, universalPractice, TRADITIONAL_OPTIONAL } from './faith.js';
 import { MANTRAS } from './mantras.js';
+import { MONTHS_EN, MONTHS_TA, planetAdjTa } from './fmt.js';
 const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 const T = (en, ta) => ({ en, ta });
@@ -166,15 +167,15 @@ function generalHabits(stage) {
 }
 
 // ------------------------------------------------------------------ dates (residence time zone)
-const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const MONTHS_TA = ['ஜனவரி', 'பிப்ரவரி', 'மார்ச்', 'ஏப்ரல்', 'மே', 'ஜூன்', 'ஜூலை', 'ஆகஸ்ட்', 'செப்டம்பர்', 'அக்டோபர்', 'நவம்பர்', 'டிசம்பர்'];
 const localOf = (d, tz) => new Date(new Date(d).getTime() + (Number.isFinite(Number(tz)) ? Number(tz) : 5.5) * 3600000);
-/** "March 2027" / "மார்ச் 2027" in the residence time zone. */
+/** The last day of a period that ends at `end` (one convention: till = the day before the next period starts). */
+const lastDay = (end) => new Date(new Date(end).getTime() - 86400000);
+/** "Mar 2027" / "மார்ச் 2027" in the residence time zone (shared/fmt.js month names). */
 export function monthLabel(d, tz = 5.5) {
   const x = localOf(d, tz);
   return T(`${MONTHS_EN[x.getUTCMonth()]} ${x.getUTCFullYear()}`, `${MONTHS_TA[x.getUTCMonth()]} ${x.getUTCFullYear()}`);
 }
-const spanLabel = (a, b, tz) => { const s = monthLabel(a, tz), e = monthLabel(b, tz); return T(`${s.en} – ${e.en}`, `${s.ta} – ${e.ta}`); };
+const spanLabel = (a, b, tz) => { const s = monthLabel(a, tz), e = monthLabel(lastDay(b), tz); return T(`${s.en} – ${e.en}`, `${s.ta} – ${e.ta}`); };
 
 // ------------------------------------------------------------------ constitution (traditional body type)
 const DOSHAS = {
@@ -423,7 +424,7 @@ function lordAreas(chart, lord, ref) {
   return { areas: out, why, dusthanaLord: ruled.length > 0 };
 }
 
-const periodName = (lord, kind) => (kind === 'dasa' ? T(`${lord} Dasa`, `${PLANETS[lord].ta} தசை`) : T(`${lord} Bhukti`, `${PLANETS[lord].ta} புக்தி`));
+const periodName = (lord, kind) => (kind === 'dasa' ? T(`${lord} Dasa`, `${planetAdjTa(lord, PLANETS[lord].ta)} தசை`) : T(`${lord} Bhukti`, `${planetAdjTa(lord, PLANETS[lord].ta)} புக்தி`));
 
 function periodItem(chart, p, kind, ref, tz) {
   const la = lordAreas(chart, p.lord, ref);
@@ -432,7 +433,7 @@ function periodItem(chart, p, kind, ref, tz) {
     kind, lord: p.lord, ta: PLANETS[p.lord].ta, start: p.start, end: p.end,
     name: periodName(p.lord, kind),
     dates: spanLabel(p.start, p.end, tz),
-    until: p.end, untilLabel: monthLabel(p.end, tz),
+    until: p.end, untilLabel: monthLabel(lastDay(p.end), tz),
     areas: ids,
     line: careLine(ids),
     why: la.why.slice(0, 3),
@@ -599,8 +600,8 @@ const NEEDS_TIME = T('Birth time not known — this guide uses the Moon sign (Ch
 const APPROX_TIME = (w) => T(`Birth time approximate (±${w} min): items marked “may change” depend on the Lagna and can change within that window.`,
   `பிறந்த நேரம் தோராயம் (±${w} நிமி): “மாறக்கூடியது” எனக் குறிக்கப்பட்டவை லக்னத்தைச் சார்ந்தவை; அந்த இடைவெளிக்குள் மாறலாம்.`);
 const WELLBEING_LABEL = T('General wellbeing', 'பொது நலம்');
-const WELLBEING_NOTE = T('General habits, not from astrology — no diagnosis, no treatment. Pending review by a qualified clinician; follow your own doctor’s advice first.',
-  'ஜோதிடத்திலிருந்து அல்லாத பொதுப் பழக்கங்கள் — நோய் கண்டறிதலோ சிகிச்சையோ அல்ல. தகுதியான மருத்துவரின் மதிப்பாய்வு நிலுவையில்; உங்கள் மருத்துவர் ஆலோசனையே முதன்மை.');
+const WELLBEING_NOTE = T('General habits, not from astrology — no diagnosis, no treatment. Follow your own doctor’s advice first.',
+  'ஜோதிடத்திலிருந்து அல்லாத பொதுப் பழக்கங்கள் — நோய் கண்டறிதலோ சிகிச்சையோ அல்ல. உங்கள் மருத்துவர் ஆலோசனையே முதன்மை.');
 const REFLECTION_LABEL = T('Traditional reflection (optional)', 'மரபுச் சிந்தனை (விருப்பம்)');
 const REFLECTION_NOTE = T('Spiritual practices only — prayer, a lamp, a mantra, a calm routine. This is not health advice.',
   'ஆன்மீகப் பழக்கங்கள் மட்டுமே — பிரார்த்தனை, தீபம், மந்திரம், அமைதியான வழக்கம். இது உடல்நல ஆலோசனை அல்ல.');
@@ -647,7 +648,7 @@ export function healthGuide(chart, { now = new Date(), gender, faith = 'hindu', 
     .map((c) => ({ en: c.en, ta: c.ta, ...(c.gender ? { forGender: c.gender } : {}), needsMedicalReview: true, source: SCREENING_SOURCE.id }));
   const stage = {
     id: stageDef.id, en: stageDef.en, ta: stageDef.ta, checklist,
-    note: T('General check-up list (not from astrology), pending medical review. Discuss it with your doctor — they decide what and how often.', 'பொதுப் பரிசோதனைப் பட்டியல் (ஜோதிடத்திலிருந்து அல்ல), மருத்துவ மதிப்பாய்வு நிலுவையில். உங்கள் மருத்துவரிடம் கலந்து பேசுங்கள் — எது, எப்போது என்பதை அவரே முடிவு செய்வார்.'),
+    note: T('General check-up list (not from astrology). Discuss it with your doctor — they decide what and how often.', 'பொதுப் பரிசோதனைப் பட்டியல் (ஜோதிடத்திலிருந்து அல்ல). உங்கள் மருத்துவரிடம் கலந்து பேசுங்கள் — எது, எப்போது என்பதை அவரே முடிவு செய்வார்.'),
     needsMedicalReview: true, source: SCREENING_SOURCE, fromAstrology: false,
   };
   const habits = generalHabits(stage.id);
@@ -666,7 +667,7 @@ export function healthGuide(chart, { now = new Date(), gender, faith = 'hindu', 
   const gNotes = hindu ? reflNotes : reflNotes.map((x) => ({ id: x.id, ...(GOCHARA_ALL_FAITHS[x.id] || x) }));
   const lords = [...new Set([md?.lord, ad?.lord].filter(Boolean))];
   const practices = lords.map((k, i) => {
-    const why = i === 0 && k === md?.lord ? T(`Running ${k} Dasa`, `நடப்பு ${PLANETS[k].ta} தசை`) : T(`Running ${k} Bhukti`, `நடப்பு ${PLANETS[k].ta} புக்தி`);
+    const why = i === 0 && k === md?.lord ? T(`Running ${k} Dasa`, `நடப்பு ${planetAdjTa(k, PLANETS[k].ta)} தசை`) : T(`Running ${k} Bhukti`, `நடப்பு ${planetAdjTa(k, PLANETS[k].ta)} புக்தி`);
     const lamp = T(`Light a lamp on ${dayOf(k).en} with a short prayer to ${NAVAGRAHA[k].deity.en}`, `${dayOf(k).ta} அன்று ${NAVAGRAHA[k].deity.ta} முன் ஒரு தீபமும் சிறு பிரார்த்தனையும்`);
     if (hindu) return { planet: k, ta: PLANETS[k].ta, why, day: dayOf(k), deity: NAVAGRAHA[k].deity, mantra: NAVAGRAHA[k].mantra, charity: NAVAGRAHA[k].charity, lamp };
     return { planet: k, ta: PLANETS[k].ta, why, day: dayOf(k), deity: null, mantra: null, charity: NAVAGRAHA[k].charity, lamp: universalPractice(k),
@@ -812,9 +813,9 @@ function healthNowFrom(cur, top, zone) {
   const line = careLine(top.slice(0, 1));
   return {
     label: NOW_LABEL,
-    en: `${p.name.en} (until ${monthLabel(until, zone).en}): ${line.en} ${tip.en} Traditional indication, not a diagnosis — see a doctor for any symptom.`,
-    ta: `${p.name.ta} (${monthLabel(until, zone).ta} வரை): ${line.ta} ${tip.ta} இது மரபுக் குறிப்பு, நோய் கண்டறிதல் அல்ல — அறிகுறி இருந்தால் மருத்துவரைப் பாருங்கள்.`,
-    areas: top.slice(0, 1), until, untilLabel: monthLabel(until, zone), period: p.name, link: 'health',
+    en: `${p.name.en} (till ${monthLabel(lastDay(until), zone).en}): ${line.en} ${tip.en} Traditional indication, not a diagnosis — see a doctor for any symptom.`,
+    ta: `${p.name.ta} (${monthLabel(lastDay(until), zone).ta} வரை): ${line.ta} ${tip.ta} இது மரபுக் குறிப்பு, நோய் கண்டறிதல் அல்ல — அறிகுறி இருந்தால் மருத்துவரைப் பாருங்கள்.`,
+    areas: top.slice(0, 1), until, untilLabel: monthLabel(lastDay(until), zone), period: p.name, link: 'health',
   };
 }
 

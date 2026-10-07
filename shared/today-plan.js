@@ -5,8 +5,11 @@
 import { PLANETS } from './astro.js';
 import { NAVAGRAHA, grahaStrength } from './remedies.js';
 import { isHinduFaith, universalPractice, CHILD_PRACTICE } from './faith.js';
+import { planetAdjTa, WEEKDAYS_TA } from './fmt.js';
 
 const T = (en, ta) => ({ en, ta });
+/** Planet before ஓரை / தசை / புக்தி: சந்திர ஓரை, சூரிய தசை. */
+const pAdj = (k) => planetAdjTa(k, PLANETS[k].ta);
 
 // Sacred days → deity, what to do, food rule, and the planets tradition links them to.
 const SACRED = [
@@ -42,10 +45,11 @@ const ENERGY = {
 };
 
 /**
- * @param {object} p { chart, snap (panchang), festivals: [{en,ta}], level ('great'|'good'|'steady'|'care'), now, faith, age }
+ * @param {object} p { chart, snap (panchang), festivals: [{en,ta}], level ('great'|'good'|'steady'|'care'), now, faith, age,
+ *   dasaSure (false when the birth time is unknown and the running Dasa may differ — the reason is then hedged) }
  * @returns {{ energy, items:[{icon,title,text,personal,at?}], horai:{planet,start,end,text,weeks}|null }}
  */
-export function todayPlan({ chart, snap, festivals = [], level = 'steady', now = new Date(), faith = 'hindu', age = 30 }) {
+export function todayPlan({ chart, snap, festivals = [], level = 'steady', now = new Date(), faith = 'hindu', age = 30, dasaSure = true }) {
   const dayIdx = Math.floor(now.getTime() / 86400000);
   const energy = ENERGY[level][dayIdx % ENERGY[level].length];
   const items = [];
@@ -74,7 +78,7 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
     if (!s) { items.push({ icon: '🎉', title: T(`Today: ${fe.en}`, `இன்று ${fe.ta}`), text: T('Celebrate with family and visit a temple if you can.', 'குடும்பத்துடன் கொண்டாடி, முடிந்தால் கோவில் தரிசனம்.') }); continue; }
     const hit = lords.find((l) => s.planets.includes(l));
     const saturnHit = saniNote && s.planets.includes('Saturn');
-    const why = hit ? T(`special for your ${hit} ${hit === md ? 'Dasa' : 'Bhukti'}`, `உங்கள் ${PLANETS[hit].ta} ${hit === md ? 'தசை' : 'புக்தி'}க்குச் சிறப்பு`)
+    const why = hit ? T(`special for your ${hit} ${hit === md ? 'Dasa' : 'Bhukti'}`, `உங்கள் ${pAdj(hit)} ${hit === md ? 'தசை' : 'புக்தி'}க்குச் சிறப்பு`)
       : saturnHit ? T(`${saniNote.en} — very helpful today`, `${saniNote.ta} — இன்று மிக உதவும்`) : null;
     let act = s.act;
     if (s.food && age < 14) act = T(`${s.deity.en}: a simple prayer is enough — children need not fast.`, `${s.deity.ta}: எளிய பிரார்த்தனை போதும் — குழந்தைகள் விரதம் இருக்க வேண்டியதில்லை.`);
@@ -108,16 +112,19 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
         const minor = age < 18;
         horai = { planet, start: slot.start, end: slot.end, weeks: 9,
           // Other faiths: one practice that fits every faith (never a deity puja); a child gets a child-safe one.
-          text: !hindu ? (minor ? T(`In ${planet} hour: ${CHILD_PRACTICE.en[0].toLowerCase()}${CHILD_PRACTICE.en.slice(1)}`, `${PLANETS[planet].ta} ஓரையில்: ${CHILD_PRACTICE.ta}`) : T(`In ${planet} hour: ${universalPractice(planet).en}`, `${PLANETS[planet].ta} ஓரையில்: ${universalPractice(planet).ta}`))
-            : minor ? T(`In ${planet} hour, study the hardest subject — and pray to Saraswathi before starting.`, `${PLANETS[planet].ta} ஓரையில் கடினமான பாடத்தைப் படியுங்கள் — தொடங்கும் முன் சரஸ்வதி வழிபாடு.`)
-              : T(`In ${planet} hour, pray to ${n.deity.en} and chant ${n.mantra.en}.`, `${PLANETS[planet].ta} ஓரையில் ${n.deity.ta} வழிபாடு; ${n.mantra.ta}.`) };
+          text: !hindu ? (minor ? T(`In ${planet} hour: ${CHILD_PRACTICE.en[0].toLowerCase()}${CHILD_PRACTICE.en.slice(1)}`, `${pAdj(planet)} ஓரையில்: ${CHILD_PRACTICE.ta}`) : T(`In ${planet} hour: ${universalPractice(planet).en}`, `${pAdj(planet)} ஓரையில்: ${universalPractice(planet).ta}`))
+            : minor ? T(`In ${planet} hour, study the hardest subject — and pray to Saraswathi before starting.`, `${pAdj(planet)} ஓரையில் கடினமான பாடத்தைப் படியுங்கள் — தொடங்கும் முன் சரஸ்வதி வழிபாடு.`)
+              : T(`In ${planet} hour, pray to ${n.deity.en} and chant ${n.mantra.en}.`, `${pAdj(planet)} ஓரையில் ${n.deity.ta} வழிபாடு; ${n.mantra.ta}.`) };
       }
     }
     if (horai) {
-      const wd = { Sun: T('Sunday', 'ஞாயிறு'), Moon: T('Monday', 'திங்கள்'), Mars: T('Tuesday', 'செவ்வாய்'), Mercury: T('Wednesday', 'புதன்'), Jupiter: T('Thursday', 'வியாழன்'), Venus: T('Friday', 'வெள்ளி'), Saturn: T('Saturday', 'சனி'), Rahu: T('Saturday', 'சனி'), Ketu: T('Tuesday', 'செவ்வாய்') }[planet];
-      horai.repeat = T(`Do this every ${wd.en} for 9 weeks in a row.`, `${wd.ta}தோறும் தொடர்ந்து 9 வாரம் செய்யுங்கள்.`);
+      const di = { Sun: 0, Moon: 1, Mars: 2, Mercury: 3, Jupiter: 4, Venus: 5, Saturn: 6, Rahu: 6, Ketu: 2 }[planet];
+      const wdEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][di];
+      horai.repeat = T(`Do this every ${wdEn} for 9 weeks in a row.`, `${WEEKDAYS_TA[di]}தோறும் தொடர்ந்து 9 வாரங்கள் செய்யுங்கள்.`);
     }
-    if (horai) horai.why = T(`${planet} is your ${planet === md ? 'Dasa' : 'Bhukti'} lord and needs support now`, `${PLANETS[planet].ta} உங்கள் ${planet === md ? 'தசா' : 'புக்தி'} நாதர் — இப்போது ஆதரவு தேவை`);
+    if (horai) horai.why = dasaSure
+      ? T(`${planet} is your ${planet === md ? 'Dasa' : 'Bhukti'} lord and needs support now`, `${PLANETS[planet].ta} உங்கள் ${planet === md ? 'தசா' : 'புக்தி'} நாதர் — இப்போது ஆதரவு தேவை`)
+      : T(`${planet} is likely your ${planet === md ? 'Dasa' : 'Bhukti'} lord (the birth time is not known, so this may differ)`, `${PLANETS[planet].ta} உங்கள் ${planet === md ? 'தசா' : 'புக்தி'} நாதராக இருக்கலாம் (பிறந்த நேரம் தெரியாததால் மாறலாம்)`);
   }
 
   // 3. Saturn transit relief on Saturdays (when no sacred day already covered it).

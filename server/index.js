@@ -1,5 +1,6 @@
 import { BRAND } from '../shared/brand.js';
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { birthChart, panchang } from '../shared/astro.js';
@@ -22,6 +23,7 @@ import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
 import { findMuhurtham } from '../shared/special.js';
 import { AI_TASKS, DEADLINE_FIRST } from '../shared/narrator.js';
 import { securityHeaders, httpsRedirect, sameOriginWrites, productionConfig } from './security.js';
+import { compression, staticCacheControl } from './compress.js';
 import { hit } from './admin.js';
 import { evaluatePolicy, templateAnswer, deadlineNote, publicPolicy, audit, buildEvidence, publicEvidence, templateText, traceFor } from './policy/index.js';
 import { policyRouter } from './policy/routes.js';
@@ -109,6 +111,22 @@ function parseBirth(b) {
   };
 }
 
+const SHARE_PLACEHOLDER = 'https://thunai.example';
+let shellCache = null;
+/** public/index.html with the placeholder origin replaced by PUBLIC_URL's origin; null when PUBLIC_URL is unset. */
+function shellHtml() {
+  let origin;
+  try { origin = new URL(String(process.env.PUBLIC_URL || '').trim()).origin; } catch { return null; }
+  if (!/^https?:/.test(origin)) return null;
+  const file = path.join(root, 'public', 'index.html');
+  let mtime;
+  try { mtime = fs.statSync(file).mtimeMs; } catch { return null; }
+  if (!shellCache || shellCache.mtime !== mtime || shellCache.origin !== origin) {
+    shellCache = { mtime, origin, html: fs.readFileSync(file, 'utf8').replaceAll(SHARE_PLACEHOLDER, origin) };
+  }
+  return shellCache.html;
+}
+
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
@@ -116,6 +134,7 @@ export function createApp() {
   // Security headers (CSP, HSTS on HTTPS, Permissions-Policy, no-store for /api), optional HTTPS redirect and a
   // same-origin check for state-changing API calls (server/security.js).
   app.use(securityHeaders({ publicDir: path.join(root, 'public') }));
+  app.use(compression()); // brotli / gzip for pages, scripts, CSS, JSON (server/compress.js)
   app.use(httpsRedirect());
   app.use(sameOriginWrites());
   app.use('/api/billing/stripe/webhook', express.raw({ type: '*/*', limit: '256kb' })); // Stripe signs the raw bytes
@@ -374,11 +393,21 @@ export function createApp() {
     }, r.source);
   });
 
-  app.use('/shared', express.static(path.join(root, 'shared')));
-  app.get('/vendor/astronomy-engine.js', (_req, res) => {
-    res.sendFile(path.join(root, 'node_modules/astronomy-engine/esm/astronomy.js'));
+  // Static files: no-cache (revalidate by ETag) for the unhashed app files, immutable for vendored libraries and fonts.
+  const staticOpts = { setHeaders: (res) => res.setHeader('Cache-Control', staticCacheControl(res.req.originalUrl.split('?')[0])) };
+  // The page's canonical / Open Graph URLs say https://thunai.example until launch; with PUBLIC_URL set they are
+  // served with the real address (WhatsApp / Facebook previews need absolute URLs).
+  app.get(['/', '/index.html'], (req, res, next) => {
+    const html = shellHtml();
+    if (!html) return next();
+    res.setHeader('Cache-Control', 'no-cache');
+    res.type('html').send(html);
   });
-  app.use(express.static(path.join(root, 'public')));
+  app.use('/shared', express.static(path.join(root, 'shared'), staticOpts));
+  app.get('/vendor/astronomy-engine.js', (_req, res) => {
+    res.sendFile(path.join(root, 'node_modules/astronomy-engine/esm/astronomy.js'), { headers: { 'Cache-Control': staticCacheControl('/vendor/astronomy-engine.js') } });
+  });
+  app.use(express.static(path.join(root, 'public'), staticOpts));
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {

@@ -18,8 +18,10 @@ standalone one; the server mode patches it at build time (CI does this from the 
 
 In **server mode**, when someone opens the app:
 
-1. The **splash screen** shows the logo on the dark purple background (`#0b0620`).
-2. The app opens your deployed website, for example `https://kaippesi.example.com`.
+1. The **splash screen** shows the lamp logo on the brand maroon (`#3d0d1f`). The window behind the app and the
+   status bar keep that colour until the app has drawn, so there is no white or dark flash; then the status bar
+   follows the app's light or dark theme.
+2. The app opens your deployed website, for example `https://thunai.example`.
 3. If the phone is offline, a Tamil screen appears instead: **"இணைய இணைப்பு இல்லை"** (no internet)
    with a **"மீண்டும் முயற்சி · Retry"** button. It also retries by itself when the network comes back.
 
@@ -41,7 +43,7 @@ Capacitor version.
 ## Step 1: Deploy the server first
 
 *Skip Steps 1–2 for a standalone test build: without `KJ_APP_URL` the workflow builds the offline app
-and uploads `kaippesi-android-debug-apk`, which installs on any Android or Huawei phone.*
+and uploads `thunai-android-debug-apk`, which installs on any Android or Huawei phone.*
 
 The server-backed apps are only as good as the website they open. Follow [DEPLOY.md](DEPLOY.md) until
 `https://<your-domain>/api/health` shows `{"ok":true,...}` in a browser. The site must use **HTTPS**,
@@ -49,14 +51,14 @@ because both stores require it.
 
 ## Step 2: Set `KJ_APP_URL`
 
-`KJ_APP_URL` is the public address of the server, such as `https://kaippesi.example.com`, with no
+`KJ_APP_URL` is the public address of the server, such as `https://thunai.example`, with no
 trailing slash.
 
 - **GitHub (recommended):** go to repository → **Settings → Secrets and variables → Actions →
   Variables** → **New repository variable**. Set the name to `KJ_APP_URL` and the value to your URL.
 - **On your own computer:**
   ```bash
-  export KJ_APP_URL=https://kaippesi.example.com   # Windows PowerShell: $env:KJ_APP_URL="https://..."
+  export KJ_APP_URL=https://thunai.example   # Windows PowerShell: $env:KJ_APP_URL="https://..."
   npm run mobile:android                            # or: npm run mobile:ios
   ```
 
@@ -83,7 +85,7 @@ open your domain and the payment pages (`checkout.razorpay.com`, `api.razorpay.c
 4. When the run finishes, download the artifacts:
    - `android-aab` → `app-release.aab`. **Upload this file to Google Play.**
    - `android-release-apk` → `app-release.apk` (for Huawei AppGallery, or for sharing with testers).
-   - `kaippesi-android-debug-apk` → `app-debug.apk` (quick testing on your own or relatives' phones; no
+   - `thunai-android-debug-apk` → `app-debug.apk` (quick testing on your own or relatives' phones; no
      signing key needed — allow "Install unknown apps").
 
 If the secrets are missing, the build still runs, but the release files are **unsigned** and the stores
@@ -226,11 +228,21 @@ Users can install the web app directly. It works like an app, with an icon, full
 
 ## Updating the icons
 
-When the logo (`public/icon.svg` / `public/icon-512.png`) changes, run:
+Everything is generated from `public/icon.svg` (shared drawing code: `scripts/brand-art.mjs`). When the logo
+changes, run:
 
 ```bash
-npm run mobile:icons      # rewrites android/…/mipmap-*, splash images and ios/…/AppIcon
+npm run icons             # web: icon-192/512 ("any", transparent corners), icon-maskable-*, apple-touch-icon, og-image.png
+npm run mobile:icons      # Android: adaptive icon layers, legacy + round icons, themed (monochrome) icon, splash;
+                          # iOS: AppIcon and splash. Also writes dist/icon-preview.png (circle, squircle,
+                          # rounded-square and themed masks) — look at it before committing.
 ```
+
+The Android adaptive icon is two layers: the background is the brand gradient (`drawable-v24/ic_launcher_background.xml`)
+and the foreground is the lamp-and-arch mark **only**, on transparent, inside the 66 dp safe circle. Never put the
+rounded tile into the foreground — the launcher draws the shape, and a tile inside it looks like an icon in an icon.
+The launch colour (`#3d0d1f`) lives in `COLORS.SPLASH` in `scripts/brand-art.mjs`, `capacitor.config.json`
+(`SplashScreen`, `StatusBar`, `backgroundColor`) and the generated `values/ic_launcher_background.xml`.
 
 Then commit the changed images and make a new store release.
 

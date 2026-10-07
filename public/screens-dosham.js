@@ -101,7 +101,8 @@ export function bindDosham(root) {
 function renderDosham(sec) {
   const m = activeMember();
   const { diag, faith } = doshamFor(m);
-  const ev = expertView(diag, { name: displayName(m), faith });
+  const married = m.maritalStatus === 'married' || m.relation === 'spouse' || (m.relation === 'self' && state.family.some((x) => x.relation === 'spouse'));
+  const ev = expertView(diag, { name: displayName(m), faith, married });
   sec.innerHTML = `${subHeader(L('Doshams & Nivarthi', 'தோஷங்கள் & நிவர்த்தி'), esc(displayName(m)), 'analysis')}
     <div class="card glass dz-expert" id="dzExpert"><div class="card-title"><span>🧘 ${esc(bi(ev.title))}</span><button class="link-btn" id="dzSpeak" aria-label="${esc(L('Read aloud', 'சத்தமாக வாசி'))}">🔊</button></div>
       ${ev.paras.map((p) => `<p>${esc(bi(p))}</p>`).join('')}</div>

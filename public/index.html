@@ -3,15 +3,36 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <!-- Matches the dark top bar (the default theme); core.js applyTheme() updates it for light / dark. -->
-  <meta name="theme-color" content="#18131a" />
+  <!-- Status-bar colour = the dark top bar: the default app theme and the splash are dark in both OS modes, so both
+       media variants start dark. core.js applyTheme() rewrites them for the app's light / dark theme. -->
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#18131a" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#18131a" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="துணை" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="application-name" content="துணை · Thunai" />
-  <meta name="description" content="துணை · THUNAI — உங்கள் வாழ்வின் வழித்துணை. Personal Astrology &amp; Spiritual Guidance: Tamil panchangam, family horoscopes, explainable guidance and temple journeys." />
-  <title>துணை · THUNAI — Personal Astrology &amp; Spiritual Guidance</title>
+  <meta name="description" content="துணை · THUNAI — உங்கள் வாழ்வின் வழித்துணை: தமிழ் பஞ்சாங்கம், குடும்ப ஜாதகம், பண்டிகைகள், கோயில் பயணங்கள். Tamil panchangam, family horoscopes, explainable guidance and temple journeys — in Tamil and English." />
+  <title>துணை · THUNAI — உங்கள் வாழ்வின் வழித்துணை</title>
+  <!-- Canonical / share URLs: the server replaces https://thunai.example with PUBLIC_URL's origin when it serves this
+       page (server/index.js); og:image must be absolute for WhatsApp / Facebook / X previews (docs/LAUNCH-CHECKLIST.md). -->
+  <link rel="canonical" href="https://thunai.example/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Thunai — துணை" />
+  <meta property="og:title" content="Thunai — துணை" />
+  <meta property="og:description" content="உங்கள் வாழ்வின் வழித்துணை — தமிழ் பஞ்சாங்கம், குடும்ப ஜாதகம், கோயில் பயணங்கள். Tamil panchangam, family horoscopes, festivals and temple journeys in Tamil and English." />
+  <meta property="og:url" content="https://thunai.example/" />
+  <meta property="og:image" content="https://thunai.example/og-image.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="துணை · THUNAI — a lamp under a temple arch, with the tagline உங்கள் வாழ்வின் வழித்துணை" />
+  <meta property="og:locale" content="ta_IN" />
+  <meta property="og:locale:alternate" content="en_IN" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Thunai — துணை" />
+  <meta name="twitter:description" content="உங்கள் வாழ்வின் வழித்துணை — Tamil panchangam, family horoscopes, festivals and temple journeys in Tamil and English." />
+  <meta name="twitter:image" content="https://thunai.example/og-image.png" />
+  <meta name="twitter:image:alt" content="துணை · THUNAI logo — a lamp under a temple arch" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />

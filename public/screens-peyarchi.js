@@ -6,7 +6,7 @@ import {
 } from './shared/peyarchi.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, fmtIsoDate,
-  activeMember, chartOf, registerScreen, subHeader, speak, displayName, placeName,
+  activeMember, chartOf, registerScreen, subHeader, speak, displayName, placeName, scaleName, untilL, fromL, fmtMonthOf,
 } from './core.js';
 import { remindBtn } from './remind.js';
 import { ageProfile, adultText } from './shared/age-guard.js';
@@ -36,7 +36,7 @@ const tz = () => state.loc?.tz ?? 5.5;
 const isoLocal = (d) => new Date(new Date(d).getTime() + tz() * 3600000).toISOString().slice(0, 10);
 const fmtD = (d) => (d ? fmtIsoDate(isoLocal(d)) : '—');
 const TAG = { good: 'good', mixed: 'warn', care: 'bad' };
-const levelLabel = (lv) => ({ good: L('Good', 'நன்மை'), mixed: L('Mixed', 'கலவை'), care: L('Needs care', 'கவனம் தேவை') }[lv]);
+const levelLabel = (lv) => scaleName(lv);
 const BAR = { good: 'strong', mixed: 'average', care: 'weak' };
 const houseLabel = (h) => (ta() ? `${houseOrdinal(h).ta} இடம்` : `${houseOrdinal(h).en} house`);
 const gName = (p) => (ta() ? PEYARCHI_NAMES[p].ta.replace('ப் பெயர்ச்சி', '') : ({ Jupiter: 'Guru', Saturn: 'Sani' }[p] || p));
@@ -115,7 +115,7 @@ function renderPeyarchi(sec) {
     </div>
     <div id="pyPalan"></div>
     <div id="pyPeriodCard" class="card glass">
-      <div class="card-title"><span>${L('Rasi Palan', 'ராசி பலன்')} · ${esc(rasiName(pyRasi))}</span><button class="link-btn" id="pySpeak" aria-label="${L('Read aloud', 'வாசித்துக் காட்டு')}">🔊</button></div>
+      <div class="card-title"><span>${L('Rasi Palan', 'ராசி பலன்')} · ${esc(rasiName(pyRasi))}</span><button class="link-btn" id="pySpeak" aria-label="${esc(L('Read aloud', 'சத்தமாக வாசி'))}">🔊</button></div>
       <div class="py-tabs"><button class="chip-btn${pyTab === 'month' ? ' sel' : ''}" data-pytab="month">${L('This month', 'இந்த மாதம்')}</button><button class="chip-btn${pyTab === 'year' ? ' sel' : ''}" data-pytab="year">${L('This year', 'இந்த ஆண்டு')}</button></div>
       <div id="pyPeriod">${LOADER}</div>
     </div>`;
@@ -307,7 +307,7 @@ function downloadIcs(x) {
   const next = new Date(Date.parse(x.date) + 86400000).toISOString().slice(0, 10).replace(/-/g, '');
   const title = `${x.ta} / ${x.en}`.replace(/[,;\\]/g, ' ');
   const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Thunai//Vratham//TA', 'BEGIN:VEVENT',
-    `UID:${d}-${x.type}-${Math.random().toString(36).slice(2)}@kaippesi`,
+    `UID:${d}-${x.type}-${Math.random().toString(36).slice(2)}@thunai`,
     `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
     `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${next}`, `SUMMARY:${title}`,
     'BEGIN:VALARM', 'TRIGGER:-PT12H', 'ACTION:DISPLAY', `DESCRIPTION:${title}`, 'END:VALARM',

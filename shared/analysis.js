@@ -9,6 +9,7 @@ import { houseRoles as computeHouseRoles } from './rules/roles.js';
 import { runningDasa } from './daily.js';
 import { isHinduFaith } from './faith.js';
 import { adultText } from './age-guard.js';
+import { planetAdjTa } from './fmt.js';
 const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 const KENDRA = [1, 4, 7, 10];
@@ -66,8 +67,8 @@ export function bhavaAnalysis(chart) {
     const aspects = aspectsOn(P, L, h);
     let score = 50;
     const notes = [];
-    if (KENDRA.includes(lordHouse) || TRIKONA.includes(lordHouse)) { score += 12; notes.push({ en: `Lord ${lord} is well placed in house ${lordHouse}`, ta: `அதிபதி ${PLANETS[lord].ta} ${lordHouse}-ல் நல்ல இடத்தில்` }); }
-    if (DUSTHANA.includes(lordHouse) && !DUSTHANA.includes(h)) { score -= 10; notes.push({ en: `Lord ${lord} sits in house ${lordHouse}`, ta: `அதிபதி ${PLANETS[lord].ta} ${lordHouse}-ல்` }); }
+    if (KENDRA.includes(lordHouse) || TRIKONA.includes(lordHouse)) { score += 12; notes.push({ en: `Lord ${lord} is well placed in the ${ordEn(lordHouse)} house`, ta: `அதிபதி ${PLANETS[lord].ta} ${lordHouse}-ல் நல்ல இடத்தில்` }); }
+    if (DUSTHANA.includes(lordHouse) && !DUSTHANA.includes(h)) { score -= 10; notes.push({ en: `Lord ${lord} sits in the ${ordEn(lordHouse)} house`, ta: `அதிபதி ${PLANETS[lord].ta} ${lordHouse}-ல்` }); }
     score += Math.round((strength[lord] - 55) / 3);
     for (const o of occupants) {
       if (BENEFICS.includes(o) || (o === 'Moon')) score += 6;
@@ -227,14 +228,15 @@ function signSpan(planet, now) {
 }
 
 const AREAS = [
-  { id: 'career', en: 'Career & status', ta: 'தொழில் & அந்தஸ்து', houses: [10, 6, 11], karakas: ['Saturn', 'Sun'] },
-  { id: 'wealth', en: 'Wealth & savings', ta: 'செல்வம் & சேமிப்பு', houses: [2, 11, 9], karakas: ['Jupiter', 'Venus'] },
-  { id: 'marriage', en: 'Marriage & partnership', ta: 'திருமணம் & கூட்டு', houses: [7, 2, 11], karakas: ['Venus', 'Jupiter'] },
+  // Names are the same as the written palan's (shared/written-palan.js PALAN_AREAS) — one name per area on a screen.
+  { id: 'career', en: 'Career', ta: 'தொழில் / வேலை', houses: [10, 6, 11], karakas: ['Saturn', 'Sun'] },
+  { id: 'wealth', en: 'Money & savings', ta: 'பணம் & சேமிப்பு', houses: [2, 11, 9], karakas: ['Jupiter', 'Venus'] },
+  { id: 'marriage', en: 'Marriage & family life', ta: 'திருமணம் & குடும்ப வாழ்க்கை', houses: [7, 2, 11], karakas: ['Venus', 'Jupiter'] },
   { id: 'health', en: 'Health & vitality', ta: 'ஆரோக்கியம்', houses: [1, 6, 8], karakas: ['Sun', 'Moon'] },
-  { id: 'education', en: 'Education & intellect', ta: 'கல்வி & அறிவு', houses: [4, 5, 9], karakas: ['Mercury', 'Jupiter'] },
-  { id: 'children', en: 'Children', ta: 'குழந்தைகள்', houses: [5, 9], karakas: ['Jupiter'] },
+  { id: 'education', en: 'Education & studies', ta: 'கல்வி & கற்றல்', houses: [4, 5, 9], karakas: ['Mercury', 'Jupiter'] },
+  { id: 'children', en: 'Children', ta: 'பிள்ளைகள்', houses: [5, 9], karakas: ['Jupiter'] },
   { id: 'property', en: 'Home, land & vehicles', ta: 'வீடு, நிலம், வாகனம்', houses: [4, 11], karakas: ['Mars', 'Venus'] },
-  { id: 'spiritual', en: 'Spiritual growth', ta: 'ஆன்மீக வளர்ச்சி', houses: [9, 12, 5], karakas: ['Jupiter', 'Ketu'] },
+  { id: 'spiritual', en: 'Spiritual life', ta: 'ஆன்மீக வாழ்க்கை', houses: [9, 12, 5], karakas: ['Jupiter', 'Ketu'] },
 ];
 
 /** Full analysis bundle used by the Jathagam report screen and the Jothidar. */
@@ -264,13 +266,16 @@ export function fullAnalysis(chart, now = new Date(), { profile, faith = 'hindu'
     const house = hasLagna ? houseOf(chart.planets.Lagna.rasi, chart.planets[k].rasi) : null;
     const ruled = hasLagna && k in OWN ? housesRuled(chart.planets.Lagna.rasi, k) : [];
     const good = dasaTone(chart, k, sMap).good;
-    const where = house ? { en: ` sits in house ${house}`, ta: `: ${house}-ம் வீட்டில்` } : { en: ' (house needs birth time)', ta: ': (பாவத்திற்கு பிறந்த நேரம் தேவை)' };
+    const where = house ? { en: ` sits in the ${ordEn(house)} house`, ta: `: ${house}-ம் வீட்டில்` } : { en: ' (house needs birth time)', ta: ': (பாவத்திற்கு பிறந்த நேரம் தேவை)' };
     const until = dasa.end;
-    const uy = until ? new Date(until).getUTCFullYear() : null;
+    // One boundary convention (shared/fmt.js): a period runs till the day before the next one starts.
+    const uy = until ? new Date(new Date(until).getTime() - 86400000).getUTCFullYear() : null;
+    const ruledEn = ruled.length ? ` and rules your ${ruled.map(ordEn).join(' & ')} house${ruled.length > 1 ? 's' : ''}` : '';
+    const ruledTa = ruled.length === 1 ? `, ${ruled[0]}-ம் வீட்டு அதிபதி` : ruled.length ? `, ${ruled.join(', ')}-ம் வீடுகளுக்கு அதிபதி` : '';
     dasaOutlook = {
       lord: k, house, ruled, strength: sMap[k], tone: good ? 'favourable' : 'growth through effort', until,
-      en: `You are in ${k} Mahadasa${uy ? ` (until ${uy})` : ''}. In your chart ${k}${where.en}${ruled.length ? ` and rules your ${ruled.join(' & ')} house${ruled.length > 1 ? 's' : ''}` : ''}. ${good ? 'A supportive period — use it to build.' : `Results come through patience and steady effort${isHinduFaith(faith) ? '; its parigaram helps' : ''}.`}`,
-      ta: `நீங்கள் இப்போது ${PLANETS[k].ta} மகா தசையில்${uy ? ` (${uy} வரை)` : ''}. உங்கள் ஜாதகத்தில் ${PLANETS[k].ta}${where.ta}${ruled.length ? `, ${ruled.join(' & ')}-ம் வீடுகளின் அதிபதி` : ''}. ${good ? 'ஆதரவான காலம் — வளர்ச்சிக்குப் பயன்படுத்துங்கள்.' : `பொறுமையும் தொடர் முயற்சியும் பலன் தரும்${isHinduFaith(faith) ? '; அதன் பரிகாரம் உதவும்' : ''}.`}`,
+      en: `You are in ${k} Mahadasa${uy ? ` (till ${uy})` : ''}. In your chart ${k}${where.en}${ruledEn}. ${good ? 'A supportive period — use it to build.' : `Results come through patience and steady effort${isHinduFaith(faith) ? '; its parigaram helps' : ''}.`}`,
+      ta: `நீங்கள் இப்போது ${planetAdjTa(k, PLANETS[k].ta)} மகா தசையில்${uy ? ` (${uy} வரை)` : ''}. உங்கள் ஜாதகத்தில் ${PLANETS[k].ta}${where.ta}${ruledTa}. ${good ? 'ஆதரவான காலம் — வளர்ச்சிக்குப் பயன்படுத்துங்கள்.' : `பொறுமையும் தொடர் முயற்சியும் பலன் தரும்${isHinduFaith(faith) ? '; அதன் பரிகாரம் உதவும்' : ''}.`}`,
     };
   }
   const needsBirthTime = hasLagna ? [] : rulesNeedingBirthTime(chart, { profile: pr });

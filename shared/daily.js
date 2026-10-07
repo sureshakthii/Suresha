@@ -80,6 +80,35 @@ export function nextChandrashtamam(janmaRasi, from = new Date()) {
   return { start, end, active: start <= from };
 }
 
+/** The four day labels — the ONLY words any surface uses for a person's day (Today, family list, Panchangam, Guru vakku, brief). */
+export const DAY_LABEL = {
+  great: T('Excellent day', 'சிறப்பான நாள்'),
+  good: T('Good day', 'நல்ல நாள்'),
+  steady: T('Steady day', 'நிலையான நாள்'),
+  care: T('Careful day', 'கவனமான நாள்'),
+};
+
+/**
+ * The one day score for a person: Chandra balam + Tara balam (+1 when the weekday lord is the running Dasa lord).
+ * Chandrashtamam always makes the day 'care'. Fast — no searching — so lists of family members can call it freely.
+ * Returns { level: great|good|steady|care, label {en,ta}, score, chandra, chandrashtamam, tara {n,name}, dayLord, dasaLord }.
+ */
+export function dayVerdict(chart, snap, now = new Date()) {
+  const jr = chart.janmaRasi.index, js = chart.janmaNakshatra.index;
+  const chandra = ((snap.moonRasi.index - jr + 12) % 12) + 1;
+  const taraN = ((snap.nakshatra.index - js + 27) % 27) % 9 + 1;
+  const chandrashtamam = chandra === 8;
+  const dayLord = WEEKDAY_LORD[snap.weekday.index];
+  let dasaLord = null;
+  try { dasaLord = runningDasa(chart, now).md?.lord || null; } catch { dasaLord = null; }
+  let score = 0;
+  if (chandrashtamam) score -= 3; else if (CHANDRA_GOOD.has(chandra)) score += 2; else if (CHANDRA_BAD.has(chandra)) score -= 1;
+  if (TARA_GOOD.has(taraN)) score += 2; else if (TARA_BAD.has(taraN)) score -= 2;
+  if (dasaLord && dasaLord === dayLord) score += 1;
+  const level = chandrashtamam ? 'care' : score >= 3 ? 'great' : score >= 1 ? 'good' : score >= -1 ? 'steady' : 'care';
+  return { level, label: DAY_LABEL[level], score, chandra, chandrashtamam, tara: { n: taraN, name: TARA[taraN - 1] }, dayLord, dasaLord };
+}
+
 /**
  * Today's personal review from gochara: Chandra balam, Tara balam, Chandrashtamam, weekday lord vs Dasa,
  * plus do's and don'ts, today's deity and the closing prayer.
@@ -91,24 +120,21 @@ export function dailyReview(chart, snap, now = new Date(), { faith = 'hindu' } =
   const deity = DAY_DEITY[wd];
   if (!chart) return { personal: false, deity, dayLord };
   const jr = chart.janmaRasi.index, js = chart.janmaNakshatra.index;
-  const chandra = ((snap.moonRasi.index - jr + 12) % 12) + 1;
-  const taraN = ((snap.nakshatra.index - js + 27) % 27) % 9 + 1;
-  const chandrashtamam = chandra === 8;
-  const md = runningDasa(chart, now).md?.lord || null;
-  let score = 0;
+  const v = dayVerdict(chart, snap, now);
+  const { chandra, chandrashtamam, score, level, label } = v;
+  const taraN = v.tara.n;
+  const md = v.dasaLord;
   const why = [];
-  if (chandrashtamam) { score -= 3; why.push(T(`Chandrashtamam: today's Moon in ${RASIS[snap.moonRasi.index].en} is 8th from your rasi ${RASIS[jr].en}`, `சந்திராஷ்டமம்: இன்றைய சந்திரன் ${RASIS[snap.moonRasi.index].ta} — உங்கள் ${RASIS[jr].ta} ராசிக்கு 8-ம் இடம்`)); }
-  else if (CHANDRA_GOOD.has(chandra)) { score += 2; why.push(T(`Chandra balam: Moon in the ${ordEn(chandra)} from your rasi — supportive`, `சந்திர பலம்: சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — சாதகம்`)); }
-  else if (CHANDRA_BAD.has(chandra)) { score -= 1; why.push(T(`Moon in the ${ordEn(chandra)} from your rasi — go gently`, `சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — நிதானம்`)); }
+  if (chandrashtamam) { why.push(T(`Chandrashtamam: today's Moon in ${RASIS[snap.moonRasi.index].en} is 8th from your rasi ${RASIS[jr].en}`, `சந்திராஷ்டமம்: இன்றைய சந்திரன் ${RASIS[snap.moonRasi.index].ta} — உங்கள் ${RASIS[jr].ta} ராசிக்கு 8-ம் இடம்`)); }
+  else if (CHANDRA_GOOD.has(chandra)) { why.push(T(`Chandra balam: Moon in the ${ordEn(chandra)} from your rasi — supportive`, `சந்திர பலம்: சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — சாதகம்`)); }
+  else if (CHANDRA_BAD.has(chandra)) { why.push(T(`Moon in the ${ordEn(chandra)} from your rasi — go gently`, `சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — நிதானம்`)); }
   else why.push(T(`Moon in the ${ordEn(chandra)} from your rasi — neutral`, `சந்திரன் உங்கள் ராசிக்கு ${chandra}-ம் இடம் — சமம்`));
   const taraName = TARA[taraN - 1];
-  if (TARA_GOOD.has(taraN)) { score += 2; why.push(T(`Tara balam: today's star ${NAKSHATRAS[snap.nakshatra.index].en} is ${taraName.en} tara for you — favourable`, `தாரா பலம்: இன்றைய ${NAKSHATRAS[snap.nakshatra.index].ta} உங்களுக்கு ${taraName.ta} தாரை — சாதகம்`)); }
-  else if (TARA_BAD.has(taraN)) { score -= 2; why.push(T(`Today's star ${NAKSHATRAS[snap.nakshatra.index].en} is ${taraName.en} tara for you — avoid new beginnings`, `இன்றைய ${NAKSHATRAS[snap.nakshatra.index].ta} உங்களுக்கு ${taraName.ta} தாரை — புதிய தொடக்கம் தவிர்க்கவும்`)); }
+  if (TARA_GOOD.has(taraN)) { why.push(T(`Tara balam: today's star ${NAKSHATRAS[snap.nakshatra.index].en} is ${taraName.en} tara for you — favourable`, `தாரா பலம்: இன்றைய ${NAKSHATRAS[snap.nakshatra.index].ta} உங்களுக்கு ${taraName.ta} தாரை — சாதகம்`)); }
+  else if (TARA_BAD.has(taraN)) { why.push(T(`Today's star ${NAKSHATRAS[snap.nakshatra.index].en} is ${taraName.en} tara for you — avoid new beginnings`, `இன்றைய ${NAKSHATRAS[snap.nakshatra.index].ta} உங்களுக்கு ${taraName.ta} தாரை — புதிய தொடக்கம் தவிர்க்கவும்`)); }
   else why.push(T(`Today's star is your Janma tara — keep the day simple`, `இன்று உங்கள் ஜென்ம தாரை — எளிமையாக நடத்துங்கள்`));
-  if (md && md === dayLord) { score += 1; why.push(hindu ? T(`Today is ruled by ${dayLord}, your Dasa lord — a good day to pray to ${PLANET_DEITY[md].en}`, `இன்று ${snap.weekday.ta} — ${PLANETS[dayLord].ta}, உங்கள் தசா நாதர்; ${PLANET_DEITY[md].ta} வழிபாட்டுக்கு உகந்த நாள்`) : T(`Today is ruled by ${dayLord}, your Dasa lord — a good day for prayer in your own faith`, `இன்று ${snap.weekday.ta} — ${PLANETS[dayLord].ta}, உங்கள் தசா நாதர்; உங்கள் நம்பிக்கைப்படி பிரார்த்தனைக்கு உகந்த நாள்`)); }
+  if (md && md === dayLord) { why.push(hindu ? T(`Today is ruled by ${dayLord}, your Dasa lord — a good day to pray to ${PLANET_DEITY[md].en}`, `இன்று ${snap.weekday.ta} — ${PLANETS[dayLord].ta}, உங்கள் தசா நாதர்; ${PLANET_DEITY[md].ta} வழிபாட்டுக்கு உகந்த நாள்`) : T(`Today is ruled by ${dayLord}, your Dasa lord — a good day for prayer in your own faith`, `இன்று ${snap.weekday.ta} — ${PLANETS[dayLord].ta}, உங்கள் தசா நாதர்; உங்கள் நம்பிக்கைப்படி பிரார்த்தனைக்கு உகந்த நாள்`)); }
 
-  const level = chandrashtamam ? 'care' : score >= 3 ? 'great' : score >= 1 ? 'good' : score >= -1 ? 'steady' : 'care';
-  const label = { great: T('Excellent day', 'சிறப்பான நாள்'), good: T('Good day', 'நல்ல நாள்'), steady: T('Steady day', 'சுமாரான நாள்'), care: T('Day for care', 'கவனமான நாள்') }[level];
 
   const dos = [];
   const donts = [];

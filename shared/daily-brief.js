@@ -11,7 +11,8 @@
 // never a promise, never fear (findProhibited in shared/themes.js scans every line in the tests).
 import { panchang, RASIS, NAKSHATRAS, PLANETS } from './astro.js';
 import { tamilDay } from './tamilcal.js';
-import { dailyReview, DAY_DEITY, runningDasa } from './daily.js';
+import { dailyReview, dayVerdict, DAY_DEITY, runningDasa } from './daily.js';
+import { dayPartTa, planetAdjTa } from './fmt.js';
 import { ageProfile } from './age-guard.js';
 import { isHinduFaith, universalPractice, faithBlessing, CHILD_PRACTICE } from './faith.js';
 import { getEntry } from './spiritual-kb.js';
@@ -63,7 +64,7 @@ export function fmtHM(at, tz, lang = 'ta') {
   const x = new Date(new Date(at).getTime() + tz * 3600000);
   const h = x.getUTCHours();
   const hm = `${((h + 11) % 12) + 1}:${pad(x.getUTCMinutes())}`;
-  if (lang === 'ta') return `${h >= 4 && h < 12 ? 'காலை' : h >= 12 && h < 16 ? 'மதியம்' : h >= 16 && h < 19 ? 'மாலை' : 'இரவு'} ${hm}`;
+  if (lang === 'ta') return `${dayPartTa(h)} ${hm}`;
   return `${hm} ${h < 12 ? 'AM' : 'PM'}`;
 }
 const both = (fn) => T(fn('en'), fn('ta'));
@@ -100,22 +101,11 @@ export function goodWindow(td, from) {
   return null;
 }
 
-// ---------------------------------------------------------------- day quality (light version of dailyReview)
-const TARA = [T('Janma', 'ஜென்ம'), T('Sampat', 'சம்பத்'), T('Vipat', 'விபத்'), T('Kshema', 'க்ஷேம'), T('Pratyak', 'பிரத்யக்'), T('Sadhana', 'சாதக'), T('Naidhana', 'நைதன'), T('Mitra', 'மித்ர'), T('Parama Mitra', 'பரம மித்ர')];
-const TARA_GOOD = new Set([2, 4, 6, 8, 9]);
-const TARA_BAD = new Set([3, 5, 7]);
-const CHANDRA_GOOD = new Set([1, 3, 6, 7, 10, 11]);
-const CHANDRA_BAD = new Set([4, 8, 12]);
-/** Same scoring as dailyReview (Chandra balam + Tara balam), without the slow Chandrashtamam search. */
-export function dayQuality(chart, snap) {
-  const jr = chart.janmaRasi.index, js = chart.janmaNakshatra.index;
-  const chandra = ((snap.moonRasi.index - jr + 12) % 12) + 1;
-  const taraN = ((snap.nakshatra.index - js + 27) % 27) % 9 + 1;
-  let score = 0;
-  if (chandra === 8) score -= 3; else if (CHANDRA_GOOD.has(chandra)) score += 2; else if (CHANDRA_BAD.has(chandra)) score -= 1;
-  if (TARA_GOOD.has(taraN)) score += 2; else if (TARA_BAD.has(taraN)) score -= 2;
-  const level = chandra === 8 ? 'care' : score >= 3 ? 'great' : score >= 1 ? 'good' : score >= -1 ? 'steady' : 'care';
-  return { level, score, chandra, chandrashtamam: chandra === 8, tara: { n: taraN, name: TARA[taraN - 1] } };
+// ---------------------------------------------------------------- day quality
+/** The one day score (shared/daily.js dayVerdict) — the same verdict Today, the family list and Panchangam show. */
+export function dayQuality(chart, snap, now = new Date()) {
+  const v = dayVerdict(chart, snap, now);
+  return { level: v.level, label: v.label, score: v.score, chandra: v.chandra, chandrashtamam: v.chandrashtamam, tara: v.tara };
 }
 
 // ---------------------------------------------------------------- the three lines
@@ -173,8 +163,8 @@ export function morningBrief(o = {}) {
       : T('Chandrashtamam today — go gently and keep big decisions for another day.', 'இன்று சந்திராஷ்டமம் — நிதானமாக இருங்கள்; பெரிய முடிவுகளை வேறு நாளுக்கு வையுங்கள்.');
     else if (r.level === 'great') text = T(`An excellent day for you — today's star ${star.en} is ${tara.en} tara for you, and the Moon supports you.`, `இன்று உங்களுக்குச் சிறப்பான நாள் — இன்றைய ${star.ta} உங்களுக்கு ${tara.ta} தாரை; சந்திர பலமும் உண்டு.`);
     else if (r.level === 'good') text = T(`A good day for you — today's star ${star.en} is ${tara.en} tara for you.`, `இன்று உங்களுக்கு நல்ல நாள் — இன்றைய ${star.ta} உங்களுக்கு ${tara.ta} தாரை.`);
-    else if (r.level === 'steady') text = T('A steady day — keep things simple and unhurried.', 'இன்று சுமாரான நாள் — எளிமையாக, நிதானமாக நடத்துங்கள்.');
-    else text = T(`A day for care — today's star is ${tara.en} tara for you; keep new beginnings for a better day.`, `இன்று கவனமான நாள் — இன்றைய நட்சத்திரம் உங்களுக்கு ${tara.ta} தாரை; புதிய தொடக்கங்களை வேறு நாளுக்கு வையுங்கள்.`);
+    else if (r.level === 'steady') text = T('A steady day — keep things simple and unhurried.', 'இன்று நிலையான நாள் — எளிமையாக, நிதானமாக நடத்துங்கள்.');
+    else text = T(`A careful day — today's star is ${tara.en} tara for you; keep new beginnings for a better day.`, `இன்று கவனமான நாள் — இன்றைய நட்சத்திரம் உங்களுக்கு ${tara.ta} தாரை; புதிய தொடக்கங்களை வேறு நாளுக்கு வையுங்கள்.`);
     lines.push({ key: 'quality', icon: q.level === 'great' || q.level === 'good' ? '🌞' : r.chandrashtamam ? '🌙' : '🌤️', text });
   } else {
     const star = NAKSHATRAS[snap.nakshatra.index];
@@ -245,7 +235,7 @@ export function sandhyaReminder({ loc, date, faith = 'hindu', td = null }) {
   const t = both((l) => fmtHM(at, tz, l));
   const text = isHinduFaith(faith)
     ? T(`Sunset at ${t.en} — time to light the evening lamp (sandhya deepam).`, `${t.ta} சூரிய அஸ்தமனம் — மாலை விளக்கேற்றும் நேரம் (சந்தியா தீபம்).`)
-    : T(`Sunset at ${t.en} — a quiet moment of evening prayer in your own way.`, `${t.ta} சூரிய அஸ்தமனம் — உங்கள் வழக்கப்படி ஒரு அமைதியான மாலைப் பிரார்த்தனை.`);
+    : T(`Sunset at ${t.en} — a quiet moment of evening prayer in your own way.`, `${t.ta} சூரிய அஸ்தமனம் — உங்கள் வழக்கப்படி ஓர் அமைதியான மாலைப் பிரார்த்தனை.`);
   return { at, text };
 }
 
@@ -254,7 +244,7 @@ function daysInfo(chart, loc, isos) {
   const tz = Number(loc.tz ?? 5.5);
   return isos.map((iso) => {
     const td = tamilDay(instantAt(iso, '12:00', tz), loc.lat, loc.lon, tz);
-    const q = chart ? dayQuality(chart, panchang(instantAt(iso, '09:00', tz), loc.lat, loc.lon, tz)) : null;
+    const q = chart ? dayQuality(chart, panchang(instantAt(iso, '09:00', tz), loc.lat, loc.lon, tz), instantAt(iso, '09:00', tz)) : null;
     return { date: iso, td, q, festivals: (td.festivals || []).filter((f) => f && f.en) };
   });
 }
@@ -301,16 +291,16 @@ function summarise(ds, { chart, faith, member, now, tz, kind, ym }) {
     if (care.length) {
       lines.push({ icon: '🌙', text: prof.minor
         ? T2((l) => (l === 'ta' ? `அமைதியாக இருக்க வேண்டிய நாட்கள்: ${listDays(care, l)} (சந்திராஷ்டமம்)` : `Quiet, patient days: ${listDays(care, l)} (Chandrashtamam)`))
-        : T2((l) => (l === 'ta' ? `கவனமான நாட்கள்: ${listDays(care, l)} (சந்திராஷ்டமம்) — பெரிய முடிவுகளை அந்த நாட்களில் தவிர்க்கவும்` : `Days for care: ${listDays(care, l)} (Chandrashtamam) — keep big decisions off these days`)) });
+        : T2((l) => (l === 'ta' ? `கவனமான நாட்கள்: ${listDays(care, l)} (சந்திராஷ்டமம்) — பெரிய முடிவுகளை அந்த நாட்களில் தவிர்க்கவும்` : `Careful days: ${listDays(care, l)} (Chandrashtamam) — keep big decisions off these days`)) });
     }
     if (kind === 'month' && !prof.minor) {
       const first = new Date(`${ds[0].date}T06:00:00Z`), last = new Date(`${ds[ds.length - 1].date}T18:00:00Z`);
       const a = runningDasa(chart, first), b = runningDasa(chart, last);
       if (a.md && a.ad) {
-        lines.push({ icon: '⏳', text: T(`${a.md.lord} Dasa – ${a.ad.lord} Bhukti is running for you.`, `உங்களுக்கு ${PLANETS[a.md.lord].ta} தசை – ${PLANETS[a.ad.lord].ta} புக்தி நடக்கிறது.`) });
+        lines.push({ icon: '⏳', text: T(`${a.md.lord} Dasa – ${a.ad.lord} Bhukti is running for you.`, `உங்களுக்கு ${planetAdjTa(a.md.lord, PLANETS[a.md.lord].ta)} தசை – ${planetAdjTa(a.ad.lord, PLANETS[a.ad.lord].ta)} புக்தி நடக்கிறது.`) });
         if (b.ad && b.ad.lord !== a.ad.lord) {
           const iso = isoAt(new Date(b.ad.start), tz);
-          lines.push({ icon: '🔄', text: T2((l) => (l === 'ta' ? `${dateLabel(iso).ta} முதல் ${PLANETS[b.ad.lord].ta} புக்தி தொடங்குகிறது.` : `${b.ad.lord} Bhukti begins on ${dateLabel(iso).en}.`)) });
+          lines.push({ icon: '🔄', text: T2((l) => (l === 'ta' ? `${dateLabel(iso).ta} முதல் ${planetAdjTa(b.ad.lord, PLANETS[b.ad.lord].ta)} புக்தி தொடங்குகிறது.` : `${b.ad.lord} Bhukti begins on ${dateLabel(iso).en}.`)) });
         }
       }
     }

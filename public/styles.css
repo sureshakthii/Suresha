@@ -2706,3 +2706,14 @@ body.large .kv { grid-template-columns: fit-content(42%) minmax(0, 1fr); }
 .dz-avoid { margin: 6px 0 8px; padding-left: 18px; }
 .dz-expert p { line-height: 1.6; margin: 8px 0; overflow-wrap: anywhere; }
 .dosham-card .btn-gold { margin-top: 10px; width: 100%; }
+/* Web splash matches the native splash maroon (detail audit). */
+.splash, [data-theme="light"] .splash { background: #3d0d1f; }
+/* F2 detail audit: family relations rows use the full width on phones (the status tag sits above the text, not
+   beside it in a squeezed column); selects never cut their text mid-word; recent tool tiles grow with their name. */
+@media (max-width: 560px) {
+  .rel-row { flex-wrap: wrap; }
+  .rel-row > div { flex: 1 1 100% !important; min-width: 0; }
+  .rel-row > .tag { order: -1; }
+}
+select { text-overflow: ellipsis; }
+.tl-chip { height: auto; min-height: var(--tap); }

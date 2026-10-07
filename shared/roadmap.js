@@ -8,6 +8,13 @@ import { remedyFor } from './remedies.js';
 import { ageProfile, topicAllowed, adultText } from './age-guard.js';
 import { dasaTone } from './analysis.js';
 import { isHinduFaith } from './faith.js';
+import { fmtMonth, planetAdjTa } from './fmt.js';
+
+/** "Dec 2027" / "டிசம்பர் 2027" — never "2027-12". */
+const monthT = (d) => T(fmtMonth(new Date(d), 'en', 0), fmtMonth(new Date(d), 'ta', 0));
+const pAdj = (k) => planetAdjTa(k, PLANETS[k].ta);
+/** Areas scored on screen (wellbeing is not scored from the chart, so it is never called the "strongest" area). */
+const shown = (a) => !a.traditionalOnly;
 
 const DAY = 86400000;
 const YEAR = 365.25 * DAY;
@@ -47,7 +54,7 @@ const STAGES = [
   { max: 60, id: 'secure', ...T('Securing years', 'பாதுகாக்கும் பருவம்'),
     goals: [T('Become debt-free and secure retirement savings', 'கடன் இல்லா நிலை, ஓய்வுக்கால சேமிப்பு'), T('Yearly full health check-up', 'ஆண்டுதோறும் முழு மருத்துவப் பரிசோதனை'), T('Support the next generation\'s milestones', 'அடுத்த தலைமுறையின் முக்கிய நிகழ்வுகளுக்குத் துணை')] },
   { max: 200, id: 'wisdom', ...T('Years of wisdom', 'ஞானப் பருவம்'),
-    goals: [{ hindu: true, ...T('Shashtiabdapoorthi / Sathabhishekam with family', 'குடும்பத்துடன் சஷ்டியப்தபூர்த்தி / சதாபிஷேகம்') }, { hindu: true, ...T('Temple yatras, annadhanam and passing on family traditions', 'கோவில் யாத்திரை, அன்னதானம், குடும்பப் பாரம்பரியத்தைக் கடத்துதல்') },
+    goals: [{ hindu: true, ...T('Shashtiabdapoorthi (60), Bheemaratha Shanthi (70) and Sathabhishekam (80) with family', 'குடும்பத்துடன் சஷ்டியப்தபூர்த்தி (60), பீமரத சாந்தி (70), சதாபிஷேகம் (80)') }, { hindu: true, ...T('Temple yatras, annadhanam and passing on family traditions', 'கோவில் யாத்திரை, அன்னதானம், குடும்பப் பாரம்பரியத்தைக் கடத்துதல்') },
       { allFaiths: true, ...T('Milestone birthdays (60th, 70th, 80th) with family, in your own tradition', 'உங்கள் மரபுப்படி குடும்பத்துடன் 60, 70, 80-ம் ஆண்டு நிறைவுக் கொண்டாட்டம்') }, { allFaiths: true, ...T('Prayer or pilgrimage in your own faith, sharing food and passing on family traditions', 'உங்கள் நம்பிக்கைப்படி பிரார்த்தனை அல்லது புனிதப் பயணம், அன்னதானம், குடும்பப் பாரம்பரியத்தைக் கடத்துதல்') }, T('Gentle exercise, good sleep and joyful company', 'மென்மையான உடற்பயிற்சி, நல்ல உறக்கம், மகிழ்ச்சியான சகவாசம்')] },
 ];
 
@@ -121,7 +128,7 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10, faith = 'hin
         scores[a.id] = clamp(46 + 5 * Math.max(-4, Math.min(5, raw)) + g.adj[a.id]);
       }
       const overall = Math.round(Object.values(scores).reduce((x, y) => x + y, 0) / AREAS.length);
-      const ranked = [...AREAS].sort((x, y) => scores[y.id] - scores[x.id]);
+      const ranked = AREAS.filter(shown).sort((x, y) => scores[y.id] - scores[x.id]);
       // One tone rule across surfaces: a Maha Dasa the analysis card calls supportive is never shown as a
       // "care" period here, and one it calls "growth through effort" is never shown as "good" (shared dasaTone).
       let level = overall >= 62 ? 'good' : overall >= 50 ? 'steady' : 'care';
@@ -158,7 +165,7 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10, faith = 'hin
     if (!w) continue;
     const scores = Object.fromEntries(AREAS.map((a) => [a.id, Math.round(acc[a.id] / w)]));
     const overall = Math.round(Object.values(scores).reduce((x, z) => x + z, 0) / AREAS.length);
-    const best = [...AREAS].sort((a, b) => scores[b.id] - scores[a.id])[0];
+    const best = AREAS.filter(shown).sort((a, b) => scores[b.id] - scores[a.id])[0];
     yearsOut.push({ year: y, scores, overall, level: overall >= 62 ? 'good' : overall >= 50 ? 'steady' : 'care', best: best.id, age: birthYear != null ? y - birthYear : Math.floor(ageAt(chart, new Date(Date.UTC(y, 6, 1)))) });
   }
 
@@ -166,7 +173,9 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10, faith = 'hin
   const wanted = [
     ['career', 18, 70], ['house', 22, 75], ['business', 21, 70], ['marriage', 20, 40], ['education', 15, 30], ['child', 22, 42], ['visa', 18, 60],
   ].filter(([id, a, b]) => age >= a - 2 && age <= b && (!minor || topicAllowed(id, profile)) && (!minor || (id === 'education' && profile.band === '13-17'))
-    && (!senior || id === 'house'));
+    && (!senior || id === 'house')
+    // Married (or a spouse profile): never "when will marriage happen".
+    && !(id === 'marriage' && maritalStatus === 'married'));
   const milestones = wanted.map(([id]) => {
     const p = predictEvent(chart, id, { from, years: Math.min(years, 12) });
     const w = p.earliest || p.windows[0];
@@ -190,19 +199,19 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10, faith = 'hin
     now.push(T('This stage is for peace, health and family: a yearly full check-up, gentle daily walks and good sleep keep you strong.', 'இது அமைதி, ஆரோக்கியம், குடும்பத்திற்கான பருவம்: ஆண்டுதோறும் முழுப் பரிசோதனை, தினசரி மென்மையான நடை, நல்ல உறக்கம் உங்களைப் பலமாக வைக்கும்.'));
     now.push(T('Keep savings simple and safe, and share your family traditions and stories with the next generation.', 'சேமிப்பை எளிமையாகவும் பாதுகாப்பாகவும் வையுங்கள்; குடும்பப் பாரம்பரியங்களையும் அனுபவங்களையும் அடுத்த தலைமுறைக்குப் பகிருங்கள்.'));
   }
-  if (nextGood && !minor && senior) now.push(T(`The ${nextGood.md}–${nextGood.ad} period from ${nextGood.start.toISOString().slice(0, 7)} suits family functions, ${hindu ? 'temple yatras' : 'prayer or pilgrimage in your own faith'} and home comforts.`, `${nextGood.start.toISOString().slice(0, 7)} முதல் ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலம் குடும்ப விழாக்கள், ${hindu ? 'கோவில் யாத்திரை' : 'உங்கள் நம்பிக்கைப்படி பிரார்த்தனை / புனிதப் பயணம்'}, வீட்டு வசதிகளுக்கு ஏற்றது.`));
-  if (nextGood && !minor && !senior) now.push(T(`Plan big moves for the ${nextGood.md}–${nextGood.ad} period starting ${nextGood.start.toISOString().slice(0, 7)}.`, `பெரிய முடிவுகளை ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலத்திற்குத் (${nextGood.start.toISOString().slice(0, 7)} முதல்) திட்டமிடுங்கள்.`));
+  if (nextGood && !minor && senior) now.push(T(`The ${nextGood.md}–${nextGood.ad} period from ${monthT(nextGood.start).en} suits family functions, ${hindu ? 'temple yatras' : 'prayer or pilgrimage in your own faith'} and home comforts.`, `${monthT(nextGood.start).ta} முதல் ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலம் குடும்ப விழாக்கள், ${hindu ? 'கோவில் யாத்திரை' : 'உங்கள் நம்பிக்கைப்படி பிரார்த்தனை / புனிதப் பயணம்'}, வீட்டு வசதிகளுக்கு ஏற்றது.`));
+  if (nextGood && !minor && !senior) now.push(T(`Plan big moves for the ${nextGood.md}–${nextGood.ad} period starting ${monthT(nextGood.start).en}.`, `பெரிய முடிவுகளை ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலத்திற்குத் (${monthT(nextGood.start).ta} முதல்) திட்டமிடுங்கள்.`));
   if (minor) {
     // A child's "what to do now" is about learning, health and family — never money or big decisions.
     now.length = 0;
     if (current) {
       const focus = AREAS.find((a) => a.id === current.focus);
       now.push(T(`Strongest support now: ${focus.en.toLowerCase()} — encourage it with time and praise.`, `இப்போது வலுவான ஆதரவு: ${focus.ta} — நேரமும் பாராட்டும் தந்து ஊக்குவியுங்கள்.`));
-      now.push(T(`Simple practice for the ${current.ad} period: ${current.remedy.free.en}`, `${PLANETS[current.ad].ta} புக்திக்கு எளிய வழிபாடு: ${current.remedy.free.ta}`));
+      now.push(T(`Simple practice for the ${current.ad} period: ${current.remedy.free.en}`, `${pAdj(current.ad)} புக்திக்கு எளிய வழிபாடு: ${current.remedy.free.ta}`));
     }
     for (const g of stage.goals) now.push(g);
   }
-  if (nextCare && !minor && !senior) now.push(T(`Prepare savings and health before ${nextCare.start.toISOString().slice(0, 7)} (a period needing care).`, `${nextCare.start.toISOString().slice(0, 7)} முன் சேமிப்பையும் ஆரோக்கியத்தையும் தயார் செய்யுங்கள் (கவனம் தேவைப்படும் காலம்).`));
+  if (nextCare && !minor && !senior) now.push(T(`Prepare savings and health before ${monthT(nextCare.start).en} (a period needing care).`, `${monthT(nextCare.start).ta}-க்கு முன் சேமிப்பையும் ஆரோக்கியத்தையும் தயார் செய்யுங்கள் (கவனம் தேவைப்படும் காலம்).`));
 
   return {
     age: profile.age ?? Math.floor(age), minor, senior, horizon: end, horizonYears: years, band: profile.band, areas: AREAS, stage, nextStage, periods, years: yearsOut, milestones, current, nextGood, nextCare, now,

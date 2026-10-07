@@ -23,8 +23,27 @@ export const BRAND = Object.freeze({
   familyTa: 'துணை குடும்பம்',
   year: 2026,
   developer: 'AG Technology Solutions',
-  supportEmail: 'support@example.com', // placeholder until a domain is confirmed
+  supportEmail: '', // = SUPPORT_EMAIL below (kept for older callers)
 });
+
+// Support & grievance contacts — the ONE place they live. Empty until the owner publishes the real address:
+// screens then say "support contact will be published at launch" (never a made-up address or domain).
+export const SUPPORT_EMAIL = '';
+/** Grievance Officer (IT Rules 2021 / DPDP Act 2023). Fill all three before public release. */
+export const GRIEVANCE = Object.freeze({ name: '', email: '', phone: '' });
+// Public app link printed on share cards and shared text. Empty until the domain is final (no placeholder domain).
+export const APP_URL = '';
+
+const PENDING = { en: 'Support contact will be published at launch', ta: 'உதவித் தொடர்பு முகவரி செயலி வெளியீட்டின்போது அறிவிக்கப்படும்' };
+/** The support address, or the honest "published at launch" line when none is set yet. */
+export const supportContact = (lang = 'en') => SUPPORT_EMAIL || (lang === 'ta' ? PENDING.ta : PENDING.en);
+/** Grievance Officer contact lines ("Name: …", "E-mail: …", "Phone: …"), or the same fallback line when not set. */
+export function grievanceContact(lang = 'en') {
+  const ta = lang === 'ta';
+  const rows = [[ta ? 'பெயர்' : 'Name', GRIEVANCE.name], [ta ? 'மின்னஞ்சல்' : 'E-mail', GRIEVANCE.email], [ta ? 'தொலைபேசி' : 'Phone', GRIEVANCE.phone]].filter(([, v]) => v);
+  if (!rows.length) return ta ? 'குறைதீர் அலுவலரின் தொடர்பு விவரங்கள் செயலி வெளியீட்டின்போது அறிவிக்கப்படும்' : 'The Grievance Officer’s contact details will be published at launch';
+  return rows.map(([k, v]) => `${k}: ${v}`).join(' · ');
+}
 
 /** Bilingual helper usable on server and client: brandText('en'|'ta', key). */
 export const brandName = (lang) => (lang === 'ta' ? BRAND.nameTa : BRAND.name);

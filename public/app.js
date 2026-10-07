@@ -1,5 +1,6 @@
 // Thunai (துணை) — app boot, splash, background sky and the one-second live tick.
-import { state, $, $$, L, ta, STATIC, store, go, currentScreen, saveSettings, setLoc, toast, BRAND, checkTravelExpiry, placeName } from './core.js';
+import { state, $, $$, L, ta, STATIC, store, go, goBack, currentScreen, saveSettings, setLoc, toast, BRAND, checkTravelExpiry, placeName } from './core.js';
+import { installWebHistory } from './web-history.js';
 import { refreshSnap } from './screens-main.js';
 import './screens-world.js';
 import './screens-plans.js';
@@ -127,7 +128,7 @@ function applyLang() {
   $$('[data-brand]').forEach((el) => { el.textContent = text[el.dataset.brand] ?? el.textContent; });
   const lb = $('#langBtn');
   if (lb) lb.textContent = ta() ? 'EN' : 'தமிழ்';
-  document.title = `${BRAND.nameTa} · ${BRAND.nameUpper} — ${ta() ? BRAND.taglineTa : BRAND.descriptorEn}`;
+  document.title = `${BRAND.nameTa} · ${BRAND.nameUpper} — ${(ta() ? BRAND.taglineTa : BRAND.descriptorEn).replace(/\.$/, '')}`;
 }
 
 // The installed Android app reports the phone's font size; with a large system font, switch on the app's own
@@ -187,6 +188,9 @@ async function boot() {
   $('#langBtn').addEventListener('click', () => { state.lang = ta() ? 'en' : 'ta'; store.set('kj_lang', state.lang); document.dispatchEvent(new Event('kj:lang')); });
   document.addEventListener('kj:lang', () => { applyLang(); go(state.view, state.params); });
   $$('.tabbar button').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
+
+  // Web / PWA: the browser's back button moves between screens (the native app uses its own back key).
+  installWebHistory({ win: window, doc: document, go, goBack, current: () => ({ view: state.view, params: state.params || {} }) });
 
   const startHash = location.hash;
   if (location.hash === '#billing-success') toast(L('Payment received — your plan is active 🙏', 'கட்டணம் பெறப்பட்டது — உங்கள் திட்டம் செயலில் 🙏'));

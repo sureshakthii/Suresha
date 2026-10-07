@@ -20,6 +20,11 @@ import {
 import { placeSearch } from './account.js';
 import { isLocked, lockCard, pairKey, gate } from './growth.js';
 import { isAdult, MATCH_ADULTS_NOTE, PARTNER_ADULTS_NOTE } from './shared/age-guard.js';
+import { fmtDay, fmtMonth } from './shared/fmt.js';
+// Dates and times the one way the app writes them (shared/fmt.js), in the app language.
+const lgx = () => (state.lang === 'en' ? 'en' : 'ta');
+const fDay = (iso) => fmtDay(iso, lgx());
+
 
 // Marriage, love and partner matching are for adults only (shared/age-guard.js): people under 18 — or without a
 // birth date — are never offered in the pickers, and entered birth dates under 18 are refused gently.
@@ -28,7 +33,7 @@ const hiddenMinors = () => state.family.filter((m) => m.relation !== 'organizati
 export const adultsNote = (business = false) => (hiddenMinors() ? `<p class="small muted age-note">🌱 ${esc(bi(business ? PARTNER_ADULTS_NOTE : MATCH_ADULTS_NOTE))}</p>` : '');
 
 const iso = (d) => new Date(d.getTime() + (state.loc?.tz ?? 5.5) * 3600000).toISOString().slice(0, 10);
-const monthYear = (d) => new Date(d).toLocaleDateString(ta() ? 'ta-IN' : 'en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const monthYear = (d) => fmtMonth(new Date(d), lgx(), 0);
 export const forms = {}; // per-slot entered data, kept while the app is open
 
 // ---------------------------------------------------------------- permission (another adult's data)
@@ -70,7 +75,7 @@ export function revokeProfileConsent(id) {
 /** Marriage context for one person (couple screen only): four choices, unselected = not disclosed, plus "keep private". */
 function contextField(f) {
   return `<div class="mc-context"><label>${esc(bi(MARRIAGE_CONTEXT_TITLE))} <span class="pill">${L('optional', 'விருப்பம்')}</span>
-      <select data-f="ctxMode"><option value=""${f.ctxMode ? '' : ' selected'}>${L('— Not chosen (not disclosed) —', '— தேர்வு செய்யவில்லை (சொல்லப்படவில்லை) —')}</option>${MARRIAGE_MODE_ORDER.map((k) => `<option value="${k}"${f.ctxMode === k ? ' selected' : ''}>${esc(bi(MARRIAGE_MODES[k]))}</option>`).join('')}</select></label>
+      <select data-f="ctxMode"><option value=""${f.ctxMode ? '' : ' selected'}>${L('— Not chosen —', '— தேர்வு இல்லை —')}</option>${MARRIAGE_MODE_ORDER.map((k) => `<option value="${k}"${f.ctxMode === k ? ' selected' : ''}>${esc(bi(MARRIAGE_MODES[k]))}</option>`).join('')}</select></label>
     <label class="check-row"><input type="checkbox" data-f="ctxPrivate"${f.ctxPrivate ? ' checked' : ''}> ${esc(bi(KEEP_PRIVATE_LABEL))}</label>
     <p class="small muted">${L('Real-life context only — it never changes any porutham or dosha result.', 'வாழ்க்கைச் சூழல் மட்டுமே — எந்தப் பொருத்தம் அல்லது தோஷ முடிவையும் மாற்றாது.')}</p></div>`;
 }
@@ -82,7 +87,7 @@ export function personBlock(slot, title, { gender, nth = 0, business = false, co
   if (f.mode === 'family' && !pool.length) f.mode = 'new';
   if (f.mode === 'family' && !pool.some((m) => m.id === f.memberId)) f.memberId = (gender ? pool.find((m) => m.gender === gender) || pool[0] : pool[nth] || pool[0])?.id || null;
   const picked = f.mode === 'family' ? pool.find((m) => m.id === f.memberId) : null;
-  const permLine = profileConsent(picked) ? `<p class="small muted perm-saved">🔒 ${L('Saved with this person’s permission', 'இவரின் அனுமதியுடன் சேமிக்கப்பட்டது')}${picked.consentAt ? ` · ${esc(fmtIsoDate(picked.consentAt.slice(0, 10)))}` : ''} <button type="button" class="link-btn" data-revoke="${esc(picked.id)}">${L('Withdraw permission', 'அனுமதியைத் திரும்பப் பெறு')}</button></p>` : '';
+  const permLine = profileConsent(picked) ? `<p class="small muted perm-saved">🔒 ${L('Saved with this person’s permission', 'இவரின் அனுமதியுடன் சேமிக்கப்பட்டது')}${picked.consentAt ? ` · ${esc(fDay(picked.consentAt.slice(0, 10)))}` : ''} <button type="button" class="link-btn" data-revoke="${esc(picked.id)}">${L('Withdraw permission', 'அனுமதியைத் திரும்பப் பெறு')}</button></p>` : '';
   return `<div class="card glass person-block" data-slot="${slot}"><div class="card-title">${title}</div>${adultsNote(business)}
     ${pool.length ? `<div class="seg"><button type="button" data-mode="family" class="${f.mode === 'family' ? 'sel' : ''}">${L('From family', 'குடும்பத்திலிருந்து')}</button><button type="button" data-mode="new" class="${f.mode === 'new' ? 'sel' : ''}">${L('Enter details', 'விவரம் உள்ளிடு')}</button></div>` : ''}
     ${f.mode === 'family' && pool.length
@@ -249,7 +254,7 @@ function renderCouple(sec, params = {}) {
   // Prefilled from the quick porutham ("See full five-card report"): both people picked from Family.
   for (const slot of SLOTS) if (params[slot] && adultPool().some((m) => m.id === params[slot])) forms[slot] = { ...(forms[slot] || {}), mode: 'family', memberId: params[slot], gender: slot === 'bride' ? 'female' : 'male' };
   const rerender = () => renderCouple(sec);
-  sec.innerHTML = `${subHeader(L('Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்'), L('Not only 10 poruthams — birth date, time and place of both: papa samyam, dasa sandhi, lagna, the marriage houses, mana porutham and the first years of marriage', '10 பொருத்தம் மட்டுமல்ல — இருவரின் பிறந்த தேதி, நேரம், இடம்: பாப சாம்யம், தசா சந்தி, லக்னம், திருமண பாவங்கள், மனப் பொருத்தம், திருமணத்தின் முதல் ஆண்டுகள்'), 'home')}
+  sec.innerHTML = `${subHeader(L('Marriage Porutham', 'திருமணப் பொருத்தம்'), L('Not only 10 poruthams — birth date, time and place of both: papa samyam, dasa sandhi, lagna, the marriage houses, mana porutham and the first years of marriage', '10 பொருத்தம் மட்டுமல்ல — இருவரின் பிறந்த தேதி, நேரம், இடம்: பாப சாம்யம், தசா சந்தி, லக்னம், திருமண பாவங்கள், மனப் பொருத்தம், திருமணத்தின் முதல் ஆண்டுகள்'), 'home')}
     ${personBlock('bride', `👰 ${L('Bride', 'மணமகள்')}`, { gender: 'female', context: true })}
     ${personBlock('groom', `🤵 ${L('Groom', 'மணமகன்')}`, { gender: 'male', context: true })}
     <div class="card glass"><label>${L('Wedding date (done or planned)', 'திருமண தேதி (நடந்தது அல்லது திட்டமிட்டது)')}<input type="date" id="wedDate" value="${esc(coupleUi.wedding)}"></label>
@@ -286,7 +291,7 @@ function shareText(mr, nm) {
   const modes = modesFor();
   const ctx = SLOTS.map((slot, i) => (modes[slot].mode !== 'undisclosed' && !modes[slot].historyPrivate ? `${nm[i]}: ${bi(MARRIAGE_MODES[modes[slot].mode])}` : null)).filter(Boolean);
   const { agree, total } = factorCounts(mr);
-  return [`💞 ${nm[0]} · ${nm[1]} — ${L('Thirumana Porutham', 'திருமணப் பொருத்தம்')}`, L(`${agree} of ${total} traditional factors agree`, `${total} மரபுக் காரணிகளில் ${agree} பொருந்துகின்றன`),
+  return [`💞 ${nm[0]} · ${nm[1]} — ${L('Marriage Porutham', 'திருமணப் பொருத்தம்')}`, L(`${agree} of ${total} traditional factors agree`, `${total} மரபுக் காரணிகளில் ${agree} பொருந்துகின்றன`),
     ...mr.traditionalFactorResults.map((f) => `• ${bi(f.name)}: ${bi(f.resultLabel)}`), ...ctx, '', bi(mr.summary.recommendation)].join('\n');
 }
 
@@ -375,7 +380,7 @@ function showCouple(bride, groom) {
     const closed = $$('#coupleOut details').filter((x) => !x.open);
     closed.forEach((x) => { x.open = true; });
     addEventListener('afterprint', () => closed.forEach((x) => { x.open = false; }), { once: true });
-    printPage(L('Marriage matching', 'திருமணப் பொருத்தம்'));
+    printPage(L('Marriage Porutham', 'திருமணப் பொருத்தம்'));
   });
   $('#coupleRead')?.addEventListener('click', async () => {
     $('#coupleAi').hidden = false;

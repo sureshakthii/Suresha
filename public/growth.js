@@ -1,6 +1,8 @@
 // Growth: usage analytics (installs, opens, screens), subscription lock state, free-trial codes,
 // ratings & comments, referrals, and the owner's admin dashboard.
 import { state, $, $$, L, esc, bi, api, STATIC, store, registerScreen, subHeader, go, toast, fmtIsoDate, copyright, BRAND, printPage } from './core.js';
+import { SUPPORT_EMAIL, supportContact } from './shared/brand.js';
+import { fmtDay, until } from './shared/fmt.js';
 import { TOOLS } from './tool-registry.js';
 import { GATE_ADDS, gateAllows, pairKey } from './shared/plan-gates.js';
 
@@ -230,16 +232,17 @@ document.addEventListener('click', (e) => {
 /** Gift / trial code box (used on the Plans screen). */
 export function redeemBox() {
   if (STATIC) return '';
-  return `<form class="card glass" id="redeemForm"><div class="card-title">🎁 ${L('Gift or trial code', 'பரிசு / சோதனைக் குறியீடு')}</div>
-    <div class="phone-in"><input id="redeemCode" aria-label="${esc(L('Gift or trial code', 'பரிசு / சோதனைக் குறியீடு'))}" placeholder="KJ-XXXX-XXXX" autocapitalize="characters" maxlength="20" required><button class="btn-gold small-btn">${L('Apply', 'பயன்படுத்து')}</button></div><p class="err" id="redeemErr"></p></form>`;
+  return `<form novalidate class="card glass" id="redeemForm"><div class="card-title">🎁 ${L('Gift or trial code', 'பரிசு / சோதனைக் குறியீடு')}</div>
+    <div class="phone-in"><input id="redeemCode" aria-label="${esc(L('Gift or trial code', 'பரிசு / சோதனைக் குறியீடு'))}" placeholder="KJ-XXXX-XXXX" autocapitalize="characters" maxlength="20" required><button class="btn-gold small-btn">${L('Apply', 'பயன்படுத்துங்கள்')}</button></div><p class="err" id="redeemErr"></p></form>`;
 }
 export function wireRedeem(onDone) {
   $('#redeemForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!$('#redeemCode').value.trim()) { $('#redeemErr').textContent = L('Please enter the code', 'குறியீட்டை உள்ளிடுங்கள்'); $('#redeemCode').focus(); return; }
     if (!state.user) { toast(L('Please sign in first', 'முதலில் உள்நுழையவும்')); go('login'); return; }
     try {
       const r = await api('/api/billing/redeem', { method: 'POST', body: { code: $('#redeemCode').value.trim().toUpperCase() } });
-      toast(L('Plan unlocked until ', 'திட்டம் திறக்கப்பட்டது — ') + new Date(r.expiresAt).toLocaleString(), 5000);
+      toast(`${L('Plan unlocked', 'திட்டம் திறக்கப்பட்டது')} — ${until(fmtDay(new Date(r.expiresAt), state.lang === 'en' ? 'en' : 'ta', state.loc?.tz ?? 5.5), state.lang === 'en' ? 'en' : 'ta')}`, 5000);
       await loadBilling();
       onDone?.();
     } catch (err) { $('#redeemErr').textContent = err.message; }
@@ -262,8 +265,9 @@ function offlineSendBox(text, kind) {
   outbox.push({ kind, text, at: new Date().toISOString() });
   store.set('kj_feedback_outbox', outbox.slice(-20));
   return `<div class="card glass" role="status"><b>📋 ${L('Not sent — this version cannot send messages', 'அனுப்பப்படவில்லை — இந்தப் பதிப்பால் செய்தி அனுப்ப இயலாது')}</b>
-    <p class="small">${L('A copy is saved on this phone. Please copy the text below and email it to us:', 'ஒரு நகல் இந்தக் கைப்பேசியில் சேமிக்கப்பட்டது. கீழுள்ள உரையை நகலெடுத்து எங்களுக்கு மின்னஞ்சல் செய்யுங்கள்:')}</p>
-    <p class="selectable"><b>${esc(BRAND.supportEmail)}</b></p>
+    ${SUPPORT_EMAIL ? `<p class="small">${L('A copy is saved on this phone. Please copy the text below and email it to us:', 'ஒரு நகல் இந்தக் கைப்பேசியில் சேமிக்கப்பட்டது. கீழுள்ள உரையை நகலெடுத்து எங்களுக்கு மின்னஞ்சல் செய்யுங்கள்:')}</p>
+    <p class="selectable"><b>${esc(SUPPORT_EMAIL)}</b></p>` : `<p class="small">${L('A copy is saved on this phone. You can copy the text below.', 'ஒரு நகல் இந்தக் கைப்பேசியில் சேமிக்கப்பட்டது. கீழுள்ள உரையை நகலெடுக்கலாம்.')}</p>
+    <p class="small muted">${esc(L(supportContact('en'), supportContact('ta')))}.</p>`}
     <textarea class="copy-text selectable" rows="6" readonly aria-label="${esc(L('Text to send', 'அனுப்ப வேண்டிய உரை'))}">${esc(text)}</textarea>
     <button type="button" class="btn-gold small-btn" data-copy-feedback>📋 ${L('Copy', 'நகலெடு')}</button></div>`;
 }
@@ -278,9 +282,9 @@ function wireCopy(root) {
 
 function renderFeedback(sec) {
   let rating = 0;
-  sec.innerHTML = `${subHeader(L('Rate & comment', 'மதிப்பீடு & கருத்து'), L('Your words help us serve every Tamil family better', 'உங்கள் கருத்து ஒவ்வொரு தமிழ்க் குடும்பத்திற்கும் சிறந்த சேவைக்கு உதவும்'), 'more')}
-    ${STATIC ? `<div class="note-box small">${L('This version has no server: your comment is not sent. You will get the text to copy and our email address.', 'இந்தப் பதிப்பில் சேவையகம் இல்லை: உங்கள் கருத்து அனுப்பப்படாது. நகலெடுக்க உரையும் எங்கள் மின்னஞ்சல் முகவரியும் தரப்படும்.')}</div>` : ''}
-    <form class="card glass" id="fbForm"><div class="stars" role="radiogroup" aria-label="${L('Rating', 'மதிப்பீடு')}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star" data-n="${n}" role="radio" aria-checked="false" aria-label="${n}">★</button>`).join('')}</div>
+  sec.innerHTML = `${subHeader(L('Rate & Comment', 'மதிப்பீடு & கருத்து'), L('Your words help us serve every Tamil family better', 'உங்கள் கருத்து ஒவ்வொரு தமிழ்க் குடும்பத்திற்கும் சிறந்த சேவைக்கு உதவும்'), 'more')}
+    ${STATIC ? `<div class="note-box small">${L('This version has no server: your comment is not sent. You will get the text to copy' + (SUPPORT_EMAIL ? ' and our email address.' : '.'), 'இந்தப் பதிப்பில் சேவையகம் இல்லை: உங்கள் கருத்து அனுப்பப்படாது. நகலெடுக்க உரை' + (SUPPORT_EMAIL ? 'யும் எங்கள் மின்னஞ்சல் முகவரியும் தரப்படும்.' : ' தரப்படும்.'))}</div>` : ''}
+    <form novalidate class="card glass" id="fbForm"><div class="stars" role="radiogroup" aria-label="${L('Rating', 'மதிப்பீடு')}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star" data-n="${n}" role="radio" aria-checked="false" aria-label="${n}">★</button>`).join('')}</div>
       <label for="fbText">${L('Your comments', 'உங்கள் கருத்துகள்')}</label><textarea id="fbText" rows="4" maxlength="1000" placeholder="${esc(L('What did you like? What should we add?', 'எது பிடித்தது? எதைச் சேர்க்க வேண்டும்?'))}"></textarea>
       <button class="btn-gold">${STATIC ? L('Prepare to send', 'அனுப்பத் தயார் செய்') : L('Send', 'அனுப்பு')}</button><p class="err" id="fbErr"></p></form>
     <button class="link-btn center-block" data-go="report">⚠️ ${L('Something not working? Report a problem', 'ஏதாவது இயங்கவில்லையா? பிரச்சினையைத் தெரிவியுங்கள்')}</button>
@@ -309,13 +313,16 @@ function renderFeedback(sec) {
 function renderReport(sec, params = {}) {
   const screen = tag(params.screen || lastScreen || 'unknown');
   const auto = { build: buildId(), screen, viewport: `${Math.round(window.innerWidth || 0)}x${Math.round(window.innerHeight || 0)}`, lang: state.lang === 'en' ? 'en' : 'ta' };
-  sec.innerHTML = `${subHeader(L('Report a problem', 'பிரச்சினையைத் தெரிவி'), L('Tell us what went wrong — no personal details needed', 'என்ன தவறாக நடந்தது எனச் சொல்லுங்கள் — தனிப்பட்ட விவரம் தேவையில்லை'), 'more')}
-    <form class="card glass" id="rpForm">
-      <label>${L('Which screen?', 'எந்தத் திரை?')}<input name="screen" maxlength="60" value="${esc(screen)}"></label>
+  // The person sees the screen's own name (never an internal id such as "calc"); the id is attached automatically.
+  const tool = TOOLS.find((t) => t.id === screen);
+  const screenName = tool ? L(tool.en, tool.ta).split(' — ')[0] : '';
+  sec.innerHTML = `${subHeader(L('Report a Problem', 'பிரச்சினையைத் தெரிவியுங்கள்'), L('Tell us what went wrong — no personal details needed', 'என்ன தவறாக நடந்தது எனச் சொல்லுங்கள் — தனிப்பட்ட விவரம் தேவையில்லை'), 'more')}
+    <form novalidate class="card glass" id="rpForm">
+      <label>${L('Which screen?', 'எந்தத் திரை?')}<input name="screen" maxlength="60" value="${esc(screenName)}" placeholder="${esc(L('e.g. Panchangam', 'எ.கா. பஞ்சாங்கம்'))}"></label>
       <label>${L('What did you do? (steps)', 'நீங்கள் என்ன செய்தீர்கள்? (படிகள்)')}<textarea name="steps" rows="3" maxlength="1000" placeholder="${esc(L('1. Opened Porutham  2. Chose two stars  3. Tapped Match', '1. பொருத்தம் திறந்தேன்  2. இரண்டு நட்சத்திரம் தேர்ந்தேன்  3. பொருத்து அழுத்தினேன்'))}"></textarea></label>
       <label>${L('What did you expect?', 'என்ன எதிர்பார்த்தீர்கள்?')}<textarea name="expected" rows="2" maxlength="500"></textarea></label>
       <label>${L('What happened instead?', 'பதிலாக என்ன நடந்தது?')}<textarea name="actual" rows="2" maxlength="500" required></textarea></label>
-      <p class="small muted">${L('Attached automatically', 'தானாக இணைக்கப்படுவது')}: ${L('build', 'பதிப்பு')} ${esc(auto.build)} · ${L('screen', 'திரை')} ${esc(auto.screen)} · ${L('device size', 'திரை அளவு')} ${esc(auto.viewport)} · ${L('language', 'மொழி')} ${auto.lang}. ${L('Please do not type birth details, names or phone numbers.', 'பிறப்பு விவரம், பெயர், தொலைபேசி எண் எழுத வேண்டாம்.')}</p>
+      <p class="small muted">${L('Attached automatically', 'தானாக இணைக்கப்படுவது')}: ${L('app version, the screen you were on, device size and language', 'செயலிப் பதிப்பு, நீங்கள் இருந்த திரை, திரை அளவு, மொழி')}. ${L('Please do not type birth details, names or phone numbers.', 'பிறப்பு விவரம், பெயர், தொலைபேசி எண் எழுத வேண்டாம்.')}</p>
       <button class="btn-gold">${STATIC ? L('Prepare to send', 'அனுப்பத் தயார் செய்') : L('Send report', 'அனுப்பு')}</button><p class="err" id="rpErr"></p></form>${copyright()}`;
   $('#rpForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -323,7 +330,8 @@ function renderReport(sec, params = {}) {
     const v = (k) => f.elements[k].value.trim();
     if (!v('actual')) { $('#rpErr').textContent = L('Please say what happened', 'என்ன நடந்தது எனக் குறிப்பிடவும்'); return; }
     const report = { steps: v('steps') || undefined, expected: v('expected') || undefined, actual: v('actual'), build: auto.build, viewport: auto.viewport, lang: auto.lang };
-    const where = tag(v('screen') || screen);
+    const typed = v('screen');
+    const where = tag(!typed || typed === screenName ? screen : `${screen}:${typed}`);
     if (STATIC) {
       f.outerHTML = offlineSendBox([`${BRAND.name} problem report`, `Screen: ${where}`, report.steps && `Steps: ${report.steps}`, report.expected && `Expected: ${report.expected}`, `Actual: ${report.actual}`, `Build: ${auto.build} · Device: ${auto.viewport} · Language: ${auto.lang}`].filter(Boolean).join('\n'), 'defect');
       wireCopy(sec);
@@ -348,7 +356,7 @@ registerScreen('feedback', { render: renderFeedback, parent: 'more' });
 
 // ---------------------------------------------------------------- referral
 function renderInvite(sec) {
-  sec.innerHTML = `${subHeader(L('Invite & get free days', 'அழைத்து இலவச நாட்கள் பெறுங்கள்'), L('Share Thunai with family and friends — you both get free Personal-plan days', 'துணையைக் குடும்பம், நண்பர்களுடன் பகிருங்கள் — இருவருக்கும் இலவச தனிநபர் திட்ட நாட்கள்'), 'more')}<div id="invBody"></div>`;
+  sec.innerHTML = `${subHeader(L('Invite & Get Free Days', 'அழைத்து இலவச நாட்கள் பெறுங்கள்'), L('Share Thunai with family and friends — you both get free Personal-plan days', 'துணையைக் குடும்பம், நண்பர்களுடன் பகிருங்கள் — இருவருக்கும் இலவச தனிநபர் திட்ட நாட்கள்'), 'more')}<div id="invBody"></div>`;
   if (STATIC || !state.user) { $('#invBody').innerHTML = `<div class="card glass cta-card" data-go="login">${L('Sign in to get your invite link', 'அழைப்பு இணைப்பைப் பெற உள்நுழையவும்')} ›</div>`; return; }
   api('/api/referral').then((r) => {
     const text = `${L('I use Thunai for daily panchangam and family horoscopes. Join with my link:', 'தினசரி பஞ்சாங்கம், குடும்ப ஜாதகத்திற்கு நான் துணை பயன்படுத்துகிறேன். என் இணைப்பில் சேருங்கள்:')} ${r.link}`;
@@ -362,8 +370,14 @@ function renderInvite(sec) {
 registerScreen('invite', { render: renderInvite, parent: 'more' });
 
 // ---------------------------------------------------------------- admin dashboard (owner)
-const adminApi = (path, opts = {}) => fetch(path, { method: opts.method || 'GET', headers: { 'x-admin-token': store.get('kj_admin', ''), ...(opts.body ? { 'Content-Type': 'application/json' } : {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined })
-  .then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || `Error ${r.status}`); return d; });
+// The admin token is held in memory only (never in localStorage): it is gone when the app closes. An older build
+// kept it in localStorage as kj_admin — that copy is removed once.
+let adminToken = '';
+try { localStorage.removeItem('kj_admin'); } catch { /* storage blocked */ }
+/** Session-only flag (no token) so Settings can show the dashboard row while this tab is open. */
+const markAdminSession = (on) => { try { if (on) sessionStorage.setItem('kj_admin_session', '1'); else sessionStorage.removeItem('kj_admin_session'); } catch { /* blocked */ } };
+const adminApi = (path, opts = {}) => fetch(path, { method: opts.method || 'GET', headers: { 'x-admin-token': adminToken, ...(opts.body ? { 'Content-Type': 'application/json' } : {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined })
+  .then(async (r) => { const d = await r.json().catch(() => ({})); if (r.status === 401 || r.status === 403) { adminToken = ''; markAdminSession(false); } if (!r.ok) throw new Error(d.error || `Error ${r.status}`); return d; });
 
 function bars(rows, key, label) {
   const max = Math.max(1, ...rows.map((r) => r[key] || 0));
@@ -371,16 +385,17 @@ function bars(rows, key, label) {
 }
 
 async function renderAdmin(sec) {
-  sec.innerHTML = `${subHeader(L('Owner dashboard', 'உரிமையாளர் டாஷ்போர்டு'), L('Downloads, users, revenue, feedback and free-trial codes', 'பதிவிறக்கம், பயனர்கள், வருமானம், கருத்து, சோதனைக் குறியீடுகள்'), 'more')}
-    <form class="card glass" id="admLogin"><label>${L('Admin token', 'நிர்வாகக் குறியீடு')}<input type="password" id="admTok" value="${esc(store.get('kj_admin', ''))}" autocomplete="off"></label><button class="btn-gold small-btn">${L('Open', 'திற')}</button></form>
+  sec.innerHTML = `${subHeader(L('Owner Dashboard', 'உரிமையாளர் முகப்புப் பலகை'), L('Downloads, users, revenue, feedback and free-trial codes', 'பதிவிறக்கம், பயனர்கள், வருமானம், கருத்து, சோதனைக் குறியீடுகள்'), 'more')}
+    <form novalidate class="card glass" id="admLogin"><label>${L('Admin token', 'நிர்வாகக் குறியீடு')}<input type="password" id="admTok" value="" autocomplete="off"></label><button class="btn-gold small-btn">${L('Open', 'திற')}</button></form>
     <div id="admBody"></div>`;
-  $('#admLogin').addEventListener('submit', (e) => { e.preventDefault(); store.set('kj_admin', $('#admTok').value.trim()); load(); });
-  if (STATIC) { $('#admBody').innerHTML = `<p class="muted">${L('The dashboard works with the app\'s server.', 'டாஷ்போர்டு செயலியின் சேவையகத்துடன் இயங்கும்.')}</p>`; return; }
+  $('#admLogin').addEventListener('submit', (e) => { e.preventDefault(); adminToken = $('#admTok').value.trim(); $('#admTok').value = ''; load(); });
+  if (STATIC) { $('#admBody').innerHTML = `<p class="muted">${L('The dashboard works with the app\'s server.', 'முகப்புப் பலகை செயலியின் சேவையகத்துடன் இயங்கும்.')}</p>`; return; }
   async function load() {
     const body = $('#admBody');
     body.innerHTML = '<div class="loader"><i></i><i></i><i></i></div>';
     try {
       const o = await adminApi('/api/admin/overview');
+      markAdminSession(true);
       const t = o.stats.totals;
       const kpi = (v, en, tx) => `<div class="kpi"><b>${esc(String(v ?? 0))}</b><span>${L(en, tx)}</span></div>`;
       const codes = await adminApi('/api/admin/gift-codes').catch(() => ({ codes: [] }));
@@ -392,10 +407,10 @@ async function renderAdmin(sec) {
           <div class="card-title" style="margin-top:10px">${L('New devices per day', 'தினசரி புதிய சாதனங்கள்')}</div>${bars(o.stats.daily, 'newDevices', 'new devices')}</div>
         <div class="card glass"><div class="card-title">${L('Platforms', 'தளங்கள்')}</div>${Object.entries(o.stats.byPlatform || {}).map(([k, v]) => `<div class="factor"><span>${esc(k)}</span><b class="zero">${v}</b></div>`).join('')}</div>
         <div class="card glass"><div class="card-title">${L('Top screens', 'அதிகம் பார்த்த திரைகள்')}</div>${(o.stats.topScreens || []).map((x) => `<div class="factor"><span>${esc(x.screen)}</span><b class="zero">${x.views}</b></div>`).join('')}</div>
-        <div class="card glass"><div class="card-title">${L('To do', 'செய்ய வேண்டியவை')}</div><div class="factor"><span>${L('Priests awaiting verification', 'சரிபார்ப்புக்குக் காத்திருக்கும் புரோகிதர்கள்')}</span><b class="zero">${o.pendingPriests}</b></div><div class="factor"><span>${L('Open seva / package requests', 'திறந்த சேவை / பேக்கேஜ் கோரிக்கைகள்')}</span><b class="zero">${o.openRequests}</b></div><div class="factor"><span>${L('Orders awaiting payment', 'கட்டணத்திற்குக் காத்திருக்கும் ஆர்டர்கள்')}</span><b class="zero">${o.ordersAwaitingPayment}</b></div></div>
+        <div class="card glass"><div class="card-title">${L('To do', 'செய்ய வேண்டியவை')}</div><div class="factor"><span>${L('Priests awaiting verification', 'சரிபார்ப்புக்குக் காத்திருக்கும் புரோகிதர்கள்')}</span><b class="zero">${o.pendingPriests}</b></div><div class="factor"><span>${L('Open seva / package requests', 'திறந்த சேவை / தொகுப்புக் கோரிக்கைகள்')}</span><b class="zero">${o.openRequests}</b></div><div class="factor"><span>${L('Orders awaiting payment', 'கட்டணத்திற்குக் காத்திருக்கும் ஆர்டர்கள்')}</span><b class="zero">${o.ordersAwaitingPayment}</b></div></div>
         <div class="card glass"><div class="card-title">💬 ${L('Latest feedback', 'சமீபத்திய கருத்துகள்')}</div>${(o.latestFeedback || []).map((f) => `<div class="fb-row"><div><span class="stars-sm">${'★'.repeat(f.rating)}</span> <span class="muted small">${esc(f.status)}</span><p class="small">${esc(f.comment || '')}</p></div>${f.status !== 'approved' ? `<button class="chip-btn" data-approve="${esc(f.id)}">${L('Show publicly', 'பொதுவில் காட்டு')}</button>` : ''}</div>`).join('') || `<p class="muted small">${L('No feedback yet', 'இன்னும் கருத்து இல்லை')}</p>`}</div>
         <div class="card glass"><div class="card-title">⚠️ ${L('Problem reports', 'பிரச்சினை அறிக்கைகள்')}</div>${defects.map((f) => `<div class="fb-row"><div><b class="small">${esc(f.screen || '—')}</b> <span class="muted small">${esc(f.report?.build || '')} · ${esc(f.report?.viewport || '')} · ${esc(f.report?.lang || '')}</span><p class="small">${esc(f.comment || '')}</p>${f.report?.steps ? `<p class="small muted">${esc(f.report.steps)}</p>` : ''}</div></div>`).join('') || `<p class="muted small">${L('No reports', 'அறிக்கைகள் இல்லை')}</p>`}</div>
-        <form class="card glass" id="giftForm"><div class="card-title">🎁 ${L('Free trial code for relatives', 'உறவினர்களுக்கு இலவசச் சோதனைக் குறியீடு')}</div>
+        <form novalidate class="card glass" id="giftForm"><div class="card-title">🎁 ${L('Free trial code for relatives', 'உறவினர்களுக்கு இலவசச் சோதனைக் குறியீடு')}</div>
           <div class="row3"><label>${L('Hours', 'மணி நேரம்')}<input type="number" name="hours" value="24" min="1" max="8760"></label><label>${L('People', 'நபர்கள்')}<input type="number" name="maxUses" value="10" min="1" max="1000"></label><label>${L('Plan', 'திட்டம்')}<select name="plan"><option value="family_month">${L('Family', 'குடும்பம்')}</option><option value="personal_month">${L('Personal', 'தனிநபர்')}</option></select></label></div>
           <label>${L('Note', 'குறிப்பு')}<input name="note" maxlength="80" placeholder="${esc(L('e.g. Relatives — Diwali', 'உ.தா. உறவினர்கள் — தீபாவளி'))}"></label>
           <button class="btn-gold">${L('Create code', 'குறியீடு உருவாக்கு')}</button><div id="giftOut"></div>
@@ -405,6 +420,8 @@ async function renderAdmin(sec) {
       $('#giftForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const f = e.target;
+        const hours = Number(f.elements.hours.value), uses = Number(f.elements.maxUses.value);
+        if (!(hours >= 1 && hours <= 8760) || !(uses >= 1 && uses <= 1000)) { $('#giftOut').innerHTML = `<p class="err">${L('Hours: 1 to 8760; people: 1 to 1000.', 'மணி நேரம்: 1 முதல் 8760; நபர்கள்: 1 முதல் 1000.')}</p>`; return; }
         try {
           const r = await adminApi('/api/admin/gift-codes', { method: 'POST', body: { plan: f.elements.plan.value, hours: Number(f.elements.hours.value), maxUses: Number(f.elements.maxUses.value), note: f.elements.note.value.trim() || undefined } });
           const msg = `🎁 ${L('Your free Thunai plan code', 'உங்கள் இலவச துணை திட்டக் குறியீடு')}: ${r.code} — ${location.origin}`;
@@ -415,7 +432,7 @@ async function renderAdmin(sec) {
       body.innerHTML = `<p class="err">${esc(e.message)}</p>`;
     }
   }
-  if (store.get('kj_admin', '')) load();
+  if (adminToken) load();
 }
 registerScreen('admin', { render: renderAdmin, parent: 'more' });
 

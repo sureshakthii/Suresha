@@ -37,7 +37,7 @@ test('places search finds Tamil Nadu cities offline', async () => {
 test('chart endpoint validates and returns a chart', async () => {
   assert.equal((await post('/api/chart', { date: 'x' })).status, 400);
   const c = await (await post('/api/chart', birth)).json();
-  assert.equal(c.janmaRasi.name, 'Kumbha');
+  assert.equal(c.janmaRasi.name, 'Kumbam');
   assert.equal(c.charts.rasi.length, 12);
 });
 

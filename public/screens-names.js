@@ -2,6 +2,7 @@
 // shared/baby-names-data-*.js, are matched to the birth-star pada letter (namakshara) and ranked by Chaldean
 // numerology against the child's birth and destiny numbers. Works fully on the device.
 import { birthChart, NAKSHATRAS } from './shared/astro.js';
+import { certaintyOf } from './shared/birthtime.js';
 import { NUMBER_PLANET } from './shared/personal.js';
 import {
   state, store, $, $$, L, ta, esc, bi, chartOf, registerScreen, subHeader, speak, starOptions, displayName, planetName,
@@ -76,7 +77,8 @@ function birthInfo() {
     const m = pool().find((x) => x.id === nf.memberId);
     if (!m) return { err: L('Pick a family member.', 'குடும்ப உறுப்பினரைத் தேர்ந்தெடுக்கவும்.') };
     const c = chartOf(m);
-    return { star: c.janmaNakshatra.index, pada: c.janmaNakshatra.pada, date: m.date || '', who: displayName(m), gender: m.gender === 'female' ? 'girl' : m.gender === 'male' ? 'boy' : null };
+    // Birth time unknown: the star is the one at the calculation placeholder, so it is shown as uncertain ("?").
+    return { star: c.janmaNakshatra.index, pada: c.janmaNakshatra.pada, date: m.date || '', who: displayName(m), gender: m.gender === 'female' ? 'girl' : m.gender === 'male' ? 'boy' : null, uncertain: certaintyOf(m) === 'unknown' };
   }
   if (nf.mode === 'birth') {
     if (!nf.date) return { err: L('Enter the birth date.', 'பிறந்த தேதியை உள்ளிடவும்.') };
@@ -128,7 +130,8 @@ function luckyCard(info) {
   return `<section class="card glass" aria-labelledby="nmLuckT">
     <div class="card-title"><span id="nmLuckT">🍀 ${L('Lucky letters & numbers', 'அதிர்ஷ்ட எழுத்துகள் & எண்கள்')}${info.who ? ` · ${esc(info.who)}` : ''}</span></div>
     ${info.star != null ? `<div class="nm-lucky"><div class="letter-big" lang="ta">${esc(ls.primary.ta)}</div><div class="nm-lucky-body">
-      <div class="mini-label">${esc(ta() ? NAKSHATRAS[info.star].ta : NAKSHATRAS[info.star].en)} · ${L('pada', 'பாதம்')} ${info.pada}</div>
+      <div class="mini-label">${esc(ta() ? NAKSHATRAS[info.star].ta : NAKSHATRAS[info.star].en)}${info.uncertain ? '?' : ` · ${L('pada', 'பாதம்')} ${info.pada}`}</div>
+      ${info.uncertain ? `<p class="small tag warn block">${L('Star uncertain — birth time unknown. These letters are only a guide; with the birth time they can be confirmed.', 'பிறந்த நேரம் தெரியாததால் நட்சத்திரம் உறுதியில்லை — இந்த எழுத்துகள் வழிகாட்டல் மட்டுமே; பிறந்த நேரம் தெரிந்தால் உறுதிசெய்யலாம்.')}</p>` : ''}
       <div><b>${L('Best first letter', 'சிறந்த முதல் எழுத்து')}: ${esc(ls.primary.ta)}${ta() ? '' : ` (${esc(ls.primary.en)})`}</b></div>
       <div class="small muted">${L('Star letters', 'நட்சத்திர எழுத்துகள்')}: ${nl.map((a) => (ta() ? a.ta : `${a.ta} (${a.en})`)).join(' · ')}</div></div></div>` : ''}
     ${info.date ? `<div class="nm-nums">
@@ -191,7 +194,7 @@ function shareList(info) {
   const fav = r.results.filter((x) => isFavIn(x, favSet));
   const list = (fav.length ? fav : r.results).slice(0, 15);
   if (!list.length) return;
-  const head = info.star != null ? `${L('Baby names', 'குழந்தை பெயர்கள்')} — ${ta() ? NAKSHATRAS[info.star].ta : NAKSHATRAS[info.star].en} ${L('pada', 'பாதம்')} ${info.pada}` : L('Baby names', 'குழந்தை பெயர்கள்');
+  const head = info.star != null ? `${L('Baby names', 'குழந்தைப் பெயர்கள்')} — ${ta() ? NAKSHATRAS[info.star].ta : NAKSHATRAS[info.star].en}${info.uncertain ? '?' : ''} ${L('pada', 'பாதம்')} ${info.pada}` : L('Baby names', 'குழந்தை பெயர்கள்');
   sharePreview(L('Baby names', 'குழந்தை பெயர்கள்'), `${head}\n${engine.shareText(list, ta() ? 'ta' : 'en')}\n— ${L('Thunai', 'துணை')}`);
 }
 
@@ -225,13 +228,13 @@ async function renderNames(sec) {
   injectCss();
   if (!nf.mode) { nf.mode = pool().length ? 'family' : 'star'; nf.memberId = defaultMember(); }
   if (!engine) {
-    sec.innerHTML = `${subHeader(L('Baby Names', 'குழந்தை பெயர்கள்'), L('Names by birth star and numerology', 'நட்சத்திரமும் எண்கணிதமும் பார்த்துப் பெயர்கள்'))}<div class="loader"><i></i><i></i><i></i></div>`;
+    sec.innerHTML = `${subHeader(L('Baby Names', 'குழந்தைப் பெயர்கள்'), L('Names by birth star and numerology', 'நட்சத்திரமும் எண்கணிதமும் பார்த்துப் பெயர்கள்'))}<div class="loader"><i></i><i></i><i></i></div>`;
     await loadEngine();
     if (state.view !== 'names') return;
   }
   const info = birthInfo();
   if (nf.mode === 'family' && info.gender && nf.genderFor !== nf.memberId) { nf.gender = info.gender; nf.genderFor = nf.memberId; }
-  sec.innerHTML = `${subHeader(L('Baby Names', 'குழந்தை பெயர்கள்'), L('Names by birth star and numerology', 'நட்சத்திரமும் எண்கணிதமும் பார்த்துப் பெயர்கள்'))}
+  sec.innerHTML = `${subHeader(L('Baby Names', 'குழந்தைப் பெயர்கள்'), L('Names by birth star and numerology', 'நட்சத்திரமும் எண்கணிதமும் பார்த்துப் பெயர்கள்'))}
     <div class="nm-cols"><div class="nm-side">${formCard(info)}${luckyCard(info)}${filterCard()}</div><div id="nmResults"></div></div>
     <p class="small muted nm-note">${L('Meanings are short, commonly accepted ones. Numerology follows the Chaldean (Cheiro) system used across the app.', 'பொருள்கள் சுருக்கமான, பொதுவாக ஏற்கப்பட்டவை. எண்கணிதம் செயலி முழுவதும் பயன்படும் கல்டியன் (கீரோ) முறைப்படி.')}</p>`;
   drawResults(sec, info);

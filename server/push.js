@@ -44,7 +44,8 @@ let vapid = null;
 export function getVapid() {
   if (vapid) return vapid;
   const env = (k) => (process.env[k] || '').trim();
-  const subject = env('VAPID_SUBJECT') || 'mailto:admin@kaippesi.app';
+  // Push services want a contact: VAPID_SUBJECT, else the public site address (an https: URL is valid).
+  const subject = env('VAPID_SUBJECT') || (/^https:\/\//.test(env('PUBLIC_URL')) ? env('PUBLIC_URL') : 'mailto:admin@kaippesi.app');
   if (env('VAPID_PUBLIC_KEY') && env('VAPID_PRIVATE_KEY')) {
     vapid = { publicKey: env('VAPID_PUBLIC_KEY'), privateKey: env('VAPID_PRIVATE_KEY'), subject };
     return vapid;

@@ -78,7 +78,7 @@ function render(sec) {
     return `<div class="factor"><span style="color:${COLOR[k]}">${GLYPH[k]} ${esc(planetName(k))}</span><b>${esc(rasiName(r))}${r === c.planets[k].rasi && v.n !== 1 ? ` <span class="pill">${L('same as Rasi', 'ராசியிலும் இதே')}</span>` : ''}</b></div>`;
   }).join('');
 
-  sec.innerHTML = `${subHeader(L('Divisional charts & Ashtakavarga', 'வர்க்க கட்டங்கள் & அஷ்டகவர்க்கம்'), L('Sixteen-fold depth of your Jathagam', 'உங்கள் ஜாதகத்தின் ஆழமான பார்வை'), 'chart')}
+  sec.innerHTML = `${subHeader(L('Divisional Charts & Ashtakavarga', 'வர்க்கக் கட்டங்கள் & அஷ்டகவர்க்கம்'), L('Sixteen-fold depth of your Jathagam', 'உங்கள் ஜாதகத்தின் ஆழமான பார்வை'), 'chart')}
     ${pool.length > 1 ? `<div class="member-switch">${pool.map((x) => `<button class="mchip${x.id === m.id ? ' sel' : ''}" data-mid="${esc(x.id)}">${esc(displayName(x))}</button>`).join('')}</div>` : ''}
     <div class="card glass">
       <div class="card-title">${L('Divisional chart (Varga)', 'வர்க்க கட்டம்')}</div>

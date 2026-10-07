@@ -1,7 +1,7 @@
 // App-shell cache so the Jathagam and live Panchangam work offline. API calls always go to the network.
-const CACHE = 'kj-v33';
+const CACHE = 'kj-v34';
 const SHELL = [
-  '/', '/index.html', '/styles.css', '/app.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/screens-world.js',
+  '/', '/index.html', '/styles.css', '/app.js', '/web-history.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/screens-world.js',
   '/screens-life.js', '/screens-plans.js', '/screens-couple.js', '/couple-cards.js', '/shared/marriage-context.js', '/screens-guide.js', '/remind.js', '/screens-roadmap.js',
   '/screens-depth.js', '/screens-extra.js', '/screens-peyarchi.js', '/screens-health.js', '/screens-love.js', '/screens-kattam.js',
   '/easy-date.js', '/growth.js', '/legal.js', '/account.js', '/icons.js', '/screens-hubs.js', '/tool-registry.js', '/screens-journey.js', '/screens-trust.js', '/screens-names.js', '/screens-week.js', '/shared/week-plan.js', '/screens-goals.js', '/shared/goals.js',
@@ -13,7 +13,7 @@ const SHELL = [
   '/shared/mantras.js', '/shared/predict.js', '/shared/packages.js', '/shared/couple.js', '/shared/lifecheck.js', '/shared/personal.js',
   '/shared/temple-info.js', '/shared/roadmap.js', '/shared/varga.js', '/shared/ashtakoota.js', '/shared/numerology.js',
   '/shared/peyarchi.js', '/shared/health.js', '/shared/brand.js', '/shared/sync-policy.js', '/shared/plan-gates.js', '/shared/birthtime.js', '/shared/guidance.js', '/shared/journey.js',
-  '/shared/version.js', '/shared/temple-verified.js', '/shared/kattam.js', '/shared/daily.js', '/shared/today-plan.js', '/shared/faith.js',
+  '/shared/version.js', '/shared/temple-verified.js', '/shared/kattam.js', '/shared/daily.js', '/shared/today-plan.js', '/shared/faith.js', '/shared/fmt.js',
   '/today-lines.js', '/ask-thunai.js', '/shared/ask-sense.js', '/shared/ask-which.js', '/shared/written-palan.js', '/shared/weather.js', '/shared/station.js', '/shared/love.js', '/shared/datetime.js', '/shared/age-guard.js', '/shared/themes.js', '/shared/report-horizon.js', '/shared/written-date.js', '/shared/horoscope-parse.js', '/ocr-import.js',
   '/shared/rules/core.js', '/shared/rules/profiles.js', '/shared/rules/registry.js', '/shared/rules/chevvai.js', '/shared/rules/roles.js',
   '/shared/rules/yogas.js', '/shared/rules/disputed.js', '/shared/rules/define.js', '/vendor/astronomy-engine.js', '/icon.svg',

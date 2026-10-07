@@ -55,6 +55,9 @@ ${fonts}
 :root { color-scheme: dark; }
 ${css}
 .topbar { top: 0; }
+/* One launch colour: the native splash, the window behind the WebView and the status bar are all #3d0d1f
+   (capacitor.config.json, android styles.xml), so the web splash that takes over continues on the same maroon. */
+.splash, [data-theme="light"] .splash { background: #3d0d1f; }
 </style>
 ${body}`;
 fs.writeFileSync(path.join(out, 'index.html'), page);

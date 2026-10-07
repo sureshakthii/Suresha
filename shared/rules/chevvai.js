@@ -36,7 +36,7 @@ export const CHEVVAI_RULE = defineRule({
 export const CHEVVAI_EXCEPTIONS = [
   {
     id: 'dosha.chevvai.exc.own_exalted', test: (P) => [0, 7, 9].includes(P.Mars.rasi),
-    name: T('Mars in own sign or exalted (Mesha, Vrischika, Makara)', 'செவ்வாய் ஆட்சி/உச்சம் பெற்றது'),
+    name: T('Mars in own sign or exalted (Mesham, Vrischikam, Magaram)', 'செவ்வாய் ஆட்சி/உச்சம் பெற்றது'),
     reason: T('A dignified Mars is traditionally held to act constructively.', 'பலமான செவ்வாய் நன்மை செய்யும் என்பது பாரம்பரியக் கருத்து.'),
   },
   {

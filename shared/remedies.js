@@ -3,6 +3,7 @@
 import { RASIS, PLANETS } from './astro.js';
 import { isHinduFaith, universalPractice, CHILD_PRACTICE, TRADITIONAL_OPTIONAL } from './faith.js';
 import { adultText } from './age-guard.js';
+import { WEEKDAYS_TA, WEEKDAYS_EN, planetAdjTa } from './fmt.js';
 const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 export const NAVAGRAHA = {
@@ -247,7 +248,7 @@ export function dailyParigaram({ weekday, chart, snapshot, faith = 'hindu', trad
   const items = [];
   const R = (planet) => remedyFor(planet, { faith, traditional, profile });
   const dayLord = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'][weekday];
-  items.push({ reason: { en: `Today is ruled by ${dayLord}`, ta: `இன்று ${PLANETS[dayLord].ta} கிழமை` }, ...R(dayLord) });
+  items.push({ reason: { en: `Today is ${WEEKDAYS_EN[weekday]}, ruled by ${dayLord}`, ta: `இன்று ${WEEKDAYS_TA[weekday]} — ${PLANETS[dayLord].ta} ஆளும் நாள்` }, ...R(dayLord) });
   if (chart) {
     const weak = grahaStrength(chart.planets).filter((g) => g.level === 'weak').sort((a, b) => a.score - b.score);
     for (const w of weak.slice(0, 2)) {
@@ -257,7 +258,7 @@ export function dailyParigaram({ weekday, chart, snapshot, faith = 'hindu', trad
     const t = now ? new Date(now) : null;
     const dasa = (t && (chart.dasa?.periods || []).find((p) => new Date(p.start) <= t && t < new Date(p.end))?.lord) || chart.dasa?.current?.lord;
     if (dasa && !items.some((i) => i.planet === dasa)) {
-      items.push({ reason: { en: `You are running ${dasa} Dasa`, ta: `${PLANETS[dasa].ta} தசை நடக்கிறது` }, ...R(dasa) });
+      items.push({ reason: { en: `You are running ${dasa} Dasa`, ta: `${planetAdjTa(dasa, PLANETS[dasa].ta)} தசை நடக்கிறது` }, ...R(dasa) });
     }
     if (snapshot) {
       const pos = ((snapshot.moonRasi.index - chart.janmaRasi.index + 12) % 12) + 1;

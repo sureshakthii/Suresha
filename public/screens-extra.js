@@ -79,7 +79,7 @@ function renderGunaMilan(sec) {
       ${gmStarUsed() ? `<label class="adult-confirm"><input type="checkbox" id="gmAdults"${gmSide.adultsOk ? ' checked' : ''}> ${L('I confirm both people are adults (18 or older). Marriage matching is never done for anyone under 18.', 'இருவரும் 18 வயது அல்லது அதற்கு மேற்பட்டவர்கள் என்று உறுதி செய்கிறேன். 18 வயதுக்குக் குறைவானவர்களுக்குத் திருமணப் பொருத்தம் பார்க்கப்படுவதில்லை.')}</label>` : ''}</div>
     <div id="gmResult"></div>
     <div class="card glass"><p class="small">🪔 ${L('Tamil tradition looks at the 10 poruthams (Rajju and Vedhai as key factors to discuss). Guna Milan is a separate North-Indian system with its own points — it is never added to the poruthams.', 'தமிழ் மரபில் 10 பொருத்தங்கள் பார்க்கப்படுகின்றன (ரஜ்ஜு, வேதை — பேச வேண்டிய முக்கியக் காரணிகள்). குண மிலன் தனி வட இந்திய முறை, அதன் சொந்தப் புள்ளிகள் — பொருத்தங்களுடன் ஒருபோதும் கூட்டப்படுவதில்லை.')}</p>
-      <div class="btn-row"><button type="button" class="btn-gold" data-go="couple">💑 ${L('Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்')}</button>
+      <div class="btn-row"><button type="button" class="btn-gold" data-go="couple">💑 ${L('Marriage Porutham', 'திருமணப் பொருத்தம்')}</button>
       <button type="button" class="chip-btn" data-go="porutham">💞 ${L('10 poruthams by star', 'நட்சத்திரம் மூலம் 10 பொருத்தங்கள்')}</button></div></div>`;
   $$('.seg button[data-who]', sec).forEach((b) => b.addEventListener('click', () => { gmSide[b.dataset.who].mode = b.dataset.mode; renderGunaMilan(sec); }));
   $$('select[data-who]', sec).forEach((el) => el.addEventListener('change', () => {

@@ -5,8 +5,13 @@
 //   2. Server push (when the morning alarm is on) — the reminder is synced with the push scheduler.
 //   3. In-app: due reminders show on the home screen, and as a browser notification while the app is open.
 //   4. "Add to phone calendar" (.ics with alarm) — works on every phone.
-import { state, $, L, esc, store, toast, fmtTime, monthName, STATIC, api, activeMember, displayName, BRAND } from './core.js';
+import { state, $, L, esc, store, toast, STATIC, api, activeMember, displayName, BRAND } from './core.js';
 import { icon } from './icons.js';
+import { fmtDay, fmtClock } from './shared/fmt.js';
+// Dates and times the one way the app writes them (shared/fmt.js), in the app language.
+const lgx = () => (state.lang === 'en' ? 'en' : 'ta');
+const fDay = (iso) => fmtDay(iso, lgx());
+
 
 const KEY = 'kj_reminders';
 const load = () => store.get(KEY, { morningTime: '05:30', trips: [], pushEndpoint: null });
@@ -37,7 +42,7 @@ function openSheet(item) {
   const at = new Date(item.at);
   const now = Date.now();
   const opts = OPTIONS.map((o) => ({ ...o, when: o.calc(at) })).filter((o) => o.when.getTime() > now - 60000);
-  const dt = (d) => { const p = localParts(d); return `${Number(p.date.slice(8))} ${monthName(Number(p.date.slice(5, 7)) - 1)} · ${fmtTime(d, tz())}`; };
+  const dt = (d) => `${fmtDay(d, lgx(), tz(), { year: false })} · ${fmtClock(d, lgx(), tz())}`;
   const box = document.createElement('div');
   box.className = 'modal';
   box.innerHTML = `<div class="modal-card remind-sheet" role="dialog" aria-modal="true">
@@ -119,7 +124,7 @@ export function reminderCard() {
   const soon = upcomingReminders().filter((t) => t.alarm.getTime() < Date.now() + 48 * 3600000);
   if (!soon.length) return '';
   return `<div class="card glass remind-card" data-go="reminders"><div class="card-title"><span>${icon('alarm-clock', { size: 18 })} ${L('Your reminders', 'உங்கள் நினைவூட்டல்கள்')}</span><span class="pill">${soon.length}</span></div>
-    ${soon.slice(0, 4).map((t) => `<div class="factor"><span>🔔 ${esc(t.title)}</span><b class="zero">${fmtTime(t.alarm, tz())}</b></div>`).join('')}</div>`;
+    ${soon.slice(0, 4).map((t) => `<div class="factor"><span>🔔 ${esc(t.title)}</span><b class="zero">${fmtClock(new Date(t.alarm), lgx(), tz())}</b></div>`).join('')}</div>`;
 }
 
 // While the app is open, ring due reminders as a notification (or a toast).
@@ -148,7 +153,7 @@ export function downloadIcs(events, filename = 'thunai.ics') {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Thunai//TA', 'CALSCALE:GREGORIAN'];
   for (const ev of events) {
     const s = new Date(ev.start);
-    lines.push('BEGIN:VEVENT', `UID:${Math.random().toString(36).slice(2)}@kaippesi`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(s)}`, `DTEND:${stamp(new Date(s.getTime() + 30 * 60000))}`,
+    lines.push('BEGIN:VEVENT', `UID:${Math.random().toString(36).slice(2)}@thunai`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(s)}`, `DTEND:${stamp(new Date(s.getTime() + 30 * 60000))}`,
       `SUMMARY:${clean(ev.title)}`, ev.place ? `LOCATION:${clean(ev.place)}` : '', 'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${clean(ev.title)}`, `TRIGGER:${ev.alarm || '-PT60M'}`, 'END:VALARM', 'END:VEVENT');
   }
   lines.push('END:VCALENDAR');

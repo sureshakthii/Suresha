@@ -9,10 +9,15 @@ import {
 import { birthTamilMonth } from './shared/special.js';
 import { weekSteps } from './shared/goals.js';
 import { ageProfile } from './shared/age-guard.js';
-import { state, $, $$, L, ta, esc, bi, store, toast, registerScreen, subHeader, activeMember, chartOf, displayName, fmtTime, fmtIsoDate } from './core.js';
+import { state, $, $$, L, ta, esc, bi, store, toast, registerScreen, subHeader, activeMember, chartOf, displayName } from './core.js';
 import { remindBtn, upcomingReminders } from './remind.js';
 import { sharePreview } from './screens-hubs.js';
 import { icon } from './icons.js';
+import { fmtDay, fmtClock, WEEKDAYS_TA_SHORT, WEEKDAYS_EN } from './shared/fmt.js';
+// Dates and times the one way the app writes them (shared/fmt.js), in the app language.
+const lgx = () => (state.lang === 'en' ? 'en' : 'ta');
+const fDay = (iso) => fmtDay(iso, lgx());
+
 
 const KEY = 'kj_week';
 let draft = null; // the plan before the person agreed to keep it on this phone (memory only)
@@ -68,9 +73,10 @@ export function currentWeek() {
 }
 
 const tx = (x) => (typeof x === 'string' ? x : bi(x));
-const hm = (iso, hhmm) => (iso ? fmtTime(new Date(iso), tzNow()) : hhmm || '');
+const hhmmClock = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return fmtClock(new Date(Date.UTC(2000, 0, 1, h || 0, m || 0)), lgx(), 0); };
+const hm = (iso, hhmm) => (iso ? fmtClock(new Date(iso), lgx(), tzNow()) : hhmm ? hhmmClock(hhmm) : '');
 const typeOf = (id) => TASK_TYPES.find((t) => t.id === id) || TASK_TYPES[2];
-const dayLabel = (d) => `${d.isToday ? `${L('Today', 'இன்று')} · ` : ''}${bi(d.weekday)} · ${fmtIsoDate(d.date)}`;
+const dayLabel = (d) => `${d.isToday ? `${L('Today', 'இன்று')} · ` : ''}${bi(d.weekday)} · ${fDay(d.date)}`;
 
 // ---------------------------------------------------------------- Today card
 /** Compact Today card: the next 2–3 items and "Open weekly plan". Filled after the page paints (fillWeekCard). */
@@ -88,7 +94,7 @@ export function fillWeekCard(root = document) {
     let items = [];
     try { const w = currentWeek(); items = w ? nextItems(w, { limit: 3 }) : []; } catch { items = []; }
     const day = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
-    const wd = (iso) => day(iso).toLocaleDateString(ta() ? 'ta-IN' : 'en-IN', { weekday: 'short', timeZone: 'UTC' });
+    const wd = (iso) => (lgx() === 'ta' ? WEEKDAYS_TA_SHORT : WEEKDAYS_EN.map((x) => x.slice(0, 3)))[day(iso).getUTCDay()];
     box.innerHTML = items.length ? `<ul class="wk-list">${items.map((x) => `<li class="wk-li wk-${x.kind}"><span class="wk-when">${esc(wd(x.date))}${x.time || x.at ? ` · ${esc(hm(x.at, x.time))}` : ''}</span>
         <span class="wk-what">${kindIcon(x)} ${esc(tx(x.title))}${x.kind === 'optional' ? ` <span class="tag warn">${L('optional', 'விருப்பம்')}</span>` : ''}</span></li>`).join('')}</ul>`
       : `<p class="small muted">${L('Add your appointments, deadlines and the observances you follow — one short plan for the week.', 'சந்திப்புகள், காலக்கெடுகள், நீங்கள் கடைப்பிடிக்கும் விரதங்கள் — வாரத்துக்கு ஒரு சிறிய திட்டம்.')}</p>`;
@@ -176,7 +182,7 @@ function render(sec) {
   const t = editing ? plan.tasks.find((x) => x.id === editing) : null;
   if (editing && !t) editing = null;
   const saved = Boolean(plan.consent);
-  sec.innerHTML = `${subHeader(L('This week’s plan', 'இந்த வாரத் திட்டம்'), L('Your appointments and deadlines stay fixed. Family events and the observances you chose are added. Good times are only optional suggestions.', 'உங்கள் சந்திப்புகளும் காலக்கெடுகளும் நிலையானவை. குடும்ப நிகழ்வுகளும் நீங்கள் தேர்ந்த விரதங்களும் சேர்க்கப்படும். நல்ல நேரம் விருப்ப ஆலோசனை மட்டுமே.'))}
+  sec.innerHTML = `${subHeader(L('This Week’s Plan', 'இந்த வாரத் திட்டம்'), L('Your appointments and deadlines stay fixed. Family events and the observances you chose are added. Good times are only optional suggestions.', 'உங்கள் சந்திப்புகளும் காலக்கெடுகளும் நிலையானவை. குடும்ப நிகழ்வுகளும் நீங்கள் தேர்ந்த விரதங்களும் சேர்க்கப்படும். நல்ல நேரம் விருப்ப ஆலோசனை மட்டுமே.'))}
     <div class="dsk-cols"><div class="dsk-col">
     ${formHtml(t)}
     <section class="card glass wk-obs" aria-labelledby="wkObsT"><div class="card-title"><span id="wkObsT">🙏 ${L('Observances I follow', 'நான் கடைப்பிடிப்பவை')}</span></div>

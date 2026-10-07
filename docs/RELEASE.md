@@ -27,7 +27,7 @@ Write the versions and the commit into the release note (template in §8).
 
 | Build | How | Who uses it |
 |---|---|---|
-| Test APK (debug) | Actions → **Mobile apps** → Run workflow → artifact `kaippesi-android-debug-apk`, also published to the `test-latest` release | Team phones |
+| Test APK (debug) | Actions → **Mobile apps** → Run workflow → artifact `thunai-android-debug-apk`, also published to the `test-latest` release | Team phones |
 | Review APK (time-limited) | Same workflow; inputs `review_hours` (default 24) and `review_days` (hard stop, default 3). Published as `Thunai-Review-<h>h.apk` | Outside reviewers (see [REVIEW-PLAN.md](REVIEW-PLAN.md)); stops working by itself |
 | Signed release APK / AAB | Same workflow with the signing secrets set (`ANDROID_KEYSTORE_BASE64` …) | Play Store / AppGallery ([MOBILE.md](MOBILE.md)) |
 | Standalone vs server-backed | `KJ_APP_URL` unset → offline standalone app; set → app opens the deployed site | Decide per build |

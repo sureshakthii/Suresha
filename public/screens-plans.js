@@ -3,13 +3,18 @@
 // Prices follow the country of RESIDENCE (shared/currency.js): India → ₹ INR, United Arab Emirates → AED, any other
 // country → $ USD. The server decides the currency again at checkout from the same country; changing the
 // residence is the only way to see another currency.
-import { state, $, $$, L, esc, bi, api, STATIC, store, registerScreen, subHeader, go, toast, fmtIsoDate, displayName, BRAND } from './core.js';
+import { state, $, $$, L, esc, bi, api, STATIC, store, registerScreen, subHeader, go, toast, displayName, BRAND } from './core.js';
 import { redeemBox, wireRedeem, trialBanner, track, taskLog, pairKey } from './growth.js';
 import { valueSummary, PLAN_FEATURE_LINES } from './shared/plan-gates.js';
 import { formatPrice, payCountry, payCurrencyFor } from './shared/currency.js';
 import { countryByCode, parseE164 } from './shared/countries.js';
 import { countryOfLoc } from './shared/residence.js';
 import { residenceStep } from './residence-ui.js';
+import { fmtDay, until } from './shared/fmt.js';
+// Dates and times the one way the app writes them (shared/fmt.js), in the app language.
+const lgx = () => (state.lang === 'en' ? 'en' : 'ta');
+const fDay = (iso) => fmtDay(iso, lgx());
+
 
 /** Display name of a plan id (old premium_* ids are the Personal plan). */
 export const planLabel = (id) => (!id || id === 'free' ? L('Free', 'இலவசம்')
@@ -35,7 +40,7 @@ function countryLine(cc, source, currency) {
   return `<div class="card glass price-country" id="priceCountry" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px"><span>🌐 ${L(`Prices in ${CUR_LABEL[currency]} for ${esc(en)}`, `${esc(ta)} — விலைகள்: ${CUR_LABEL[currency]}`)}<span class="small muted">${why}</span></span>
     <button type="button" class="link-btn" id="changeCountry">${L('Change country', 'நாட்டை மாற்று')}</button></div>`;
 }
-const dateOf = (t) => fmtIsoDate(new Date(t).toISOString().slice(0, 10));
+const dateOf = (t) => fmtDay(new Date(t), lgx(), state.loc?.tz ?? 5.5);
 const bar = (label, used, limit) => `<div class="tb-row"><span class="tb-label">${label}</span><span class="tb-value">${used} / ${limit}</span><span class="tb-bar"><i style="width:${Math.min(100, Math.round(100 * used / limit))}%"></i></span></div>`;
 
 async function loadPlans(country) {
@@ -84,7 +89,7 @@ function chosenScope(card, plan) {
 const planFeatures = (p) => [...(p.features || []), ...(p.kind === 'free' || !p.amount ? PLAN_FEATURE_LINES.free : PLAN_FEATURE_LINES.paid)];
 const planCard = (p, currency) => `<div class="card glass plan${p.id.startsWith('family') ? ' best' : ''}">
       ${p.id === 'family_year' ? `<span class="pill best-pill">${L('Best value', 'சிறந்த மதிப்பு')}</span>` : ''}
-      <div class="plan-head"><b>${esc(bi(p.name))}</b><span class="plan-price">${p.amount ? money(p.amount, currency) : L('Free', 'இலவசம்')}<small>${p.interval ? ` / ${p.interval === 'month' ? L('month', 'மாதம்') : L('year', 'ஆண்டு')}` : ''}</small></span></div>
+      <div class="plan-head"><b>${esc(bi(p.name))}</b><span class="plan-price">${p.amount ? money(p.amount, currency) : /free|இலவச/i.test(bi(p.name)) ? '' : L('Free', 'இலவசம்')}<small>${p.interval ? ` / ${p.interval === 'month' ? L('month', 'மாதம்') : L('year', 'ஆண்டு')}` : ''}</small></span></div>
       <ul>${planFeatures(p).map(featureItem).join('')}</ul>
       ${p.amount ? `<button class="btn-gold" data-buy="${p.id}">${L('Choose', 'தேர்வு செய்')}</button>` : ''}</div>`;
 
@@ -109,9 +114,9 @@ async function renderPlans(sec, params = {}) {
     api('/api/billing/me').then((me) => {
       if (!$('#myPlan')) return;
       const pk = me.entitlements?.packages || [];
-      $('#myPlan').innerHTML = `<div class="card glass"><b>${L('Your plan', 'உங்கள் திட்டம்')}: ${planLabel(me.plan)}</b>${me.expiresAt ? ` <span class="muted small">${L('until', 'வரை')} ${dateOf(me.expiresAt)}</span>` : ''}
+      $('#myPlan').innerHTML = `<div class="card glass"><b>${L('Your plan', 'உங்கள் திட்டம்')}: ${planLabel(me.plan)}</b>${me.expiresAt ? ` <span class="muted small">${until(dateOf(me.expiresAt), lgx())}</span>` : ''}
         ${me.lastPayment ? `<div class="small receipt-line">🧾 ${L('Last payment', 'கடைசிக் கட்டணம்')}: <b>${money(me.lastPayment.amount, me.lastPayment.currency)}</b> · ${planLabel(me.lastPayment.plan)}${me.lastPayment.paidAt ? ` · ${dateOf(me.lastPayment.paidAt)}` : ''}${me.lastPayment.status === 'refunded' ? ` · ${L('refunded', 'திருப்பித் தரப்பட்டது')}` : ''}</div>` : ''}
-        ${pk.map((p) => `<div class="small">🎫 ${planLabel(p.plan)} — ${p.scope?.pairId ? L('one couple', 'ஒரு ஜோடி') : L('one journey', 'ஒரு பயணம்')} · ${L('until', 'வரை')} ${dateOf(p.expiresAt)}</div>`).join('')}
+        ${pk.map((p) => `<div class="small">🎫 ${planLabel(p.plan)} — ${p.scope?.pairId ? L('one couple', 'ஒரு ஜோடி') : L('one journey', 'ஒரு பயணம்')} · ${until(dateOf(p.expiresAt), lgx())}</div>`).join('')}
         ${me.aiPeriod === 'day' && me.aiLimit ? bar(L('Detailed answers today', 'இன்றைய விரிவான பதில்கள்'), me.aiUsedToday, me.aiLimit) : ''}
         ${me.aiPeriod === 'month' && me.aiLimit ? bar(L('Detailed answers this month', 'இந்த மாத விரிவான பதில்கள்'), me.aiUsedThisMonth, me.aiLimit) : ''}
         ${me.aiPeriod === 'package' && me.aiLimit ? bar(L('Package detailed answers', 'தொகுப்பு விரிவான பதில்கள்'), me.aiUsedPackage, me.aiLimit) : ''}
@@ -200,7 +205,7 @@ function renderValue(sec) {
   const on = Boolean(store.get(VALUE_ON, false));
   const v = on ? localValueSummary() : null;
   const any = v && Object.values(v).some((n) => n > 0);
-  sec.innerHTML = `${subHeader(L('Your Thunai so far', 'என் பயன்'), L('An optional, factual count of what you have completed with the app.', 'இந்தச் செயலியுடன் நீங்கள் முடித்தவற்றின் விருப்பத் தேர்வு, உண்மை எண்ணிக்கை.'), 'more')}
+  sec.innerHTML = `${subHeader(L('Your Thunai So Far', 'என் பயன்'), L('An optional, factual count of what you have completed with the app.', 'இந்தச் செயலியுடன் நீங்கள் முடித்தவற்றின் விருப்பத் தேர்வு, உண்மை எண்ணிக்கை.'), 'more')}
     <div class="card glass"><label class="set-row"><span>${L('Show my summary', 'என் சுருக்கத்தைக் காட்டு')}</span><input type="checkbox" id="valueOn"${on ? ' checked' : ''}></label>
       <p class="small muted">${L('Counted on this phone only, from your own saved items — never sent to us. Only things you actually completed; no estimates of money or risk.', 'இந்தக் கைப்பேசியில் மட்டும், நீங்கள் சேமித்தவற்றிலிருந்து எண்ணப்படுகிறது — எங்களுக்கு அனுப்பப்படாது. நீங்கள் உண்மையில் முடித்தவை மட்டும்; பணம், ஆபத்து பற்றிய மதிப்பீடு இல்லை.')}</p></div>
     ${on ? `<div class="card glass value-card"><div class="tb-list">${VALUE_ROWS.map(([k, ic, en, tx]) => `<div class="factor"><span>${ic} ${L(en, tx)}</span><b class="${v[k] ? '' : 'zero'}">${v[k]}</b></div>`).join('')}</div>

@@ -388,3 +388,24 @@ export function placeTa(text) {
   if (PLACE_TA[text]) return PLACE_TA[text];
   return text.split(/(,\s*|\s*\(|\)\s*)/).map((part) => PLACE_TA[part.trim()] ?? COUNTRY_TA.get(part.trim()) ?? (/^near\s+/i.test(part) ? `${PLACE_TA[part.replace(/^near\s+/i, '').trim()] || part.replace(/^near\s+/i, '')} அருகில்` : part)).join('').replace(/\(\s*/g, '(');
 }
+
+/**
+ * A place typed into the birth-place box but not picked from the list: the one built-in place it clearly names
+ * (its name, "name, country" text or Tamil name — whole label or its first part), else the only search result.
+ * Returns null when it is not clear (no match, or several towns of that name), so the form can ask the person.
+ */
+export function resolveTypedPlace(q, { preferCc = '' } = {}) {
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFC').replace(/[\s,.]+/g, ' ').trim();
+  const t = norm(q);
+  if (t.length < 2) return null;
+  const res = searchLocalPlaces(q, 8, { preferCc });
+  const names = (p) => [p.name, placeText(p), placeLabel(p, 'en'), placeLabel(p, 'ta'), PLACE_TA[p.name]].filter(Boolean)
+    .flatMap((x) => [x, String(x).split(',')[0]]).map(norm);
+  const exact = res.filter((p) => names(p).includes(t));
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) {
+    const mine = exact.filter((p) => preferCc && p.cc === preferCc);
+    return mine.length === 1 ? mine[0] : null;
+  }
+  return res.length === 1 ? res[0] : null;
+}

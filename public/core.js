@@ -7,6 +7,7 @@ import { activeLocation, travelExpired, countryOfLoc, zoneLabel, inIndiaTime, lo
 import { BRAND } from './shared/brand.js';
 import { backupPayload, mergeAccountFamily } from './shared/sync-policy.js';
 import { withNameForms, nameInScript, nameScriptFor, toTamil, toLatin, detectScript } from './shared/name-translit.js';
+import * as F from './shared/fmt.js';
 
 export { BRAND };
 /** Brand name in the current language. */
@@ -16,6 +17,8 @@ export const assistantName = () => (state.lang === 'ta' ? BRAND.assistantTa : BR
 // Hosted test build (no backend): everything is computed on the device and the
 // AI Jothidar answers through the viewer's own Claude account when available.
 export const STATIC = Boolean(window.KJ_STATIC);
+/** The installed phone app (Capacitor) — also STATIC, but it is the real app, never a "preview". */
+export const NATIVE = Boolean(window.Capacitor?.isNativePlatform?.());
 
 export const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
@@ -75,10 +78,23 @@ export const GLYPH = { Sun: '☉', Moon: '☽', Mars: '♂', Mercury: '☿', Jup
 // Planet colours are CSS variables so each theme (light / night / cosmic panels) can keep them readable.
 export const COLOR = Object.fromEntries(['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu', 'Lagna'].map((k) => [k, `var(--pl-${k})`]));
 export const planetName = (k) => (ta() ? PLANETS[k].ta : k);
+/** Planet name before தசை / புக்தி / ஓரை: சூரிய, சந்திர, சுக்கிர மகா தசை (English unchanged). */
+export const dasaName = (k) => (ta() ? F.planetAdjTa(k, PLANETS[k].ta) : k);
 export const rasiName = (i) => (ta() ? RASIS[i].ta : RASIS[i].en);
 export const nakName = (i) => (ta() ? NAKSHATRAS[i].ta : NAKSHATRAS[i].en);
 export const placeName = (p) => (ta() ? placeTa(p || '') : p || '');
 export const yogaName = (y) => (ta() ? y.ta || y.name : y.name);
+/** ONE strength scale everywhere: பலம் / நிலையானது / கவனம் தேவை (Strong / Steady / Needs care). Accepts any level key. */
+export const scaleOf = (lv) => (['strong', 'good', 'great'].includes(lv) ? 'good' : ['weak', 'care', 'bad'].includes(lv) ? 'bad' : 'warn');
+export const scaleName = (lv) => ({ good: L('Strong', 'பலம்'), warn: L('Steady', 'நிலையானது'), bad: L('Needs care', 'கவனம் தேவை') }[scaleOf(lv)]);
+export const scaleTag = (lv) => `<span class="tag ${scaleOf(lv)}">${scaleName(lv)}</span>`;
+/** Tithi with its paksha in both languages: "வளர்பிறை திரயோதசி" / "Shukla Trayodasi" (Pournami / Amavasai alone). */
+export const tithiName = (t) => {
+  if (!t) return '';
+  const whole = t.index === 14 || t.index === 29 || !t.paksha;
+  if (ta()) return whole ? t.ta : `${t.paksha === 'Shukla' ? 'வளர்பிறை' : 'தேய்பிறை'} ${t.ta}`;
+  return whole ? t.name : `${t.paksha} ${t.name}`;
+};
 export const karanaName = (s) => (ta() ? s.karanaTa || s.karana : s.karana);
 
 // ---------------------------------------------------------------- time
@@ -90,23 +106,38 @@ export function fmtTime(d, tz, sec = false) {
   const m = String(x.getUTCMinutes()).padStart(2, '0');
   const s = String(x.getUTCSeconds()).padStart(2, '0');
   const hm = `${((h + 11) % 12) + 1}:${m}${sec ? `:${s}` : ''}`;
-  if (ta()) return `${h >= 4 && h < 12 ? 'காலை' : h >= 12 && h < 16 ? 'மதியம்' : h >= 16 && h < 19 ? 'மாலை' : 'இரவு'} ${hm}`;
+  if (ta()) return `${F.dayPartTa(h)} ${hm}`;
   return `${hm} ${h < 12 ? 'AM' : 'PM'}`;
 }
-export function fmtDate(d, tz) {
-  const x = localParts(d, tz);
-  return `${String(x.getUTCDate()).padStart(2, '0')}-${String(x.getUTCMonth() + 1).padStart(2, '0')}-${x.getUTCFullYear()}`;
-}
-const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const MONTHS_TA = ['ஜனவரி', 'பிப்ரவரி', 'மார்ச்', 'ஏப்ரல்', 'மே', 'ஜூன்', 'ஜூலை', 'ஆகஸ்ட்', 'செப்டம்பர்', 'அக்டோபர்', 'நவம்பர்', 'டிசம்பர்'];
-export const monthName = (m0) => (ta() ? MONTHS_TA[m0] : MONTHS_EN[m0]);
-export const fmtIsoDate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return `${d} ${monthName(m - 1)} ${y}`; };
+/** A date for people: "7 அக்டோபர் 2026" / "7 Oct 2026" (shared/fmt.js). */
+export function fmtDate(d, tz) { return F.fmtDay(new Date(d), state.lang, tz); }
+/** "YYYY-MM-DD" of an instant at tz — a key for code, never shown. */
+export const localYMD = (d, tz) => F.localYMD(d, tz);
+export const monthName = (m0) => (ta() ? F.MONTHS_TA[m0] : F.MONTHS_EN[m0]);
+export const fmtIsoDate = (iso) => F.fmtDay(String(iso), state.lang);
+/** "டிசம்பர் 2027" / "Dec 2027" — from an instant (with tz) or "YYYY-MM[-DD]". */
+export const fmtMonthOf = (d, tz = null) => (typeof d === 'string' ? F.fmtMonth(d.length === 7 ? `${d}-01` : d, state.lang) : F.fmtMonth(new Date(d), state.lang, tz));
+/** "காலை 6:13 – 10:38" / "6:13 – 10:38 AM". */
+export const fmtTimeRange = (a, b, tz) => F.fmtClockRange(new Date(a), new Date(b), state.lang, tz);
+/** "<what> வரை" / "till <what>" — Tamil "வரை" always comes after the time or date. */
+export const untilL = (what) => F.until(what, state.lang);
+/** "<what> முதல்" / "from <what>". */
+export const fromL = (what) => F.from(what, state.lang);
+/** Birth date & time: "15 மார்ச் 1984, காலை 6:45" / "15 Mar 1984, 6:45 AM". */
+export const fmtBirthL = (date, time) => (date ? F.fmtBirth(date, time, state.lang) : '');
+/** Years as "3 வ 6 மா 16 நா" / "3 y 6 m 16 d" (dasa balance). */
+export const fmtYMDL = (years) => F.fmtYMD(years, state.lang);
+/** Weekday name for 0 = Sunday: "செவ்வாய்க்கிழமை" / "Tuesday". */
+export const weekdayName = (i) => F.weekdayName(i, state.lang);
+/** Dasa / Bhukti boundaries (one convention, shared/fmt.js): named by start date, "till" = day before the next start. */
+export const periodRangeL = (p, tz = 0) => F.periodRange(p, state.lang, tz);
+export const periodStartL = (p, tz = 0) => F.periodStart(p, state.lang, tz);
+export const periodLastL = (p, tz = 0) => F.periodLast(p, state.lang, tz);
+export const periodMonthsL = (p, tz = 0) => F.periodMonths(p, state.lang, tz);
+export const periodYears = (p, tz = 0) => F.periodYears(p, tz);
 export function countdown(to, now = Date.now()) {
   if (!to) return '—';
-  let s = Math.max(0, Math.floor((new Date(to).getTime() - now) / 1000));
-  const h = Math.floor(s / 3600); s -= h * 3600;
-  const m = Math.floor(s / 60); s -= m * 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return F.fmtCountdown(new Date(to).getTime() - now, state.lang);
 }
 
 // ---------------------------------------------------------------- family
@@ -207,7 +238,7 @@ export function applyTheme() {
   const dark = pref === 'dark' || (pref === 'auto' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   // Browser / installed-app status bar = the top bar's colour (--surface-strong), so the two read as one surface.
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#18131a' : '#ffffff');
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#18131a' : '#ffffff'));
 }
 applyTheme();
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
@@ -246,7 +277,21 @@ export function zoneLine(loc = state.loc, { india = true, id = '' } = {}) {
   return `<span class="zone-line"><span class="zone-lbl">🕒 ${esc(zoneText(loc))}${loc.temp ? ` · ✈️ ${L('travelling', 'பயணத்தில்')}` : ''}</span>${abroad ? `<span class="india-time"${id ? ` id="${id}"` : ''}>${indiaTimeText()}</span>` : ''}</span>`;
 }
 /** "India time: 6:30 PM" — the small secondary line for diaspora users. */
-export const indiaTimeText = (now = new Date()) => `${L('India time', 'இந்திய நேரம்')}: ${fmtTime(now, 5.5)}`;
+/** Emergency numbers where the person is (selected place): UAE ambulance 998 / police 999, India 112, … */
+const EMERGENCY = {
+  AE: { en: 'ambulance 998, police 999', ta: 'ஆம்புலன்ஸ் 998, காவல் 999' },
+  IN: { en: '112', ta: '112' },
+  GB: { en: '999', ta: '999' },
+  US: { en: '911', ta: '911' }, CA: { en: '911', ta: '911' },
+  SG: { en: 'ambulance 995, police 999', ta: 'ஆம்புலன்ஸ் 995, காவல் 999' },
+  MY: { en: '999', ta: '999' }, LK: { en: '1990 (ambulance), 119 (police)', ta: '1990 (ஆம்புலன்ஸ்), 119 (காவல்)' },
+  AU: { en: '000', ta: '000' }, QA: { en: '999', ta: '999' }, SA: { en: '997 (ambulance), 999 (police)', ta: '997 (ஆம்புலன்ஸ்), 999 (காவல்)' },
+  KW: { en: '112', ta: '112' }, OM: { en: '9999', ta: '9999' }, BH: { en: '999', ta: '999' },
+};
+export const emergencyNumbers = (loc = state.loc) => bi(EMERGENCY[(loc && (loc.cc || countryOfLoc(loc))) || 'IN'] || { en: '112', ta: '112' });
+/** "Emergency: ambulance 998, police 999." / "அவசரம்: 112." */
+export const emergencyLine = (loc = state.loc) => `${L('Emergency', 'அவசரம்')}: ${emergencyNumbers(loc)}.`;
+export const indiaTimeText =(now = new Date()) => `${L('India time', 'இந்திய நேரம்')}: ${fmtTime(now, 5.5)}`;
 
 // ---------------------------------------------------------------- network
 export async function api(path, { method = 'GET', body } = {}) {
@@ -516,6 +561,12 @@ export function go(view, params = {}, opts = {}) {
   document.dispatchEvent(new CustomEvent('kj:screen', { detail: view }));
   if (prev !== view && !opts.back) scrollTo({ top: 0 });
   screens[view].render(sec, params);
+  // The page title follows the screen, in the current language ("பஞ்சாங்கம் · துணை").
+  try {
+    const h = view === 'home' ? null : sec.querySelector('.sub-head h2, h2');
+    const name = h?.textContent?.trim();
+    document.title = name ? `${name} · ${brand()}` : `${brand()} — ${L('Your companion on life’s path', 'உங்கள் வாழ்வின் வழித்துணை')}`;
+  } catch { /* title is cosmetic */ }
   // Screen readers / keyboard: move focus to the new screen's heading when the person navigates.
   if (prev !== view && document.activeElement && document.activeElement !== document.body) {
     const h = sec.querySelector('h1, h2');

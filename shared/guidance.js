@@ -408,10 +408,10 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       if (acute) add('answer', L('For a symptom like this, please see a doctor first — that comes before any horoscope reading. If it is urgent, call 112. Below is only general wellbeing and an optional spiritual practice.', 'இத்தகைய அறிகுறிக்கு முதலில் மருத்துவரைப் பாருங்கள் — எந்த ஜாதகப் பலனையும் விட அதுவே முதன்மை. அவசரம் என்றால் 112. கீழே பொது நலமும் விருப்ப ஆன்மீகப் பழக்கமும் மட்டும்.'));
       if (!f) { needChart(); break; }
       const hg = healthGuide(f.chart, { gender: life.gender });
-      // Two separated parts: general wellbeing (not astrology, needs medical review) and an optional traditional
+      // Two separated parts: general wellbeing (not astrology, with a see-a-doctor line) and an optional traditional
       // reflection (spiritual practices only, not health advice). No diet, body-part or period-level reading.
       if (!acute) add('answer', L('Your horoscope does not decide your health, and good care is the same in every period: regular sleep, water, a daily walk and age-suited check-ups — and see a doctor for any symptom.', 'உங்கள் ஆரோக்கியத்தை ஜாதகம் தீர்மானிப்பதில்லை; நல்ல கவனிப்பு எல்லாக் காலத்திலும் ஒன்றே: சீரான உறக்கம், தண்ணீர், தினசரி நடை, வயதுக்கேற்ற பரிசோதனைகள் — எந்த அறிகுறிக்கும் மருத்துவரைப் பாருங்கள்.'));
-      add('facts', ...hg.wellbeing.habits.map((x) => `${tr(x)} (${L('general wellbeing — needs medical review', 'பொது நலம் — மருத்துவ மதிப்பாய்வு தேவை')})`));
+      add('facts', ...hg.wellbeing.habits.map((x) => `${tr(x)} (${L('general wellbeing — for any symptom, see a doctor', 'பொது நலம் — அறிகுறி இருந்தால் மருத்துவரைப் பாருங்கள்')})`));
       add('factors', dasaLine(f, lang), ...hg.reflection.gochara.slice(0, 2).map((n) => `${lang === 'ta' ? 'கோசாரம்' : 'Transit'}: ${tr(n)}`));
       add('uncertainty', L('The traditional reflection is a spiritual practice — not a diagnosis, not a prediction of illness and not health advice. Your doctor’s advice always comes first; keep regular check-ups.', 'மரபுச் சிந்தனை ஒரு ஆன்மீகப் பழக்கம் — நோய் கண்டறிதலோ நோய் கணிப்போ உடல்நல ஆலோசனையோ அல்ல. மருத்துவர் ஆலோசனையே எப்போதும் முதன்மை; வழக்கமான பரிசோதனைகளைத் தொடருங்கள்.'));
       add('practice', ...hg.reflection.practices.slice(0, 2).map((r) => `${tr(r.why)}: ${tr(r.lamp)}`));

@@ -146,8 +146,8 @@ export const PALAN_AREAS = [
   { id: 'property', houses: [4, 11, 2], negate: [3, 12], karakas: ['Mars', 'Venus'], name: T('Home, land & vehicles', 'வீடு, நிலம், வாகனம்'),
     for: T('buying a home, land or a vehicle', 'வீடு, நிலம், வாகனம் வாங்குவதற்கு'), tip: T('Check documents carefully and decide within your means.', 'ஆவணங்களைக் கவனமாகச் சரிபார்த்து, உங்கள் சக்திக்கு ஏற்ப முடிவெடுங்கள்.') },
   { id: 'spiritual', houses: [9, 12, 5], negate: [], karakas: ['Jupiter', 'Ketu'], name: T('Spiritual life', 'ஆன்மீக வாழ்க்கை'),
-    for: T('spiritual growth and pilgrimage', 'ஆன்மீக முன்னேற்றத்திற்கும் தீர்த்த யாத்திரைக்கும்'), tip: T('A simple daily prayer and an occasional temple visit keep the mind clear.', 'தினசரி ஒரு எளிய வழிபாடும் அவ்வப்போது கோவில் தரிசனமும் மனதைத் தெளிவாக்கும்.'),
-    tipAllFaiths: T('A simple daily prayer in your own faith and quiet time for reflection keep the mind clear.', 'உங்கள் நம்பிக்கைப்படி தினசரி ஒரு எளிய பிரார்த்தனையும் அமைதியான சிந்தனை நேரமும் மனதைத் தெளிவாக்கும்.'),
+    for: T('spiritual growth and pilgrimage', 'ஆன்மீக முன்னேற்றத்திற்கும் தீர்த்த யாத்திரைக்கும்'), tip: T('A simple daily prayer and an occasional temple visit keep the mind clear.', 'தினசரி ஓர் எளிய வழிபாடும் அவ்வப்போது கோவில் தரிசனமும் மனதைத் தெளிவாக்கும்.'),
+    tipAllFaiths: T('A simple daily prayer in your own faith and quiet time for reflection keep the mind clear.', 'உங்கள் நம்பிக்கைப்படி தினசரி ஓர் எளிய பிரார்த்தனையும் அமைதியான சிந்தனை நேரமும் மனதைத் தெளிவாக்கும்.'),
     forAllFaiths: T('spiritual growth and reflection', 'ஆன்மீக முன்னேற்றத்திற்கும் அமைதியான சிந்தனைக்கும்') },
 ];
 
@@ -169,8 +169,10 @@ export function monthYear(x, tz = 5.5) {
   return T(`${MONTHS_EN[d.getUTCMonth()]} ${d.getUTCFullYear()}`, `${MONTHS_TA[d.getUTCMonth()]} ${d.getUTCFullYear()}`);
 }
 const yearOf = (x, tz = 5.5) => new Date(toDate(x).getTime() + tz * 3600000).getUTCFullYear();
-const span = (a, b, tz) => { const s = monthYear(a, tz), e = monthYear(b, tz); return T(`${s.en} – ${e.en}`, `${s.ta} – ${e.ta}`); };
-const yspan = (a, b, tz) => { const ya = yearOf(a, tz), yb = yearOf(b, tz); return ya === yb ? `${ya}` : `${ya}–${yb}`; };
+// Dasa / Bhukti boundaries, one convention everywhere (shared/fmt.js): a period runs till the day BEFORE the next starts.
+const last = (end) => new Date(toDate(end).getTime() - 86400000);
+const span = (a, b, tz) => { const s = monthYear(a, tz), e = monthYear(last(b), tz); return T(`${s.en} – ${e.en}`, `${s.ta} – ${e.ta}`); };
+const yspan = (a, b, tz) => { const ya = yearOf(a, tz), yb = yearOf(last(b), tz); return ya === yb ? `${ya}` : `${ya}–${yb}`; };
 
 /** House significations counted from a reference sign (Lagna, or the Moon sign when the time is unknown). */
 function significationsFrom(chart, ref) {
@@ -415,8 +417,8 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
   const next = [];
   if (md?.bhuktis) {
     const upcoming = md.bhuktis.filter((b) => toDate(b.start) > now && toDate(b.start) < hEnd).slice(0, 2);
-    for (const b of upcoming) next.push(T(`From ${monthYear(b.start, zone).en}: ${b.lord} Bhukti (until ${monthYear(b.end, zone).en}) brings forward ${pd(b.lord).en}.`,
-      `${monthYear(b.start, zone).ta} முதல் ${pAdj(b.lord)} புக்தி (${monthYear(b.end, zone).ta} வரை) — ${pd(b.lord).ta} முன்னிறுத்தப்படும்.`));
+    for (const b of upcoming) next.push(T(`From ${monthYear(b.start, zone).en}: ${b.lord} Bhukti (till ${monthYear(last(b.end), zone).en}) brings forward ${pd(b.lord).en}.`,
+      `${monthYear(b.start, zone).ta} முதல் ${pAdj(b.lord)} புக்தி (${monthYear(last(b.end), zone).ta} வரை) — ${pd(b.lord).ta} முன்னிறுத்தப்படும்.`));
   }
   const nStart = next.length; // the Maha Dasa change forms the second paragraph
   const nextMd = (chart.dasa?.periods || []).find((p) => md && toDate(p.start).getTime() >= toDate(md.end).getTime() - 1000);
@@ -430,7 +432,7 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
       next.push(T(`In your chart ${k} connects with ${listEn(focus.map((h) => HOUSE[h].en))} — these come to the front then.`, `உங்கள் ஜாதகத்தில் ${pTa(k)} ${listTa(focus.map((h) => HOUSE[h].ta))} ஆகியவற்றுடன் தொடர்புடையவர் — அப்போது இவை முன்னிலை பெறும்.`));
     }
   } else if (md) {
-    next.push(T(`${md.lord} Maha Dasa runs through the whole of the next ${years} years (until ${yearOf(md.end, zone)}); its Bhuktis set the pace.`, `அடுத்த ${years} ஆண்டுகள் முழுவதும் ${pAdj(md.lord)} மகா தசை (${yearOf(md.end, zone)} வரை) தொடர்கிறது; அதன் புக்திகளே வேகத்தைத் தீர்மானிக்கும்.`));
+    next.push(T(`${md.lord} Maha Dasa runs through the whole of the next ${years} years (till ${yearOf(last(md.end), zone)}); its Bhuktis set the pace.`, `அடுத்த ${years} ஆண்டுகள் முழுவதும் ${pAdj(md.lord)} மகா தசை (${yearOf(last(md.end), zone)} வரை) தொடர்கிறது; அதன் புக்திகளே வேகத்தைத் தீர்மானிக்கும்.`));
   }
   const areaInfo = areas.map((a) => ({ a, w: areaWindows(chart, a, { now, years, ref }) }));
   // Supportive windows, grouped when several areas share the same windows (one line per distinct set).
@@ -444,7 +446,7 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
   }
   const named = [...groups.values()].map(({ ws, areas: as }) => T(`${as.map((a) => a.name.en).join(', ')}: ${ws.map((x) => `${x.md} Dasa – ${x.ads.join('/')} Bhukti (${yspan(x.start, x.end, zone)})`).join(', ')}`,
     `${as.map((a) => a.name.ta).join(', ')}: ${ws.map((x) => `${pAdj(x.md)} தசை – ${x.ads.map(pAdj).join('/')} புக்தி (${yspan(x.start, x.end, zone)})`).join(', ')}`));
-  sections.push({ id: 'next', title: T('Next', 'அடுத்து வரும் காலம்'), lines: safe(next), paras: [safe(next.slice(0, nStart)), safe(next.slice(nStart))], windows: safe(named), windowsTitle: T(`Supportive windows (next ${years} years)`, `ஆதரவான காலங்கள் (அடுத்த ${years} ஆண்டுகள்)`), stability: ['moonNakshatra', 'moonPada'] });
+  sections.push({ id: 'next', title: T('Next', 'அடுத்து வரும் காலம்'), lines: safe(next), paras: [safe(next.slice(0, nStart)), safe(next.slice(nStart))], windows: safe(named), windowsTitle: T(`Supportive Dasa–Bhukti periods (next ${years} years)`, `ஆதரவான தசா–புக்தி காலங்கள் (அடுத்த ${years} ஆண்டுகள்)`), stability: ['moonNakshatra', 'moonPada'] });
 
   // ---- Life areas
   const promiseOf = (id) => (hasLagna ? analysis?.areas?.find((x) => x.id === id)?.level : null);
@@ -456,7 +458,7 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
     const cur = w.current;
     if (cur) {
       const nm = T(`${cur.md} Dasa – ${cur.ad} Bhukti`, `${pAdj(cur.md)} தசை – ${pAdj(cur.ad)} புக்தி`);
-      const until = monthYear(cur.end, zone);
+      const until = monthYear(last(cur.end), zone);
       if (cur.score >= 3) lines.push(T(`The current ${nm.en} period (until ${until.en}) supports ${forTxt.en}.`, `இப்போதைய ${nm.ta} (${until.ta} வரை) ${forTxt.ta} ஆதரவான காலம்.`));
       else if (cur.score >= 1) lines.push(T(`The current ${nm.en} period (until ${until.en}) gives steady, gradual progress in ${forTxt.en}.`, `இப்போதைய ${nm.ta} (${until.ta} வரை) ${sandhi(forTxt.ta, 'சீரான')}, படிப்படியான முன்னேற்றம் தரும் காலம்.`));
       else lines.push(T(`For now (until ${until.en}) it is a time to prepare and lay the groundwork for ${forTxt.en}.`, `இப்போது (${until.ta} வரை) ${sandhi(forTxt.ta, 'தயாராகி')} அடித்தளம் அமைக்க வேண்டிய காலம்.`));
@@ -465,7 +467,7 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
       const ws = w.windows;
       lines.push(T(`Ahead, ${ws.map((x) => `${x.md} Dasa – ${x.ads.join('/')} Bhukti (${yspan(x.start, x.end, zone)})`).join(' and ')} ${ws.length > 1 ? 'are' : 'is'} the most supportive ${ws.length > 1 ? 'windows' : 'window'} for ${forTxt.en}.`,
         `அடுத்து ${ws.map((x) => `${pAdj(x.md)} தசை – ${x.ads.map(pAdj).join('/')} புக்தி (${yspan(x.start, x.end, zone)})`).join(', ')} ${forTxt.ta} மிகவும் சாதகமான ${ws.length > 1 ? 'காலங்கள்' : 'காலம்'}.`));
-    } else lines.push(HORIZON_LINES.windows(years));
+    } else if (!(a.id === 'marriage' && maritalStatus === 'married')) lines.push(HORIZON_LINES.windows(years)); // never "no window for marriage" to the married
     lines.push(!adult && a.kidTip ? a.kidTip : a.tip);
     return { id: a.id, title: a.name, lines: safe(lines), windows: w.windows.map((x) => ({ md: x.md, ads: x.ads, start: x.start, end: x.end })) };
   });

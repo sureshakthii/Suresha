@@ -4,7 +4,7 @@
   "webDir": "mobile/www",
   "android": {
     "allowMixedContent": false,
-    "backgroundColor": "#141016"
+    "backgroundColor": "#3d0d1f"
   },
   "ios": {
     "contentInset": "never"
@@ -20,7 +20,7 @@
     },
     "StatusBar": {
       "style": "DARK",
-      "backgroundColor": "#141016",
+      "backgroundColor": "#3d0d1f",
       "overlaysWebView": false
     },
     "PushNotifications": {
@@ -31,5 +31,5 @@
       ]
     }
   },
-  "backgroundColor": "#141016"
+  "backgroundColor": "#3d0d1f"
 }

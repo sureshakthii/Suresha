@@ -175,7 +175,7 @@ export function proposeSiddhar(chart) {
   return {
     main, second,
     why: T(`Your birth star's lord is ${starLord}${second ? `; your soul planet (Atmakaraka) is ${ak}` : ''}.`,
-      `உங்கள் ஜன்ம நட்சத்திர அதிபதி ${PLANETS[starLord].ta}${second ? `; ஆத்மகாரகன் ${PLANETS[ak].ta}` : ''}.`),
+      `உங்கள் ஜென்ம நட்சத்திர அதிபதி ${PLANETS[starLord].ta}${second ? `; ஆத்மகாரகன் ${PLANETS[ak].ta}` : ''}.`),
     howTo: T('On Thursdays, light a ghee lamp, chant the Siddhar\'s name 108 times and feed someone in need. Visit the Jeeva Samadhi once a year.',
       'வியாழன்தோறும் நெய் தீபம் ஏற்றி, சித்தரின் திருநாமத்தை 108 முறை சொல்லி, ஒருவருக்கு அன்னம் அளியுங்கள். ஆண்டுக்கு ஒருமுறை ஜீவ சமாதியைத் தரிசியுங்கள்.'),
   };
@@ -197,7 +197,7 @@ export function personalPlaylist(chart, now = new Date()) {
   const dasa = chart.dasa?.periods?.find((p) => now >= p.start && now < p.end);
   add('start', T('Vinayagar — to begin', 'விநாயகர் — தொடக்கம்'), 'ஓம் கம் கணபதயே நமஹ', T('Removes obstacles before every prayer', 'எந்த வழிபாட்டிற்கும் முன் தடைகளை நீக்க'), 3, 'Om Gam Ganapataye Namaha');
   add('ishta', T(`Ishta Theivam (Karakamsa method) — ${ishta.deity.en}`, `இஷ்ட தெய்வம் (காரகாம்ச முறை) — ${ishta.deity.ta}`), ishta.mantra, T('Suggested by the Karakamsa method — optional', 'காரகாம்ச முறையின் பரிந்துரை — விருப்பத்திற்குரியது'), 27, ishta.mantraEn);
-  add('star', T(`Birth-star deity — ${ishta.starDeity.en}`, `நட்சத்திரத் தெய்வம் — ${ishta.starDeity.ta}`), `ஓம் ${ishta.starDeity.ta.split(' (')[0].split(' / ')[0]} போற்றி`, T('Deity of your janma nakshatra', 'ஜன்ம நட்சத்திர வழிபாட்டுத் தெய்வம்'), 9, `Om ${starDeityEn} Potri`);
+  add('star', T(`Birth-star deity — ${ishta.starDeity.en}`, `நட்சத்திரத் தெய்வம் — ${ishta.starDeity.ta}`), `ஓம் ${ishta.starDeity.ta.split(' (')[0].split(' / ')[0]} போற்றி`, T('Deity of your janma nakshatra', 'ஜென்ம நட்சத்திர வழிபாட்டுத் தெய்வம்'), 9, `Om ${starDeityEn} Potri`);
   if (chart.planets.Lagna) add('lagna', T(`Lagna lord — ${lagnaLord}`, `லக்னாதிபதி — ${PLANETS[lagnaLord].ta}`), NAVAGRAHA[lagnaLord].mantra.ta.split(' · ')[0], T('Strengthens health and confidence', 'ஆரோக்கியம், தன்னம்பிக்கை வலுப்பெற'), 9, grahaEn(lagnaLord));
   if (dasa) add('dasa', T(`Running dasa — ${dasa.lord}`, `நடப்பு தசை — ${PLANETS[dasa.lord].ta}`), NAVAGRAHA[dasa.lord].mantra.ta.split(' · ')[0], T('Brings out the best of the current Maha Dasa', 'நடப்பு மகா தசையின் நற்பலனுக்கு'), 9, grahaEn(dasa.lord));
   for (const w of weak) add(`weak_${w.planet}`, T(`Strengthen ${w.planet}`, `${PLANETS[w.planet].ta} பலம் பெற`), NAVAGRAHA[w.planet].mantra.ta.split(' · ')[0], T(`${w.planet} is weak in your chart`, `உங்கள் ஜாதகத்தில் ${PLANETS[w.planet].ta} பலம் குறைவு`), 9, grahaEn(w.planet));

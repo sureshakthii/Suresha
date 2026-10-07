@@ -412,7 +412,7 @@ const periodName = (p) => (p.kind === 'dasa'
 
 function timing(it, chart, now, run) {
   if (it.current) {
-    return { activeNow: true, by: 'transit', eases: it.data.ends, text: T(`Running now (transit) — eases after about ${monthYear(it.data.ends).en}.`, `இப்போது நடப்பில் (கோசாரம்) — சுமார் ${monthYear(it.data.ends).ta}க்குப் பின் தணியும்.`) };
+    return { activeNow: true, by: 'transit', eases: it.data.ends, text: T(`Running now (transit) — eases after about ${monthYear(it.data.ends).en}.`, `இப்போது நடப்பில் (கோசாரம்) — சுமார் ${monthYear(it.data.ends).ta}-க்குப் பின் தணியும்.`) };
   }
   const lords = it.planets;
   const md = run.md, ad = run.ad;
@@ -423,12 +423,12 @@ function timing(it, chart, now, run) {
     const cur = byBhukti ? { kind: 'bhukti', lord: ad.lord, md: md.lord, start: ad.start, end: ad.end } : { kind: 'dasa', lord: md.lord, md: md.lord, start: md.start, end: md.end };
     return {
       activeNow: true, by: cur.kind, period: cur, eases: cur.end, next,
-      text: T(`Active now — the running ${periodName(cur).en} involves ${cur.lord}; tradition reads it as easing after ${monthYear(cur.end).en}.`, `இப்போது நடப்பில் — நடப்பு ${periodName(cur).ta} ${pTa(cur.lord)} சம்பந்தப்பட்டது; ${monthYear(cur.end).ta}க்குப் பின் தணியும் என்பது மரபு.`),
+      text: T(`Active now — the running ${periodName(cur).en} involves ${cur.lord}; tradition reads it as easing after ${monthYear(new Date(cur.end) - 86400000).en}.`, `இப்போது நடப்பில் — நடப்பு ${periodName(cur).ta} ${pTa(cur.lord)} சம்பந்தப்பட்டது; ${monthYear(new Date(cur.end) - 86400000).ta}-க்குப் பின் தணியும் என்பது மரபு.`),
     };
   }
   return {
     activeNow: false, next,
-    text: next ? T(`Not active in the running period; it comes into focus in ${periodName(next).en} (${monthYear(next.start).en} – ${monthYear(next.end).en}) — begin the parigaram before then.`, `நடப்புக் காலத்தில் இது இயங்கவில்லை; ${periodName(next).ta} (${monthYear(next.start).ta} – ${monthYear(next.end).ta}) காலத்தில் முன்னுக்கு வரும் — அதற்கு முன்பே பரிகாரத்தைத் தொடங்குங்கள்.`)
+    text: next ? T(`Not active in the running period; it comes into focus in ${periodName(next).en} (${monthYear(next.start).en} – ${monthYear(new Date(next.end) - 86400000).en}) — begin the parigaram before then.`, `நடப்புக் காலத்தில் இது இயங்கவில்லை; ${periodName(next).ta} (${monthYear(next.start).ta} – ${monthYear(new Date(next.end) - 86400000).ta}) காலத்தில் முன்னுக்கு வரும் — அதற்கு முன்பே பரிகாரத்தைத் தொடங்குங்கள்.`)
       : T('Not active in the running period.', 'நடப்புக் காலத்தில் இது இயங்கவில்லை.'),
   };
 }
@@ -579,9 +579,9 @@ const joinT = (arr, sepEn = ', ', sepTa = ', ') => T(arr.map((x) => x.en).join(s
  * Order: framing → key afflictions in order → how they combine (by life area) → cancellations → timing → remedy
  * summary (planets and sthalams) → belief framing (and the fertility-specialist line when children are involved).
  */
-export function expertView(diag, { name = '', faith = 'hindu', focus = null } = {}) {
+export function expertView(diag, { name = '', faith = 'hindu', focus = null, married = false } = {}) {
   const P = [];
-  const who = name ? T(`${name}'s chart`, `${name} அவர்களின் ஜாதகம்`) : T('This chart', 'இந்த ஜாதகம்');
+  const who = name ? T(`${name}'s chart`, `${name} — ஜாதகம்`) : T('This chart', 'இந்த ஜாதகம்');
   if (!diag?.available) return { title: T('Expert view', 'நிபுணர் பார்வை'), paras: [T('Birth details are needed for a dosham reading.', 'தோஷம் பார்க்கப் பிறப்பு விவரம் தேவை.')] };
   if (diag.minor) return { title: T('Expert view', 'நிபுணர் பார்வை'), paras: [T('For children, Thunai does not read doshams. A short daily prayer in the family\'s own way, steady study, sleep and kind words are the best support at this age.', 'குழந்தைகளுக்குத் துணை தோஷம் பார்ப்பதில்லை. குடும்ப வழக்கப்படி தினமும் ஒரு சிறு பிரார்த்தனை, சீரான படிப்பு, உறக்கம், இனிய சொல் — இந்த வயதுக்கு இதுவே சிறந்த துணை.'), CHILD_PRACTICE] };
   const items = focus ? doshamsForArea(diag, focus) : diag.items;
@@ -616,8 +616,12 @@ export function expertView(diag, { name = '', faith = 'hindu', focus = null } = 
     }
     const mr = byArea('marriage');
     if (mr.length && (mr.some((x) => x.severity !== 'mild') || mr.length >= 2)) {
-      P.push(T(`Marriage: ${mr.map((x) => x.name.en).join(', ')} touch the 7th house / Venus. Tradition reads this as marriage coming after some delay; in matching, a partner with a similar placement balances it (dosha samyam).`,
-        `திருமணம்: ${mr.map((x) => x.name.ta).join(', ')} — 7-ம் வீடு / சுக்கிரனைத் தொடுகின்றன. திருமணம் சற்றுத் தாமதித்து அமையும் என்பது மரபு வாசிப்பு; பொருத்தத்தில் இதே அமைப்புள்ள வரன் இதைச் சமன் செய்யும் (தோஷ சாம்யம்).`));
+      // Already married: no "marriage after delay" or matching (வரன்) line — only married-life harmony.
+      P.push(married
+        ? T(`Married life: ${mr.map((x) => x.name.en).join(', ')} touch the 7th house / Venus. Tradition asks for patience, kind words and prayer together — they keep the bond strong.`,
+          `மண வாழ்க்கை: ${mr.map((x) => x.name.ta).join(', ')} — 7-ம் வீடு / சுக்கிரனைத் தொடுகின்றன. பொறுமை, இனிய சொல், சேர்ந்து வழிபாடு — இவை உறவை உறுதியாக்கும் என்பது மரபு.`)
+        : T(`Marriage: ${mr.map((x) => x.name.en).join(', ')} touch the 7th house / Venus. Tradition reads this as marriage coming after some delay; in matching, a partner with a similar placement balances it (dosha samyam).`,
+          `திருமணம்: ${mr.map((x) => x.name.ta).join(', ')} — 7-ம் வீடு / சுக்கிரனைத் தொடுகின்றன. திருமணம் சற்றுத் தாமதித்து அமையும் என்பது மரபு வாசிப்பு; பொருத்தத்தில் இதே அமைப்புள்ள வரன் இதைச் சமன் செய்யும் (தோஷ சாம்யம்).`));
     }
     const ef = byArea('effort').concat(byArea('career')).filter((x, i, a) => a.indexOf(x) === i);
     if (ef.length >= 2 && !(lagnaHit && ll)) P.push(T(`Work and effort: ${ef.map((x) => x.name.en).join(', ')} — tradition reads steady results after sustained effort; shortcuts do not suit this chart.`, `வேலை, முயற்சி: ${ef.map((x) => x.name.ta).join(', ')} — தொடர் முயற்சிக்குப் பின் நிலையான பலன் என்பது மரபு வாசிப்பு; குறுக்கு வழி இந்த ஜாதகத்துக்கு ஏற்றதல்ல.`));
@@ -628,7 +632,7 @@ export function expertView(diag, { name = '', faith = 'hindu', focus = null } = 
     const act = items.filter((it) => it.timing?.activeNow);
     const run = diag.running;
     const runTxt = run?.md ? T(`You are in ${run.md} Dasa${run.ad ? ` / ${run.ad} Bhukti` : ''}.`, `நீங்கள் இப்போது ${dasaTa(run.md)} தசை${run.ad ? ` / ${dasaTa(run.ad)} புக்தி` : ''}யில்.`) : T('', '');
-    if (act.length) P.push(T(`Timing: ${runTxt.en} Active now: ${act.map((it) => `${it.name.en} (${it.timing.eases ? `eases after ${monthYear(it.timing.eases).en}` : 'running'})`).join('; ')}.`, `காலம்: ${runTxt.ta} இப்போது நடப்பில்: ${act.map((it) => `${it.name.ta} (${it.timing.eases ? `${monthYear(it.timing.eases).ta}க்குப் பின் தணியும்` : 'நடப்பில்'})`).join('; ')}.`));
+    if (act.length) P.push(T(`Timing: ${runTxt.en} Active now: ${act.map((it) => `${it.name.en} (${it.timing.eases ? `eases after ${monthYear(it.timing.eases).en}` : 'running'})`).join('; ')}.`, `காலம்: ${runTxt.ta} இப்போது நடப்பில்: ${act.map((it) => `${it.name.ta} (${it.timing.eases ? `${monthYear(it.timing.eases).ta}-க்குப் பின் தணியும்` : 'நடப்பில்'})`).join('; ')}.`));
     else P.push(T(`Timing: ${runTxt.en} None of these is in focus in the running period — a good time to do the parigaram calmly, before they come into focus.`, `காலம்: ${runTxt.ta} நடப்புக் காலத்தில் இவை எதுவும் முன்னிலையில் இல்லை — அவை முன்னுக்கு வரும் முன், அமைதியாகப் பரிகாரம் செய்ய ஏற்ற நேரம்.`));
     if (diag.guru) P.push(diag.guru.text);
     // Remedy summary

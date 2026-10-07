@@ -115,7 +115,7 @@ function renderPrediction(c, m) {
     <div class="card glass"><div class="card-title">🪔 ${faith === 'hindu' ? L('Parigaram', 'பரிகாரம்') : L('A simple practice (optional)', 'எளிய வழி (விருப்பம்)')}</div><p>${hymnText(bi(r.remedy))}</p>
       ${r.karakaRemedies.map((k) => `<p class="small"><span style="color:${COLOR[k.planet]}">${GLYPH[k.planet]}</span> ${esc(planetName(k.planet))}: ${hymnText(bi(k.free))}</p>`).join('')}</div>
     <button class="btn-gold" id="lifeExplain">📜 ${L('Detailed explanation', 'விரிவான விளக்கம்')}</button>
-    <div class="card glass" id="lifeAi" hidden><div class="card-title"><span>📜 ${L('Explanation', 'விளக்கம்')}</span><button class="link-btn" id="lifeSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="lifeText"></div></div>
+    <div class="card glass" id="lifeAi" hidden><div class="card-title"><span>📜 ${L('Explanation', 'விளக்கம்')}</span><button class="link-btn" id="lifeSpeak" aria-label="${esc(L('Read aloud', 'சத்தமாக வாசி'))}">🔊</button></div><div class="reply" id="lifeText"></div></div>
     <p class="muted small center">${L('Astrology shows favourable timing; effort, family support and the right professional advice make it happen.', 'ஜோதிடம் சாதகமான நேரத்தைக் காட்டும்; முயற்சி, குடும்ப ஆதரவு, சரியான நிபுணர் ஆலோசனையே அதை நிறைவேற்றும்.')}</p>`;
   $('#lifeExplain').addEventListener('click', async () => {
     $('#lifeAi').hidden = false;

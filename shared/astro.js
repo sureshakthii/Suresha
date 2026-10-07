@@ -5,26 +5,27 @@ import { zoneOffsetMinutes, birthInput } from './datetime.js';
 import { vargaRasi, VARGAS } from './varga.js';
 
 export const RASIS = [
-  { en: 'Mesha', ta: 'மேஷம்', short: 'மே', lord: 'Mars' },
-  { en: 'Rishaba', ta: 'ரிஷபம்', short: 'ரி', lord: 'Venus' },
-  { en: 'Mithuna', ta: 'மிதுனம்', short: 'மி', lord: 'Mercury' },
-  { en: 'Kataka', ta: 'கடகம்', short: 'க', lord: 'Moon' },
-  { en: 'Simha', ta: 'சிம்மம்', short: 'சி', lord: 'Sun' },
+  // English display names: Tamil-style transliteration, the same system as the star names below.
+  { en: 'Mesham', ta: 'மேஷம்', short: 'மே', lord: 'Mars' },
+  { en: 'Rishabam', ta: 'ரிஷபம்', short: 'ரி', lord: 'Venus' },
+  { en: 'Mithunam', ta: 'மிதுனம்', short: 'மி', lord: 'Mercury' },
+  { en: 'Kadagam', ta: 'கடகம்', short: 'க', lord: 'Moon' },
+  { en: 'Simmam', ta: 'சிம்மம்', short: 'சி', lord: 'Sun' },
   { en: 'Kanni', ta: 'கன்னி', short: 'கன்', lord: 'Mercury' },
-  { en: 'Thula', ta: 'துலாம்', short: 'து', lord: 'Venus' },
-  { en: 'Vrischika', ta: 'விருச்சிகம்', short: 'வி', lord: 'Mars' },
+  { en: 'Thulam', ta: 'துலாம்', short: 'து', lord: 'Venus' },
+  { en: 'Vrischikam', ta: 'விருச்சிகம்', short: 'வி', lord: 'Mars' },
   { en: 'Dhanusu', ta: 'தனுசு', short: 'த', lord: 'Jupiter' },
-  { en: 'Makara', ta: 'மகரம்', short: 'ம', lord: 'Saturn' },
-  { en: 'Kumbha', ta: 'கும்பம்', short: 'கு', lord: 'Saturn' },
-  { en: 'Meena', ta: 'மீனம்', short: 'மீ', lord: 'Jupiter' },
+  { en: 'Magaram', ta: 'மகரம்', short: 'ம', lord: 'Saturn' },
+  { en: 'Kumbam', ta: 'கும்பம்', short: 'கு', lord: 'Saturn' },
+  { en: 'Meenam', ta: 'மீனம்', short: 'மீ', lord: 'Jupiter' },
 ];
 
 export const NAKSHATRAS = [
   ['Ashwini', 'அஸ்வினி', 'Ketu', 'kshipra'],
   ['Bharani', 'பரணி', 'Venus', 'ugra'],
-  ['Krittika', 'கார்த்திகை', 'Sun', 'mishra'],
+  ['Karthigai', 'கார்த்திகை', 'Sun', 'mishra'],
   ['Rohini', 'ரோகிணி', 'Moon', 'dhruva'],
-  ['Mrigashira', 'மிருகசீரிஷம்', 'Mars', 'mridu'],
+  ['Mirugasirisham', 'மிருகசீரிஷம்', 'Mars', 'mridu'],
   ['Thiruvathirai', 'திருவாதிரை', 'Rahu', 'tikshna'],
   ['Punarpoosam', 'புனர்பூசம்', 'Jupiter', 'chara'],
   ['Poosam', 'பூசம்', 'Saturn', 'kshipra'],

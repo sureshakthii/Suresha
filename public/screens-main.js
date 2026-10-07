@@ -10,6 +10,7 @@ import { nameLetters } from './shared/special.js';
 import { timeReliability } from './shared/birthtime.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtDate, countdown,
+  dasaName, fmtTimeRange, untilL, scaleTag, tithiName, fmtYMDL, fmtIsoDate, localYMD, fmtBirthL, periodRangeL, periodStartL, periodLastL,
   activeMember, chartOf, registerScreen, go, STATIC, sse, toast, speak, saveFamily,
   displayName, copyright, store, listen, micMessage,
   yogaName, karanaName,
@@ -24,7 +25,7 @@ import { searchPill } from './screens-hubs.js';
 import { QUICK, toolById } from './tool-registry.js';
 import { healthGuide } from './shared/health.js';
 import { healthNowHtml } from './screens-health.js';
-import { dailyReview } from './shared/daily.js';
+import { dailyReview, dayVerdict } from './shared/daily.js';
 import { todayPlan } from './shared/today-plan.js';
 import { hymnText } from './hymn-links.js';
 import { faithOf, faithWelcome, faithBlessing, universalPractice, isHinduFaith } from './shared/faith.js';
@@ -38,17 +39,20 @@ import { growHomeHtml } from './screens-journal.js'; // morning brief + diary / 
 /** Age profile of a family member (calendar age today at the selected place) — the top-most filter on every card. */
 export const ageOf = (m) => ageProfile(m, { tz: state.loc?.tz });
 
-const TARA = [['Janma', 'ஜன்ம', 'warn'], ['Sampat', 'சம்பத்', 'good'], ['Vipat', 'விபத்', 'bad'], ['Kshema', 'க்ஷேம', 'good'], ['Pratyak', 'பிரத்யக்', 'bad'], ['Sadhana', 'சாதக', 'good'], ['Naidhana', 'நைதன', 'bad'], ['Mitra', 'மித்ர', 'good'], ['Parama Mitra', 'பரம மித்ர', 'good']];
+const TARA = [['Janma', 'ஜென்ம', 'warn'], ['Sampat', 'சம்பத்', 'good'], ['Vipat', 'விபத்', 'bad'], ['Kshema', 'க்ஷேம', 'good'], ['Pratyak', 'பிரத்யக்', 'bad'], ['Sadhana', 'சாதக', 'good'], ['Naidhana', 'நைதன', 'bad'], ['Mitra', 'மித்ர', 'good'], ['Parama Mitra', 'பரம மித்ர', 'good']];
 const goodBad = (k) => (k === 'good' ? L('Favourable', 'சாதகம்') : k === 'bad' ? L('Careful', 'கவனம்') : L('Neutral', 'சமம்'));
 
 /** Personal day outlook for one family member: Tara Bala, Chandra Bala, Chandrashtamam. */
-export function dayOutlook(chart, snap) {
+// The verdict itself comes from ONE function (shared/daily.js dayVerdict), so Today, the family list, the
+// Panchangam card, Guru vakku and the morning brief always name the same day the same way.
+export function dayOutlook(chart, snap, now = new Date()) {
   const tIdx = ((snap.nakshatra.index - chart.janmaNakshatra.index + 27) % 27) % 9;
   const pos = ((snap.moonRasi.index - chart.janmaRasi.index + 12) % 12) + 1;
   const chandra = pos === 8 ? 'bad' : [1, 3, 6, 7, 10, 11].includes(pos) ? 'good' : 'warn';
   const tara = TARA[tIdx];
-  const overall = pos === 8 ? 'bad' : tara[2] === 'bad' && chandra !== 'good' ? 'bad' : tara[2] === 'good' && chandra === 'good' ? 'good' : 'warn';
-  return { tara, taraKind: tara[2], pos, chandra, chandrashtama: pos === 8, overall };
+  const v = dayVerdict(chart, snap, now);
+  const overall = { great: 'good', good: 'good', steady: 'warn', care: 'bad' }[v.level];
+  return { tara, taraKind: tara[2], pos, chandra, chandrashtama: pos === 8, overall, level: v.level, label: v.label, score: v.score };
 }
 
 // ================================================================ HOME
@@ -70,9 +74,10 @@ const GUIDE_SUGGESTIONS_OTHER_FAITH = [
 let today = null; // { key, day } cache of tamilDay for the current local date
 function todayInfo(loc) {
   const now = new Date();
-  const key = `${fmtDate(now, loc.tz)}|${loc.lat}|${loc.lon}`;
+  const key = `${localYMD(now, loc.tz)}|${loc.lat}|${loc.lon}`;
   if (!today || today.key !== key) {
-    const noon = new Date(Date.UTC(...fmtDate(now, loc.tz).split('-').reverse().map(Number).map((v, i) => (i === 1 ? v - 1 : v)), 12) - loc.tz * 3600000);
+    const [y, mo, d] = localYMD(now, loc.tz).split('-').map(Number);
+    const noon = new Date(Date.UTC(y, mo - 1, d, 12) - loc.tz * 3600000);
     today = { key, day: tamilDay(noon, loc.lat, loc.lon, loc.tz) };
   }
   return today.day;
@@ -87,7 +92,9 @@ function todayPlanCard(m, snap, loc, td) {
     const chart = person ? chartOf(person) : null;
     review = chart ? minorDay(dailyReview(chart, snap, new Date(), { faith: faithOf(person) }), ageOf(person)) : null;
     const age = person ? (ageOf(person).age ?? 30) : 30;
-    plan = todayPlan({ chart, snap, festivals: td.festivals || [], level: review?.level || 'steady', now: new Date(), faith: person ? faithOf(person) : 'hindu', age });
+    let dasaSure = true;
+    try { dasaSure = person ? reliabilityOf(person).dasa !== false : true; } catch { dasaSure = true; }
+    plan = todayPlan({ chart, snap, festivals: td.festivals || [], level: review?.level || 'steady', now: new Date(), faith: person ? faithOf(person) : 'hindu', age, dasaSure });
   } catch { return ''; }
   const h = plan.horai;
   const lvCls = review?.personal ? { great: 'good', good: 'good', steady: 'warn', care: 'bad' }[review.level] : '';
@@ -97,8 +104,8 @@ function todayPlanCard(m, snap, loc, td) {
     <p class="tp-energy">${esc(bi(plan.energy))}</p>
     ${n ? `<details class="disclose tp-more"><summary>${L('Today’s plan', 'இன்றைய திட்டம்')} · ${n}</summary>
     ${plan.items.map((it) => `<div class="tp-item${it.personal ? ' mine' : ''}"><div class="tp-icon">${it.icon}</div><div><b>${esc(bi(it.title))}</b><div class="small">${hymnText(bi(it.text))}</div></div></div>`).join('')}
-    ${h && h.start ? `<div class="tp-item tp-horai"><div class="tp-icon">⏰</div><div><b>${esc(fmtTime(h.start, loc.tz))} – ${esc(fmtTime(h.end, loc.tz))} · ${esc(planetName(h.planet))} ${h.planet === 'Rahu' ? L('(Rahu Kalam)', '(ராகு காலம்)') : h.planet === 'Ketu' ? '' : L('Horai', 'ஓரை')}</b>
-      <div class="small">${esc(bi(h.text))}</div><div class="small muted">${esc(bi(h.why))} · ${esc(bi(h.repeat))}</div></div>${remindBtn({ title: `${planetName(h.planet)} ${L('Horai prayer', 'ஓரை வழிபாடு')}`, at: h.start })}</div>` : ''}
+    ${h && h.start ? `<div class="tp-item tp-horai"><div class="tp-icon">⏰</div><div><b>${esc(fmtTimeRange(h.start, h.end, loc.tz))} · ${h.planet === 'Rahu' ? `${esc(planetName(h.planet))} ${L('(Rahu Kalam)', '(ராகு காலம்)')}` : h.planet === 'Ketu' ? esc(planetName(h.planet)) : `${esc(dasaName(h.planet))} ${L('Horai', 'ஓரை')}`}</b>
+      <div class="small">${esc(bi(h.text))}</div><div class="small muted">${esc(bi(h.why))} · ${esc(bi(h.repeat))}</div></div>${remindBtn({ title: `${dasaName(h.planet)} ${L('Horai prayer', 'ஓரை வழிபாடு')}`, at: h.start })}</div>` : ''}
     </details>` : ''}
   </section>`;
 }
@@ -113,14 +120,15 @@ function timeStrip(td, snap, loc) {
   const nextGood = gw.find((g) => g.good && ms(g.start) > now);
   const flips = [];
   let good;
-  if (cur?.good) { good = { cls: 'good', k: L('Good time now', 'இப்போது நல்ல நேரம்'), v: `${L('till', 'வரை')} ${t(cur.end)}`, s: bi(cur) }; flips.push(ms(cur.end)); }
-  else if (nextGood) { good = { cls: '', k: L('Next good time', 'அடுத்த நல்ல நேரம்'), v: `${t(nextGood.start)} – ${t(nextGood.end)}`, s: bi(nextGood) }; flips.push(ms(nextGood.start)); }
+  const tr = (a, b) => fmtTimeRange(a, b, loc.tz);
+  if (cur?.good) { good = { cls: 'good', k: L('Good time now', 'இப்போது நல்ல நேரம்'), v: untilL(t(cur.end)), s: bi(cur) }; flips.push(ms(cur.end)); }
+  else if (nextGood) { good = { cls: '', k: L('Next good time', 'அடுத்த நல்ல நேரம்'), v: tr(nextGood.start, nextGood.end), s: bi(nextGood) }; flips.push(ms(nextGood.start)); }
   else good = { cls: '', k: L('Nalla neram', 'நல்ல நேரம்'), v: L('over for today', 'இன்று முடிந்தது'), s: '' };
   const rk = td.rahuKalam || snap.rahuKalam;
   let rahu;
-  if (rk && now >= ms(rk.start) && now < ms(rk.end)) { rahu = { cls: 'bad', k: L('Rahu Kalam now', 'இப்போது ராகு காலம்'), v: `${L('till', 'வரை')} ${t(rk.end)}`, s: L('Avoid new starts', 'புதிய தொடக்கம் வேண்டாம்') }; flips.push(ms(rk.end)); }
-  else if (rk && now < ms(rk.start)) { rahu = { cls: 'warn', k: L('Rahu Kalam', 'ராகு காலம்'), v: `${t(rk.start)} – ${t(rk.end)}`, s: L('later today', 'இன்று பின்னர்') }; flips.push(ms(rk.start)); }
-  else rahu = { cls: '', k: L('Rahu Kalam', 'ராகு காலம்'), v: rk ? `${t(rk.start)} – ${t(rk.end)}` : '—', s: L('over for today', 'இன்று முடிந்தது') };
+  if (rk && now >= ms(rk.start) && now < ms(rk.end)) { rahu = { cls: 'bad', k: L('Rahu Kalam now', 'இப்போது ராகு காலம்'), v: untilL(t(rk.end)), s: L('Avoid new starts', 'புதிய தொடக்கம் வேண்டாம்') }; flips.push(ms(rk.end)); }
+  else if (rk && now < ms(rk.start)) { rahu = { cls: 'warn', k: L('Rahu Kalam', 'ராகு காலம்'), v: tr(rk.start, rk.end), s: L('later today', 'இன்று பின்னர்') }; flips.push(ms(rk.start)); }
+  else rahu = { cls: '', k: L('Rahu Kalam', 'ராகு காலம்'), v: rk ? tr(rk.start, rk.end) : '—', s: L('over for today', 'இன்று முடிந்தது') };
   const hl = snap.currentHora;
   const cell = (c, extra = '') => `<div class="ts-cell ${c.cls}"><span class="ts-k">${c.k}</span><b class="ts-v">${esc(c.v)}</b>${c.s ? `<span class="ts-s">${esc(c.s)}</span>` : ''}${extra}</div>`;
   return `<section class="card glass time-strip" aria-label="${esc(L('Good and bad times today', 'இன்றைய நல்ல / தவிர்க்க வேண்டிய நேரம்'))}">
@@ -143,10 +151,11 @@ function dailyCard(m, snap, loc) {
   const god = `<div class="dc-god"><span class="mini-label">${L('God of the day', 'இன்றைய தெய்வம்')}</span><b>${esc(bi(r.deity.god))}</b><span class="dc-mantra">${esc(bi(r.deity.mantra))}</span><span class="small muted">${hymnText(bi(r.deity.act))}</span></div>`;
   // God of the day: Hindu tradition — shown only when the member is Hindu (or no member is chosen).
   if (!r.personal) return person && !isHinduFaith(faithOf(person)) ? '' : `<section class="card glass daily-card">${god}</section>`;
-  const range = (w) => `${fmtDate(w.start, loc.tz)} ${fmtTime(w.start, loc.tz)} – ${fmtDate(w.end, loc.tz)} ${fmtTime(w.end, loc.tz)}`;
+  const at = (d) => `${fmtDate(d, loc.tz)}, ${fmtTime(d, loc.tz)}`;
+  const range = (w) => `${at(w.start)} – ${at(w.end)}`;
   const ch = r.nextChandrashtamam;
   const chLine = r.chandrashtamam
-    ? `<div class="dc-alert">${icon('alert', { size: 16 })} <b>${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}</b>${ch ? ` · ${L('till', 'வரை')} ${esc(fmtDate(ch.end, loc.tz))} ${esc(fmtTime(ch.end, loc.tz))}` : ''}<br><span class="small">${ageOf(person).adult ? L('Stay patient; postpone big decisions, signatures and new starts.', 'பொறுமை காக்கவும்; பெரிய முடிவு, கையெழுத்து, புதிய தொடக்கத்தை ஒத்திவையுங்கள்.') : L('Stay calm and gentle today — rest well and keep to your routine.', 'இன்று அமைதியாக, மென்மையாக இருங்கள் — நன்கு ஓய்வெடுத்து வழக்கத்தைப் பின்பற்றுங்கள்.')}</span></div>`
+    ? `<div class="dc-alert">${icon('alert', { size: 16 })} <b>${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}</b>${ch ? ` · ${esc(untilL(at(ch.end)))}` : ''}<br><span class="small">${ageOf(person).adult ? L('Stay patient; postpone big decisions, signatures and new starts.', 'பொறுமை காக்கவும்; பெரிய முடிவு, கையெழுத்து, புதிய தொடக்கத்தை ஒத்திவையுங்கள்.') : L('Stay calm and gentle today — rest well and keep to your routine.', 'இன்று அமைதியாக, மென்மையாக இருங்கள் — நன்கு ஓய்வெடுத்து வழக்கத்தைப் பின்பற்றுங்கள்.')}</span></div>`
     : '';
   const fam = state.family.filter((x) => x.id !== person.id && x.relation !== 'organization').filter((x) => { try { return ((snap.moonRasi.index - chartOf(x).janmaRasi.index + 12) % 12) === 7; } catch { return false; } });
   const faith = faithOf(person);
@@ -155,7 +164,7 @@ function dailyCard(m, snap, loc) {
   const blessing = other ? faithBlessing(faith) : null;
   return `<section class="card glass daily-card" aria-labelledby="dcTitle">
     <div class="card-title"><span id="dcTitle">${icon('check', { size: 18 })} ${L('Do’s & don’ts today', 'இன்று செய்யலாம் · தவிர்க்கவும்')}</span></div>
-    ${(() => { try { const tl = todayLines(chartOf(person), snap); if (!ageOf(person).adult && childSafe([tl.star, tl.moon], ageOf(person)).length < 2) return ''; return `<div class="dc-star"><span class="dc-star-k">${esc(nakName(chartOf(person).janmaNakshatra.index))} · ${esc(rasiName(chartOf(person).janmaRasi.index))}</span><b>${esc(bi(tl.star))}</b><span>${esc(bi(tl.moon))}</span></div>`; } catch { return ''; } })()}
+    ${(() => { try { const tl = todayLines(chartOf(person), snap); if (!ageOf(person).adult && childSafe([tl.star, tl.moon], ageOf(person)).length < 2) return ''; const rel = reliabilityOf(person); return `<div class="dc-star"><span class="dc-star-k">${esc(starRasiText(person))}</span>${rel.nakshatra ? `<b>${esc(bi(tl.star))}</b>` : ''}${rel.rasi ? `<span>${esc(bi(tl.moon))}</span>` : ''}</div>`; } catch { return ''; } })()}
     ${welcome ? `<div class="dc-welcome">${esc(bi(welcome))}</div>` : ''}
     ${chLine}
     <div class="dc-cols"><div class="dc-do"><h4>${L('Do', 'செய்யலாம்')}</h4><ul>${r.dos.map((x) => `<li>${esc(bi(x))}</li>`).join('')}</ul></div>
@@ -205,7 +214,7 @@ function healthTodayCard(m) {
   const habits = w.habits.filter((x) => ['sleep', 'walk', 'doctor'].includes(x.id));
   const pr = r.practices[0];
   return `<section class="card glass health-today" aria-labelledby="htTitle">
-    <div class="card-title"><span id="htTitle">${icon('health', { size: 18 })} ${esc(bi(w.label))}</span><span class="pill">⚕️ ${esc(bi(w.reviewLabel))}</span></div>
+    <div class="card-title"><span id="htTitle">${icon('health', { size: 18 })} ${esc(bi(w.label))}</span></div>
     <ul class="ht-list">${habits.map((x) => `<li>${x.icon} ${esc(bi(x))}</li>`).join('')}</ul>
     ${pr ? `<p class="small ht-practice">🪔 <b>${esc(bi(r.label))}</b>: ${esc(bi(pr.lamp))}. <span class="muted">${L('Spiritual practice — not health advice.', 'ஆன்மீகப் பழக்கம் — உடல்நல ஆலோசனை அல்ல.')}</span></p>` : ''}
     ${healthNowHtml(m, { link: false })}
@@ -228,7 +237,7 @@ if (typeof document !== 'undefined') {
 // Who is Today for: one tap switches the person (like stories avatars); + adds a family member.
 function whoChips(m) {
   if (!state.family.length) return `<div class="who-row"><button class="mchip who add" data-go="family" data-param='{"add":true}'>${icon('plus', { size: 16 })} ${L('Add your birth details for a personal day', 'தனிப்பட்ட பலனுக்குப் பிறப்பு விவரம் சேர்க்கவும்')}</button></div>`;
-  return `<div class="who-row member-switch" role="group" aria-label="${esc(L('Whose day', 'யாருக்கான நாள்'))}">${state.family.map((x) => `<button class="mchip who${x.id === m?.id ? ' sel' : ''}" data-who="${esc(x.id)}" aria-pressed="${x.id === m?.id}"><span class="avatar sm">${esc(([...displayName(x)][0] || '').toUpperCase())}</span>${esc(displayName(x))}</button>`).join('')}
+  return `<div class="who-row member-switch" role="group" aria-label="${esc(L('Whose day', 'யாருக்கான நாள்'))}">${state.family.map((x) => `<button class="mchip who${x.id === m?.id ? ' sel' : ''}" data-who="${esc(x.id)}" aria-pressed="${x.id === m?.id}"><span class="avatar sm">${esc(initialOf(displayName(x)))}</span>${esc(displayName(x))}</button>`).join('')}
     ${state.family.filter((x) => x.relation !== 'organization').length < 8 ? `<button class="mchip who add" data-go="family" data-param='{"add":true}' aria-label="${esc(L('Add a family member', 'குடும்ப உறுப்பினர் சேர்'))}">${icon('plus', { size: 16 })}</button>` : ''}</div>`;
 }
 
@@ -293,7 +302,7 @@ function renderHome(sec) {
           <div>
             <div class="td-month">${esc(bi({ en: td.tamil.monthEn, ta: td.tamil.monthTa }))}</div>
             <div class="td-year">${esc(ta() ? `${td.tamil.year.ta} வருடம்` : `${td.tamil.year.en} year`)} · ${esc(bi(td.weekday))}</div>
-            <div class="muted small">${fmtIsoDate2(td.date)} · ${esc(placeName(loc.name))}</div>
+            <div class="muted small">${esc(fmtIsoDate(td.date))} ·${esc(placeName(loc.name))}</div>
           </div>
         </div>
         <div class="clock" id="clock">--:--:--</div>
@@ -301,8 +310,8 @@ function renderHome(sec) {
       ${fest.length ? `<div class="fest-row">${fest.map((f) => `<span class="fest ${f.kind}">${esc(bi(f))}</span>`).join('')}</div>` : ''}
       ${td.muhurthaDay ? `<div class="fest-row"><span class="fest muhurtham">${L('Subha Muhurtha day', 'சுப முகூர்த்த நாள்')}</span></div>` : ''}
       <div class="chips">
-        <div class="chip-card"><span class="mini-label">${L('Star', 'நட்சத்திரம்')}</span><b>${esc(nakName(snap.nakshatra.index))}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.nakshatra.endsAt, loc.tz)}</span></div>
-        <div class="chip-card"><span class="mini-label">${L('Tithi', 'திதி')}</span><b>${esc(ta() ? snap.tithi.ta : snap.tithi.name)}</b><span class="mini-sub">${L('till', 'வரை')} ${fmtTime(snap.tithi.endsAt, loc.tz)}</span></div>
+        <div class="chip-card"><span class="mini-label">${L('Star', 'நட்சத்திரம்')}</span><b>${esc(nakName(snap.nakshatra.index))}</b><span class="mini-sub">${esc(untilL(fmtTime(snap.nakshatra.endsAt, loc.tz)))}</span></div>
+        <div class="chip-card"><span class="mini-label">${L('Tithi', 'திதி')}</span><b>${esc(tithiName(snap.tithi))}</b><span class="mini-sub">${esc(untilL(fmtTime(snap.tithi.endsAt, loc.tz)))}</span></div>
         <div class="chip-card"><span class="mini-label">${L('Sunrise', 'சூரிய உதயம்')}</span><b>${fmtTime(td.sunrise, loc.tz)}</b><span class="mini-sub">${L('Sunset', 'அஸ்தமனம்')} ${fmtTime(td.sunset, loc.tz)}</span></div>
       </div>
       <div class="btn-row"><button class="chip-btn" data-go="panchangam">${L('Full panchangam', 'முழு பஞ்சாங்கம்')}</button><button class="chip-btn" data-go="calendar">${L('Calendar', 'நாட்காட்டி')}</button></div>
@@ -315,7 +324,7 @@ function renderHome(sec) {
       <div class="kalam">${kalamCell(L('Rahu Kalam', 'ராகு காலம்'), td.rahuKalam, snap.inRahuKalam, loc)}${kalamCell(L('Yamagandam', 'எமகண்டம்'), td.yamagandam, snap.inYamagandam, loc)}${kalamCell(L('Guligai', 'குளிகை'), td.guligai, snap.inGuligai, loc)}</div>
       <div class="hora-mini" data-go="live" role="button" tabindex="0">
         <div class="hora-glyph" style="color:${COLOR[snap.currentHora.lord]}">${GLYPH[snap.currentHora.lord]}</div>
-        <div style="flex:1"><div class="mini-label">${L('Current Horai', 'தற்போதைய ஓரை')}</div><div class="mini-value">${esc(planetName(snap.currentHora.lord))} ${L('Horai', 'ஓரை')}</div></div>
+        <div style="flex:1"><div class="mini-label">${L('Current Horai', 'தற்போதைய ஓரை')}</div><div class="mini-value">${esc(dasaName(snap.currentHora.lord))} ${L('Horai', 'ஓரை')}</div></div>
         <div style="text-align:right"><div class="mini-label">${L('ends in', 'முடிய')}</div><div class="countdown" data-end="${new Date(snap.currentHora.end).getTime()}">${countdown(snap.currentHora.end)}</div></div>
       </div>
     </div>
@@ -329,7 +338,7 @@ function renderHome(sec) {
     ${familyCard(snap)}
     ${weatherCardHtml()}
     ${todayColorCard()}${relationsCard()}${parigaramCard(snap)}
-    <button class="btn-soft" data-go="tools">${icon('tools', { size: 18 })} ${L('All tools', 'அனைத்து கருவிகள்')}</button>
+    <button class="btn-soft" data-go="tools">${icon('tools', { size: 18 })} ${L('All tools', 'அனைத்துக் கருவிகள்')}</button>
     <button class="btn-soft" id="shareToday">${icon('share', { size: 18 })} ${L('Share today\'s calendar', 'இன்றைய நாட்காட்டியைப் பகிர்')}</button>
     </div>
     </details>
@@ -376,7 +385,6 @@ export function setupVoiceInput(btn, input) {
     }
   });
 }
-const fmtIsoDate2 = (iso) => { const [y, mo, d] = iso.split('-'); return `${d}-${mo}-${y}`; };
 
 function gowriCell(g, loc) {
   const now = Date.now();
@@ -394,10 +402,10 @@ function familyCard(snap) {
   const rows = state.family.map((m) => {
     const c = chartOf(m);
     const o = dayOutlook(c, snap);
-    const label = o.chandrashtama ? L('Chandrashtamam — be careful', 'சந்திராஷ்டமம் — கவனம்') : o.overall === 'good' ? L('Good day', 'நல்ல நாள்') : o.overall === 'bad' ? L('Go slow', 'நிதானம் தேவை') : L('Average day', 'சுமாரான நாள்');
+    const label = `${esc(bi(o.label))}${o.chandrashtama ? ` · ${L('Chandrashtamam', 'சந்திராஷ்டமம்')}` : ''}`;
     return `<button class="fam-row${m.id === state.activeId ? ' active' : ''}" data-id="${esc(m.id)}">
-      <span class="avatar">${esc(displayName(m).slice(0, 1).toUpperCase())}</span>
-      <span class="fam-name">${esc(displayName(m))}<small>${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}</small></span>
+      <span class="avatar">${esc(initialOf(displayName(m)))}</span>
+      <span class="fam-name">${esc(displayName(m))}<small>${esc(starRasiText(m, c))}</small></span>
       <span class="tag ${o.overall}">${label}</span></button>`;
   }).join('');
   return `<div class="card glass"><div class="card-title"><span>👨‍👩‍👧 ${L('Family today', 'இன்று குடும்பத்தினருக்கு')}</span><button class="link-btn" data-go="family">${L('Manage', 'நிர்வகி')}</button></div>${rows}</div>`;
@@ -464,7 +472,7 @@ export function renderSI(el, houses, planets, lagnaRasi, title, sub, showDeg) {
     const items = houses[s].map((k) => {
       const p = planets[k];
       const label = ta() ? PLANETS[k].short : PLANETS[k].en;
-      const retro = p.retrograde && k !== 'Rahu' && k !== 'Ketu' ? (ta() ? '<sup>வ</sup>' : '<sup>R</sup>') : '';
+      const retro = p.retrograde && k !== 'Rahu' && k !== 'Ketu' ? '<sup>℞</sup>' : ''; // one retrograde mark everywhere
       const deg = showDeg ? `<sup>${Math.floor(p.degreeInSign)}°</sup>` : '';
       return `<span class="si-pl ${k}" title="${esc(planetName(k))} ${esc(p.dms)}">${label}${retro}${deg}</span>`;
     }).join('');
@@ -558,23 +566,24 @@ function renderLive(sec) {
   sec.innerHTML = `${subHeaderLocal(L('Live Sky', 'நேரலை வானம்'), L('Synchronised every second with the real sky', 'ஒவ்வொரு நொடியும் வானத்துடன் ஒத்திசைவு'))}
     <div class="card glass wheel-card">
       <div class="card-title"><span>${L('Rasi Mandalam', 'ராசி மண்டலம்')}</span><span class="live-dot">${L('LIVE', 'நேரலை')}</span></div>
-      <svg id="wheel" viewBox="-160 -160 320 320" role="img" aria-label="Rasi Mandalam"></svg>
+      <svg id="wheel" viewBox="-160 -160 320 320" role="img" aria-label="${esc(L('Rasi Mandalam', 'ராசி மண்டலம்'))}"></svg>
       <div class="lagna-line" id="lagnaNow"></div>
     </div>
     <div class="grid2">
       ${[['Star', 'நட்சத்திரம்', `${nakName(s.nakshatra.index)} · ${L('Pada', 'பாதம்')} ${s.nakshatra.pada}`, s.nakshatra.endsAt, 'cdNak'],
-    ['Tithi', 'திதி', `${ta() ? s.tithi.ta : s.tithi.name} · ${ta() ? (s.tithi.paksha === 'Shukla' ? 'வளர்பிறை' : 'தேய்பிறை') : s.tithi.paksha}`, s.tithi.endsAt, 'cdTithi'],
+    ['Tithi', 'திதி', tithiName(s.tithi), s.tithi.endsAt, 'cdTithi'],
     ['Moon Rasi', 'சந்திர ராசி', rasiName(s.moonRasi.index), s.moonRasi.endsAt, 'cdRasi'],
-    ['Yoga', 'யோகம்', `${yogaName(s.yoga)} · ${karanaName(s)}`, s.yoga.endsAt, 'cdYoga'],
+    ['Yoga', 'யோகம்', yogaName(s.yoga), s.yoga.endsAt, 'cdYoga'],
+    ['Karanam', 'கரணம்', karanaName(s), s.karanaEndsAt, 'cdKarana'],
   ].map(([en, tx, v, end, id]) => `<div class="card glass"><div class="mini-label">${L(en, tx)}</div><div class="mini-value">${esc(v)}</div>
         <div class="mini-sub">${L('ends in', 'முடிய')} <span data-end="${end ? new Date(end).getTime() : ''}">${countdown(end, now)}</span></div>
-        <div class="mini-sub">${fmtTime(end, loc.tz)}</div>${id === 'cdNak' ? '<div class="bar"><i id="cdNakBar"></i></div>' : ''}</div>`).join('')}
+        <div class="mini-sub">${end ? esc(untilL(fmtTime(end, loc.tz))) : ''}</div>${id === 'cdNak' ? '<div class="bar"><i id="cdNakBar"></i></div>' : ''}</div>`).join('')}
     </div>
     <div class="card glass">
       <div class="card-title"><span>${L('Horai', 'ஓரை')}</span><span class="muted small">☀ ${fmtTime(s.sunrise, loc.tz)} · 🌇 ${fmtTime(s.sunset, loc.tz)}</span></div>
       <div class="hora-now">
         <div class="hora-glyph" style="color:${COLOR[h.lord]}">${GLYPH[h.lord]}</div>
-        <div style="flex:1"><div class="mini-label">${L('Current Horai', 'தற்போதைய ஓரை')}</div><div class="mini-value">${esc(planetName(h.lord))} ${L('Horai', 'ஓரை')}</div><span class="tag ${q}">${ql}</span></div>
+        <div style="flex:1"><div class="mini-label">${L('Current Horai', 'தற்போதைய ஓரை')}</div><div class="mini-value">${esc(dasaName(h.lord))} ${L('Horai', 'ஓரை')}</div><span class="tag ${q}">${ql}</span></div>
         <div style="text-align:right"><div class="mini-label">${L('ends in', 'முடிய')}</div><div class="countdown" data-end="${new Date(h.end).getTime()}">${countdown(h.end, now)}</div></div>
       </div>
       <div class="hora-list">${s.horai.map((x) => {
@@ -591,7 +600,7 @@ function renderLive(sec) {
   }, 50);
   tickLive();
 }
-const subHeaderLocal = (title, sub) => `<div class="sub-head"><button class="back-btn" data-back="home" aria-label="Back">‹</button><div><h2>${title}</h2><p class="muted small">${sub}</p></div></div>`;
+const subHeaderLocal = (title, sub) => `<div class="sub-head"><button class="back-btn" data-back="home" aria-label="${esc(L('Back', 'பின்செல்'))}">‹</button><div><h2>${title}</h2><p class="muted small">${sub}</p></div></div>`;
 
 function tickLive() {
   const loc = state.loc;
@@ -631,6 +640,27 @@ export function reliabilityOf(m) {
   return relCache.get(key);
 }
 
+/** Married: the profile says so, or it is the spouse / the self of a family that has a spouse profile. */
+export const isMarried = (m) => !!m && (m.maritalStatus === 'married' || m.relation === 'spouse' || (m.relation === 'self' && state.family.some((x) => x.relation === 'spouse')));
+
+/** First letter of a name as people read it (a whole Tamil letter: "ரா", not "ர"). */
+export function initialOf(name) {
+  const s = String(name || '').trim();
+  if (!s) return '?';
+  try { if (typeof Intl !== 'undefined' && Intl.Segmenter) return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)][0].segment.toUpperCase(); } catch { /* fall back */ }
+  return [...s][0].toUpperCase();
+}
+
+/** "Star · Rasi" for a member, hedged when the birth time is unknown and the star (or rasi) may change that day. */
+export function starRasiText(m, c = chartOf(m)) {
+  let rel = null;
+  try { rel = reliabilityOf(m); } catch { rel = null; }
+  const star = nakName(c.janmaNakshatra.index), rasi = rasiName(c.janmaRasi.index);
+  if (!rel || (rel.nakshatra && rel.rasi)) return `${star} · ${rasi}`;
+  if (!rel.rasi) return L(`${star}? · ${rasi}? (star and rasi uncertain — birth time unknown)`, `${star}? · ${rasi}? (பிறந்த நேரம் தெரியாததால் நட்சத்திரம், ராசி உறுதியில்லை)`);
+  return L(`${star}? · ${rasi} (star uncertain — birth time unknown)`, `${star}? · ${rasi} (பிறந்த நேரம் தெரியாததால் நட்சத்திரம் உறுதியில்லை)`);
+}
+
 function certaintyBanner(rel) {
   if (rel.certainty === 'exact') return '';
   const head = rel.certainty === 'kattam' ? L('Chart from the written jathagam (Rasi Kattam)', 'எழுதிய ஜாதகத்திலிருந்து (ராசி கட்டம்)') : rel.certainty === 'unknown' ? L('Birth time: unknown', 'பிறந்த நேரம்: தெரியாது') : L(`Birth time: approximate (± ${rel.windowMin} min)`, `பிறந்த நேரம்: தோராயம் (± ${rel.windowMin} நிமி)`);
@@ -643,19 +673,23 @@ function dasaSummaryCard(c, rel) {
   if (!rel.nakshatra || !c.dasa.current) return '';
   const d = c.dasa.current, b = c.dasa.currentBhukti;
   return `<div class="card glass dasa-now"><div class="card-title"><span>⏳ ${L('Your current period', 'உங்கள் நடப்புக் காலம்')}</span>${rel.dasa ? '' : `<span class="badge est">${L('approximate', 'தோராயம்')}</span>`}</div>
-    <p><b>${esc(planetName(d.lord))} ${L('Mahadasa', 'மகா தசை')}</b> · ${fmtDate(d.start, c.tz)} – ${fmtDate(d.end, c.tz)}</p>
-    ${b ? `<p><b>${esc(planetName(b.lord))} ${L('Bhukti', 'புக்தி')}</b> · ${L('until', 'வரை')} ${fmtDate(b.end, c.tz)}</p>` : ''}
+    <p><b>${esc(dasaName(d.lord))} ${L('Mahadasa', 'மகா தசை')}</b> · ${esc(periodRangeL(d, c.tz))}</p>
+    ${b ? `<p><b>${esc(dasaName(b.lord))} ${L('Bhukti', 'புக்தி')}</b> · ${esc(untilL(periodLastL(b, c.tz)))}</p>` : ''}
     <button class="link-btn" data-go="chat" data-param='${esc(JSON.stringify({ q: L('Explain my current dasa-bhukti simply.', 'என் நடப்பு தசா-புக்தியை எளிமையாக விளக்குங்கள்.') }))}'>💬 ${L('Explain simply', 'எளிமையாக விளக்கு')}</button></div>`;
 }
 
 /** Dasa table rows: past + running + periods starting in the next REPORT_YEARS.dasaTable years; the rest behind "Show more". */
 function dasaRows(c, now) {
+  // One boundary convention (shared/fmt.js): "From" is the start date, "Till" the day before the next period starts.
+  // The first Dasa starts at birth (its earlier, unlived part is the balance shown above the table).
+  const birth = c.utc ? new Date(c.utc) : null;
+  const startOf = (p) => (birth && new Date(p.start) < birth ? { ...p, start: birth } : p);
   const row = (p) => {
     const cur = now >= p.start && now < p.end;
-    const bh = cur ? p.bhuktis.map((b) => `<tr class="${now >= b.start && now < b.end ? 'current' : ''}"><td style="padding-left:22px">↳ ${esc(planetName(b.lord))} ${L('Bhukti', 'புக்தி')}</td><td>${fmtDate(b.start, c.tz)}</td><td>${fmtDate(b.end, c.tz)}</td></tr>`).join('') : '';
-    return `<tr class="${cur ? 'current' : ''}"><td class="pl">${GLYPH[p.lord]} ${esc(planetName(p.lord))}${cur ? ` · ${L('now', 'நடப்பு')}` : ''}</td><td>${fmtDate(p.start, c.tz)}</td><td>${fmtDate(p.end, c.tz)}</td></tr>${bh}`;
+    const bh = cur ? p.bhuktis.filter((b) => !birth || new Date(b.end) > birth).map((b) => `<tr class="${now >= b.start && now < b.end ? 'current' : ''}"><td style="padding-left:22px">↳ ${esc(dasaName(b.lord))} ${L('Bhukti', 'புக்தி')}</td><td>${esc(periodStartL(startOf(b), c.tz))}</td><td>${esc(periodLastL(b, c.tz))}</td></tr>`).join('') : '';
+    return `<tr class="${cur ? 'current' : ''}"><td class="pl">${GLYPH[p.lord]} ${esc(planetName(p.lord))}${cur ? ` · ${L('now', 'நடப்பு')}` : ''}</td><td>${esc(periodStartL(startOf(p), c.tz))}</td><td>${esc(periodLastL(p, c.tz))}</td></tr>${bh}`;
   };
-  const head = `<tr><th>${L('Dasa', 'தசை')}</th><th>${L('From', 'தொடக்கம்')}</th><th>${L('To', 'முடிவு')}</th></tr>`;
+  const head = `<tr><th>${L('Dasa', 'தசை')}</th><th>${L('From', 'முதல்')}</th><th>${L('Till', 'வரை')}</th></tr>`;
   const { shown, more, years } = splitByHorizon(listedDasaPeriods(c), { from: now, years: REPORT_YEARS.dasaTable });
   return `<p class="muted small dasa-scope">📅 ${esc(bi(DASA_SCHEDULE_LABEL))} · ${L(`listed up to the next ${years} years`, `அடுத்த ${years} ஆண்டுகள் வரை பட்டியல்`)}</p>
     <div class="table-wrap"><table>${head}${shown.map(row).join('')}</table></div>
@@ -672,7 +706,7 @@ function renderChart(sec) {
   const showNavamsa = showLagna && !c.fromKattam;
   const approx = c.stability?.timePrecision === 'approximate';
   const chip = (...k) => stabilityChip(c, ...k);
-  const sub = `${esc(displayName(m))}<br>${esc(c.date)}${rel.timeShown ? ` · ${esc(c.time.slice(0, 5))}${rel.certainty === 'approx' ? ` ±${rel.windowMin}′` : ''}` : ''}<br>${esc(placeName(c.place))}`;
+  const sub = `${esc(displayName(m))}<br>${esc(fmtBirthL(c.date, rel.timeShown ? c.time.slice(0, 5) : ''))}${rel.timeShown && rel.certainty === 'approx' ? ` ±${rel.windowMin}′` : ''}<br>${esc(placeName(c.place))}`;
   const bp = c.birthPanchang;
   const strength = grahaStrength(c.planets);
   const d = doshams(c.planets, { stability: c.stability });
@@ -701,7 +735,7 @@ function renderChart(sec) {
         <dt>${L('Lagnam', 'லக்னம்')}</dt><dd>${showLagna ? `${esc(rasiName(c.lagna.rasi))}${c.fromKattam ? '' : ` ${esc(c.lagna.dms)}`}${chip('lagna')}` : `<span class="badge unv">${L('needs birth time', 'பிறந்த நேரம் தேவை')}</span>`}</dd>
         ${showNavamsa ? `<dt>${L('Navamsa Lagnam', 'நவாம்ச லக்னம்')}</dt><dd>${esc(rasiName(c.lagna.navamsaRasi))}${chip('navamsaLagna')}</dd>` : ''}
         <dt>${L('Weekday', 'கிழமை')}</dt><dd>${esc(bi(bp.weekday))}</dd>
-        <dt>${L('Tithi', 'திதி')}</dt><dd>${esc(ta() ? bp.tithi.ta : `${bp.tithi.paksha} ${bp.tithi.name}`)}</dd>
+        <dt>${L('Tithi', 'திதி')}</dt><dd>${esc(tithiName(bp.tithi))}</dd>
         <dt>${L('Yoga / Karanam', 'யோகம் / கரணம்')}</dt><dd>${esc(yogaName(bp.yoga))} / ${esc(karanaName(bp))}</dd>
         <dt>${L('Name letters', 'பெயர் எழுத்து')}</dt><dd>${esc(nl.primary.ta)} (${esc(nl.primary.en)})</dd>
         <dt>${L('Ayanamsa', 'அயனாம்சம்')}</dt><dd>${c.ayanamsa.toFixed(4)}° ${L('Lahiri', 'லாஹிரி')}</dd>
@@ -711,7 +745,7 @@ function renderChart(sec) {
       ${strength.map((g) => `<button class="gb-row" data-planet="${g.planet}">
         <span class="gb-name" style="color:${COLOR[g.planet]}">${GLYPH[g.planet]} ${esc(planetName(g.planet))}</span>
         <span class="gb-bar"><i class="${g.level}" style="width:${g.score}%"></i></span>
-        <span class="tag ${g.level === 'strong' ? 'good' : g.level === 'weak' ? 'bad' : 'warn'}">${g.level === 'strong' ? L('Strong', 'பலம்') : g.level === 'weak' ? L('Weak', 'பலவீனம்') : L('Average', 'மத்திமம்')}</span></button>
+        ${scaleTag(g.level)}</button>
         <div class="gb-detail" id="gb-${g.planet}" hidden>
           <ul>${g.reasons.map((r) => `<li>${r.pts > 0 ? '▲' : '▼'} ${esc(L(r.en, r.ta))}</li>`).join('') || `<li>${L('No special factors', 'சிறப்புக் காரணிகள் இல்லை')}</li>`}</ul>
           <p class="muted small">${esc(bi(NAVAGRAHA[g.planet].governs))}</p>
@@ -722,10 +756,10 @@ function renderChart(sec) {
       <div class="factor"><span>${L('Chevvai (Mars) dosham', 'செவ்வாய் தோஷம்')}</span><b class="${d.chevvai.present ? 'neg' : 'pos'}">${d.chevvai.present ? L('Present', 'உண்டு') : d.chevvai.raw ? L('Cancelled', 'நிவர்த்தி') : L('None', 'இல்லை')}</b></div>
       ${d.chevvai.exceptions.map((e) => `<p class="muted small">✓ ${esc(bi(e))}</p>`).join('')}
       <div class="factor"><span>${L('Rahu-Ketu dosham', 'ராகு-கேது தோஷம்')}</span><b class="${d.rahuKetu.present ? 'neg' : 'pos'}">${d.rahuKetu.present ? L('Present', 'உண்டு') : L('None', 'இல்லை')}</b></div>
-      <p class="muted small">${L('A dosham is common and is balanced by a partner with a similar dosham (dosha samyam). It is not a cause for fear.', 'தோஷம் பொதுவானது; இதே தோஷம் உள்ள வரனுடன் சமமாகும் (தோஷ சாம்யம்). பயப்பட வேண்டியதில்லை.')}</p>
+      ${(d.chevvai.present || d.rahuKetu.present) && !isMarried(m) ? `<p class="muted small">${L('A dosham is common and is balanced by a partner with a similar dosham (dosha samyam). It is not a cause for fear.', 'தோஷம் பொதுவானது; இதே தோஷம் உள்ள வரனுடன் சமமாகும் (தோஷ சாம்யம்). பயப்பட வேண்டியதில்லை.')}</p>` : ''}
     </div>`}
     ${rel.nakshatra ? `<div class="card glass"><div class="card-title">${L('Vimshottari Dasa', 'விம்சோத்தரி தசை')}${rel.dasa ? '' : ` <span class="badge est">${L(`approx. ± ${rel.dasaShiftDays} days`, `தோராயம் ± ${rel.dasaShiftDays} நாள்`)}</span>`}</div>
-      <p class="muted small">${L('Dasa balance at birth', 'பிறப்பு தசா இருப்பு')}: ${esc(planetName(c.dasa.balance.lord))} ${c.dasa.balance.years.toFixed(2)} ${L('yrs', 'ஆண்டு')}${chip('moonNakshatra', 'moonPada') ? ` ${chip('moonNakshatra', 'moonPada')}` : approx ? ` <span class="badge est stab-chip">${L(`dasa start may shift ± ${rel.dasaShiftDays} days`, `தசா தொடக்கம் ± ${rel.dasaShiftDays} நாள் மாறலாம்`)}</span>` : ''}</p>
+      <p class="muted small">${L('Dasa balance at birth', 'பிறப்பு தசா இருப்பு')}: ${esc(dasaName(c.dasa.balance.lord))} ${L('Dasa', 'தசை')} ${esc(fmtYMDL(c.dasa.balance.years))}${chip('moonNakshatra', 'moonPada') ? ` ${chip('moonNakshatra', 'moonPada')}` : approx ? ` <span class="badge est stab-chip">${L(`dasa start may shift ± ${rel.dasaShiftDays} days`, `தசா தொடக்கம் ± ${rel.dasaShiftDays} நாள் மாறலாம்`)}</span>` : ''}</p>
       ${dasaRows(c, now)}</div>` : ''}
     <div class="card glass"><div class="card-title">${L('Planet positions', 'கிரக நிலை')}</div>${rel.timeShown ? '' : `<p class="small muted">${L('Positions are for the middle of the birth day; the Moon can differ by up to ±7°.', 'பிறந்த நாளின் நடுப்பகுதிக்கான நிலைகள்; சந்திரன் ±7° வரை மாறலாம்.')}</p>`}<div class="table-wrap"><table>
       <tr><th>${L('Planet', 'கிரகம்')}</th><th>${L('Rasi', 'ராசி')}</th>${showLagna ? `<th>${L('House', 'பாவம்')}</th>` : ''}<th>${L('Degree', 'பாகை')}</th><th>${L('Star', 'நட்சத்திரம்')}</th><th>${L('Pada', 'பாதம்')}</th></tr>
@@ -754,11 +788,6 @@ let lastAnswer = null;
 let askForId = null;
 const askMember = () => state.family.find((m) => m.id === askForId) || defaultAsker(state.family, ageOf) || activeMember();
 const relOf = (m) => RELATIONS.find((r) => r.id === m.relation) || RELATIONS.find((r) => r.id === 'other');
-/** First letter (grapheme) of a name for the avatar — Tamil letters keep their vowel sign. */
-function initialOf(name) {
-  const s = String(name || '?').trim() || '?';
-  try { return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)][0].segment.toUpperCase(); } catch { return s[0].toUpperCase(); }
-}
 /** Who the banner names: the relation ("மகன்") when it is a family relation, else the person's name. */
 const whoOf = (m) => (m.relation && !['self', 'other', 'organization'].includes(m.relation) ? relOf(m) : { en: displayName(m), ta: displayName(m) });
 const prasnaTile = (c) => `<button type="button" class="cat pq-cat${prasnaCategory === c.id ? ' sel' : ''}" data-id="${c.id}"><span class="ci" aria-hidden="true">${c.icon}</span><span class="pq-name">${esc(bi(c))}</span></button>`;
@@ -796,14 +825,14 @@ function renderAsk(sec) {
       <details class="prasna-intro">
         <summary>📖 ${L('What is Prasnam?', 'பிரசன்னம் என்றால் என்ன?')}</summary>
         <p>${L('Prasnam (horary astrology) answers a question from the sky at the very moment it is asked — no birth time is needed. It is a long-standing Tamil and Kerala tradition for everyday decisions.', 'பிரசன்னம் என்பது கேள்வி கேட்கப்படும் அந்த நொடியின் கிரக நிலையைக் கொண்டு பதில் சொல்லும் ஜோதிட முறை — பிறந்த நேரம் தேவையில்லை. அன்றாட முடிவுகளுக்காகத் தமிழகத்திலும் கேரளத்திலும் நெடுங்காலமாகப் பின்பற்றப்படும் மரபு.')}</p>
-        <p><b>${L('How Thunai works it out', 'துணை எப்படிக் கணிக்கிறது')}</b><br>${L('For this exact second and your location it checks the Horai lord for your task, Rahu Kalam, Yamagandam and Guligai, the star, tithi and yoga of the moment, the Prasna Lagna, and — from your birth star — Tara Bala and Chandrashtamam. Each factor adds or removes points, giving a clear Do / Take care / Wait for a better time answer, with the best times in the next 24 hours.', 'இந்த நொடிக்கும் உங்கள் இடத்திற்கும் — உங்கள் காரியத்திற்கான ஓரை அதிபதி, ராகு காலம், எமகண்டம், குளிகை, அந்நேர நட்சத்திரம், திதி, யோகம், பிரசன்ன லக்னம், உங்கள் ஜன்ம நட்சத்திரப்படி தாரா பலம், சந்திராஷ்டமம் ஆகியவற்றைப் பார்க்கிறது. ஒவ்வொன்றும் புள்ளிகளைக் கூட்டி அல்லது குறைத்து, "செய்யலாம் / கவனத்துடன் / நல்ல நேரம் பார்த்து" என்ற தெளிவான பதிலையும், அடுத்த 24 மணி நேரத்தின் சிறந்த நேரங்களையும் தருகிறது.')}</p>
+        <p><b>${L('How Thunai works it out', 'துணை எப்படிக் கணிக்கிறது')}</b><br>${L('For this exact second and your location it checks the Horai lord for your task, Rahu Kalam, Yamagandam and Guligai, the star, tithi and yoga of the moment, the Prasna Lagna, and — from your birth star — Tara Bala and Chandrashtamam. Each factor adds or removes points, giving a clear Do / Take care / Wait for a better time answer, with the best times in the next 24 hours.', 'இந்த நொடிக்கும் உங்கள் இடத்திற்கும் — உங்கள் காரியத்திற்கான ஓரை அதிபதி, ராகு காலம், எமகண்டம், குளிகை, அந்நேர நட்சத்திரம், திதி, யோகம், பிரசன்ன லக்னம், உங்கள் ஜென்ம நட்சத்திரப்படி தாரா பலம், சந்திராஷ்டமம் ஆகியவற்றைப் பார்க்கிறது. ஒவ்வொன்றும் புள்ளிகளைக் கூட்டி அல்லது குறைத்து, "செய்யலாம் / கவனத்துடன் / நல்ல நேரம் பார்த்து" என்ற தெளிவான பதிலையும், அடுத்த 24 மணி நேரத்தின் சிறந்த நேரங்களையும் தருகிறது.')}</p>
         <p><b>${L('How accurate is it?', 'எவ்வளவு துல்லியம்?')}</b><br>${L('Planet positions, times and panchangam are calculated precisely for your place. The verdict follows traditional Prasna rules, so treat it as guidance on timing — your real deadlines, a doctor, lawyer or bank always come first.', 'கிரக நிலை, நேரங்கள், பஞ்சாங்கம் ஆகியவை உங்கள் இடத்திற்குத் துல்லியமாகக் கணிக்கப்படுகின்றன. முடிவு பாரம்பரிய பிரசன்ன விதிகளின்படி அமைகிறது — இதை நேரம் பற்றிய வழிகாட்டலாகக் கொள்ளுங்கள்; உண்மையான காலக்கெடு தேதிகள், மருத்துவர், வழக்கறிஞர், வங்கி ஆலோசனை எப்போதும் முதன்மை.')}</p>
       </details>
       <div class="pq-groups">${groups}</div>
     </div>
     <div id="answer"${lastAnswer ? '' : ' hidden'}>
       <div class="card glass verdict-card" id="verdictCard"></div>
-      <div class="card glass"><div class="card-title"><span>${L('Thunai says', 'துணை பதில்')}</span><span><button class="link-btn" id="speakReply" aria-label="Read aloud">🔊</button> <span id="aiSource" class="pill"></span></span></div><div id="reply" class="reply"></div></div>
+      <div class="card glass"><div class="card-title"><span>${L('Thunai says', 'துணை பதில்')}</span><span><button class="link-btn" id="speakReply" aria-label="${esc(L('Read aloud', 'சத்தமாக வாசி'))}">🔊</button> <span id="aiSource" class="pill"></span></span></div><div id="reply" class="reply"></div></div>
       <div class="card glass" id="bestCard"></div>
       <div class="card glass" id="factorCard"></div>
     </div>`;
@@ -865,7 +894,7 @@ function renderAnswer(a) {
     <div class="pq-sum">
       ${s.reasons.length ? `<div class="pq-row"><div class="pq-h">${L('Why', 'காரணங்கள்')}</div><ul class="pq-why">${s.reasons.map((r) => `<li class="${r.points > 0 ? 'pos' : 'neg'}">${r.points > 0 ? '▲' : '▼'} ${esc(L(r.en, r.ta))}</li>`).join('')}</ul></div>` : ''}
       <div class="pq-row"><div class="pq-h">🕰️ ${L('Best time in the next 24 h', 'அடுத்த 24 மணி நேரத்தில் சிறந்த நேரம்')}</div>
-        <p>${first ? `<b>${fmtDate(first.start, loc.tz)} · ${fmtTime(first.start, loc.tz)} – ${fmtTime(first.end, loc.tz)}</b> <span class="muted small">(${esc(tzName)})</span>` : L('No strongly favourable window in the next 24 hours.', 'அடுத்த 24 மணி நேரத்தில் வலுவான நல்ல நேரம் இல்லை.')}</p></div>
+        <p>${first ? `<b>${fmtDate(first.start, loc.tz)} · ${fmtTimeRange(first.start, first.end, loc.tz)}</b> <span class="muted small">(${esc(tzName)})</span>` : L('No strongly favourable window in the next 24 hours.', 'அடுத்த 24 மணி நேரத்தில் வலுவான நல்ல நேரம் இல்லை.')}</p></div>
       <div class="pq-row pq-do"><div class="pq-h">👉 ${L('What to do now', 'இப்போது செய்ய வேண்டியது')}</div><p>${esc(bi(s.doNow))}</p>${deadline ? `<p class="small">🧭 ${esc(deadline)}</p>` : ''}</div>
       ${s.parigaram ? `<div class="pq-row pq-pari"><div class="pq-h">🪔 ${L('Simple parigaram (free)', 'எளிய பரிகாரம் (இலவசம்)')}</div><p>${esc(bi(s.parigaram))}</p></div>` : ''}
     </div>
@@ -875,7 +904,7 @@ function renderAnswer(a) {
   animateGauges();
   $('#factorCard').hidden = false; $('#bestCard').hidden = false;
   $('#factorCard').innerHTML = `<details><summary class="card-title">${L('All astrological factors', 'எல்லா ஜோதிடக் காரணிகளும்')} (${a.factors.length})</summary>${a.factors.map((f) => `<div class="factor"><span>${esc(ta() ? f.labelTa : f.label)}</span><b class="${f.points > 0 ? 'pos' : f.points < 0 ? 'neg' : 'zero'}">${f.points > 0 ? '+' : ''}${f.points}</b></div>`).join('')}</details>`;
-  $('#bestCard').innerHTML = `<div class="card-title">🕰️ ${L('Good windows in the next 24 hours', 'அடுத்த 24 மணி நேர நல்ல நேரங்கள்')} <span class="pill">${esc(tzName)}</span></div>${a.bestTimes.length ? a.bestTimes.map((w) => `<div class="best">🌟 ${fmtDate(w.start, loc.tz)} · <b>${fmtTime(w.start, loc.tz)} – ${fmtTime(w.end, loc.tz)}</b><br><span class="muted small">${L('score', 'மதிப்பு')} ${w.best} · ${esc(planetName(w.hora))} ${L('Horai', 'ஓரை')}</span></div>`).join('') : `<p class="muted">${L('No strongly favourable window in the next 24 hours.', 'அடுத்த 24 மணி நேரத்தில் வலுவான நல்ல நேரம் இல்லை.')}</p>`}`;
+  $('#bestCard').innerHTML = `<div class="card-title">🕰️ ${L('Good windows in the next 24 hours', 'அடுத்த 24 மணி நேர நல்ல நேரங்கள்')} <span class="pill">${esc(tzName)}</span></div>${a.bestTimes.length ? a.bestTimes.map((w) => `<div class="best">🌟 ${fmtDate(w.start, loc.tz)} · <b>${fmtTimeRange(w.start, w.end, loc.tz)}</b><br><span class="muted small">${L('score', 'மதிப்பு')} ${w.best} · ${esc(dasaName(w.hora))} ${L('Horai', 'ஓரை')}</span></div>`).join('') : `<p class="muted">${L('No strongly favourable window in the next 24 hours.', 'அடுத்த 24 மணி நேரத்தில் வலுவான நல்ல நேரம் இல்லை.')}</p>`}`;
 }
 
 /** A typed adult question for a child: the warm age-appropriate reply instead of a Prasnam. */

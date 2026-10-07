@@ -576,7 +576,7 @@ test('F2: My Guide, Guru Vakku and Love screen respect faith', () => {
   assert.match(guide, /g\.hindu \? '' : `<details[^`]*Traditional Hindu guidance \(optional\)/, 'Ishta Theivam folded away as optional');
   assert.match(guide, /g\.hindu \? '' : `<details[^`]*Siddhar tradition \(optional\)/);
   assert.match(guide, /\$\{g\.playlist\.length \? `/, 'playlist card only when there is a playlist');
-  assert.match(guide, /!g\.hindu \? L\('A day to stay calm — postpone new starts and take a few quiet minutes of prayer in your own faith/, 'Guru Vakku: no "chant" for other faiths');
+  assert.match(guide, /!g\.hindu \? L\('postpone new starts and take a few quiet minutes of prayer in your own faith/, 'Guru Vakku: no "chant" for other faiths');
   const love = src('public/screens-love.js');
   assert.match(love, /const pr = isHinduFaith\(r\.faith\) \? closingPrayer\(r\.charts\[0\]\) : null;/);
 });

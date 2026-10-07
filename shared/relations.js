@@ -6,8 +6,24 @@
 const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 const houseFrom = (from, to) => ((to - from + 12) % 12) + 1;
 
-const REL_TA = { self: 'நான்', spouse: 'வாழ்க்கைத் துணை', son: 'மகன்', daughter: 'மகள்', father: 'தந்தை', mother: 'தாய்', other: 'உறவினர்', organization: 'நிறுவனம்' };
-const REL_EN = { self: 'Me', spouse: 'Spouse', son: 'Son', daughter: 'Daughter', father: 'Father', mother: 'Mother', other: 'Relative', organization: 'Company' };
+// "other" is one label everywhere — the same as the family form's relation list (core.js RELATIONS): மற்றவர் · Other.
+const REL_TA = { self: 'நான்', spouse: 'வாழ்க்கைத் துணை', son: 'மகன்', daughter: 'மகள்', father: 'தந்தை', mother: 'தாய்', other: 'மற்றவர்', organization: 'நிறுவனம்' };
+const REL_EN = { self: 'Me', spouse: 'Spouse', son: 'Son', daughter: 'Daughter', father: 'Father', mother: 'Mother', other: 'Other', organization: 'Company' };
+
+/**
+ * Avatar initial: the first whole letter as the eye reads it (a Tamil consonant with its vowel sign — "ரா" for
+ * ராஜா, "ஸ்ரீ" for ஸ்ரீதர் — or an upper-case Latin letter), the same on every screen.
+ */
+export function initialOf(name) {
+  const s = String(name || '').trim();
+  if (!s) return '';
+  let first;
+  try { first = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)[Symbol.iterator]().next().value?.segment; } catch { first = null; }
+  if (!first) first = (/^[\u0B80-\u0BFF][\u0BBE-\u0BCD\u0BD7]*/.exec(s) || [[...s][0]])[0];
+  // ஸ்ரீ is written as one letter.
+  if (first === 'ஸ்' && s.startsWith('ஸ்ரீ')) first = 'ஸ்ரீ';
+  return first.toUpperCase();
+}
 
 /**
  * Relationship label between two members, from the point of view of the family's "self" member.

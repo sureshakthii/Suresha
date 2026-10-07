@@ -99,7 +99,7 @@ test('Venus period → kidneys / urinary tract named, in the guide and in the on
   assert.ok(h.diet.reduce.some((x) => /salt/i.test(x.en)));
   const n = healthNow(venusAdult, { age: 36, minor: false }, now, { tz: 5.5 });
   assert.deepEqual(n.areas, ['kidneys']);
-  assert.match(n.ta, /சுக்கிரன் புக்தி/);
+  assert.match(n.ta, /சுக்கிர புக்தி/);
   assert.match(n.ta, /தமிழ் மரபில் இந்தக் காலம் சிறுநீரகம், சிறுநீர்ப் பாதை பகுதியில் கவனம் தேவை எனக் கூறப்படுகிறது/);
   assert.match(n.en, /not a diagnosis/);
   assert.equal(n.link, 'health');

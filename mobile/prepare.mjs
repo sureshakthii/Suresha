@@ -13,7 +13,7 @@
 //     always show the latest deployed version without a store update.
 //
 // Usage: node mobile/prepare.mjs                                    # standalone (offline) app
-//        KJ_APP_URL=https://kaippesi.example.com node mobile/prepare.mjs   # server-backed app
+//        KJ_APP_URL=https://thunai.example node mobile/prepare.mjs   # server-backed app
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -53,7 +53,7 @@ function launcherHtml(appUrl) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#6e1a35" />
+  <meta name="theme-color" content="#3d0d1f" />
   <title>துணை · THUNAI</title>
   <style>
     :root { --bg0: #140a10; --bg1: #2a1220; --bg2: #4a1a2c; --gold: #f0c27a; --gold2: #f7d9a6; --text: #f7f0e8; --muted: #cbbfb4; }
@@ -63,7 +63,7 @@ function launcherHtml(appUrl) {
       display: flex; align-items: center; justify-content: center; text-align: center;
       padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
       color: var(--text); font-family: 'Noto Sans Tamil', 'Latha', system-ui, sans-serif;
-      background: radial-gradient(120% 80% at 50% 0%, var(--bg2), transparent 70%), linear-gradient(180deg, var(--bg1), var(--bg0));
+      background: #3d0d1f; /* the launch colour: same as the native splash and window (no colour jump) */
     }
     .wrap { max-width: 360px; width: 100%; }
     .logo { width: 112px; height: 112px; border-radius: 28px; box-shadow: 0 0 40px rgba(245, 194, 107, .35); }

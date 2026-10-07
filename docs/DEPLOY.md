@@ -24,13 +24,13 @@ What the container does:
    - prompts for each secret (see the table below). Leave the optional ones empty for now.
 3. Click **Apply**. The first build takes a few minutes. Then open
    `https://<service>.onrender.com/api/health`. It should show `{"ok":true,...}`.
-4. Set `PUBLIC_URL` to the address users will use, for example `https://kaippesi.example.com`, and redeploy.
+4. Set `PUBLIC_URL` to the address users will use, for example `https://thunai.example`, and redeploy.
 
 > Persistent disks need a paid instance (Starter or above). On the free plan, data is lost on every deploy.
 
 ### Your own domain and HTTPS
 
-1. In Render: open the service → **Settings → Custom Domains** → add `kaippesi.example.com`
+1. In Render: open the service → **Settings → Custom Domains** → add `thunai.example`
    (and `www.` if you want it).
 2. At your domain registrar (GoDaddy, Namecheap, BigRock, Cloudflare…), add the DNS record that Render
    shows:
@@ -56,7 +56,7 @@ Put a reverse proxy with HTTPS in front of it. [Caddy](https://caddyserver.com) 
 it gets certificates automatically:
 
 ```
-kaippesi.example.com {
+thunai.example {
   reverse_proxy localhost:3000
 }
 ```
@@ -76,13 +76,24 @@ inherits the right owner automatically. A host folder (`-v /srv/kaippesi:/data`)
 |---|---|---|
 | `NODE_ENV` | **yes** | `production` (already set in the image and `render.yaml`) |
 | `AUTH_SECRET` | **yes** | Long random string for OTP hashing. The server will not start in production without it. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `PUBLIC_URL` | **yes** | `https://kaippesi.example.com`. Used for Secure cookies and Facebook/Stripe callbacks. |
+| `PUBLIC_URL` | **yes** | `https://thunai.example`. Used for Secure cookies and Facebook/Stripe callbacks. |
 | `TRUST_PROXY` | **yes** behind Render/Caddy/nginx | `1`, so rate limits see the real client IP |
 | `DB_PATH` | set | `/data/kaippesi.db` (already set in the image) |
 | `PORT` | optional | Default `3000` |
 | `ANTHROPIC_API_KEY` | recommended | Claude API key for the AI Jothidar. Without it, rule-based replies are used. |
 | `AI_MODEL`, `AI_EFFORT`, `AI_FALLBACKS` | optional | AI tuning (see `.env.example`) |
 | `AI_REQUIRE_LOGIN`, `AI_RATE_LIMIT`, `AI_FREE_DAILY`, `BILLING_ENFORCE` | optional | Protect your AI budget / enforce the free quota |
+| `AI_DAILY_LIMIT_GLOBAL` | **yes** with an AI key | Whole-site AI answers per day (0/unset = no ceiling). Set it from your monthly Anthropic budget |
+| `AI_DAILY_LIMIT_USER`, `AI_DAILY_LIMIT_ANON`, `AI_DAILY_LIMIT_IP` | optional | Daily AI caps per account (default 200), per signed-out visitor (100) and per IP (500). Stored in SQLite, so restarts do not reset them |
+| `AI_MAX_TOKENS`, `AI_TIMEOUT_MS` | optional | Longest answer (default 16000 tokens, 1024–32000) and model time limit (default 45000 ms) |
+| `FORCE_HTTPS` | **yes** in production | `1`: plain-HTTP page loads are redirected to https, other plain-HTTP requests refused. Needs `TRUST_PROXY` |
+| `HSTS_MAX_AGE` | optional | Strict-Transport-Security max-age in seconds (default 15552000 = 180 days) |
+| `CSP_MODE` | optional | Unset = Content-Security-Policy enforced; `report-only` for a staged roll-out; `off` = emergency only (never leave it off) |
+| `CSP_CONNECT_EXTRA` | optional | Extra `https://` origins the page may call, space separated |
+| `ALLOWED_ORIGINS` | optional | Extra origins allowed to make state-changing `/api` calls (e.g. a `www.` alias); `PUBLIC_URL` is always allowed |
+| `RATE_READ_PER_MIN`, `RATE_WRITE_PER_10MIN`, `RATE_ANON_WRITE_PER_10MIN` | optional | Per-IP limits: reads (120/min), paid writes (30 per 10 min), anonymous writes such as feedback and push sign-up (60 per 10 min). `RATE_LIMITS=off` is refused in production |
+| `BACKUP_DIR`, `BACKUP_EVERY_HOURS`, `BACKUP_KEEP` | recommended | Scheduled, verified SQLite backups (default every 24 h, keep 14) |
+| `BACKUP_ENCRYPTION_KEY` | **yes** with `BACKUP_DIR` | 64 hex characters (`openssl rand -hex 32`): backups are AES-256-GCM encrypted. Keep it in the secret store, not beside the backups; without it a backup cannot be restored |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | one SMS provider | SMS OTP through Twilio |
 | `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | one SMS provider | SMS OTP through MSG91 (India, DLT template) |
 | `SMTP_URL`, `MAIL_FROM` | for email OTP | e.g. `smtps://user:pass@smtp.gmail.com:465` |
@@ -90,7 +101,7 @@ inherits the right owner automatically. A host folder (`-v /srv/kaippesi:/data`)
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | for INR payments | Razorpay keys (store orders, INR subscriptions). Razorpay is used **only for INR** (residence India) |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | for AED and USD payments | Stripe Checkout for residents of the UAE (AED) and every other country (USD). Webhook: `${PUBLIC_URL}/api/billing/stripe/webhook`, events `checkout.session.completed` and `charge.refunded`. See "Payment currencies" below |
 | `PRICE_{INR,AED,USD}_{PERSONAL_MONTH,PERSONAL_YEAR,FAMILY_MONTH,FAMILY_YEAR,MARRIAGE_PACKAGE,JOURNEY_PACKAGE}` | optional | Price overrides in rupees / dirhams / dollars (not minor units). Defaults: INR 199 · 1999 · 399 · 3999 · 499 · 299; AED 18 · 179 · 36 · 359 · 33 · 22; USD 4.99 · 49 · 9.99 · 99 · 9 · 6 (`docs/COSTING.md`) |
-| `ADMIN_TOKEN` | recommended | Secret for the admin endpoints (`x-admin-token` header) |
+| `ADMIN_TOKENS` (or legacy `ADMIN_TOKEN`) | recommended | Admin console access: `name:role:token,…`, tokens of at least 24 characters (`x-admin-token` header). Unset = admin routes disabled |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | recommended | Web Push keys. Generate once with `npx web-push generate-vapid-keys`. **Changing them breaks every existing push subscription.** |
 | `ANNADHANAM_RATE`, `TRIAL_HOURS`, `REFERRAL_DAYS` | optional | Business settings (see `.env.example`) |
 
@@ -120,6 +131,15 @@ Stripe AED enablement checklist:
 5. Tax: the Plans screen says "Prices include applicable taxes" for AED / USD (and "once GST registration is
    complete" for INR). No tax is calculated in code — confirm UAE VAT obligations with the accountant before
    launch.
+
+### Compression and caching (built in)
+
+The server compresses pages, scripts, CSS, JSON and SVG itself (brotli, or gzip for older clients; `server/compress.js`),
+so no proxy setting is needed. `index.html`, `sw.js` and the manifest are sent with `Cache-Control: no-cache`, so a
+deploy reaches everyone on their next visit; other app files revalidate by ETag; `/vendor/*` and `/fonts/*` are cached
+for a year (`immutable`) — when upgrading a vendored library, give the file a new name. If a CDN sits in front,
+let it honour the origin's `Cache-Control` and `Vary: Accept-Encoding` headers. Check with
+`curl -sI -H 'Accept-Encoding: br' https://your-domain/styles.css` (expect `content-encoding: br`).
 
 ## Backups of `/data`
 

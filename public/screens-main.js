@@ -257,9 +257,10 @@ function renderHome(sec) {
     ${healthTodayCard(m)}
     ${person ? compatCardHtml(person, { uncertain: (() => { try { return !reliabilityOf(person).nakshatra; } catch { return false; } })(), idPrefix: 'cpHome' }) : ''}
     ${quickRow(m)}
-
+    </div></div>
     <details class="home-more" id="homeMore"${moreOpen ? ' open' : ''}>
       <summary class="more-btn"><span>${L('More for today', 'மேலும்')}</span>${icon('next', { size: 18 })}</summary>
+    <div class="hm-body">
     <section class="guide-box card" aria-labelledby="guideQ">
       <h2 id="guideQ" class="guide-q">${L('What would you like guidance on?', 'எதற்கு வழிகாட்டல் வேண்டும்?')}</h2>
       <form id="guideForm" class="chat-form guide-form">
@@ -317,8 +318,8 @@ function renderHome(sec) {
     ${todayColorCard()}${relationsCard()}${parigaramCard(snap)}
     <button class="btn-soft" data-go="tools">${icon('tools', { size: 18 })} ${L('All tools', 'அனைத்து கருவிகள்')}</button>
     <button class="btn-soft" id="shareToday">${icon('share', { size: 18 })} ${L('Share today\'s calendar', 'இன்றைய நாட்காட்டியைப் பகிர்')}</button>
+    </div>
     </details>
-    </div></div>
     ${ratePrompt()}
     ${copyright()}`;
   fillHomeWeather(td);

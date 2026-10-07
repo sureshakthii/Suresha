@@ -2147,6 +2147,105 @@ body.ta .zone-line, body.ta .zone-sub, body.ta .res-card p, body.ta .flight-leg,
   .dsk-cols, .dsk-col { display: contents !important; }
 }
 
+/* =================================================================== DESKTOP POLISH (owner's Windows review, Oct 2026)
+   One system for every desktop / laptop screen (≥ 900 px; phones and tablets below 900 px are untouched):
+   • Two content widths, both centred beside the sidebar: "wide" dashboards/reports (--app-w: 1100 → 1240 → 1320)
+     and "reading" screens (forms, lists, articles: 880). Nothing else. 900–1023 px uses the window width.
+   • Card-heavy reports stack full-width section cards; each card lays its own rows out in two aligned columns
+     (no masonry, so card tops always line up and reading order is kept). New cards drop in full width.
+   • The screen header (back button + title) is a solid bar across the whole content area, pinned at the top, so a
+     scrolled card is clearly passing under a header, never "cut off" mid-page.
+   • Page descriptions, long report paragraphs and articles stop at roughly 70–85 characters a line.
+   • Today pairs its cards row by row (equal heights) and opens "More for today" below both columns.
+   • The footer is a proper page footer under a rule, left-aligned with the content: rights, developer credit, legal links. */
+@media (min-width: 1024px) {
+  .app { overflow-x: clip; }
+  /* Screen header bar */
+  .sub-head, body.hdr-hide .sub-head, body.large .sub-head { top: 0 !important; }
+  .sub-head { position: sticky; z-index: 12; align-items: center; gap: 14px; min-height: 68px; margin: -8px 0 var(--s4); padding: 12px 0;
+    background: transparent; box-shadow: none; isolation: isolate; }
+  .sub-head::before { content: ''; position: absolute; z-index: -1; top: 0; bottom: 0; left: -100vw; right: -100vw;
+    background: var(--surface-strong, var(--page)); border-bottom: 1px solid var(--line); box-shadow: 0 6px 16px -14px rgba(var(--shadow-rgb, 0, 0, 0), .5); }
+  .sub-head > div { justify-content: center; }
+  .sub-head h2, body.ta .sub-head h2 { font-size: 23px; line-height: 1.35 !important; }
+  body.large .sub-head h2, body.large.ta .sub-head h2 { font-size: 25px; }
+  .sub-head .back-btn { margin: 0 !important; align-self: center; }
+  .sub-head.hub-head { min-height: 0; margin-top: 0; }
+  .sub-head.hub-head::before { content: none; }
+  .sub-desc { max-width: 80ch; margin-top: 0; }
+  #views { padding-top: 8px; }
+  /* Date pickers: the day box always shows its whole label ("நாள்" / "Day") */
+  .view .easy-dt .ed-d { min-width: 96px; }
+}
+/* Full jathaga analysis (from 900 px: also small laptops with the header): */
+@media (min-width: 900px) {
+  /* Full jathaga analysis: stacked section cards, rows in two aligned columns inside each card */
+  #view-analysis #anBody { columns: auto !important; display: flex; flex-direction: column; gap: 20px; }
+  #view-analysis #anBody > :not(footer) { display: block; width: auto; }
+  #view-analysis #anBody > * { margin: 0; break-inside: auto; }
+  #view-analysis #anBody > [hidden] { display: none !important; }
+  #view-analysis #anBody > .card:has(> .gb-row, > .pari-row, > details.bhava) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; align-items: stretch; }
+  #view-analysis #anBody > .card > :not(.gb-row):not(.pari-row):not(details.bhava) { grid-column: 1 / -1; }
+  #view-analysis #anBody > .card > .pari-row { padding-top: 12px; padding-bottom: 12px; }
+  /* the 12 houses read down: 1–6 on the left, 7–12 on the right */
+  #view-analysis #anBody > .card:has(> details.bhava) { grid-auto-flow: row dense; align-items: start; }
+  #view-analysis #anBody > .card > details.bhava:nth-of-type(-n+6) { grid-column: 1; }
+  #view-analysis #anBody > .card > details.bhava:nth-of-type(n+7) { grid-column: 2; }
+  #view-analysis #anBody > .card > p, #view-analysis #anBody .reply, #view-analysis #anBody > .note-box { max-width: 72ch; }
+  #view-analysis #anBody .palan p, #view-analysis #anBody .palan-win, #view-analysis #anBody .palan-area { max-width: 68ch; }
+  /* written reading: the story reads as one ~80-character column; the per-area paragraphs sit two by two */
+  #view-analysis #anBody .palan-sec:has(> .palan-area) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }
+  #view-analysis #anBody .palan-sec:has(> .palan-area) > :not(.palan-area) { grid-column: 1 / -1; }
+  #view-analysis #anBody .palan-sec > .palan-area { max-width: none; }
+  #view-analysis #anBody > .btn-gold, #view-analysis #anBody > .btn-soft { align-self: center; width: auto; min-width: 320px; padding-left: 32px; padding-right: 32px; }
+  #view-analysis #anBody > footer.copy { margin-top: 12px; }
+  /* articles (privacy, terms, why, about): ~80 characters a line */
+  :is(#view-legal, #view-why, #view-about, #view-privacy) :is(p, li) { max-width: 70ch; }
+}
+@media (min-width: 1024px) {
+  /* Plans & packages: a pricing grid (equal-height cards, "Choose" buttons on one line); notes span the row */
+  #view-plans { max-width: none; }
+  #view-plans #planList { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; align-items: stretch; }
+  #view-plans #planList > * { grid-column: 1 / -1; margin-top: 0; margin-bottom: 0; }
+  #view-plans #planList > .card.plan { grid-column: auto; display: flex; flex-direction: column; }
+  #view-plans #planList > .card.plan > .btn-gold:last-child, #view-plans #planList > .card.plan > :last-child:is(button, .row, .chips) { margin-top: auto; }
+  #view-plans #planList > .center-block { justify-self: center; }
+  /* Temples: two roomy cards per row (three only when each still gets 460 px) */
+  #view-temples #tList { grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); }
+  /* Tools launcher: two columns until a third still leaves each tool name room (≥ 1280 px) */
+  #view-tools #tlBody { columns: 2; }
+
+  /* Page footer: left-aligned with the content, a rule above it, links on one row */
+  footer.copy { display: block; text-align: left; margin: 40px 0 8px; padding: 18px 2px 0; border-top: 1px solid var(--line); }
+  footer.copy .ft-links { justify-content: flex-start; align-items: center; margin: 6px 0 0 -6px; gap: 0 2px; }
+  footer.copy .ft-note { margin-top: 8px; max-width: 90ch; }
+}
+@media (min-width: 1280px) { #view-tools #tlBody { columns: 3; } }
+@media (min-width: 1440px) { :root { --app-w: 1240px; } }
+@media (min-width: 1680px) { :root { --app-w: 1320px; } }
+/* Small laptops / zoomed windows (900–1023 px: header + floating tab bar): the column uses the window, not 720 px */
+@media (min-width: 900px) and (max-width: 1023px) { :root { --app-w: calc(100vw - 48px); } }
+/* Today → "More for today": opened below BOTH columns as an even two-up grid (never one long column beside an
+   empty one). The Nalla Neram card spans the row so Rahu Kalam / Yamagandam / Kuligai times fit on one line. */
+@media (min-width: 900px) {
+  /* Today dashboard: cards pair up row by row (guidance | wellbeing, live times | who suits you, this week | quick
+     actions), each pair the same height; the goal row and Do's & don'ts run the full width. No ragged columns. */
+  #view-home .home-dash { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 16px 20px; align-items: stretch; margin-bottom: 16px; }
+  #view-home .home-dash > .dsk-col { display: contents; }
+  #view-home .home-dash > .dsk-col:first-child > * { grid-column: 1; }
+  #view-home .home-dash > .dsk-col:last-child > * { grid-column: 2; }
+  #view-home .home-dash > .dsk-col > :is(.goal-set-row, .daily-card) { grid-column: 1 / -1; }
+  #view-home .home-dash > .dsk-col > * { margin: 0 !important; min-width: 0; container-type: inline-size; }
+  #view-home .home-dash > .dsk-col > .quick-stories { align-content: center; }
+  #view-home details.home-more { margin-top: 4px; }
+  #view-home details.home-more > .hm-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; align-items: stretch; }
+  #view-home details.home-more > .hm-body > * { margin: 0 !important; min-width: 0; }
+  #view-home details.home-more > .hm-body > .card:has(.gowri) { grid-column: 1 / -1; }
+  #view-home details.home-more > .hm-body > .btn-soft { align-self: center; order: 99; }
+  #view-home details.home-more .gowri { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #view-home details.home-more .kalam { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 /* ---- Provenance labels for practical travel facts (brief §9c) — screens-journey.js, screens-world.js temples/packages */
 .badge.prov { font-weight: 600; font-size: 11.5px; white-space: normal; text-align: start; }
 .badge.prov-live { background: #dcfce7; color: #14532d; }
@@ -2337,3 +2436,43 @@ fieldset.kt-auto { border-color: var(--gold); } fieldset.kt-low { border-color: 
 /* Inline text links stay in the line but get a 44px tap area; long Tamil section titles wrap instead of clipping. */
 .link-btn.inline-link { min-height: 44px; display: inline-flex; align-items: center; vertical-align: middle; padding: 0 4px; }
 .section-title { overflow-wrap: anywhere; max-width: 100%; }
+
+/* Today → "This week" card: the "Open weekly plan" pill keeps equal padding on both sides (it had padding-inline: 0,
+   so the text touched the left edge of its rounded background in dark mode). This button only. */
+.week-card .wk-open { padding-inline: 14px; min-height: 44px; }
+
+/* ── Full Jathaga Analysis (screens-world.js renderAnalysis) — written palan card and 12-bhava rows with a text tag
+   and a one-line meaning. Only classes introduced for this screen: .palan*, .bh-rich, .bh-mean. */
+.palan .horizon-label { display: inline-block; margin-bottom: 4px; }
+.palan-sec { margin-top: 12px; }
+.palan-h { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: var(--gold); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.palan p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.75; overflow-wrap: anywhere; }
+.palan-win { margin: 4px 0 8px; padding: 8px 12px; border-radius: 12px; background: rgba(var(--gold-rgb), .08); font-size: 13.5px; }
+.palan-win ul { margin: 4px 0 0; padding-left: 18px; }
+.palan-win li { margin: 3px 0; line-height: 1.6; overflow-wrap: anywhere; }
+.palan-area { padding: 8px 0 0; border-top: 1px solid rgba(var(--ink-rgb), .06); }
+.palan-area > b { display: block; margin-bottom: 2px; font-size: 14px; }
+.palan-ask { margin: 10px 0 6px; }
+.palan-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.palan-chips .chip-btn { white-space: normal; text-align: left; max-width: 100%; }
+details.bhava.bh-rich summary { grid-template-columns: 26px minmax(0, 1fr) auto; row-gap: 4px; cursor: pointer; }
+details.bhava.bh-rich summary::-webkit-details-marker { display: none; }
+details.bhava.bh-rich .bh-a { white-space: normal; overflow: visible; font-weight: 600; }
+details.bhava.bh-rich .tag { margin-top: 0; }
+details.bhava.bh-rich .bh-mean, details.bhava.bh-rich .gb-bar { grid-column: 2 / -1; }
+.bh-mean { font-size: 12.5px; line-height: 1.55; color: var(--muted); overflow-wrap: anywhere; }
+
+/* ---- Family form: name in both scripts + "Show this name in" selection (public/account.js nameFields) ---- */
+.name-row .name-alt { display: block; min-width: 0; margin-bottom: 10px; }
+.name-row .name-alt > label { margin-bottom: 0; }
+.name-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; margin-top: 4px; min-height: 24px; }
+.name-hint .name-auto { color: var(--good-text, var(--good)); }
+.name-hint .name-mine { color: var(--gold2, var(--gold)); }
+.name-hint .link-btn { min-height: 32px; padding: 0 4px; }
+fieldset.name-show { border: 1px solid var(--glass-b); border-radius: 14px; padding: 10px 12px; margin: 0 0 12px; min-width: 0; }
+fieldset.name-show legend { font-weight: 600; font-size: 14px; padding: 0 4px; }
+fieldset.name-show .seg { margin-bottom: 4px; }
+fieldset.name-show .seg-opt { border: 1px solid var(--glass-b); border-radius: 999px; min-height: 44px; }
+fieldset.name-show .seg-opt:has(input:checked) { border-color: var(--gold); background: rgba(var(--gold-rgb), .14); font-weight: 600; }
+fieldset.name-show .seg-opt input { accent-color: var(--btn-gold, var(--gold)); }
+#namePreview { margin: 4px 0 0; overflow-wrap: anywhere; }

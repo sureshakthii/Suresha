@@ -305,7 +305,7 @@ const neechabhanga = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Sat
   name: T(`Neecha Bhanga — ${k} (cancellation of debilitation)`, `நீச பங்கம் — ${taName(k)} (நீச நிவர்த்தி)`),
   kind: 'yoga', reference: 'lagna', planets: [k], houses: KENDRA, relation: REL.placement,
   source: { ...BPHS_PHALA },
-  predicateText: `${k} is debilitated (${['Mesha', 'Rishaba', 'Mithuna', 'Kataka', 'Simha', 'Kanni', 'Thula', 'Vrischika', 'Dhanusu', 'Makara', 'Kumbha', 'Meena'][DEBIL[k]]}) AND at least one enabled classical cancellation condition holds. Each condition is a separate flag. This is reported as Neecha Bhanga only — never automatically as a Raja Yoga.`,
+  predicateText: `${k} is debilitated (${['Mesham', 'Rishabam', 'Mithunam', 'Kadagam', 'Simmam', 'Kanni', 'Thulam', 'Vrischikam', 'Dhanusu', 'Magaram', 'Kumbam', 'Meenam'][DEBIL[k]]}) AND at least one enabled classical cancellation condition holds. Each condition is a separate flag. This is reported as Neecha Bhanga only — never automatically as a Raja Yoga.`,
   predicate(ctx) {
     const P = ctx.P;
     const deb = P[k].rasi === DEBIL[k];

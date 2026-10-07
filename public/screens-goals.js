@@ -77,7 +77,7 @@ export function goalsCardHtml() {
   const due = reviewDue(g, today());
   const more = activeGoals(s).length - 1;
   return `<section class="card glass goal-card" id="homeGoals" aria-labelledby="goalCardT">
-    <div class="card-title"><span id="goalCardT">🎯 ${L('My goals', 'என் இலக்குகள்')}</span>${more > 0 ? `<span class="pill">+${more}</span>` : ''}</div>
+    <div class="card-title"><span id="goalCardT">🎯 ${L('My Goals', 'என் இலக்குகள்')}</span>${more > 0 ? `<span class="pill">+${more}</span>` : ''}</div>
     <button type="button" class="goal-today" data-go="goals" data-param='${esc(JSON.stringify({ open: g.id }))}'>
       <b class="goal-t">${templateById(g.template).icon} ${esc(g.title)}</b>
       <span class="small muted">${esc(bi(deadlineText(g, today())))}</span>
@@ -111,7 +111,7 @@ function listHtml(s) {
   const canAdd = !goalGate(s).locked && canAddGoal(s);
   const act = s.goals.filter((g) => g.status !== 'done');
   const done = s.goals.filter((g) => g.status === 'done');
-  return `${subHeader(L('My goals', 'என் இலக்குகள்'), L('One place for a goal you are working on — your deadline, your limits and the next practical step. Astrology is only an optional extra.', 'நீங்கள் முயலும் இலக்குக்கு ஓர் இடம் — உங்கள் காலக்கெடு, வரம்புகள், அடுத்த நடைமுறைப் படி. ஜோதிடம் விருப்பத் துணை மட்டுமே.'))}
+  return `${subHeader(L('My Goals', 'என் இலக்குகள்'), L('One place for a goal you are working on — your deadline, your limits and the next practical step. Astrology is only an optional extra.', 'நீங்கள் முயலும் இலக்குக்கு ஓர் இடம் — உங்கள் காலக்கெடு, வரம்புகள், அடுத்த நடைமுறைப் படி. ஜோதிடம் விருப்பத் துணை மட்டுமே.'))}
     <div class="dsk-cols"><div class="dsk-col">
     ${act.length ? `<section class="card glass" aria-labelledby="goalListT"><div class="card-title"><span id="goalListT">${L('Active goals', 'நடப்பு இலக்குகள்')}</span></div><ul class="goal-list">${act.map(goalRow).join('')}</ul></section>` : ''}
     ${done.length ? `<details class="card glass goal-done"><summary>${L('Achieved', 'நிறைவேறியவை')} (${done.length})</summary><ul class="goal-list">${done.map(goalRow).join('')}</ul></details>` : ''}
@@ -135,7 +135,7 @@ function formHtml(g, tplId) {
   const fu = g?.followUp || { weekly: true, weekday: 0 };
   const title = g ? g.title : bi(tpl);
   const noPerson = tpl.topic && !allowed.length;
-  return `${subHeader(g ? L('Edit goal', 'இலக்கைத் திருத்து') : `${tpl.icon} ${esc(bi(tpl))}`, g ? '' : L('Only the name is needed. Everything can be changed later.', 'பெயர் மட்டும் போதும். பின்னர் எல்லாவற்றையும் மாற்றலாம்.'), 'goals')}
+  return `${subHeader(g ? L('Edit Goal', 'இலக்கைத் திருத்து') : `${tpl.icon} ${esc(bi(tpl))}`, g ? '' : L('Only the name is needed. Everything can be changed later.', 'பெயர் மட்டும் போதும். பின்னர் எல்லாவற்றையும் மாற்றலாம்.'), 'goals')}
     <form class="card glass goal-form" id="goalForm" novalidate>
       ${noPerson ? `<p class="note-box small" role="note">${L(`${tpl.en} is only for people aged 18 and over. Add a profile with the date of birth first.`, `${tpl.ta} 18 வயதுக்கு மேற்பட்டவர்களுக்கு மட்டும். முதலில் பிறந்த தேதியுடன் ஒரு சுயவிவரத்தைச் சேர்க்கவும்.`)}</p>
         <button type="button" class="btn-gold" data-go="family" data-param='{"add":true}'>${L('Add profile', 'சுயவிவரம் சேர்')}</button>` : `

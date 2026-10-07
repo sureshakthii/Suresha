@@ -797,7 +797,7 @@ function renderAbout(sec) {
     ${P.map(([i, en, tx, den, dta]) => `<div class="card glass about-row"><span class="ti-icon">${i}</span><div><b>${L(en, tx)}</b><p>${L(den, dta)}</p></div></div>`).join('')}
     <div id="aboutTesti"></div>
     <div class="brand-foot"><img src="logo.svg" alt="" width="64" height="64"><div><b>${BRAND.nameTa} · ${BRAND.nameUpper}</b><span class="slogan-sm">${BRAND.taglineTa}</span></div></div>
-    <p class="build-no" id="buildNo" title="${esc(L('For support', 'உதவிக்கு'))}">${esc(window.KJ_BUILD || 'dev')}</p>
+    <p class="build-no" id="buildNo" title="${esc(L('For support', 'உதவிக்கு'))}">${esc(String(window.KJ_BUILD || 'dev').replace(/\b(\d{4}-\d\d-\d\d)\b/, (d) => fmtDay(d, state.lang)))}</p>
     ${copyright()}`;
   // Support: the build number is small, here only. Long-press it (or tap 7 times) to open the owner dashboard.
   const bn = $('#buildNo', sec);

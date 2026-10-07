@@ -230,7 +230,7 @@ function renderVratham(sec) {
   const loc = state.loc;
   const y0 = localYear();
   if (vrYear == null || (vrYear !== y0 && vrYear !== y0 + 1)) vrYear = y0;
-  sec.innerHTML = `${subHeader(L('Viratha Naatkal', 'விரத நாட்கள்'), L('Every vratham and festival day of the year', 'ஆண்டின் அனைத்து விரத, பண்டிகை நாட்கள்'))}
+  sec.innerHTML = `${subHeader(L('Vratham Days', 'விரத நாட்கள்'), L('Every vratham and festival day of the year', 'ஆண்டின் அனைத்து விரத, பண்டிகை நாட்கள்'))}
     <div class="card glass">
       <div class="py-tabs">${[y0, y0 + 1].map((y) => `<button class="chip-btn${y === vrYear ? ' sel' : ''}" data-year="${y}">${y}</button>`).join('')}</div>
       <div class="member-switch wrap vr-filter">${[{ id: 'all', en: 'All', ta: 'அனைத்தும்', icon: '📿' }, ...VRATHAM_TYPES]

@@ -49,7 +49,7 @@ function enhanceTime(input) {
   box.innerHTML = `
     <select class="et-h" aria-label="${L('Hour', 'மணி')}">${opt('', L('Hour', 'மணி'), !has)}${Array.from({ length: 12 }, (_, i) => opt(i + 1, i + 1, h12 === i + 1)).join('')}</select>
     <select class="et-m" aria-label="${L('Minute', 'நிமிடம்')}">${opt('', L('Min', 'நிமி'), !has)}${Array.from({ length: 60 }, (_, i) => opt(i, pad(i), has && mi0 === i)).join('')}</select>
-    <select class="et-p" aria-label="${L('AM or PM', 'காலை / மாலை')}">${opt('am', 'AM', !pm)}${opt('pm', 'PM', pm)}</select>`;
+    <select class="et-p" aria-label="${L('AM or PM', 'முற்பகல் / பிற்பகல்')}">${opt('am', L('AM', 'முற்பகல்'), !pm)}${opt('pm', L('PM', 'பிற்பகல்'), pm)}</select>`;
   const [h, mi, p] = [box.querySelector('.et-h'), box.querySelector('.et-m'), box.querySelector('.et-p')];
   const withSec = input.step && Number(input.step) < 60;
   const sync = () => {

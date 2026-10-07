@@ -41,7 +41,7 @@ Sources: public store listings and comparison pages (links at the end). We compa
 
 ## 3. Our signature — what nobody else gives
 
-1. **One person, one road map.** Personal guide, life road map and Guru Vakku are made for each family member, not for "all Mesha people".
+1. **One person, one road map.** Personal guide, life road map and Guru Vakku are made for each family member, not for "all Mesham people".
 2. **Marriage beyond 10 poruthams.** Ayul balam, papasamyam, dasa sandhi, bhavas and a 25-year timeline, to help prevent the problems that 10-porutham-only matching misses.
 3. **From advice to action.** Every reading ends with a step: muhurtham → priest → temple → yatra → store, all inside the app.
 4. **Built for elders and Gen Z.** Big text and read-aloud for elders; vibe cards, share cards, and career compasses (acting, politics) for the young.

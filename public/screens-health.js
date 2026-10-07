@@ -74,8 +74,8 @@ function injectCss() {
 function renderHealth(sec) {
   injectCss();
   const m = activeMember()?.relation !== 'organization' ? activeMember() : people()[0];
-  if (!m) { sec.innerHTML = `${subHeader(L('Jathagam health guide', 'ஜாதக ஆரோக்கிய வழிகாட்டி'))}<p class="muted center">${L('Add a family member first.', 'முதலில் குடும்ப உறுப்பினரைச் சேர்க்கவும்.')}</p>`; return; }
-  sec.innerHTML = `${subHeader(L('Jathagam health guide', 'ஜாதக ஆரோக்கிய வழிகாட்டி'), L('Traditional care guide from your Jathagam, Dasa and Gochara — not a diagnosis', 'ஜாதகம், தசை, கோசாரம் வழியே மரபுக் கவனக் குறிப்புகள் — நோய் கண்டறிதல் அல்ல'))}
+  if (!m) { sec.innerHTML = `${subHeader(L('Jathagam Health Guide', 'ஜாதக ஆரோக்கிய வழிகாட்டி'))}<p class="muted center">${L('Add a family member first.', 'முதலில் குடும்ப உறுப்பினரைச் சேர்க்கவும்.')}</p>`; return; }
+  sec.innerHTML = `${subHeader(L('Jathagam Health Guide', 'ஜாதக ஆரோக்கிய வழிகாட்டி'), L('Traditional care guide from your Jathagam, Dasa and Gochara — not a diagnosis', 'ஜாதகம், தசை, கோசாரம் வழியே மரபுக் கவனக் குறிப்புகள் — நோய் கண்டறிதல் அல்ல'))}
     ${people().length > 1 ? `<div class="member-switch">${people().map((x) => `<button class="mchip${x.id === m.id ? ' sel' : ''}" data-hid="${esc(x.id)}">${esc(displayName(x))}</button>`).join('')}</div>` : ''}
     <div id="hlBody"><div class="loader"><i></i><i></i><i></i></div></div>`;
   $$('[data-hid]', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.hid; saveFamily(); renderHealth(sec); }));
@@ -203,7 +203,7 @@ function drawHealth(m) {
     ${checkupsCard(h, m, at)}
     ${remediesCard(h)}
 
-    <div class="btn-row"><button class="chip-btn" data-go="roadmap">🗺️ ${L('Life Road Map', 'வாழ்க்கை வரைபடம்')}</button><button class="chip-btn" data-go="guide">🧭 ${L('My Guide', 'என் வழிகாட்டி')}</button></div>
+    <div class="btn-row"><button class="chip-btn" data-go="roadmap">🗺️ ${L('Dasa Road Map', 'தசா வரைபடம்')}</button><button class="chip-btn" data-go="guide">🧭 ${L('My Guide', 'என் வழிகாட்டி')}</button></div>
     <div class="hl-note">⚕️ ${esc(bi(h.disclaimer))}</div>`;
   $('#hlSpeak')?.addEventListener('click', () => speak(spoken));
 }

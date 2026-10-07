@@ -239,7 +239,7 @@ const TOPIC = {
     donts: [T('Do not discuss property in anger', 'கோபத்தில் சொத்து விஷயம் பேச வேண்டாம்'), T('Avoid comparing family members', 'குடும்பத்தினரை ஒப்பிட வேண்டாம்')],
     remedy: T('Light a lamp at home every evening and chant "Om Namah Shivaya" together for five minutes.', 'தினமும் மாலை வீட்டில் தீபம் ஏற்றி ஐந்து நிமிடம் சேர்ந்து "ஓம் நமசிவாய".'),
     follow: [T('Family relations today', 'இன்று குடும்ப உறவு'), T('Kula Deivam worship — how?', 'குலதெய்வ வழிபாடு — எப்படி?'), T('Husband–wife harmony', 'கணவன்–மனைவி ஒற்றுமை')],
-    action: { go: 'relations', label: T('Family relations today', 'இன்று குடும்ப உறவு') } },
+    action: { go: 'relations', label: T('Family Relations Today', 'இன்று குடும்ப உறவு நிலை') } },
 };
 
 // Career / job sub-topics: two career questions must not get the same reading. Each reads its own houses and

@@ -2717,3 +2717,18 @@ body.large .kv { grid-template-columns: fit-content(42%) minmax(0, 1fr); }
 }
 select { text-overflow: ellipsis; }
 .tl-chip { height: auto; min-height: var(--tap); }
+/* Final detail fixes: the day picker always reads "நாள்" / "Day" in full at 360 px, and the Tamil
+   முற்பகல் / பிற்பகல் picker gets the room it needs beside hour and minute. */
+.easy-dt:not(.easy-tm) .ed-d { flex: 0 0 96px; width: 96px; min-width: 96px; }
+body.ta .easy-tm { grid-template-columns: minmax(0, .85fr) minmax(0, .85fr) minmax(0, 1.3fr); }
+.qs-l.qs-wrap { white-space: normal; }
+/* A section title with a horizon pill wraps the pill to its own line instead of running 2px past the card. */
+.section-title:has(.horizon-label) { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+/* Delight-card dismiss ✕: a full 44 px target. */
+.delight-card .dl-x { min-width: 44px; min-height: 44px; }
+/* Desktop reading measure: long paragraphs inside wide cards stop near 80 characters a line (dosham, temple legends,
+   packages, health), the same comfort width the analysis and legal pages already use. */
+@media (min-width: 1024px) {
+  .view :is(.card, .plan-card, section) :is(p, li), .view p.small.muted { max-width: 62ch; }
+  .view .card p.center, .view .card p[style*="center"] { margin-inline: auto; }
+}

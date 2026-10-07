@@ -476,7 +476,7 @@ export const DEV_CREDIT = 'AG TECHNOLOGY SOLUTIONS';
 export const copyright = () => `<footer class="copy">
   <span class="ft-line">© ${BRAND.year} Thunai (${BRAND.nameTa}). ${L('All rights reserved.', 'அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.')}</span>
   <span class="ft-line ft-dev">${L(`Concept & Developed by ${DEV_CREDIT}`, `கருத்தாக்கம் & உருவாக்கம்: ${DEV_CREDIT}`)}</span>
-  <span class="ft-links"><button type="button" data-go="legal" data-param='{"open":"privacy"}'>${L('Privacy Policy', 'தனியுரிமைக் கொள்கை')}</button>·<button type="button" data-go="legal" data-param='{"open":"terms"}'>${L('Terms of Use', 'பயன்பாட்டு விதிமுறைகள்')}</button>·<button type="button" data-go="legal" data-param='{"open":"grievance"}'>${L('Grievance Officer', 'குறைதீர் அலுவலர்')}</button></span>
+  <span class="ft-links"><button type="button" data-go="legal" data-param='{"open":"privacy"}'>${L('Privacy Policy', 'தனியுரிமைக் கொள்கை')}</button><button type="button" data-go="legal" data-param='{"open":"terms"}'>${L('Terms of Use', 'பயன்பாட்டு விதிமுறைகள்')}</button><button type="button" data-go="legal" data-param='{"open":"grievance"}'>${L('Grievance Officer', 'குறைதீர் அலுவலர்')}</button></span>
   <span class="ft-note">${L('Traditional astrology is guidance for your life’s journey; for medical, legal or financial matters, also take qualified advice.', 'பாரம்பரிய ஜோதிடம் உங்கள் வாழ்க்கைப் பயணத்திற்கான வழிகாட்டல்; மருத்துவ, சட்ட, நிதி விஷயங்களில் தகுதியான ஆலோசனையும் பெறுங்கள்.')}</span>
 </footer>`;
 

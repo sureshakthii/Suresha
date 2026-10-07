@@ -43,9 +43,9 @@ function injectCss() {
   .rmy-bar i { display: block; height: 100%; border-radius: 6px; background: var(--warn); }
   .rmy-tile.good .rmy-bar i { background: var(--good); }
   .rmy-tile.care .rmy-bar i { background: var(--bad); }
-  .rmy-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 12px; line-height: 1.45; }
+  .rmy-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 4px; font-size: 12px; line-height: 1.45; }
   .rmy-ico { font-size: 15px; line-height: 1.35; }
-  .rmy-lv { white-space: nowrap; overflow-wrap: normal; }
+  .rmy-lv { min-width: 0; white-space: normal; overflow-wrap: normal; word-break: keep-all; }
   .rmy-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 2px 0 10px; padding: 0; list-style: none; font-size: 12px; line-height: 1.5; }
   .rmy-legend li { white-space: nowrap; }
   .rmy-key { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: middle; background: var(--warn); }
@@ -79,8 +79,8 @@ function yearTiles(years) {
 function renderRoadmap(sec) {
   injectCss();
   const m = activeMember()?.relation !== 'organization' ? activeMember() : people()[0];
-  if (!m) { sec.innerHTML = `${subHeader(L('Life Road Map', 'வாழ்க்கை வரைபடம்'))}<p class="muted center">${L('Add a family member first.', 'முதலில் குடும்ப உறுப்பினரைச் சேர்க்கவும்.')}</p>`; return; }
-  sec.innerHTML = `${subHeader(L('Life Road Map', 'வாழ்க்கை வரைபடம்'), L(`Your personal plan from your own Jathagam · Covers the next ${REPORT_YEARS.roadmap} years`, `உங்கள் ஜாதகத்திலிருந்து தனிப்பட்ட திட்டம் · அடுத்த ${REPORT_YEARS.roadmap} ஆண்டுகள்`))}
+  if (!m) { sec.innerHTML = `${subHeader(L('Dasa Road Map', 'தசா வரைபடம்'))}<p class="muted center">${L('Add a family member first.', 'முதலில் குடும்ப உறுப்பினரைச் சேர்க்கவும்.')}</p>`; return; }
+  sec.innerHTML = `${subHeader(L('Dasa Road Map', 'தசா வரைபடம்'), L(`Your personal plan from your own Jathagam · Covers the next ${REPORT_YEARS.roadmap} years`, `உங்கள் ஜாதகத்திலிருந்து தனிப்பட்ட திட்டம் · அடுத்த ${REPORT_YEARS.roadmap} ஆண்டுகள்`))}
     ${people().length > 1 ? `<div class="member-switch">${people().map((x) => `<button class="mchip${x.id === m.id ? ' sel' : ''}" data-rid="${esc(x.id)}">${esc(displayName(x))}</button>`).join('')}</div>` : ''}
     <div id="rmBody"><div class="loader"><i></i><i></i><i></i></div></div>`;
   $$('[data-rid]', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.rid; saveFamily(); renderRoadmap(sec); }));

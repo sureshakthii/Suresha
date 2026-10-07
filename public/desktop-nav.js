@@ -41,7 +41,7 @@ function render() {
     </div>
     <nav class="sn-scroll" aria-label="${esc(L('Main', 'முதன்மை'))}">
       <div class="sn-tabs">${TABS.map((id) => `<button type="button" class="sn-item sn-tab" data-sn-go="${id}" data-sn-tab="${id}">${tabIcon(id)}<span>${L(...TAB_LABEL[id])}</span></button>`).join('')}</div>
-      <div class="sn-label">${L('All tools', 'அனைத்து கருவிகள்')}</div>
+      <div class="sn-label">${L('All Tools', 'அனைத்துக் கருவிகள்')}</div>
       ${GROUPS.map((g) => `<details class="sn-group" data-group="${g.id}"${openSet.has(g.id) ? ' open' : ''}>
         <summary><span>${esc(L(g.en, g.ta))}</span>${icon('chevron-right', { size: 16, cls: 'sn-chev' })}</summary>
         <div class="sn-list">${TOOLS.filter((t) => t.group === g.id).map((t) => `<button type="button" class="sn-item sn-tool" data-sn-go="${t.id}" title="${esc(L(t.en, t.ta))}">${iconChip(t.id, { size: 15, cls: 'sn-chip' })}<span>${esc(shortName(t))}</span></button>`).join('')}</div>

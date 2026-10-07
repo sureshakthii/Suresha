@@ -177,7 +177,7 @@ Edit `shared/brand.js`. The static fallbacks that cannot import it are:
 - `scripts/build-artifact.mjs` (`<title>`)
 - the header and splash fallback text in `public/index.html`, which `applyLang()` overwrites at runtime
 
-A handful of sentence-level strings say "Thunai" literally; find them with `grep -rn "Thunai\|துணை" public server shared`. Trademark and domain checks are still pending, and `supportEmail` is a placeholder.
+A handful of sentence-level strings say "Thunai" literally; find them with `grep -rn "Thunai\|துணை" public server shared`. Trademark and domain checks are still pending. Contacts and the public link live only in `shared/brand.js`: `SUPPORT_EMAIL` (support inbox), `GRIEVANCE` (`name`, `email`, `phone` of the Grievance Officer) and `APP_URL` (the link printed on share cards and shared text). All three are empty until the owner publishes them; screens then say the contact "will be published at launch" and share text leaves the link out, never a made-up address or domain. (`BRAND.supportEmail` is a deprecated alias.)
 
 ## 8. Validation results
 - `npm test`: **152 tests pass**, up from 120. New suites:
@@ -226,7 +226,7 @@ In `docs/screenshots/`, taken from the offline bundle at 390×844 px:
 | `16-home-en-dark.png` | English, night theme |
 
 ## 10. Next-release checklist
-1. [ ] Trademark and domain search for "Thunai / துணை"; set `supportEmail`.
+1. [ ] Trademark and domain search for "Thunai / துணை"; fill `SUPPORT_EMAIL`, `GRIEVANCE` and `APP_URL` in `shared/brand.js`.
 2. [ ] Build the **reviewable** APK: Actions → "Mobile apps" → Run workflow. This publishes the `test-latest` release, which is a public link on a public repository, so decide first. Install it and walk through every screen with elders and young users.
 3. [ ] Deploy the server with the §4 settings. Register the Razorpay webhook. Make one ₹1 test-mode payment, one deliberately failed payment, and one refund.
 4. [ ] Run a TalkBack/VoiceOver pass and check large text on a 5-inch phone.

@@ -140,7 +140,7 @@ time is uncertain by more than a few minutes.
 
 Reference: the varga sign is computed from the **Swiss** sidereal longitude with an independent implementation of the
 documented Parashara mappings, written fresh in the benchmark (not imported from `shared/varga.js`): D9 counted from
-Mesha / Makara / Thula / Kataka by element, D10 odd-from-sign / even-from-9th, D12 from the sign, D30 the unequal
+Mesham / Magaram / Thulam / Kadagam by element, D10 odd-from-sign / even-from-9th, D12 from the sign, D30 the unequal
 Mars–Saturn–Jupiter–Mercury–Venus portions, D60 thirty-minute parts from the sign itself (the app's variant, still
 awaiting astrologer review). The reference mapping is self-checked against hand-worked examples before it runs.
 

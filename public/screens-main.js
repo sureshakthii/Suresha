@@ -35,6 +35,7 @@ import { compatCardHtml, bindCompatCard } from './compat-card.js';
 import { weekCardHtml, fillWeekCard } from './screens-week.js';
 import { goalsCardHtml } from './screens-goals.js';
 import { growHomeHtml } from './screens-journal.js'; // morning brief + diary / delight cards (also registers diary & dailyset)
+import { APP_URL } from './shared/brand.js';
 
 /** Age profile of a family member (calendar age today at the selected place) — the top-most filter on every card. */
 export const ageOf = (m) => ageProfile(m, { tz: state.loc?.tz });
@@ -188,17 +189,30 @@ function minorDay(r, prof) {
 }
 
 function shareDaily(m, snap, loc) {
-  const r = minorDay(dailyReview(chartOf(m), snap, new Date(), { faith: faithOf(m) }), ageOf(m));
+  const c = chartOf(m);
+  const r = minorDay(dailyReview(c, snap, new Date(), { faith: faithOf(m) }), ageOf(m));
+  // A shared message is read by someone else: name the person and their rasi instead of "your rasi".
+  const ri = c?.janmaRasi?.index;
+  const rasi = ri == null ? '' : rasiName(ri);
+  const who = [displayName(m), rasi ? L(`${rasi} rasi`, `${rasi} ராசி`) : ''].filter(Boolean).join(' — ');
+  const named = (s) => (!rasi ? s : s
+    .replace(new RegExp(`உங்கள் ${rasi} ராசிக்கு`, 'g'), `${rasi} ராசிக்கு`)
+    .replace(/உங்கள் ராசிக்கு/g, `${rasi} ராசிக்கு`)
+    .replace(new RegExp(`your rasi ${rasi}`, 'g'), `${rasi} rasi`)
+    .replace(/your rasi/g, `${rasi} rasi`))
+    .replace(/ உங்களுக்கு /g, ' ')
+    .replace(/ for you\b/g, displayName(m) ? ` for ${displayName(m)}` : '');
   const text = [
-    `🌅 ${L('Today for', 'இன்று')} ${displayName(m)} — ${bi(r.label)}`,
+    `🌅 ${L('Today', 'இன்று')} · ${who} — ${bi(r.label)}`,
     r.chandrashtamam ? `⚠️ ${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}` : '',
-    ...r.why.map((w) => `• ${bi(w)}`),
+    ...r.why.map((w) => `• ${named(bi(w))}`),
     `✅ ${r.dos.map((x) => bi(x)).join('; ')}`,
     `🚫 ${r.donts.map((x) => bi(x)).join('; ')}`,
     faithOf(m) === 'hindu' ? `🛕 ${L('God of the day', 'இன்றைய தெய்வம்')}: ${bi(r.deity.god)} — ${bi(r.deity.mantra)}` : '',
     faithOf(m) === 'hindu' ? (r.prayer ? `🙏 ${r.prayer.lines.map((x) => bi(x)).join(' · ')}` : '') : (faithBlessing(faithOf(m)) ? bi(faithBlessing(faithOf(m))) : ''),
     '',
     `${L('From', 'வழங்குவது')} ${L('Thunai', 'துணை')} — ${L('Your companion on life’s path', 'உங்கள் வாழ்வின் வழித்துணை')}`,
+    APP_URL ? `🔗 ${APP_URL}` : '',
   ].filter((x) => x !== '').join('\n');
   if (navigator.share) { navigator.share({ text }).catch(() => {}); return; }
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
@@ -247,7 +261,7 @@ function quickRow(m) {
   const minor = m && m.relation !== 'organization' && !ageOf(m).adult;
   const ids = QUICK.filter((id) => toolById(id) && !(minor && id === 'porutham'));
   return `<nav class="quick-stories" aria-label="${esc(L('Quick actions', 'விரைவுச் செயல்கள்'))}">${ids.map((id) => `<button data-go="${id}"><span class="qs-ring">${iconChip(id, { size: 24 })}</span><span class="qs-l">${L(...QUICK_LABEL[id])}</span></button>`).join('')}
-    <button data-go="tools"><span class="qs-ring">${iconChip('tools', { size: 24 })}</span><span class="qs-l">${L('All tools', 'அனைத்தும்')}</span></button></nav>`;
+    <button data-go="tools"><span class="qs-ring">${iconChip('tools', { size: 24 })}</span><span class="qs-l qs-wrap">${L('All Tools', 'அனைத்துக் கருவிகள்')}</span></button></nav>`;
 }
 
 function renderHome(sec) {
@@ -329,7 +343,7 @@ function renderHome(sec) {
       </div>
     </div>
 
-    ${m && !ageOf(m).adult ? '' : `<button class="card glass cta-card love-cta" data-go="lovematch"><b>${L('Love Match', 'காதல் பொருத்தம்')}</b><span class="small">${L('Emotional sync, chemistry and the star match — check your love vibe and share it', 'உணர்வு, ஈர்ப்பு, நட்சத்திரப் பொருத்தம் — உங்கள் காதல் அதிர்வைப் பார்த்துப் பகிருங்கள்')}</span></button>`}
+    ${m && (!ageOf(m).adult || isMarried(m) || /^(father|mother|grand)/.test(m.relation || '') || m.relation === 'organization') ? '' : `<button class="card glass cta-card love-cta" data-go="lovematch"><b>${L('Love Match', 'காதல் பொருத்தம்')}</b><span class="small">${L('Emotional sync, chemistry and the star match — check your love vibe and share it', 'உணர்வு, ஈர்ப்பு, நட்சத்திரப் பொருத்தம் — உங்கள் காதல் அதிர்வைப் பார்த்துப் பகிருங்கள்')}</span></button>`}
     ${trialBanner()}
     ${plans.length ? `<div class="card glass"><div class="card-title"><span>${L('Saved plans', 'சேமித்த திட்டங்கள்')}</span><button class="link-btn" data-go="journey">${L('Plan new', 'புதிய திட்டம்')}</button></div>
       ${plans.slice(0, 3).map((p) => `<button class="plan-row" data-go="journey" data-param='${esc(JSON.stringify({ open: p.id }))}'><b>${esc(p.title)}</b><span class="muted small">${esc(p.dates || '')}</span></button>`).join('')}</div>`
@@ -338,7 +352,7 @@ function renderHome(sec) {
     ${familyCard(snap)}
     ${weatherCardHtml()}
     ${todayColorCard()}${relationsCard()}${parigaramCard(snap)}
-    <button class="btn-soft" data-go="tools">${icon('tools', { size: 18 })} ${L('All tools', 'அனைத்துக் கருவிகள்')}</button>
+    <button class="btn-soft" data-go="tools">${icon('tools', { size: 18 })} ${L('All Tools', 'அனைத்துக் கருவிகள்')}</button>
     <button class="btn-soft" id="shareToday">${icon('share', { size: 18 })} ${L('Share today\'s calendar', 'இன்றைய நாட்காட்டியைப் பகிர்')}</button>
     </div>
     </details>
@@ -414,7 +428,7 @@ function familyCard(snap) {
 function relationsCard() {
   const list = relationsList(3);
   if (!list) return '';
-  return `<div class="card glass" data-go="relations"><div class="card-title"><span>💞 ${L('Family relations today', 'இன்று குடும்ப உறவு')}</span><span class="link-btn">${L('All', 'அனைத்தும்')} ›</span></div>${list.map((r) => relationRow(r)).join('')}</div>`;
+  return `<div class="card glass" data-go="relations"><div class="card-title"><span>💞 ${L('Family Relations Today', 'இன்று குடும்ப உறவு நிலை')}</span><span class="link-btn">${L('All', 'அனைத்தும்')} ›</span></div>${list.map((r) => relationRow(r)).join('')}</div>`;
 }
 
 function parigaramCard(snap) {
@@ -530,9 +544,17 @@ function renderWheel(pos, lagnaLon, moonNak) {
     el.setAttribute('font-size', '10.5');
     let w = 0;
     try { w = el.getComputedTextLength(); } catch { /* not laid out yet */ }
-    if (w > room) el.setAttribute('font-size', String(Math.max(8.5, 10.5 * room / w).toFixed(2)));
+    if (w > room && 10.5 * room / w >= 8.5) el.setAttribute('font-size', (10.5 * room / w).toFixed(2));
+    else if (w > room) {
+      // A long name ("Mithunam", "Vrischikam") near 3 or 9 o'clock cannot fit upright in the band: lay it along the
+      // ring (tangent, never upside down) where the 30° segment has ~62 units of room.
+      let t = -(Number(el.dataset.i) * 30 + 15) + spin + 90;
+      t = ((t % 360) + 360) % 360; if (t > 90 && t <= 270) t -= 180; if (t > 270) t -= 360;
+      el.setAttribute('transform', `rotate(${t - spin} ${el.getAttribute('x')} ${el.getAttribute('y')})`);
+      if (w > 62) el.setAttribute('font-size', Math.max(7.5, 10.5 * 62 / w).toFixed(2));
+    }
   });
-  $$('#wheel .wn').forEach((el) => el.setAttribute('fill', Number(el.dataset.i) === moonNak ? '#ffe066' : '#cfc4ea'));
+  $$('#wheel .wn').forEach((el) => el.setAttribute('fill', Number(el.dataset.i) === moonNak ? '#ffe066' : '#ddd5f3'));
   const entries = Object.entries(pos).filter(([k]) => k !== 'Lagna').sort((a, b) => a[1].longitude - b[1].longitude);
   const radii = [82, 64, 46];
   let lastLon = -99, lvl = 0;
@@ -724,7 +746,7 @@ function renderChart(sec) {
     <div class="btn-row"><button class="chip-btn" data-go="parigaram">🪔 ${L('Simple practices', 'எளிய வழிபாடு')}</button><button class="chip-btn" data-go="peyarchi">🪐 ${L('Transits', 'பெயர்ச்சி')}</button><button class="chip-btn" data-go="health">🌿 ${L('Wellbeing', 'பொது நலம்')}</button><button class="chip-btn" data-print="1">🖨️ ${L('Print / PDF', 'அச்சிடு / PDF')}</button></div>
     <details class="card glass advanced"><summary class="card-title">🔬 ${L('Advanced', 'மேம்பட்டவை')}</summary>
       <div class="menu">
-        ${[['roadmap', 'Life periods road map', 'வாழ்க்கைக் கால வரைபடம்'], ['vargas', 'Divisional charts & Ashtakavarga', 'வர்க்கச் சக்கரங்கள் & அஷ்டகவர்க்கம்'], ['life', 'Life questions — traditional timing', 'வாழ்க்கைக் கேள்விகள் — பாரம்பரிய காலம்'], ['guide', 'My guide — colour, number, Siddhar', 'என் வழிகாட்டி — நிறம், எண், சித்தர்'], ['numerology', 'Name & number numerology', 'பெயர் & எண் கணிதம்'], ['live', 'Live sky', 'நேரலை வானம்']].map(([id, en, tx]) => `<button data-go="${id}">${iconChip(id, { size: 20, cls: 'mi-icon' })}<span>${L(en, tx)}${id === 'vargas' && !showNavamsa ? ` <span class="badge unv">${L('needs birth time', 'பிறந்த நேரம் தேவை')}</span>` : id === 'vargas' && approx ? ` ${chip('navamsaLagna', 'D10Lagna', 'D60Lagna')}` : ''}</span></button>`).join('')}
+        ${[['roadmap', 'Dasa road map — life periods', 'தசா வரைபடம் — வாழ்க்கைக் காலங்கள்'], ['vargas', 'Divisional charts & Ashtakavarga', 'வர்க்கச் சக்கரங்கள் & அஷ்டகவர்க்கம்'], ['life', 'Life questions — traditional timing', 'வாழ்க்கைக் கேள்விகள் — பாரம்பரிய காலம்'], ['guide', 'My guide — colour, number, Siddhar', 'என் வழிகாட்டி — நிறம், எண், சித்தர்'], ['numerology', 'Name & number numerology', 'பெயர் & எண் கணிதம்'], ['live', 'Live sky', 'நேரலை வானம்']].map(([id, en, tx]) => `<button data-go="${id}">${iconChip(id, { size: 20, cls: 'mi-icon' })}<span>${L(en, tx)}${id === 'vargas' && !showNavamsa ? ` <span class="badge unv">${L('needs birth time', 'பிறந்த நேரம் தேவை')}</span>` : id === 'vargas' && approx ? ` ${chip('navamsaLagna', 'D10Lagna', 'D60Lagna')}` : ''}</span></button>`).join('')}
       </div></details>
     ${showNavamsa ? `<div class="card glass"><div class="card-title">${L('Navamsa chart', 'நவாம்ச கட்டம்')}${chip('navamsaLagna')}</div><div id="navamsaChart" class="si-chart"></div></div>` : ''}
     </div><div class="dsk-col">

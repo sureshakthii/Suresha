@@ -610,7 +610,7 @@ const REFLECTION_NOTE_ALL = T('Optional practices only — prayer in your own fa
 const TRADITION_LABEL = T('Traditional indications — not a diagnosis, not medical advice', 'மரபுக் குறிப்புகள் — நோய் கண்டறிதல் அல்ல, மருத்துவ ஆலோசனை அல்ல');
 const VITALITY_NOT_ASSESSED = T('Thunai does not estimate lifespan or vitality from a horoscope. Regular check-ups with your doctor are the reliable guide.',
   'துணை ஜாதகத்திலிருந்து ஆயுளையோ உயிர்ச்சக்தியையோ கணிப்பதில்லை. மருத்துவரிடம் வழக்கமான பரிசோதனையே நம்பகமான வழிகாட்டி.');
-export const GUIDE_TITLE = T('Jathagam health guide', 'ஜாதக ஆரோக்கிய வழிகாட்டி');
+export const GUIDE_TITLE = T('Jathagam Health Guide', 'ஜாதக ஆரோக்கிய வழிகாட்டி');
 const NOW_LABEL = T('Health care now', 'ஆரோக்கிய கவனம் இப்போது');
 
 function ageOf(chart, now, profile) {

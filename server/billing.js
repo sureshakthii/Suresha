@@ -65,7 +65,7 @@ const PERSONAL_FEATURES = [
   f(`Up to ${aiAllowance('personal')} detailed answers per month (everyday guidance is unlimited)`, `மாதம் ${aiAllowance('personal')} விரிவான பதில்கள் வரை (அன்றாட வழிகாட்டல் வரம்பின்றி)`),
   f('Saved goals — as many as you like (one is free)', 'சேமித்த இலக்குகள் — வரம்பின்றி (ஒன்று இலவசம்)'),
   f('More saved journeys and name shortlists longer than 10', 'கூடுதல் சேமித்த பயணங்கள், 10-க்கு மேற்பட்ட பெயர்ப் பட்டியல்'),
-  f('Printable / PDF reports — life roadmap, matching report, journey plan', 'அச்சிடக்கூடிய / PDF அறிக்கைகள் — வாழ்க்கை வரைபடம், பொருத்த அறிக்கை, பயணத் திட்டம்'),
+  f('Printable / PDF reports — Dasa road map, matching report, journey plan', 'அச்சிடக்கூடிய / PDF அறிக்கைகள் — தசா வரைபடம், பொருத்த அறிக்கை, பயணத் திட்டம்'),
 ];
 const FAMILY_FEATURES = [
   f('Everything in Personal', 'தனிநபர் திட்டத்தின் அனைத்து வசதிகளும்'),

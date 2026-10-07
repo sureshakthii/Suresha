@@ -41,7 +41,7 @@ export const CHEVVAI_EXCEPTIONS = [
   },
   {
     id: 'dosha.chevvai.exc.simha_kumbha', test: (P) => [4, 10].includes(P.Mars.rasi),
-    name: T('Mars in Simha or Kumbha', 'சிம்மம் / கும்பத்தில் செவ்வாய்'),
+    name: T('Mars in Simmam or Kumbam', 'சிம்மம் / கும்பத்தில் செவ்வாய்'),
     reason: T('A regional convention lists these two signs as exempt; the textual basis needs citation.', 'இவ்விரு ராசிகளும் விலக்கு என்பது பிராந்திய வழக்கம்; நூல் ஆதாரம் தேவை.'),
   },
   {
@@ -51,7 +51,7 @@ export const CHEVVAI_EXCEPTIONS = [
   },
   {
     id: 'dosha.chevvai.exc.second_mithuna_kanni', test: (P) => !!P.Lagna && ((P.Mars.rasi - P.Lagna.rasi + 12) % 12) + 1 === 2 && [2, 5].includes(P.Mars.rasi),
-    name: T('Mars in the 2nd (from Lagna) in Mithuna or Kanni', 'மிதுனம்/கன்னியில் 2-ல் செவ்வாய்'),
+    name: T('Mars in the 2nd (from Lagna) in Mithunam or Kanni', 'மிதுனம்/கன்னியில் 2-ல் செவ்வாய்'),
     reason: T('A house-and-sign specific exemption from the Tamil tradition; applies to the Lagna reference only.', 'லக்ன அடிப்படையிலான வீடு-ராசி சார்ந்த தமிழ் மரபு விலக்கு.'),
   },
 ].map((e) => Object.freeze({

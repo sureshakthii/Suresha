@@ -175,11 +175,11 @@ export function templeDetailHtml(t, { open = false, facts = true } = {}) {
   if (!i) return '';
   const q = encodeURIComponent(`${t.name.en}, ${t.town}`);
   const hours = templeFacts(t.id).hours;
-  return `<details class="temple-more"${open ? ' open' : ''}><summary>📜 ${L('Sirappu, power & thala varalaru', 'சிறப்பு, சக்தி & தல வரலாறு')}</summary>
+  return `<details class="temple-more"${open ? ' open' : ''}><summary>📜 ${L('Highlights, power & temple legend', 'சிறப்பு, சக்தி & தல வரலாறு')}</summary>
     <div class="trad-block"><div class="mini-label">🪔 ${L('Tradition', 'மரபு')}</div>
-    <p class="small">🌟 <b>${L('Sirappu', 'சிறப்பு')}:</b> ${esc(bi(i.sirappu))}</p>
+    <p class="small">🌟 <b>${L('Highlights', 'சிறப்பு')}:</b> ${esc(bi(i.sirappu))}</p>
     <p class="small">🙏 <b>${L('Pray here for', 'இங்கு வேண்டுவது')}:</b> ${esc(bi(i.power))}</p>
-    <p class="small">📖 <b>${L('Thala varalaru', 'தல வரலாறு')}:</b> ${esc(bi(i.varalaru))}</p>
+    <p class="small">📖 <b>${L('Temple legend', 'தல வரலாறு')}:</b> ${esc(bi(i.varalaru))}</p>
     ${i.festival ? `<p class="small">🎉 <b>${L('Festival', 'திருவிழா')}:</b> ${esc(bi(i.festival))}</p>` : ''}
     <p class="small muted">${L('Traditional accounts — devotional associations, not travel facts.', 'மரபு வழிச் செய்திகள் — வழிபாட்டுத் தொடர்பு; பயணத் தகவல் அல்ல.')}</p></div>
     <div class="facts-block"><div class="mini-label">🧭 ${L('How to reach', 'எப்படிச் செல்வது')}</div>
@@ -198,7 +198,7 @@ const templeUi = { tag: 'all', query: '' };
 function renderTemples(sec, params = {}) {
   const m = activeMember();
   const weak = m ? grahaStrength(chartOf(m).planets).filter((g) => g.level === 'weak').map((g) => g.planet) : [];
-  sec.innerHTML = `${subHeader(L('Temples near you', 'அருகிலுள்ள கோவில்கள்'), `${L('Distances from', 'தூரம்')} 📍 ${esc(placeName(state.loc.name))}`)}
+  sec.innerHTML = `${subHeader(L('Temples Near You', 'அருகிலுள்ள கோவில்கள்'), `${L('Distances from', 'தூரம்')} 📍 ${esc(placeName(state.loc.name))}`)}
     ${offlineBanner()}
     ${weak.length ? `<div class="card glass"><b>🌟 ${L('Parigara sthalams for', 'பரிகாரத் தலங்கள்')} ${esc(displayName(m))}:</b> ${weak.map((k) => `${GLYPH[k]} ${esc(bi(NAVAGRAHA[k].temple))}`).join(' · ')}</div>` : ''}
     <div class="member-switch">${TEMPLE_TAGS.map((t) => `<button class="mchip${templeUi.tag === t.id ? ' sel' : ''}" data-tag="${t.id}">${esc(bi(t))}</button>`).join('')}</div>
@@ -437,10 +437,10 @@ async function renderSeva(sec, params = {}, mode = 'seva') {
   // SERVICES_OPEN (server switch): until partners can fulfil requests, the headings make no claims and no form is shown.
   const open = await servicesOpen();
   sec.innerHTML = `${!open
-    ? subHeader(priests ? L('Priests', 'புரோகிதர்கள்') : L('Seva', 'சேவைகள்'), L('Priest network — opening soon', 'புரோகிதர் வலையமைப்பு — விரைவில்'))
+    ? (priests ? subHeader(L('Priests', 'புரோகிதர்கள்'), L('Priest network — opening soon', 'புரோகிதர் வலையமைப்பு — விரைவில்')) : subHeader(L('Temple Seva', 'கோவில் சேவை'), L('Temple seva requests — opening soon', 'கோவில் சேவை கோரிக்கைகள் — விரைவில்')))
     : priests
       ? subHeader(L('Priests', 'புரோகிதர்கள்'), L('Iyers / Vadhyars at your home — homam, graha pravesam, wedding, thivasam and more', 'ஐயர் / வாத்தியார் உங்கள் இல்லத்திற்கு — ஹோமம், கிரகப் பிரவேசம், திருமணம், திவசம்'))
-      : subHeader(L('Seva', 'சேவைகள்'), L('Temple archanai, annadhanam, gomatha and kubera pooja — arranged through our partners', 'கோவில் அர்ச்சனை, அன்னதானம், கோமாதா, குபேர பூஜை — எங்கள் கூட்டாளிகள் மூலம் ஏற்பாடு'))}
+      : subHeader(L('Temple Seva', 'கோவில் சேவை'), L('Temple archanai, annadhanam, gomatha and kubera pooja — arranged through our partners', 'கோவில் அர்ச்சனை, அன்னதானம், கோமாதா, குபேர பூஜை — எங்கள் கூட்டாளிகள் மூலம் ஏற்பாடு'))}
     ${open || STATIC ? '' : servicesClosedCard()}
     <div class="tiles">${list.map(([id, icon, en, tx]) => `<button class="tile${pick === id ? ' sel-tile' : ''}" data-seva="${id}"><span class="ti-icon">${icon}</span><span>${esc(L(en, tx))}</span></button>`).join('')}</div>
     <div class="btn-row">${priests ? `<button class="chip-btn" data-go="seva">🛕 ${L('Temple seva', 'கோவில் சேவைகள்')}</button>` : `<button class="chip-btn" data-go="priests">🧑‍🦳 ${L('Book a priest', 'புரோகிதர் முன்பதிவு')}</button>`}<button class="chip-btn" data-go="packages">🧳 ${L('Yatra packages', 'யாத்திரை')}</button><button class="chip-btn" data-go="muhurtham">🗓️ ${L('Good date', 'நல்ல நாள்')}</button></div>
@@ -596,7 +596,7 @@ function renderReminders(sec, params = {}) {
       <button class="btn-gold">${L('Save trip', 'பயணத்தைச் சேமி')}</button>
       <p class="muted small">${L('Tip: use the Muhurtham finder (Travel) to choose a good day.', 'குறிப்பு: நல்ல நாளைத் தேர்வு செய்ய முகூர்த்தம் தேடலில் "பயணம்" பயன்படுத்தவும்.')}</p></form>
     <div id="remList"></div><div id="tripList"></div>
-    <div class="card glass"><p class="small">🔔 ${L('Tip: tap the bell on any Panchangam time, viratha day, muhurtham, star birthday, thivasam, peyarchi or road-map window to set a reminder.', 'குறிப்பு: பஞ்சாங்க நேரம், விரத நாள், முகூர்த்தம், நட்சத்திரப் பிறந்தநாள், திவசம், பெயர்ச்சி, வாழ்க்கை வரைபடம் — எங்கும் மணி அடையாளத்தைத் தொட்டு நினைவூட்டல் அமைக்கலாம்.')}</p></div>`;
+    <div class="card glass"><p class="small">🔔 ${L('Tip: tap the bell on any Panchangam time, vratham day, muhurtham, star birthday, thivasam, peyarchi or road-map window to set a reminder.', 'குறிப்பு: பஞ்சாங்க நேரம், விரத நாள், முகூர்த்தம், நட்சத்திரப் பிறந்தநாள், திவசம், பெயர்ச்சி, தசா வரைபடம் — எங்கும் மணி அடையாளத்தைத் தொட்டு நினைவூட்டல் அமைக்கலாம்.')}</p></div>`;
   const drawRems = () => {
     const list = upcomingReminders().filter((t) => t.kind === 'reminder');
     $('#remList').innerHTML = list.length ? `<div class="card glass"><div class="card-title">🔔 ${L('My reminders', 'என் நினைவூட்டல்கள்')}<span class="pill">${list.length}</span></div>${list.map((t) => `<div class="factor"><span>${esc(t.title)}<br><small class="muted">${fmtIsoDate(t.date)} · ${fmtTime(t.alarm, state.loc.tz)}</small></span><button class="link-btn" data-rdel="${t.id}" aria-label="${esc(L('Delete', 'நீக்கு'))}">✕</button></div>`).join('')}</div>` : '';
@@ -649,7 +649,7 @@ export function relationRow(r, detail = false) {
 }
 function renderRelations(sec) {
   const list = relationsList();
-  sec.innerHTML = `${subHeader(L('Family relations today', 'இன்று குடும்ப உறவு நிலை'), L('Who should be extra gentle with whom today', 'இன்று யார் யாரிடம் கூடுதல் மென்மையாக இருக்க வேண்டும்'))}
+  sec.innerHTML = `${subHeader(L('Family Relations Today', 'இன்று குடும்ப உறவு நிலை'), L('Who should be extra gentle with whom today', 'இன்று யார் யாரிடம் கூடுதல் மென்மையாக இருக்க வேண்டும்'))}
     ${list ? `<div class="card glass">${list.map((r) => relationRow(r, true)).join('')}</div>` : `<div class="card glass cta-card" data-go="family" data-param='{"add":true}'>${L('Add at least two family members (with relation) to see this', 'இதைப் பார்க்க உறவுடன் குறைந்தது இருவரைச் சேர்க்கவும்')} ›</div>`}
     <p class="muted small center">${L('Based on Moon signs, today\'s Moon and Mars, and Tara Bala. A loving word changes everything.', 'சந்திர ராசி, இன்றைய சந்திரன், செவ்வாய், தாரா பலம் அடிப்படையில். அன்பான ஒரு வார்த்தை எல்லாவற்றையும் மாற்றும்.')}</p>`;
 }
@@ -812,11 +812,11 @@ registerScreen('analysis', { render: renderAnalysis, parent: 'chart', needsMembe
 function renderPackages(sec, params = {}) {
   const loc = state.loc;
   const open = params.id || null;
-  sec.innerHTML = `${subHeader(L('Yatra & Parigaram Packages', 'யாத்திரை & பரிகார பேக்கேஜ்கள்'), L('Temples, priest, pooja items, stay and travel — arranged together', 'கோவில், புரோகிதர், பூஜைப் பொருள், தங்குமிடம், பயணம் — ஒன்றாக ஏற்பாடு'))}
+  sec.innerHTML = `${subHeader(L('Yatra & Parigaram Packages', 'யாத்திரை & பரிகாரத் தொகுப்புகள்'), L('Temples, priest, pooja items, stay and travel — arranged together', 'கோவில், புரோகிதர், பூஜைப் பொருள், தங்குமிடம், பயணம் — ஒன்றாக ஏற்பாடு'))}
     ${offlineBanner()}
     <div class="card glass pkg-find"><div class="card-title">🔍 ${L('Find a temple', 'கோவிலைத் தேடுங்கள்')}</div>
       ${templeSearchField({ id: 'pkgSearch' })}<div id="pkgHit" aria-live="polite"></div></div>
-    <div class="card glass"><div class="card-title">✅ ${L('Every package includes', 'ஒவ்வொரு பேக்கேஜிலும்')}</div>${PACKAGE_INCLUDES.map((i) => `<div class="small">• ${esc(bi(i))}</div>`).join('')}
+    <div class="card glass"><div class="card-title">✅ ${L('Every package includes', 'ஒவ்வொரு தொகுப்பிலும்')}</div>${PACKAGE_INCLUDES.map((i) => `<div class="small">• ${esc(bi(i))}</div>`).join('')}
       <p class="muted small">${L('Coming from abroad? We arrange airport pickup and plan around your flight dates.', 'வெளிநாட்டிலிருந்து வருகிறீர்களா? விமான நிலைய வரவேற்பும், உங்கள் விமான தேதிக்கு ஏற்ப திட்டமும் செய்வோம்.')}</p></div>
     ${PACKAGES.map((p) => {
     const r = packageRoute(p, loc);
@@ -835,7 +835,7 @@ function renderPackages(sec, params = {}) {
         <a class="chip-btn" href="https://www.google.com/maps/search/hotels+near+${encodeURIComponent(`${first.name.en}, ${first.town}`)}" target="_blank" rel="noopener">🏨 ${L('Hotels', 'தங்குமிடம்')}</a>
         <button class="chip-btn" data-go="muhurtham">🗓️ ${L('Good dates', 'நல்ல நாள்')}</button>
       </div>
-      <button class="btn-gold" data-pkg="${p.id}">🙏 ${L('Request this package', 'இந்தப் பேக்கேஜைக் கோரவும்')}</button>
+      <button class="btn-gold" data-pkg="${p.id}">🙏 ${L('Request this package', 'இந்தத் தொகுப்பைக் கோரவும்')}</button>
       <div id="pkgForm-${p.id}"></div></details>`;
   }).join('')}`;
   $$('[data-pkg]', sec).forEach((b) => b.addEventListener('click', () => packageForm(b.dataset.pkg)));
@@ -845,8 +845,8 @@ function renderPackages(sec, params = {}) {
       const hits = PACKAGES.filter((p) => p.stops.flat().includes(t.id));
       $$('.pkg', sec).forEach((d) => { d.classList.toggle('ts-hit', hits.some((p) => d.id === `pkg-${p.id}`)); });
       $('#pkgHit').innerHTML = hits.length
-        ? `<p class="small">🧳 ${L('In these packages', 'இந்தப் பேக்கேஜ்களில் உள்ளது')}: ${hits.map((p) => `<button type="button" class="link-btn" data-open-pkg="${p.id}">${esc(bi(p.name))}</button>`).join(' · ')}</p>`
-        : `<p class="small">${L('Not in a ready package yet — plan your own trip to it.', 'இன்னும் தயாரான பேக்கேஜில் இல்லை — நீங்களே பயணம் திட்டமிடலாம்.')}</p>
+        ? `<p class="small">🧳 ${L('In these packages', 'இந்தத் தொகுப்புகளில் உள்ளது')}: ${hits.map((p) => `<button type="button" class="link-btn" data-open-pkg="${p.id}">${esc(bi(p.name))}</button>`).join(' · ')}</p>`
+        : `<p class="small">${L('Not in a ready package yet — plan your own trip to it.', 'இன்னும் தயாரான தொகுப்பில் இல்லை — நீங்களே பயணம் திட்டமிடலாம்.')}</p>
           <div class="btn-row"><button type="button" class="chip-btn" data-go="journey" data-param='${esc(JSON.stringify({ temples: [t.id] }))}'>🧭 ${L('Plan a journey', 'பயணம் திட்டமிடு')}</button><button type="button" class="chip-btn" data-go="temples" data-param='${esc(JSON.stringify({ temple: t.id }))}'>🛕 ${L('Temple details', 'கோவில் விவரம்')}</button></div>`;
       const openPkg = (id) => { const d = $(`#pkg-${id}`, sec); if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
       $$('[data-open-pkg]', sec).forEach((b) => b.addEventListener('click', () => openPkg(b.dataset.openPkg)));
@@ -866,14 +866,14 @@ function pkgFlightHtml(r, loc) {
   return `<div class="pkg-flight small"><b>✈️ ${esc(placeName(f.origin.city))} (${f.origin.code}) → ${esc(placeName(f.airport.city))} (${f.airport.code})</b> · ≈ ${f.out.hours} ${L('h', 'மணி')}${f.out.direct ? '' : ` ${L('incl. one connection', 'ஒரு இணைப்பு உட்பட')}`} ${provBadge(prov('estimated'))}
     ${diff ? `<div>🕒 ${esc(bi(diff))}</div>` : ''}
     <div>💺 ${L('Flights per person, return', 'ஒருவருக்கு விமானம், போய்வர')}: ${moneyRange(f.farePerPerson.low, f.farePerPerson.high, cur)} ${provBadge(prov('estimated'))} <span class="muted">(${L('check airline', 'விமான நிறுவனத்திடம் உறுதி செய்யவும்')})</span></div>
-    <div class="muted">${L(`${r.totalDays} days including the flight days. Airport pickup at ${f.airport.city} can be arranged with the package.`, `விமான நாட்கள் உட்பட ${r.totalDays} நாள். ${placeName(f.airport.city)} விமான நிலைய வரவேற்பு பேக்கேஜுடன் ஏற்பாடு செய்யலாம்.`)}</div></div>`;
+    <div class="muted">${L(`${r.totalDays} days including the flight days. Airport pickup at ${f.airport.city} can be arranged with the package.`, `விமான நாட்கள் உட்பட ${r.totalDays} நாள். ${placeName(f.airport.city)} விமான நிலைய வரவேற்பு தொகுப்புடன் ஏற்பாடு செய்யலாம்.`)}</div></div>`;
 }
 
 async function packageForm(id) {
   const box = $(`#pkgForm-${id}`);
-  if (STATIC) { box.innerHTML = needsServerCard(L('Package requests go to our operations team for a quote within a day.', 'பேக்கேஜ் கோரிக்கைகள் எங்கள் குழுவுக்குச் சென்று ஒரு நாளில் விலை தெரிவிக்கப்படும்.')); return; }
+  if (STATIC) { box.innerHTML = needsServerCard(L('Package requests go to our operations team for a quote within a day.', 'தொகுப்புக் கோரிக்கைகள் எங்கள் குழுவுக்குச் சென்று ஒரு நாளில் விலை தெரிவிக்கப்படும்.')); return; }
   if (!(await servicesOpen())) { box.innerHTML = servicesClosedCard(); return; }
-  if (!state.user) { toast(L('Please sign in to request a package', 'பேக்கேஜ் கோர உள்நுழையவும்')); go('login'); return; }
+  if (!state.user) { toast(L('Please sign in to request a package', 'தொகுப்பைக் கோர உள்நுழையவும்')); go('login'); return; }
   box.innerHTML = `<form class="pkg-form"><div class="row2"><label>${L('Start date', 'தொடக்கத் தேதி')}<input type="date" name="date" required min="${todayIso()}"></label><label>${L('People', 'நபர்கள்')}<input type="number" name="people" min="1" max="60" value="4" required></label></div>
     <label>${L('Starting city', 'புறப்படும் நகரம்')}<input name="city" required value="${esc(placeName(state.loc.name))}"></label>
     <label>${L('Contact mobile / WhatsApp', 'தொடர்பு மொபைல் / WhatsApp')}<input name="contactPhone" required inputmode="tel" value="${esc(state.user.phone || '')}"></label>

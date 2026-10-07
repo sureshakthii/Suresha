@@ -528,8 +528,8 @@ function renderDailySet(sec) {
       ${row('journalBackup', 'Include my diary in the account backup', 'என் நாட்குறிப்பைக் கணக்குப் பாதுகாப்பில் சேர்', backupConsent() ? 'Off by default. Entries of private profiles never leave this phone.' : 'Needs “Back up family profiles” on in Privacy & data.', backupConsent() ? 'இயல்பாக நிறுத்தம். தனிப்பட்ட சுயவிவரங்களின் குறிப்புகள் இந்தக் கைப்பேசியை விட்டு வெளியேறாது.' : 'தனியுரிமை & தரவு பக்கத்தில் “குடும்ப சுயவிவரங்களைப் பாதுகா” இயக்கத்தில் இருக்க வேண்டும்.')}
     </section>
     <section class="card glass ds-group"><div class="card-title">🔔 ${L('Other reminders', 'பிற நினைவூட்டல்கள்')}</div>
-      <p class="small">${L('Bells you set yourself and the morning panchangam alarm are on the Alarm & reminders page.', 'நீங்களே அமைத்த மணிகளும் காலை பஞ்சாங்க அலாரமும் அலாரம் & நினைவூட்டல் பக்கத்தில்.')}</p>
-      <button class="chip-btn" data-go="reminders">${L('Alarm & reminders', 'அலாரம் & நினைவூட்டல்')} ›</button>
+      <p class="small">${L('Bells you set yourself and the morning panchangam alarm are on the Alarm & Reminders page.', 'நீங்களே அமைத்த மணிகளும் காலை பஞ்சாங்க அலாரமும் அலாரம் & நினைவூட்டல் பக்கத்தில்.')}</p>
+      <button class="chip-btn" data-go="reminders">${L('Alarm & Reminders', 'அலாரம் & நினைவூட்டல்')} ›</button>
     </section>
     <button class="btn-soft" type="button" id="dsAllOff">🔕 ${L('Turn off all reminders, notifications and prompts', 'எல்லா நினைவூட்டல், அறிவிப்பு, கேள்விகளையும் நிறுத்து')}</button>
     <p class="small muted center">${L('Your diary and settings stay on this phone unless you choose the backup above.', 'மேலே பாதுகாப்பைத் தேர்வு செய்யாவிட்டால், உங்கள் நாட்குறிப்பும் அமைப்புகளும் இந்தக் கைப்பேசியிலேயே இருக்கும்.')}</p>

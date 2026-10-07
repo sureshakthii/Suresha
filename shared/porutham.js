@@ -1,5 +1,7 @@
 // Thirumana Porutham — traditional Tamil 10-porutham marriage matching, plus
 // Chevvai (Mars) dosham, Rahu-Ketu (Sarpa) dosham and dosha samyam checks.
+// No marry / reject verdict and no combined score is produced: the result is a count of the traditional factors
+// that agree, each factor with its basis, and Rajju / Vedhai listed as key factors for the family to discuss.
 import { NAKSHATRAS, RASIS, PLANETS } from './astro.js';
 import { T, makeContext } from './rules/core.js';
 import { resolveProfile } from './rules/profiles.js';
@@ -51,15 +53,77 @@ const MAHENDRA_GOOD = new Set([4, 7, 10, 13, 16, 19, 22, 25]);
 const count = (from, to, n) => ((to - from + n) % n) + 1;
 const GOOD = 'uttamam', MID = 'madhyamam', BAD = 'poruthamillai';
 
+// Neutral calculation basis for each porutham (shown in the detailed view).
+export const PORUTHAM_BASIS = {
+  dina: T('Star count from the bride-side star (traditional table).', 'பெண் தரப்பு நட்சத்திரத்திலிருந்து எண்ணிக்கை (மரபு அட்டவணை).'),
+  gana: T('Gana group of each star — a traditional temperament grouping, not a judgement of anyone.', 'ஒவ்வொரு நட்சத்திரத்தின் கணம் — மரபுக் குழுப்பிரிவு மட்டுமே, யாரைப் பற்றிய தீர்ப்பும் அல்ல.'),
+  mahendra: T('Star count from the bride-side star (traditional table).', 'பெண் தரப்பு நட்சத்திரத்திலிருந்து எண்ணிக்கை (மரபு அட்டவணை).'),
+  stree: T('Star distance counted from the bride-side star (traditional table).', 'பெண் தரப்பு நட்சத்திரத்திலிருந்து நட்சத்திர இடைவெளி (மரபு அட்டவணை).'),
+  yoni: T('Traditional animal symbol of each star.', 'ஒவ்வொரு நட்சத்திரத்தின் மரபு யோனி அடையாளம்.'),
+  rasi: T('Distance between the two Moon signs.', 'இரு சந்திர ராசிகளுக்கு இடையிலான தூரம்.'),
+  athipathi: T('Natural friendship of the two Moon-sign lords.', 'இரு ராசி அதிபதிகளின் இயற்கை நட்பு.'),
+  vasya: T('Traditional Vasya sign pairs.', 'மரபு வசிய ராசி இணைகள்.'),
+  rajju: T('Rajju group of each star — a factor many families weigh most; schools differ on exceptions.', 'ஒவ்வொரு நட்சத்திரத்தின் ரஜ்ஜு பிரிவு — பல குடும்பங்கள் அதிகம் கவனிக்கும் காரணி; விதிவிலக்குகளில் மரபுகள் வேறுபடுகின்றன.'),
+  vedhai: T('Traditional Vedha star pairs — a factor many families weigh most; schools differ on exceptions.', 'மரபு வேதை நட்சத்திர இணைகள் — பல குடும்பங்கள் அதிகம் கவனிக்கும் காரணி; விதிவிலக்குகளில் மரபுகள் வேறுபடுகின்றன.'),
+};
+/** Per-factor result wording — descriptive, never a verdict on the pair. */
+export const RESULT_LABEL = {
+  uttamam: T('Agrees', 'பொருந்துகிறது'),
+  madhyamam: T('Partly agrees', 'ஓரளவு பொருந்துகிறது'),
+  poruthamillai: T('Does not agree', 'பொருந்தவில்லை'),
+};
+export const KEY_FACTORS_TITLE = T('Key traditional factors — discuss together', 'முக்கியக் காரணிகள் — பேசி முடிவு செய்யுங்கள்');
+export const DETAILED_VIEW_TITLE = T('Detailed view', 'விரிவான பார்வை');
+export const NEUTRAL_NOTE = T('These factors describe a tradition’s view; they do not say how a marriage will turn out. The decision rests with the two of you and your families.',
+  'இந்தக் காரணிகள் ஒரு மரபின் பார்வையை விவரிக்கின்றன; திருமணம் எப்படி அமையும் என்பதைச் சொல்வதில்லை. முடிவு நீங்கள் இருவரும் உங்கள் குடும்பங்களும் எடுப்பது.');
+
+/** Optional practical discussion prompts (no scoring) — shown under porutham and couple results. */
+export const DISCUSSION_TOPICS = [
+  { id: 'expectations', icon: '💬', title: T('Expectations', 'எதிர்பார்ப்புகள்'), prompts: [
+    T('What does a good day together look like for each of you?', 'உங்கள் ஒவ்வொருவருக்கும் சேர்ந்து இருக்கும் நல்ல நாள் எப்படி இருக்கும்?'),
+    T('How do you each like to talk through a disagreement?', 'கருத்து வேறுபாட்டை நீங்கள் ஒவ்வொருவரும் எப்படிப் பேசித் தீர்க்க விரும்புகிறீர்கள்?'),
+    T('What does personal space mean to each of you?', 'தனிப்பட்ட இடம் உங்கள் ஒவ்வொருவருக்கும் என்ன பொருள்?')] },
+  { id: 'money', icon: '💰', title: T('Money & responsibilities', 'பணமும் பொறுப்புகளும்'), prompts: [
+    T('How will you handle savings, loans and big purchases?', 'சேமிப்பு, கடன், பெரிய செலவுகளை எப்படிக் கையாள்வீர்கள்?'),
+    T('How will household work be shared?', 'வீட்டு வேலைகளை எப்படிப் பகிர்வீர்கள்?'),
+    T('Who in your families may need care, and how will you share it?', 'உங்கள் குடும்பங்களில் யாருக்குப் பராமரிப்பு தேவைப்படலாம், அதை எப்படிப் பகிர்வீர்கள்?')] },
+  { id: 'family', icon: '🏡', title: T('Family & children', 'குடும்பமும் குழந்தைகளும்'), prompts: [
+    T('Do you each want children, and if so, roughly when? (a preference to discuss, not a prediction)', 'உங்கள் ஒவ்வொருவருக்கும் குழந்தைகள் வேண்டுமா, வேண்டுமெனில் எப்போது? (பேச வேண்டிய விருப்பம், கணிப்பு அல்ல)'),
+    T('How involved will each family be in your decisions?', 'உங்கள் முடிவுகளில் ஒவ்வொரு குடும்பமும் எவ்வளவு ஈடுபடும்?'),
+    T('Which festivals and practices matter to each of you?', 'எந்தப் பண்டிகைகளும் வழிபாடுகளும் உங்கள் ஒவ்வொருவருக்கும் முக்கியம்?')] },
+  { id: 'timing', icon: '🗓️', title: T('Timing', 'நேரம்'), prompts: [
+    T('What work, study or location plans do you each have for the next few years?', 'அடுத்த சில ஆண்டுகளுக்கான வேலை, படிப்பு, இருப்பிடத் திட்டங்கள் என்ன?'),
+    T('Is there any reason to hurry? Take the time you both need.', 'அவசரப்பட ஏதேனும் காரணம் உள்ளதா? இருவருக்கும் தேவையான நேரத்தை எடுத்துக்கொள்ளுங்கள்.'),
+    T('A Muhurtham can be chosen later, around your real plans.', 'உங்கள் உண்மையான திட்டங்களுக்கு ஏற்ப முகூர்த்தத்தைப் பின்னர் தேர்வு செய்யலாம்.')] },
+];
+export const DISCUSSION_TITLE = T('Things to talk about (optional)', 'பேசிப் பார்க்க வேண்டியவை (விருப்பம்)');
+
+/** Neutral one-paragraph summary from the factor counts. */
+function summaryOf(agree, partial, keyRows) {
+  const keyNo = keyRows.filter((r) => r.status === BAD);
+  const keyEn = keyNo.length ? ` ${keyNo.map((r) => r.short.en).join(' and ')} ${keyNo.length > 1 ? 'do' : 'does'} not agree — see the key factors to discuss together.` : ' Rajju and Vedhai both agree.';
+  const keyTa = keyNo.length ? ` ${keyNo.map((r) => r.short.ta).join(', ')} பொருந்தவில்லை — முக்கியக் காரணிகளைச் சேர்ந்து பேசுங்கள்.` : ' ரஜ்ஜு, வேதை இரண்டும் பொருந்துகின்றன.';
+  return {
+    summary: T(
+      `${agree} of 10 traditional factors agree${partial ? ` (${partial} of them partly)` : ''}.${keyEn}`,
+      `10 மரபுக் காரணிகளில் ${agree} பொருந்துகின்றன${partial ? ` (அவற்றில் ${partial} ஓரளவு)` : ''}.${keyTa}`,
+    ),
+    keyNote: T(keyEn.trim(), keyTa.trim()),
+    partialNote: partial ? T(`${partial} of them partly`, `அவற்றில் ${partial} ஓரளவு`) : null,
+  };
+}
+
 /**
  * Match bride (girl) and groom (boy). Each side: { star (0-26), rasi (0-11) } — derived from a birth chart
- * or chosen directly. Returns the 10 poruthams with status and a summary verdict.
+ * or chosen directly. Returns the 10 poruthams (each with status, basis and result label), the number that agree,
+ * the key factors (Rajju, Vedhai) and a neutral summary. There is no verdict. `score` (uttamam 1, madhyamam ½)
+ * is kept only for internal ranking (shared/compat.js) and is never shown as a match score.
  */
 export function matchPorutham(girl, boy) {
   const gs = girl.star, bs = boy.star;
   const c = count(gs, bs, 27);
   const rows = [];
-  const push = (key, en, ta, status, detail, importance = 'normal') => rows.push({ key, en, ta, status, detail, importance });
+  const push = (key, en, ta, status, detail, importance = 'normal') => rows.push({ key, en, ta, status, detail, importance, basis: PORUTHAM_BASIS[key], label: RESULT_LABEL[status], agrees: status !== BAD, keyFactor: importance === 'critical' });
 
   // 1. Dina
   let dina = DINA_GOOD.has(c) ? GOOD : BAD;
@@ -110,20 +174,18 @@ export function matchPorutham(girl, boy) {
 
   const score = rows.reduce((s, r) => s + (r.status === GOOD ? 1 : r.status === MID ? 0.5 : 0), 0);
   const criticalFail = rows.some((r) => r.importance === 'critical' && r.status === BAD);
-  const verdict = criticalFail ? 'NOT_RECOMMENDED' : score >= 7 ? 'EXCELLENT' : score >= 5.5 ? 'GOOD' : score >= 4 ? 'AVERAGE' : 'NOT_RECOMMENDED';
+  const agree = rows.filter((r) => r.status !== BAD).length;
+  const partial = rows.filter((r) => r.status === MID).length;
+  const keyFactors = rows.filter((r) => r.keyFactor).map((r) => ({ ...r, short: r.key === 'rajju' ? T('Rajju', 'ரஜ்ஜு') : T('Vedhai', 'வேதை') }));
   return {
-    rows, score, outOf: 10, verdict, criticalFail,
+    rows, score, outOf: 10, criticalFail,
+    agree, partial, total: rows.length, keyFactors, keyFactorsDisagree: criticalFail,
+    ...summaryOf(agree, partial, keyFactors), note: NEUTRAL_NOTE, noVerdict: true, noCombinedScore: true,
     girl: { star: NAKSHATRAS[gs], rasi: RASIS[girl.rasi], gana: GANA_NAMES[gg], yoni: { en: gy, ta: YONI_TA[gy] }, rajju: RAJJU_NAMES[gr] },
     boy: { star: NAKSHATRAS[bs], rasi: RASIS[boy.rasi], gana: GANA_NAMES[bg], yoni: { en: by, ta: YONI_TA[by] }, rajju: RAJJU_NAMES[br] },
   };
 }
 
-export const VERDICTS = {
-  EXCELLENT: { en: 'Excellent match (Uthamam)', ta: 'உத்தமப் பொருத்தம்' },
-  GOOD: { en: 'Good match (Madhyamam)', ta: 'நல்ல பொருத்தம்' },
-  AVERAGE: { en: 'Average — consult further', ta: 'சுமாரான பொருத்தம்' },
-  NOT_RECOMMENDED: { en: 'Not recommended', ta: 'பொருத்தம் இல்லை' },
-};
 
 /**
  * Chevvai dosham and Rahu-Ketu dosham from the rule registry (shared/rules/chevvai.js).

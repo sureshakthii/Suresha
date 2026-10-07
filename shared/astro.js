@@ -3,7 +3,6 @@
 import * as A from 'astronomy-engine';
 import { zoneOffsetMinutes, birthInput } from './datetime.js';
 import { vargaRasi, VARGAS } from './varga.js';
-import { cappedDasaPeriods } from './lifespan-cap.js';
 
 export const RASIS = [
   { en: 'Mesha', ta: 'மேஷம்', short: 'மே', lord: 'Mars' },
@@ -619,12 +618,12 @@ export function vimshottari(birthDate, moonLongitude, now = new Date()) {
 }
 
 /**
- * Dasa / bhukti periods to LIST for a person: chart.dasa.periods kept inside the person's age 0–80 (the listing
- * horizon of shared/lifespan-cap.js) — a straddling period ends at it, later ones are left out. The engine's full
- * 120-year schedule (chart.dasa) is unchanged; use this helper wherever periods are shown to users.
+ * Dasa / bhukti periods to LIST for a person: the full 120-year Vimshottari schedule (chart.dasa.periods). No period
+ * is dropped for the person's age; screens choose a report horizon and say so in the header
+ * (shared/report-horizon.js — e.g. "Covers the next 20 years" with "Show more").
  */
 export function listedDasaPeriods(chart) {
-  return cappedDasaPeriods(chart);
+  return chart?.dasa?.periods || [];
 }
 
 /** Convert local birth date/time (YYYY-MM-DD, HH:MM[:SS]) + tz offset (hours) into a UTC Date. */
@@ -637,12 +636,13 @@ export function localToUtc(dateStr, timeStr, tzOffset) {
 /**
  * Full birth chart (Jathagam).
  * Optional: `zone` (IANA, e.g. 'Asia/Kolkata') — when given it replaces the numeric `tz` and handles
- * historical offsets/DST; `timePrecision` 'exact' | 'approximate' | 'unknown'.
+ * historical offsets/DST; `timePrecision` 'exact' | 'approximate' | 'unknown'; `windowMinutes` the ± minutes of an
+ * approximate time (default 30) used for `chart.stability`; `disambiguation` 'earlier' | 'later' for a DST-repeated time.
  * Unknown time: positions are computed at local noon and the Lagna/houses are NOT invented —
  * `lagna` is null, `planets.Lagna` is absent and `availability.lagna/houses` are false.
  */
-export function birthChart({ name, date, time, lat, lon, tz, place, zone, timePrecision }) {
-  const input = birthInput({ date, time, zone, tz, lat, lon, place, timePrecision });
+export function birthChart({ name, date, time, lat, lon, tz, place, zone, timePrecision, windowMinutes, disambiguation }) {
+  const input = birthInput({ date, time, zone, tz, lat, lon, place, timePrecision, disambiguation });
   const utc = input.utc;
   const tzArg = zone || input.tz;
   const unknown = input.timePrecision === 'unknown';
@@ -674,7 +674,8 @@ export function birthChart({ name, date, time, lat, lon, tz, place, zone, timePr
   };
   if (input.timePrecision !== 'exact') {
     // Which items could differ within the uncertainty (unknown: the whole civil day, ±12 h around noon).
-    chart.stability = chartStability(chart, unknown ? 720 : 30);
+    // Approximate: the person's own ± window (profiles: timeWindowMin, via birthArgs in shared/birthtime.js).
+    chart.stability = chartStability(chart, unknown ? 720 : Number(windowMinutes) > 0 ? Number(windowMinutes) : 30);
     if (unknown) chart.dasa.approximate = true;
   }
   return chart;

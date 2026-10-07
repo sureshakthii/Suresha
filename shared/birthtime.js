@@ -21,7 +21,29 @@ export function shiftLocal(date, time, minutes) {
   return { date: `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`, time: `${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}:${pad(t.getUTCSeconds())}` };
 }
 
-export const certaintyOf = (m) => (CERTAINTY.includes(m?.timeCertainty) ? m.timeCertainty : 'exact');
+export const certaintyOf = (m) => (CERTAINTY.includes(m?.timeCertainty) ? m.timeCertainty : m?.timePrecision === 'unknown' ? 'unknown' : m?.timePrecision === 'approximate' ? 'approx' : 'exact');
+
+/** The ± minutes an approximate time may be off by (profile default 60). */
+export const windowOf = (m) => (certaintyOf(m) === 'approx' ? Math.max(1, Number(m.timeWindowMin) || 60) : 0);
+
+/**
+ * Engine arguments for a stored profile. Profiles store `timeCertainty` ('exact' | 'approx' | 'unknown') and, for
+ * approx, `timeWindowMin`; birthChart() reads `timePrecision` ('exact' | 'approximate' | 'unknown') and the
+ * stability window. Without this mapping an unknown time would be charted at the noon placeholder as if exact.
+ * `dstChoice: 'later'` picks the second occurrence of a wall time repeated when clocks go back.
+ */
+export function birthArgs(m) {
+  if (!m) return m;
+  const c = certaintyOf(m);
+  const timePrecision = c === 'unknown' ? 'unknown' : c === 'approx' ? 'approximate' : 'exact';
+  return {
+    ...m,
+    time: c === 'unknown' ? null : m.time,
+    timePrecision,
+    windowMinutes: c === 'approx' ? windowOf(m) : undefined,
+    disambiguation: m.dstChoice === 'later' ? 'later' : 'earlier',
+  };
+}
 
 /**
  * Returns which results are reliable:
@@ -48,8 +70,10 @@ export function timeReliability(m) {
   const dasaShiftDays = nakshatra ? Math.round(Math.abs(b.dasa.periods[0].start - a.dasa.periods[0].start) / 86400000) : null;
   const dasa = nakshatra && dasaShiftDays <= 31;
   const notes = [];
-  if (!lagna) notes.push({ en: 'Lagnam, houses and house-based readings need a reliable birth time, so they are not shown.', ta: 'லக்னம், பாவங்கள், பாவ அடிப்படையிலான பலன்களுக்குத் துல்லியமான பிறந்த நேரம் தேவை; எனவே காட்டப்படவில்லை.' });
-  if (lagna && !navamsa) notes.push({ en: 'The Navamsa and other divisional charts change within your time window, so they are withheld.', ta: 'உங்கள் நேர இடைவெளிக்குள் நவாம்சம், வர்க்கச் சக்கரங்கள் மாறுகின்றன; எனவே காட்டப்படவில்லை.' });
+  const w = m.timeWindowMin || 60;
+  if (certainty === 'unknown') notes.push({ en: 'Lagnam, houses and house-based readings need the birth time, so they are not shown; readings use the Moon sign instead.', ta: 'லக்னம், பாவங்கள், பாவ அடிப்படையிலான பலன்களுக்குப் பிறந்த நேரம் தேவை; எனவே காட்டப்படவில்லை — பதிலாக சந்திர ராசிப்படி.' });
+  else if (!lagna) notes.push({ en: `The Lagnam can change within your ±${w} min, so it is marked “may change”; treat the Lagna and house readings as tentative.`, ta: `உங்கள் ±${w} நிமிடத்திற்குள் லக்னம் மாறக்கூடும்; அதனால் “மாறக்கூடியது” எனக் குறிக்கப்பட்டுள்ளது — லக்ன, பாவப் பலன்களைத் தற்காலிகமாகக் கொள்ளவும்.` });
+  if (certainty !== 'unknown' && !navamsa) notes.push({ en: `The Navamsa and other divisional charts change within your ±${w} min — they are marked “may change”; Sookshma dasa lords and D60 are approximate.`, ta: `உங்கள் ±${w} நிமிடத்திற்குள் நவாம்சம், வர்க்கச் சக்கரங்கள் மாறுகின்றன — “மாறக்கூடியது” எனக் குறிக்கப்பட்டுள்ளன; சூட்சும தசை, D60 தோராயமானவை.` });
   if (!rasi) notes.push({ en: 'The Moon changes sign during this window — even the Rasi is uncertain.', ta: 'இந்த நேரத்திற்குள் சந்திரன் ராசி மாறுகிறது — ராசியும் உறுதியில்லை.' });
   else if (!nakshatra) notes.push({ en: 'The birth star changes during this window, so the star and dasa periods are uncertain.', ta: 'இந்த நேரத்திற்குள் நட்சத்திரம் மாறுகிறது; நட்சத்திரமும் தசா காலமும் உறுதியில்லை.' });
   else if (!dasa) notes.push({ en: `Dasa dates may shift by up to about ${dasaShiftDays} days; treat them as approximate.`, ta: `தசா தேதிகள் சுமார் ${dasaShiftDays} நாட்கள் வரை மாறலாம்; தோராயமாகக் கொள்ளவும்.` });

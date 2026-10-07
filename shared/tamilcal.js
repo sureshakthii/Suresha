@@ -23,6 +23,9 @@ const YEARS_TA = ['பிரபவ', 'விபவ', 'சுக்ல', 'பி�
   'பிலவங்க', 'கீலக', 'சௌமிய', 'சாதாரண', 'விரோதகிருது', 'பரிதாபி', 'பிரமாதீச', 'ஆனந்த', 'ராட்சச', 'நள',
   'பிங்கள', 'காளயுக்தி', 'சித்தார்த்தி', 'ரௌத்திரி', 'துன்மதி', 'துந்துபி', 'ருத்ரோத்காரி', 'ரக்தாட்சி', 'குரோதன', 'அட்சய'];
 
+/** The 60 Tamil year names (index 0 = Prabhava; the cycle began at Mesha Sankranti 1987). */
+export const TAMIL_YEARS = YEARS_EN.map((en, i) => ({ index: i, en, ta: YEARS_TA[i] }));
+
 // Gowri Panchangam: 8 daytime and 8 night-time slots per weekday.
 export const GOWRI = [
   { en: 'Uthi', ta: 'உத்தி', good: true },

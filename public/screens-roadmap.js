@@ -5,8 +5,9 @@ import { lifeRoadmap, ROAD_AREAS as ALL_AREAS } from './shared/roadmap.js';
 let ROAD_AREAS = ALL_AREAS.filter((a) => a.id !== 'health');
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, monthName, activeMember, chartOf, registerScreen, subHeader,
-  speak, displayName, aiTask, saveFamily,
+  speak, displayName, aiTask, saveFamily, needsTimeNote, birthContext, stabilityChip,
 } from './core.js';
+import { REPORT_YEARS, horizonLabel } from './shared/report-horizon.js';
 import { isLocked, lockCard } from './growth.js';
 import { remindBtn } from './remind.js';
 
@@ -74,7 +75,7 @@ function renderRoadmap(sec) {
   injectCss();
   const m = activeMember()?.relation !== 'organization' ? activeMember() : people()[0];
   if (!m) { sec.innerHTML = `${subHeader(L('Life Road Map', 'வாழ்க்கை வரைபடம்'))}<p class="muted center">${L('Add a family member first.', 'முதலில் குடும்ப உறுப்பினரைச் சேர்க்கவும்.')}</p>`; return; }
-  sec.innerHTML = `${subHeader(L('Life Road Map', 'வாழ்க்கை வரைபடம்'), L('Your personal plan for the next 10 years — from your own Jathagam', 'உங்கள் ஜாதகத்திலிருந்து அடுத்த 10 ஆண்டுகளுக்கான தனிப்பட்ட திட்டம்'))}
+  sec.innerHTML = `${subHeader(L('Life Road Map', 'வாழ்க்கை வரைபடம்'), L(`Your personal plan from your own Jathagam · Covers the next ${REPORT_YEARS.roadmap} years`, `உங்கள் ஜாதகத்திலிருந்து தனிப்பட்ட திட்டம் · அடுத்த ${REPORT_YEARS.roadmap} ஆண்டுகள்`))}
     ${people().length > 1 ? `<div class="member-switch">${people().map((x) => `<button class="mchip${x.id === m.id ? ' sel' : ''}" data-rid="${esc(x.id)}">${esc(displayName(x))}</button>`).join('')}</div>` : ''}
     <div id="rmBody"><div class="loader"><i></i><i></i><i></i></div></div>`;
   $$('[data-rid]', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.rid; saveFamily(); renderRoadmap(sec); }));
@@ -83,7 +84,9 @@ function renderRoadmap(sec) {
 
 function drawRoadmap(m) {
   const c = chartOf(m);
-  const r = lifeRoadmap(c);
+  const years = REPORT_YEARS.roadmap;
+  const r = lifeRoadmap(c, { years });
+  const cover = `<span class="pill horizon-label">${esc(bi(horizonLabel(years)))}</span>`;
   // Age first: for a child the engine returns only learning / family & home (no career, wealth or marriage scores).
   ROAD_AREAS = (r.areas || ALL_AREAS).filter((a) => a.id !== 'health');
   const locked = isLocked('predictions');
@@ -95,6 +98,8 @@ function drawRoadmap(m) {
     ...r.now.map((x) => bi(x)),
   ].join(' ');
   $('#rmBody').innerHTML = `
+    ${r.needsBirthTime ? needsTimeNote({ en: 'House-based period readings use the Lagna.', ta: 'பாவ அடிப்படையிலான கால பலன்கள் லக்னத்தைப் பயன்படுத்துகின்றன.' }) : ''}
+    ${stabilityChip(c, 'lagna', 'moonNakshatra', 'moonPada') ? `<p class="small">${stabilityChip(c, 'lagna', 'moonNakshatra', 'moonPada')} ${L('Your birth time is approximate: the Lagna or dasa dates used here can shift.', 'பிறந்த நேரம் தோராயம்: இங்கே பயன்படும் லக்னம் அல்லது தசா தேதிகள் மாறலாம்.')}</p>` : ''}
     <div class="card glass rm-stage"><div class="mini-label">${L('Age', 'வயது')} ${r.age} · ${L('Life stage', 'வாழ்க்கைப் பருவம்')}</div>
       <div class="big-line">🌱 ${esc(bi(r.stage))}</div>
       ${r.stage.goals.map((g) => `<div class="small">✔️ ${esc(bi(g))}</div>`).join('')}
@@ -114,10 +119,10 @@ function drawRoadmap(m) {
       ${r.milestones.map((x) => `<div class="factor"><span>${x.icon} ${esc(bi(x.name))}${x.doubleTransit ? ` <span class="tag good">${L('Double transit', 'இரட்டைக் கோசாரம்')}</span>` : ''}</span><b class="zero">${mY(x.from)} – ${mY(x.to)} ${x.from > Date.now() ? remindBtn({ title: `${bi(x.name)} — ${L('good period begins', 'நல்ல காலம் தொடக்கம்')}`, at: x.from }) : ''}</b></div>`).join('')}
       <button class="chip-btn" data-go="life">🔭 ${L('Details for each question', 'ஒவ்வொரு கேள்விக்கும் விவரம்')}</button></div>` : ''}
 
-    <div class="section-title">📅 ${L('Year by year', 'ஆண்டுவாரியாக')}</div>
+    <div class="section-title">📅 ${L('Year by year', 'ஆண்டுவாரியாக')} ${cover}</div>
     ${yearTiles(r.years)}
 
-    <div class="section-title">🛤️ ${L('Period by period', 'காலம் காலமாக')}</div>
+    <div class="section-title">🛤️ ${L('Period by period', 'காலம் காலமாக')} ${cover}</div>
     ${r.periods.map((p) => `<details class="card glass rm-period ${p.level}"${p.current ? ' open' : ''}><summary>
         <span><b>${GLYPH[p.md]} ${esc(planetName(p.md))} – ${GLYPH[p.ad]} ${esc(planetName(p.ad))}</b><br><small class="muted">${mY(p.start)} – ${mY(p.end)}</small></span>${lvTag(p.level)}</summary>
       ${ROAD_AREAS.map((a) => `<div class="gb-row static"><span class="gb-name">${a.icon} ${esc(bi(a))}</span>${bar(p.scores[a.id])}<b>${p.scores[a.id]}</b></div>`).join('')}
@@ -135,11 +140,12 @@ function drawRoadmap(m) {
     const t = $('#rmAiText');
     t.classList.add('typing');
     const context = {
-      person: { name: m.name, age: r.age, stage: r.stage.en, star: c.janmaNakshatra.name, lagna: c.lagna.rasiName },
+      person: { name: m.name, age: r.age, stage: r.stage.en, star: c.janmaNakshatra.name, ...birthContext(m, c) },
+      coverage: `the next ${years} years`,
       periods: r.periods.map((p) => ({ dasa: `${p.md}/${p.ad}`, from: p.start.toISOString().slice(0, 7), to: p.end.toISOString().slice(0, 7), level: p.level, focus: p.focus, scores: p.scores, transit: p.notes.map((n) => n.en) })),
       milestones: r.milestones.map((x) => ({ event: x.name.en, from: x.from.toISOString().slice(0, 7), to: x.to.toISOString().slice(0, 7) })),
     };
-    await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: r.minor ? `This road map is for a ${r.age}-year-old child. As a kind family Guru, give a warm, simple plan for the coming years focused only on studies, health, good habits, character and family — no career, money, marriage or relationship predictions. Suggest simple prayers. About 200 words.` : 'Act as my life Guru. From this road map, give me a warm, practical 10-year plan: what to focus on in each period (career, money, family, health, learning), the best windows for big decisions, how to prepare for the care periods, and simple daily habits and parigarams. Positive, no fear. About 300 words.' }],
+    await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: r.minor ? `This road map is for a ${r.age}-year-old child. As a kind family Guru, give a warm, simple plan for the coming years focused only on studies, health, good habits, character and family — no career, money, marriage or relationship predictions. Suggest simple prayers. About 200 words.` : `Act as my life Guru. From this road map, give me a warm, practical ${years}-year plan: what to focus on in each period (career, money, family, health, learning), the best windows for big decisions, how to prepare for the care periods, and simple daily habits and parigarams. Positive, no fear. About 300 words.` }],
       fallbackText: r.now.map((x) => bi(x)).join('\n'), onText: (tx) => { t.textContent = tx; } });
     t.classList.remove('typing');
   });

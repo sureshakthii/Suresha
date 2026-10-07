@@ -7,7 +7,6 @@
 import { planetPositions, RASIS, NAKSHATRAS, PLANETS } from './astro.js';
 import { bhavaAnalysis } from './analysis.js';
 import { grahaStrength, NAVAGRAHA } from './remedies.js';
-import { capDate, minCap, clipPeriods } from './lifespan-cap.js';
 
 const ASPECTS = { Jupiter: [1, 5, 7, 9], Saturn: [1, 3, 7, 10] };
 const DAY = 86400000;
@@ -26,9 +25,9 @@ export const QUESTIONS = [
     remedy: { en: 'Pray to Vinayagar before applying; sign offers in a good Horai from the Prasnam screen.', ta: 'விண்ணப்பிக்கும் முன் விநாயகர் வழிபாடு; பிரசன்னத் திரையில் நல்ல ஓரையில் ஒப்பந்தம் கையெழுத்திடவும்.' } },
   { id: 'pr', icon: '🛂', en: 'When will I get PR / permanent visa abroad?', ta: 'வெளிநாட்டில் நிரந்தர விசா (PR) எப்போது?', houses: [3, 9, 12], negate: [4], key: 12, karakas: ['Rahu', 'Saturn', 'Moon'], ageMin: 18, ageMax: 75,
     remedy: { en: 'Durga worship during Rahu Kalam on Tuesdays/Fridays; keep documents complete and file in a good Horai.', ta: 'செவ்வாய்/வெள்ளி ராகு காலத்தில் துர்கை வழிபாடு; ஆவணங்களை முழுமையாக்கி நல்ல ஓரையில் விண்ணப்பிக்கவும்.' } },
-  { id: 'visa', icon: '✈️', en: 'Foreign travel / work visa', ta: 'வெளிநாட்டுப் பயணம் / வேலை விசா', houses: [3, 9, 12], negate: [4, 8], key: 9, karakas: ['Rahu', 'Moon'], ageMin: 16, ageMax: 80,
+  { id: 'visa', icon: '✈️', en: 'Foreign travel / work visa', ta: 'வெளிநாட்டுப் பயணம் / வேலை விசா', houses: [3, 9, 12], negate: [4, 8], key: 9, karakas: ['Rahu', 'Moon'], ageMin: 16, ageMax: 120,
     remedy: { en: 'Pray to Lord Anjaneya before travel and chant "Sri Rama Jaya Rama" on the way.', ta: 'பயணத்திற்கு முன் ஆஞ்சநேயர் வழிபாடு; வழியில் "ஸ்ரீ ராம ஜெய ராம" ஜபம்.' } },
-  { id: 'house', icon: '🏡', en: 'When can I buy my own house?', ta: 'சொந்த வீடு எப்போது?', houses: [4, 11, 2], negate: [3, 12], key: 4, karakas: ['Mars', 'Venus'], ageMin: 21, ageMax: 80,
+  { id: 'house', icon: '🏡', en: 'When can I buy my own house?', ta: 'சொந்த வீடு எப்போது?', houses: [4, 11, 2], negate: [3, 12], key: 4, karakas: ['Mars', 'Venus'], ageMin: 21, ageMax: 120,
     remedy: { en: 'Pray to Lord Murugan on Tuesdays and offer red flowers; Bhoomi Devi worship before buying land.', ta: 'செவ்வாய்தோறும் முருகனுக்கு சிவப்பு மலர்; நிலம் வாங்கும் முன் பூமாதேவி வழிபாடு.' } },
   { id: 'vehicle', icon: '🚗', en: 'When can I buy a vehicle (bike / car)?', ta: 'வாகனம் (பைக் / கார்) எப்போது வாங்கலாம்?', houses: [4, 11, 2], negate: [3, 8, 12], key: 4, karakas: ['Venus', 'Mars'], ageMin: 16, ageMax: 85,
     remedy: { en: 'Light a lamp for Mahalakshmi on Fridays; take the first drive to a Vinayagar temple, break a coconut and crush lemons under the wheels as per tradition. Always wear a helmet / seat belt and follow road safety.', ta: 'வெள்ளிதோறும் மகாலட்சுமிக்கு தீபம்; முதல் பயணம் விநாயகர் கோவிலுக்கு — தேங்காய் உடைத்து, சக்கரங்களின் கீழ் எலுமிச்சை வைத்து ஓட்டுவது மரபு. எப்போதும் தலைக்கவசம் / இருக்கைப் பட்டை அணிந்து சாலை விதிகளைப் பின்பற்றவும்.' } },
@@ -36,7 +35,7 @@ export const QUESTIONS = [
     remedy: { en: 'Optional prayer: the Santhana Gopala mantra; visit Garbharakshambigai Temple (Thirukkarukavur). Follow your doctor\'s guidance first.', ta: 'சந்தான கோபால மந்திரம்; திருக்கருகாவூர் கர்ப்பரக்ஷாம்பிகை தரிசனம். மருத்துவர் ஆலோசனையே முதன்மை.' } },
   { id: 'education', icon: '🎓', en: 'Higher studies / study abroad', ta: 'உயர்கல்வி / வெளிநாட்டுப் படிப்பு', houses: [4, 9, 11], negate: [3, 8], key: 9, karakas: ['Mercury', 'Jupiter'], ageMin: 15, ageMax: 45,
     remedy: { en: 'Pray to Saraswathi and Dakshinamurthy on Thursdays; study in the Mercury Horai.', ta: 'வியாழன் சரஸ்வதி, தட்சிணாமூர்த்தி வழிபாடு; புதன் ஓரையில் படிக்கவும்.' } },
-  { id: 'business', icon: '🏪', en: 'Business success', ta: 'வியாபார வெற்றி', houses: [7, 10, 11, 2], negate: [6, 8, 12], key: 10, karakas: ['Mercury', 'Jupiter'], ageMin: 18, ageMax: 80,
+  { id: 'business', icon: '🏪', en: 'Business success', ta: 'வியாபார வெற்றி', houses: [7, 10, 11, 2], negate: [6, 8, 12], key: 10, karakas: ['Mercury', 'Jupiter'], ageMin: 18, ageMax: 120,
     remedy: { en: 'Begin new ventures on a Muhurtham day; Mahalakshmi lamp on Fridays; give a little to charity from each profit.', ta: 'முகூர்த்த நாளில் தொடங்கவும்; வெள்ளி மகாலட்சுமி தீபம்; ஒவ்வொரு லாபத்திலும் சிறு தானம்.' } },
   { id: 'acting', icon: '🎬', en: 'Cinema / serial acting — when is the breakthrough?', ta: 'சினிமா / சீரியல் நடிப்பு — வாய்ப்பு எப்போது?', houses: [3, 5, 10, 11], negate: [6, 8, 12], key: 5, karakas: ['Venus', 'Moon', 'Rahu'], ageMin: 5, ageMax: 75,
     remedy: { en: 'Pray to Goddess Saraswathi and Lord Nataraja; train daily — Venus rewards practice and grace.', ta: 'சரஸ்வதி, நடராஜர் வழிபாடு; தினமும் பயிற்சி — பயிற்சிக்கும் நளினத்திற்கும் சுக்கிரன் பலன் தருவார்.' } },
@@ -159,9 +158,9 @@ const ageAt = (chart, d) => (d - chart.utc) / (365.25 * DAY);
  * double-transit months), the current period, and positive guidance.
  */
 export function predictEvent(chart, questionId, { from = new Date(), years = 15, until = undefined } = {}) {
-  // Listing horizon (shared/lifespan-cap.js): windows stay inside the person's age 0–80 — for a couple the caller
-  // passes the earlier of the two horizons as `until`.
-  const horizon = until === undefined ? capDate(chart) : until;
+  // Report horizon: `years` ahead of `from` (stated by the screen). No age cutoff; a caller may pass `until`
+  // to end the windows earlier (e.g. a couple's shared timeline).
+  const horizon = until == null ? null : new Date(until);
   const q = QUESTIONS.find((x) => x.id === questionId);
   const sig = significations(chart);
   if (!sig) {
@@ -192,7 +191,8 @@ export function predictEvent(chart, questionId, { from = new Date(), years = 15,
     ],
   };
 
-  const end = minCap(new Date(from.getTime() + years * 365.25 * DAY), horizon);
+  const end0 = new Date(from.getTime() + years * 365.25 * DAY);
+  const end = horizon && horizon < end0 ? horizon : end0;
   const windows = [];
   let current = null;
   for (const md of chart.dasa.periods) {
@@ -284,8 +284,8 @@ export function kulaDeivam(chart, { recorded = null, now = new Date() } = {}) {
   const lord = RASIS[ninth].lord;
   const occupants = Object.keys(chart.planets).filter((k) => k !== 'Lagna' && chart.planets[k].rasi === ninth);
   const strongest = occupants.length ? occupants[0] : lord;
-  const periods = clipPeriods(chart.dasa.periods.flatMap((p) => p.bhuktis.map((b) => ({ md: p.lord, ad: b.lord, start: b.start, end: b.end })))
-    .filter((b) => b.end > now && (b.ad === lord || b.ad === 'Jupiter' || b.ad === 'Ketu')), capDate(chart)).slice(0, 3);
+  const periods = chart.dasa.periods.flatMap((p) => p.bhuktis.map((b) => ({ md: p.lord, ad: b.lord, start: b.start, end: b.end })))
+    .filter((b) => b.end > now && (b.ad === lord || b.ad === 'Jupiter' || b.ad === 'Ketu')).slice(0, 3);
   const suggestion = {
     deity: DEITY_OF[strongest],
     optional: true,

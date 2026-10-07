@@ -1,10 +1,12 @@
 // Love Match (காதல் பொருத்தம்) — a friendly, shareable compatibility read for two people from both birth charts.
-// Partner details are used only on this phone and are not saved unless the user ticks "Save to my family list".
+// Partner details are used only on this phone and are not saved unless the user ticks "Save to my family list" AND
+// confirms they have that person's permission (stored as consentAt). Sharing the result needs the same confirmation.
+// The result is a neutral list of traditional affinity notes — no percentage, no tier.
 import { birthChart } from './shared/astro.js';
 import { loveMatch } from './shared/love.js';
 import { closingPrayer } from './shared/daily.js';
-import { state, chartOf, $, L, esc, bi, registerScreen, subHeader, toast, displayName, saveFamily } from './core.js';
-import { personBlock, wirePersonBlocks, forms, adultPool } from './screens-couple.js';
+import { state, chartOf, $, L, esc, bi, registerScreen, subHeader, toast, displayName } from './core.js';
+import { personBlock, wirePersonBlocks, forms, adultPool, permissionError, saveWithConsent, permissionCheckbox } from './screens-couple.js';
 import { isAdult } from './shared/age-guard.js';
 
 let result = null;
@@ -20,16 +22,14 @@ function chartFor(slot) {
   const loc = f.lat != null ? { lat: Number(f.lat), lon: Number(f.lon), tz: Number(f.tz) } : { lat: state.loc?.lat ?? 13.08, lon: state.loc?.lon ?? 80.27, tz: state.loc?.tz ?? 5.5 };
   const time = f.time ? (f.time.length === 5 ? `${f.time}:00` : f.time) : '12:00:00';
   const m = { name: f.name.trim(), gender: f.gender, date: f.date, time, place: f.place || '', ...loc };
-  if (f.save && !state.family.some((x) => x.date === m.date && x.name === m.name)) {
-    state.family.push({ ...m, id: Math.random().toString(36).slice(2, 10), relation: 'other', timeCertainty: f.time ? 'exact' : 'unknown' });
-    saveFamily();
-  }
+  if (f.save && !f.consent) throw new Error(permissionError());
+  if (f.save && !state.family.some((x) => x.date === m.date && x.name === m.name)) saveWithConsent({ ...m, relation: 'other', timeCertainty: f.time ? 'exact' : 'unknown' });
   return { chart: birthChart(m), name: m.name, gender: m.gender, timeKnown: !!f.time };
 }
 
-function meter(m) {
-  return `<div class="lv-meter"><div class="lv-mh"><span>${m.icon} ${esc(bi(m.name))}</span><b>${m.score}%</b></div>
-    <div class="lv-bar"><i style="width:${m.score}%"></i></div><p class="small muted">${esc(bi(m.why))}</p></div>`;
+function noteRow(n) {
+  return `<div class="lv-meter"><div class="lv-mh"><span>${n.icon} ${esc(bi(n.name))}</span></div>
+    <p class="small">${esc(bi(n.line))}</p><p class="small muted">${esc(bi(n.basis))}</p></div>`;
 }
 
 function renderResult() {
@@ -38,19 +38,20 @@ function renderResult() {
   const pr = closingPrayer(r.charts[0]);
   return `<section class="card glass lv-result" aria-live="polite">
       <div class="lv-names">${esc(r.names[0])} <span>💞</span> ${esc(r.names[1])}</div>
-      <div class="lv-ring" style="--p:${r.vibe}"><b>${r.vibe}%</b><span>${L('Love vibe', 'காதல் அதிர்வு')}</span></div>
-      <div class="lv-tier">${esc(bi(r.tier))}</div>
+      <div class="lv-tier">${esc(bi(r.title))}</div>
+      <p class="small muted center">${esc(bi(r.note))}</p>
       ${r.approx ? `<p class="small muted center">${L('One birth time is not known — Moon-based results may shift a little.', 'ஒருவரின் பிறந்த நேரம் தெரியவில்லை — சந்திர அடிப்படை முடிவுகள் சற்று மாறலாம்.')}</p>` : ''}
     </section>
-    <section class="card glass">${r.meters.map(meter).join('')}</section>
+    <section class="card glass">${r.notes.map(noteRow).join('')}</section>
     ${r.green.length ? `<section class="card glass"><div class="card-title">💚 ${L('Green flags', 'பலங்கள்')}</div><ul class="lv-list">${r.green.map((x) => `<li>${esc(bi(x))}</li>`).join('')}</ul></section>` : ''}
     ${r.work.length ? `<section class="card glass"><div class="card-title">🛠️ ${L('Grow together on', 'சேர்ந்து வளர வேண்டியவை')}</div><ul class="lv-list">${r.work.map((x) => `<li>${esc(bi(x))}</li>`).join('')}</ul></section>` : ''}
     <section class="card glass"><div class="card-title">📅 ${L('Best day for a date', 'சந்திப்புக்கு உகந்த நாள்')}</div><p>${esc(bi(r.dateDay))}</p>
-      ${r.rajjuOk ? '' : `<p class="small">⚠️ ${L('Rajju / Vedhai does not match in the traditional star match. For marriage, please do the detailed matching with family.', 'பாரம்பரிய நட்சத்திரப் பொருத்தத்தில் ரஜ்ஜு / வேதை பொருந்தவில்லை. திருமணம் என்றால் குடும்பத்துடன் விரிவான பொருத்தம் பாருங்கள்.')}</p>`}
+      ${r.rajjuOk ? '' : `<p class="small">🗝️ ${L('Rajju / Vedhai — key traditional factors to discuss together if you plan marriage.', 'ரஜ்ஜு / வேதை — திருமணம் என்றால் சேர்ந்து பேச வேண்டிய முக்கிய மரபுக் காரணிகள்.')}</p>`}
       <div class="btn-row"><button class="chip-btn" data-go="couple">💍 ${L('Detailed marriage matching', 'விரிவான திருமணப் பொருத்தம்')}</button></div></section>
     <p class="small muted">${L('Love is built by respect, consent, honesty and time. This reading helps you understand each other — it does not decide anyone’s worth or your future together.', 'காதல் மரியாதை, சம்மதம், நேர்மை, காலம் ஆகியவற்றால் உருவாகிறது. இந்த வாசிப்பு ஒருவரை ஒருவர் புரிந்துகொள்ள உதவும் — யாருடைய மதிப்பையும், உங்கள் எதிர்காலத்தையும் தீர்மானிப்பதில்லை.')}</p>
     ${pr ? `<div class="dc-prayer">🙏 ${pr.lines.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}
-    <button class="btn-gold" id="lvShare">📤 ${L('Share our love vibe', 'எங்கள் காதல் அதிர்வைப் பகிர்')}</button>`;
+    <div class="card glass">${permissionCheckbox('lvPerm', L('I have this person’s permission to share this result', 'இவரின் அனுமதி பெற்றுள்ளேன் — இந்த முடிவைப் பகிர'))}
+      <button class="btn-gold" id="lvShare">📤 ${L('Share these notes', 'இந்தக் குறிப்புகளைப் பகிர்')}</button></div>`;
 }
 
 function renderLove(sec) {
@@ -58,7 +59,7 @@ function renderLove(sec) {
     ${personBlock('loveA', `💗 ${L('You', 'நீங்கள்')}`, { nth: 0 })}
     ${personBlock('loveB', `💙 ${L('Your person', 'உங்கள் அன்பானவர்')}`, { nth: 1 })}
     <p class="small muted">${L('Birth time is optional here. Partner details stay on this phone unless you choose to save them.', 'இங்கு பிறந்த நேரம் விருப்பம். நீங்கள் சேமிக்காவிட்டால் விவரங்கள் இந்தக் கைப்பேசியிலேயே இருக்கும்.')}</p>
-    <button class="btn-gold" id="lvGo">💘 ${L('Check our love vibe', 'எங்கள் காதல் அதிர்வைப் பார்')}</button>
+    <button class="btn-gold" id="lvGo">💘 ${L('See our affinity notes', 'எங்கள் இணக்கக் குறிப்புகளைப் பார்')}</button>
     <div id="lvOut">${renderResult()}</div>`;
   wirePersonBlocks(sec, () => renderLove(sec));
   $('#lvGo').addEventListener('click', () => {
@@ -81,8 +82,10 @@ function renderLove(sec) {
 function wireShare() {
   $('#lvShare')?.addEventListener('click', () => {
     const r = result;
-    const text = [`💞 ${r.names[0]} + ${r.names[1]} — ${L('Love vibe', 'காதல் அதிர்வு')} ${r.vibe}% · ${bi(r.tier)}`,
-      ...r.meters.map((m) => `${m.icon} ${bi(m.name)}: ${m.score}%`), '',
+    // Another adult's result is never shared without the user confirming that person's permission.
+    if (!$('#lvPerm')?.checked) { const e = $('#lvPermErr'); if (e) e.hidden = false; $('#lvPerm')?.focus(); return; }
+    const text = [`💞 ${r.names[0]} + ${r.names[1]} — ${bi(r.title)}`,
+      ...r.notes.map((n) => `${n.icon} ${bi(n.name)}: ${bi(n.line)}`), '', bi(r.note), '',
       `${L('Check yours on', 'உங்களுடையதைப் பாருங்கள்')} ${L('Thunai', 'துணை')} — ${L('Your companion on life’s path', 'உங்கள் வாழ்வின் வழித்துணை')}`].join('\n');
     if (navigator.share) { navigator.share({ text }).catch(() => {}); return; }
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');

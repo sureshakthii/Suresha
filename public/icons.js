@@ -191,7 +191,8 @@ export const ICONS = {
   services: "landmark",
   familyhub: "users-round",
   why: "info",
-  bookings: "calendar-check"
+  bookings: "calendar-check",
+  week: "calendar-days"
 };
 
 /** Concept -> chip colour group (daily | personal | match | spiritual | services | help). */
@@ -203,6 +204,7 @@ export const ICON_GROUP = {
   live: "daily",
   weather: "daily",
   reminders: "daily",
+  week: "daily",
   roadmap: "personal",
   health: "personal",
   guide: "personal",

@@ -58,5 +58,5 @@ test('deep marriage checks feed the complete porutham', () => {
   assert.ok(d.score >= 0 && d.score <= 100);
   const r = marriageReport(bride, groom, { weddingDate: wedding });
   assert.ok(r.deep && r.deep.checks.length === d.checks.length);
-  assert.ok(r.total >= 0 && r.total <= 100);
+  assert.equal(r.total, undefined); // no combined match score (owner checklist §6)
 });

@@ -6,7 +6,6 @@
 import { RASIS, PLANETS } from './astro.js';
 import { grahaStrength } from './remedies.js';
 import { bhavaAnalysis } from './analysis.js';
-import { pairCapDate } from './lifespan-cap.js';
 
 const T = (en, ta) => ({ en, ta });
 const DAY = 86400000;
@@ -57,9 +56,8 @@ export function papaPoints(chart, { useLagna = true } = {}) {
 
 /** Dasa Sandhi: Maha Dasa changes of both falling close together (or close to the wedding). */
 export function dasaSandhi(a, b, weddingDate, years = 20) {
-  // Listing horizon: only dasa changes inside both people's age 0–80 (shared/lifespan-cap.js).
-  const cap = pairCapDate(a, b);
-  const end = Math.min(weddingDate.getTime() + years * 365.25 * DAY, cap ? cap.getTime() : Infinity);
+  // Report horizon: `years` after the wedding date. No age cutoff.
+  const end = weddingDate.getTime() + years * 365.25 * DAY;
   const changes = (c) => c.dasa.periods.map((p) => p.start.getTime()).filter((t) => t > weddingDate.getTime() - 180 * DAY && t < end);
   const ca = changes(a), cb = changes(b);
   const clashes = [];
@@ -91,8 +89,8 @@ export function lagnaPorutham(a, b) {
 const HOUSE_CHECKS = [
   { house: 7, en: 'Married life (7th house)', ta: 'மண வாழ்க்கை (7-ம் பாவம்)', karaka: 'Venus' },
   { house: 2, en: 'Family & speech (2nd)', ta: 'குடும்பம், வாக்கு (2-ம்)', karaka: 'Jupiter' },
-  { house: 5, en: 'Children (5th)', ta: 'புத்திர பாக்கியம் (5-ம்)', karaka: 'Jupiter' },
-  { house: 8, en: 'Mangalyam (8th, traditional marital bond)', ta: 'மாங்கல்யம் (8-ம், பாரம்பரிய மண பந்தம்)', karaka: 'Saturn' },
+  { house: 5, en: 'Family wishes (5th house, traditional)', ta: 'குடும்ப விருப்பங்கள் (5-ம் பாவம், மரபு)', karaka: 'Jupiter' },
+  { house: 8, en: '8th house (traditional long-term bond factor)', ta: '8-ம் பாவம் (மரபு நீண்டகாலப் பிணைப்புக் காரணி)', karaka: 'Saturn' },
   { house: 11, en: 'Income & gains (11th)', ta: 'வருமானம், லாபம் (11-ம்)', karaka: 'Jupiter' },
 ];
 

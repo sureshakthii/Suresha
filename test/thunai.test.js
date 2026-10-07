@@ -198,22 +198,32 @@ test('daily review: chandrashtamam, tara and chandra balam, do/don\'t, god of th
   assert.match(ask('How is my career this year?').text, /Sivane Potri/);
 });
 
-test('love match: five meters, vibe 0-100, shares no private data', async () => {
+test('love match: five neutral traditional affinity notes — no percentage, no tier', async () => {
   const { loveMatch } = await import('../shared/love.js');
   const a = birthChart(suresh);
   const b = birthChart({ ...suresh, name: 'K', date: '1992-04-11', time: '12:00:00' });
   const r = loveMatch(a, b, { genderA: 'male', genderB: 'female', names: ['S', 'K'] });
-  assert.equal(r.meters.length, 5);
-  assert.ok(r.vibe >= 0 && r.vibe <= 100 && r.tier.ta);
-  for (const m of r.meters) assert.ok(m.score >= 0 && m.score <= 100 && m.why.ta, m.id);
+  assert.equal(r.notes.length, 5);
+  for (const n of r.notes) assert.ok(n.name.ta && n.basis.ta && n.line.ta && n.score === undefined, n.id);
+  assert.equal(r.vibe, undefined);
+  assert.equal(r.tier, undefined);
+  assert.equal(r.meters, undefined);
+  assert.equal(r.title.ta, 'மரபு இணக்கக் குறிப்புகள்');
+  const text = JSON.stringify({ notes: r.notes, title: r.title, note: r.note });
+  assert.doesNotMatch(text, /Soulmate|உயிர்த் துணை|vibe|\d+\s*%|\/100/i);
 });
 
 test('answers carry one headline percentage whose wording matches the verdict', () => {
-  for (const q of ['How is my career this year?', 'Explain my current dasa', 'How is my health?', 'When will I get married?']) {
+  for (const q of ['How is my career this year?', 'Explain my current dasa', 'When will I get married?']) {
     const a = ask(q);
     assert.ok(a.meter && a.meter.pct >= 20 && a.meter.pct <= 92, q);
     assert.match(a.text, new RegExp(`${a.meter.pct}%`), q);
   }
+  // Health is never scored from the chart: general wellbeing (needs medical review) + an optional practice only.
+  const h = ask('How is my health?');
+  assert.equal(h.meter, null);
+  assert.doesNotMatch(h.text, /\d+\s*%|Eat more|Avoid \/ reduce|Protect:|Fasting day/);
+  assert.match(h.text, /needs medical review/);
   const c = ask('How is my career this year?');
   const ans = c.sections.find((s) => s.key === 'answer').lines[0];
   if (c.meter.pct < 45) assert.match(ans, /patience/); else assert.doesNotMatch(ans, /slow for now/);

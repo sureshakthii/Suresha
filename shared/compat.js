@@ -161,7 +161,7 @@ export function marriageStars(star, rasi, gender, { top = 6 } = {}) {
   const stars = ok.slice(0, top).map(({ s, r, m }) => {
     const good = m.rows.filter((x) => x.status === GOOD && (x.importance !== 'normal' || x.key === 'mahendra')).map((x) => SHORT[x.key]);
     return {
-      ...nak(s), rasi: ras(r), score: m.score, outOf: m.outOf, verdict: m.verdict,
+      ...nak(s), rasi: ras(r), score: m.score, outOf: m.outOf,
       reason: T(`${m.score}/10 poruthams${good.length ? ` · ${good.slice(0, 4).map((g) => g.en).join(', ')} match` : ''}`,
         `10-க்கு ${m.score} பொருத்தம்${good.length ? ` · ${good.slice(0, 4).map((g) => g.ta).join(', ')} பொருத்தம் உண்டு` : ''}`),
     };
@@ -190,10 +190,14 @@ const ROLE_TEXT = {
   benefic: T('Functional benefic', 'சுப பலன் தரும் கிரகம்'),
 };
 
-/** Lagna lord, yogakaraka and functional benefics (Moon sign as reference when the birth time is unknown). */
+/**
+ * Lagna lord, yogakaraka and functional benefics. The Moon sign is the reference when the birth time is unknown
+ * (no Lagna) or when the Lagna sign can change within an approximate time's window (chart.stability).
+ */
 export function favourablePlanets(chart) {
   let ref, lagnaKnown = false, row;
-  const roles = chart.planets?.Lagna ? houseRoles(chart) : { available: false };
+  const lagnaUnstable = !!chart.planets?.Lagna && (chart.stability?.unstable || []).includes('lagna');
+  const roles = chart.planets?.Lagna && !lagnaUnstable ? houseRoles(chart) : { available: false };
   if (roles.available) {
     lagnaKnown = true; ref = roles.lagna;
     row = roles.kendradhipathya.functional;
@@ -221,7 +225,7 @@ export function favourablePlanets(chart) {
   });
   let lucky = null;
   try { lucky = chart.date ? luckyNumbers(chart.date).lucky : null; } catch { lucky = null; }
-  return { reference: lagnaKnown ? 'lagna' : 'moon', planets, luckyNumbers: lucky };
+  return { reference: lagnaKnown ? 'lagna' : 'moon', referenceReason: lagnaKnown ? null : lagnaUnstable ? 'lagna-unstable' : 'no-lagna', planets, luckyNumbers: lucky };
 }
 
 // ------------------------------------------------------------------ the whole card

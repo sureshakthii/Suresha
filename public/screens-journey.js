@@ -466,6 +466,7 @@ function showPlan(p) {
     const endIso = p.date ? tripEndDate(p.date, p.inputs.days) : null;
     all.unshift({ id, savedAt: new Date().toISOString(), title: `${o.key}. ${bi(o.title)} — ${p.inputs.start.name}`, dates: p.date ? `${fmtIsoDate(p.date)}${endIso && endIso !== p.date ? ` → ${fmtIsoDate(endIso)}` : ''} · ${p.inputs.days} ${L('days', 'நாள்')}` : '', travellers: names, plan: clean, form: { ...form } });
     savePlans(all.slice(0, 20));
+    document.dispatchEvent(new CustomEvent('kj:task', { detail: 'journey' })); // metrics: journey saved (consent-gated, growth.js)
     toast(L('Saved to your plans (on this phone)', 'உங்கள் திட்டங்களில் சேமிக்கப்பட்டது (இந்தக் கைப்பேசியில்)'));
     // Refresh the saved list at the top of the screen.
     const sec = b.closest('section') || document;

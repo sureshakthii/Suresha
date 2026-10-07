@@ -19,7 +19,10 @@ function starList(s) {
 }
 
 function planetPane(pl) {
-  return `${pl.reference === 'moon' ? `<p class="small muted">${L('Birth time not exact — read from the Moon sign (Chandra Lagna).', 'பிறந்த நேரம் துல்லியமில்லை — சந்திர லக்னப்படி.')}</p>` : ''}
+  const why = pl.referenceReason === 'lagna-unstable'
+    ? L('The Lagna can change within your birth-time window — read from the Moon sign (Chandra Lagnam).', 'உங்கள் பிறந்த நேர இடைவெளிக்குள் லக்னம் மாறக்கூடும் — சந்திர லக்னப்படி.')
+    : L('Needs the birth time for the Lagna — read from the Moon sign (Chandra Lagnam).', 'லக்னத்திற்குப் பிறந்த நேரம் தேவை — சந்திர லக்னப்படி.');
+  return `${pl.reference === 'moon' ? `<p class="small muted cp-ref"><span class="pill">${L('Moon reference', 'சந்திர லக்னம்')}</span> ${why}</p>` : ''}
     <ul class="cp-planets">${pl.planets.map((p) => `<li><span class="cp-g" style="color:${COLOR[p.planet]}">${GLYPH[p.planet]}</span><span><b>${esc(bi(p.name))}</b> · <span class="small">${esc(bi(p.label))}</span>
       <span class="cp-tip">${p.colour ? `<i class="cp-dot" style="background:${esc(p.colour.hex)}"></i>${esc(bi(p.colour))}` : ''}${p.day ? ` · ${esc(bi(p.day))}` : ''}${p.number ? ` · ${L('No.', 'எண்')} ${p.number}` : ''}</span></span></li>`).join('')}</ul>
     ${pl.luckyNumbers?.length ? `<p class="small">🔢 ${L('Lucky numbers', 'அதிர்ஷ்ட எண்கள்')}: <b>${pl.luckyNumbers.join(', ')}</b></p>` : ''}`;

@@ -117,16 +117,13 @@ const NADI_NAMES = [T('Adi (Vata)', 'ஆதி (வாதம்)'), T('Madhya (P
 
 const KOOTA_TA = { varna: 'வர்ணம்', vashya: 'வசியம்', tara: 'தாரை', yoni: 'யோனி', maitri: 'கிரக மைத்ரம்', gana: 'கணம்', bhakoot: 'பகூட்', nadi: 'நாடி' };
 
-export const GUNA_VERDICTS = {
-  excellent: T('Excellent match', 'மிகச் சிறந்த பொருத்தம்'),
-  good: T('Good match', 'நல்ல பொருத்தம்'),
-  average: T('Moderate traditional points', 'மிதமான மரபுப் புள்ளிகள்'),
-  low: T('Fewer traditional points — discuss with your astrologer', 'குறைந்த மரபுப் புள்ளிகள் — ஜோதிடருடன் கலந்துபேசுங்கள்'),
-};
+// No verdict labels: the /36 total is a traditional score of this one school, shown only on its own screen and
+// never combined with the 10 poruthams.
+export const GUNA_SCORE_LABEL = T('Traditional Ashtakoota points (North-Indian method) — not a verdict', 'அஷ்டகூட மரபுப் புள்ளிகள் (வட இந்திய முறை) — தீர்ப்பு அல்ல');
 
 /**
  * Ashtakoota Guna Milan. Each side: { star: 0..26, rasi: 0..11 } (Moon nakshatra and Moon sign).
- * Returns 8 rows (max 1..8 = 36 total), verdict, Nadi/Bhakoot doshas and classical cancellations.
+ * Returns 8 rows (max 1..8 = 36 total — a traditional score only, no verdict), Nadi/Bhakoot doshas and classical cancellations.
  */
 export function gunaMilan(bride, groom) {
   const bs = bride.star, gs = groom.star, br = bride.rasi, gr = groom.rasi;
@@ -175,7 +172,6 @@ export function gunaMilan(bride, groom) {
   push('nadi', 'Nadi', 8, bn === gn ? 0 : 8, pair(NADI_NAMES[bn], NADI_NAMES[gn]));
 
   const total = rows.reduce((s, r) => s + r.got, 0);
-  const verdict = total >= 28 ? 'excellent' : total >= 24 ? 'good' : total >= 18 ? 'average' : 'low';
   const doshas = { nadi: bn === gn, bhakoot: !!badPair };
 
   // Classical cancellations (parihara).
@@ -193,7 +189,7 @@ export function gunaMilan(bride, groom) {
   }
 
   return {
-    rows, total, max: 36, verdict, doshas, cancellations,
+    rows, total, max: 36, scoreLabel: GUNA_SCORE_LABEL, noVerdict: true, doshas, cancellations,
     tradition: 'north-indian-ashtakoota-36', asymmetricFactors: ASHTAKOOTA_ASYMMETRIC, averagedWithPorutham: false,
     note: T('A traditional points table from one school — mutual understanding and family values matter most.', 'ஒரு மரபுப் பள்ளியின் புள்ளி அட்டவணை — பரஸ்பரப் புரிதலும் குடும்ப மதிப்புகளுமே முதன்மை.'),
     bride: { star: NAKSHATRAS[bs], rasi: RASIS[br], yoni: YONI_NAMES[by], gana: GANA_NAMES[bg], nadi: NADI_NAMES[bn], varna: VARNA_NAMES[bv] },

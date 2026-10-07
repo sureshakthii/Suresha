@@ -24,6 +24,7 @@ export const TOOLS = [
   { id: 'panchangam', group: 'today', en: 'Panchangam — nalla neram, rahu kalam', ta: 'பஞ்சாங்கம் — நல்ல நேரம், ராகு காலம்', k: 'panchang panjangam nalla neram good time rahu kalam rahukalam raghu yamagandam emagandam kuligai guligai gowri gauri tithi thithi nakshatra natchathiram star yogam karanam சூரிய உதயம் sunrise' },
   { id: 'live', group: 'today', en: 'Live sky & Horai', ta: 'நேரலை வானம் & ஓரை', k: 'horai hora orai planets now grahangal கிரகம் live sky lagnam' },
   { id: 'weather', group: 'today', en: 'Weather & travel', ta: 'வானிலை & பயணம்', k: 'weather vaanilai mazhai rain travel payanam' },
+  { id: 'week', group: 'today', en: 'Weekly plan', ta: 'வாரத் திட்டம்', k: 'week weekly this week vaaram vaara plan thittam திட்டம் வாரம் இந்த வாரம் tasks appointment deadline' },
   { id: 'reminders', group: 'today', en: 'Alarms & reminders', ta: 'அலாரம் & நினைவூட்டல்', k: 'alarm reminder ninaivootal notification' },
   { id: 'relations', group: 'today', en: 'Family relations today', ta: 'இன்று குடும்ப உறவு', k: 'relations uravu family today kudumbam' },
   // 2. Ask
@@ -34,7 +35,7 @@ export const TOOLS = [
   { id: 'analysis', group: 'mychart', en: 'Full chart reading', ta: 'முழு ஜாதக ஆய்வு', k: 'analysis reading palan bhavam yogam dosham chevvai dosham' },
   { id: 'roadmap', group: 'mychart', en: 'Dasa road map — life periods', ta: 'தசா வரைபடம் — வாழ்க்கைக் காலங்கள்', k: 'dasa dasai thasa bhukti puthi road map life periods kaalam' },
   { id: 'life', group: 'mychart', en: 'Life questions — job, marriage, house', ta: 'வாழ்க்கைக் கேள்விகள் — வேலை, திருமணம், வீடு', k: 'life questions job velai marriage kalyanam house veedu child kuzhandhai career timing' },
-  { id: 'health', group: 'mychart', en: 'Health & planets — eat / avoid', ta: 'ஆரோக்கியம் & கிரகங்கள் — உணவு', k: 'health arokiyam arogyam udal food unavu diet' },
+  { id: 'health', group: 'mychart', en: 'Health — general wellbeing', ta: 'ஆரோக்கியம் — பொது நலம்', k: 'health arokiyam arogyam udal food unavu diet' },
   { id: 'guide', group: 'mychart', en: 'My guide — colour, number, Siddhar', ta: 'என் வழிகாட்டி — நிறம், எண், சித்தர்', k: 'lucky colour color niram number en siddhar sithar' },
   { id: 'birthtime', group: 'mychart', en: 'Birth-time certainty', ta: 'பிறந்த நேரத் துல்லியம்', k: 'birth time piranda neram rectification certainty' },
   // 4. Family & marriage

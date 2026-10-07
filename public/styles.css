@@ -2178,3 +2178,69 @@ body.ta .zone-line, body.ta .zone-sub, body.ta .res-card p, body.ta .flight-leg,
 .adult-confirm { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0 6px; font-size: 14px; line-height: 1.45; color: var(--text); cursor: pointer; }
 .adult-confirm input { width: 22px; height: 22px; min-width: 22px; margin: 1px 0 0; accent-color: var(--btn-gold); }
 .adult-confirm-err { color: var(--bad-text); margin: 0 0 8px; }
+
+/* ---- Weekly plan (screens-week.js): Today card, day rows, fixed vs optional; "Was this clear?" prompt ---- */
+.week-card .wk-list { list-style: none; margin: 0 0 4px; padding: 0; }
+.week-card .wk-li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid rgba(var(--ink-rgb), .06); font-size: 14px; min-width: 0; }
+.week-card .wk-li:last-child { border-bottom: 0; }
+.week-card .wk-when { flex: none; min-width: 64px; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.week-card .wk-what { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.week-card .wk-what .tag { margin-top: 0; }
+.wk-open { padding-inline: 0; }
+.wk-types { border: 0; padding: 0; margin: 0 0 10px; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.wk-types legend { margin-bottom: 4px; }
+.wk-types .seg-opt { border: 1px solid var(--glass-b); border-radius: 999px; font-size: 14px !important; }
+.wk-types .seg-opt input { width: auto; margin: 0; accent-color: var(--btn-gold); }
+.wk-legend { margin: 4px 4px 10px; }
+.wk-day { padding-top: 12px; }
+.wk-day.wk-today { border-color: var(--gold); }
+.wk-day-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; color: var(--gold); }
+.wk-sec { margin-top: 8px; }
+.wk-sec-t { font-size: 12px; font-weight: 600; letter-spacing: .3px; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; }
+.wk-items { list-style: none; margin: 0; padding: 0; }
+.wk-item { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid rgba(var(--ink-rgb), .06); min-width: 0; }
+.wk-item:last-child { border-bottom: 0; }
+.wk-ic { flex: none; width: 22px; text-align: center; }
+.wk-main { flex: 1 1 170px; min-width: 0; overflow-wrap: anywhere; font-size: 14px; line-height: 1.45; }
+.wk-main .tag { margin: 0 0 0 4px; vertical-align: 1px; }
+.wk-time { font-variant-numeric: tabular-nums; color: var(--gold2); font-weight: 600; margin-inline-end: 2px; }
+.wk-acts { flex: none; display: inline-flex; gap: 4px; align-items: center; margin-inline-start: auto; }
+.wk-acts .remind-btn { min-height: 36px; min-width: 36px; justify-content: center; }
+.wk-acts .chip-btn.icon-only { min-height: 36px; min-width: 36px; padding: 4px; }
+.wk-sec-opt { border-inline-start: 3px dashed rgba(var(--warn-rgb), .55); padding-inline-start: 8px; }
+.wk-wins { margin-top: 2px; }
+.wk-line { margin: 4px 0 0; color: var(--text); }
+.wk-rk { margin: 4px 0 0; }
+.wk-empty { margin: 2px 0; }
+.clarity { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.clarity .chip-btn { min-height: 36px; padding: 4px 10px; }
+@media (max-width: 380px) { .wk-acts .chip-btn.icon-only { min-height: 34px; min-width: 34px; } .week-card .wk-when { min-width: 54px; } }
+
+/* ---- Matching without verdicts: factor count, key factors, detailed view, talking points, permission ---- */
+.match-summary .match-count { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 6px 0 4px; color: var(--text); line-height: 1.4; }
+.match-summary .match-count b { font-size: 34px; line-height: 1.1; color: var(--gold2, var(--gold)); font-variant-numeric: tabular-nums; }
+.match-summary .match-count span { font-size: 15px; font-weight: 600; min-width: 0; }
+.match-summary p { line-height: 1.55; margin: 6px 0 0; }
+.key-factors { border-left: 3px solid var(--gold); }
+.key-factors .factor > span, .match-detail .factor > span, .talk-list li { min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
+.match-detail > summary, .talk-list > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; color: var(--text); font-size: 15px; margin: 0; line-height: 1.5; }
+.match-detail[open] > summary, .talk-list[open] > summary { margin-bottom: 8px; }
+.dosha-person { padding: 8px 0; border-bottom: 1px solid rgba(var(--ink-rgb), .06); line-height: 1.55; }
+.dosha-person:last-child { border-bottom: 0; }
+.dosha-person .small { margin-top: 3px; }
+.exc-list { margin: 4px 0 0; padding-left: 18px; }
+.exc-list li { margin: 0 0 4px; }
+.talk-group { margin: 6px 0 10px; }
+.talk-group ul { margin: 4px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--text); }
+.talk-group li { margin: 0 0 5px; }
+.perm-confirm[hidden] { display: none; }
+.perm-confirm span { min-width: 0; overflow-wrap: anywhere; }
+
+/* ---- Health: general wellbeing card on Today ---- */
+.health-today .ht-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: var(--fs-sm); line-height: 1.5; color: var(--text); }
+.health-today .ht-practice { margin: 0; line-height: 1.5; padding-top: 6px; border-top: 1px dashed rgba(var(--ink-rgb), .12); }
+.match-factor > span { flex: 1 1 auto; }
+.match-factor .mf-label { display: inline-block; font-size: 13px; padding: 1px 8px; border-radius: 999px; background: rgba(var(--ink-rgb), .05); white-space: normal; }
+
+/* Section titles may wrap (e.g. "ஆண்டுவாரியாக அடுத்த 10 ஆண்டுகள்" at 360px) */
+.section-title { white-space: normal; overflow-wrap: break-word; min-width: 0; }

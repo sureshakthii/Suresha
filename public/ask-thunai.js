@@ -7,7 +7,7 @@ import { planetPositions, PLANETS, RASIS } from './shared/astro.js';
 import { bhavaAnalysis, transitStatus } from './shared/analysis.js';
 import { grahaStrength, NAVAGRAHA } from './shared/remedies.js';
 import { significations, planetScore } from './shared/predict.js';
-import { capDate, minCap } from './shared/lifespan-cap.js';
+import { REPORT_YEARS, horizonLabel } from './shared/report-horizon.js';
 import { healthGuide } from './shared/health.js';
 import { ageProfile, topicAllowed, ageGuardAnswer, guardAnswer, suggestionsFor, facilitationCheck, policyAnswer, LIMITED_LABEL, LIMITS_LINE } from './shared/age-guard.js';
 import { validateOffline } from './shared/guidance.js';
@@ -124,10 +124,10 @@ const TOPIC = {
   health: { houses: [1, 6, 11], negate: [8, 12], key: 1, karakas: ['Sun', 'Moon'], health: true,
     name: T('Health (Arokiyam)', 'ஆரோக்கியம்'), houseWhy: T('1st (body and vitality), 6th (recovery), 11th (relief); Sun and Moon give energy and calm', '1-ம் வீடு (உடல், உற்சாகம்), 6-ம் வீடு (மீட்சி), 11-ம் வீடு; சூரியன், சந்திரன் — சக்தியும் மன அமைதியும்'),
     dos: [T('Walk 30 minutes daily, sleep on time', 'தினமும் 30 நிமிட நடை, நேரத்திற்கு உறக்கம்'), T('A yearly health check-up — and see a doctor for any symptom', 'ஆண்டுதோறும் உடல் பரிசோதனை — எந்த அறிகுறிக்கும் மருத்துவரைப் பாருங்கள்'), T('Pranayama for ten minutes in the morning', 'காலையில் பத்து நிமிடம் பிராணாயாமம்')],
-    donts: [T('Do not stop prescribed medicines for any remedy', 'எந்தப் பரிகாரத்திற்காகவும் மருந்தை நிறுத்த வேண்டாம்'), T('Avoid late-night heavy food', 'இரவில் தாமதமான கனமான உணவு தவிர்க்கவும்')],
+    donts: [T('Do not stop prescribed medicines for any remedy', 'எந்தப் பரிகாரத்திற்காகவும் மருந்தை நிறுத்த வேண்டாம்'), T('Do not wait for a “good period” to see a doctor', 'மருத்துவரைப் பார்க்க “நல்ல காலத்திற்காக”க் காத்திருக்க வேண்டாம்')],
     remedy: T('Offer water to the rising Sun and chant "Om Suryaya Namaha" 12 times; on Mondays offer milk at a Shiva temple.', 'உதய சூரியனுக்கு அர்க்யம் கொடுத்து "ஓம் சூர்யாய நமஹ" 12 முறை; திங்களன்று சிவாலயத்தில் பால் அபிஷேகம்.'),
-    follow: [T('What should I eat and avoid in this dasa?', 'இந்தத் தசையில் என்ன சாப்பிடலாம், எதைத் தவிர்க்கலாம்?'), T('A simple daily routine for my chart', 'என் ஜாதகத்திற்கேற்ற எளிய தினசரி வழக்கம்'), T('Parigaram for peace of mind', 'மன அமைதிக்கான பரிகாரம்')],
-    action: { go: 'health', label: T('Health & Planets — eat / avoid', 'ஆரோக்கியம் & கிரகங்கள் — உணவு') } },
+    follow: [T('Which check-ups suit my age?', 'என் வயதுக்கு எந்தப் பரிசோதனைகள்?'), T('A simple calm daily routine', 'எளிய அமைதியான தினசரி வழக்கம்'), T('Parigaram for peace of mind', 'மன அமைதிக்கான பரிகாரம்')],
+    action: { go: 'health', label: T('Health — general wellbeing', 'ஆரோக்கியம் — பொது நலம்') } },
   education: { houses: [4, 5, 9, 11], negate: [3, 8], key: 5, karakas: ['Mercury', 'Jupiter'],
     name: T('Education & exams', 'கல்வி & தேர்வு'), houseWhy: T('4th (schooling), 5th (intelligence, exams), 9th (higher studies)', '4-ம் வீடு (கல்வி), 5-ம் வீடு (அறிவு, தேர்வு), 9-ம் வீடு (உயர்கல்வி)'),
     dos: [T('Study the hardest subject in the Mercury Horai', 'கடினமான பாடத்தை புதன் ஓரையில் படியுங்கள்'), T('Revise early in the morning (Brahma muhurtham)', 'அதிகாலை (பிரம்ம முகூர்த்தம்) மீள்பார்வை செய்யுங்கள்'), T('Apply for courses / admissions in the favourable months', 'சாதகமான மாதங்களில் சேர்க்கைக்கு விண்ணப்பியுங்கள்')],
@@ -181,17 +181,17 @@ function transitSupport(chart, keyHouse, date) {
   const { planets } = planetPositions(date);
   const res = {};
   for (const g of ['Jupiter', 'Saturn']) {
-    const targets = [chart.planets.Lagna.rasi, chart.planets.Moon.rasi].map((ref) => (ref + keyHouse - 1) % 12);
+    const targets = [(chart.planets.Lagna || chart.planets.Moon).rasi, chart.planets.Moon.rasi].map((ref) => (ref + keyHouse - 1) % 12);
     res[g] = ASPECTS[g].some((a) => targets.includes((planets[g].rasi + a - 1) % 12));
   }
   return res;
 }
 
 /** Dasa–Bhukti windows in the next `years` years that activate the topic, with Jupiter/Saturn transit months. */
-function windowsFor(chart, q, { from = new Date(), years = 10 } = {}) {
+function windowsFor(chart, q, { from = new Date(), years = REPORT_YEARS.ask } = {}) {
   const sig = significations(chart);
-  // Nothing is listed past the person's 80th birthday.
-  const end = minCap(new Date(from.getTime() + years * 365.25 * DAY), capDate(chart));
+  // Report horizon: the next `years` years (named in the section title). No age cutoff.
+  const end = new Date(from.getTime() + years * 365.25 * DAY);
   const out = [];
   let current = null;
   for (const md of chart.dasa.periods) {
@@ -264,13 +264,8 @@ export function topicAnswer({ topic, question, chart, rel = {}, lang = 'ta', nam
   let head;
   const winText = (w) => `${monthYear(w.peakFrom || w.start, lang)} – ${monthYear(w.peakTo || w.end, lang)}`;
   if (def.health) {
-    let hg = null; try { hg = healthGuide(chart, { gender: life.gender }); } catch { /* optional */ }
-    const lv = hg?.period?.level || 'steady';
-    head = lv === 'good'
-      ? L(`${who}your Dasa–Bhukti supports good energy now — keep your routine steady and it stays that way.`, `${who}நடப்பு தசா–புக்தி நல்ல உற்சாகத்திற்கு ஆதரவு — வழக்கத்தைச் சீராக வைத்தால் அப்படியே தொடரும்.`)
-      : lv === 'steady'
-        ? L(`${who}a steady period for health — simple food, good sleep and a daily walk keep you strong.`, `${who}ஆரோக்கியத்திற்கு நிலையான காலம் — எளிய உணவு, நல்ல உறக்கம், தினசரி நடை உங்களைப் பலமாக வைக்கும்.`)
-        : L(`${who}this period asks for a little extra rest and regular routines — small daily care brings big strength.`, `${who}இந்தக் காலம் கொஞ்சம் கூடுதல் ஓய்வையும் சீரான வழக்கத்தையும் கேட்கிறது — தினசரி சிறு கவனம் பெரிய பலம் தரும்.`);
+    // Health is never read from the chart: general wellbeing first (needs medical review), then an optional practice.
+    head = L(`${who}your horoscope does not decide your health, and it is the same in every period: regular sleep, water, a daily walk and age-suited check-ups — and see a doctor for any symptom.`, `${who}உங்கள் ஆரோக்கியத்தை ஜாதகம் தீர்மானிப்பதில்லை; எல்லாக் காலத்திலும் ஒன்றே: சீரான உறக்கம், தண்ணீர், தினசரி நடை, வயதுக்கேற்ற பரிசோதனைகள் — எந்த அறிகுறிக்கும் மருத்துவரைப் பாருங்கள்.`);
   } else if (nowWin) {
     head = L(`${who}yes — the current period supports ${pick(def.name, 'en').toLowerCase()}. ${nowWin.end ? `Best window: ${winText(nowWin)}.` : ''}`,
       `${who}ஆம் — நடப்பு காலம் ${pick(def.name, 'ta')} விஷயத்திற்குச் சாதகம். ${nowWin.end ? `சிறந்த காலம்: ${winText(nowWin)}.` : ''}`);
@@ -315,18 +310,31 @@ export function topicAnswer({ topic, question, chart, rel = {}, lang = 'ta', nam
 
   const dos = def.dos.map((x) => pick(x, lang));
   const donts = def.donts.map((x) => pick(x, lang));
+  let hg = null;
+  if (def.health) { try { hg = healthGuide(chart, { gender: life.gender }); } catch { /* optional */ } }
+  if (today?.rahuKalam && !def.health) donts.push(L(`Today’s Rahu Kalam: ${today.rahuKalam}`, `இன்றைய ராகு காலம்: ${today.rahuKalam}`));
   if (def.health) {
-    try {
-      const hg = healthGuide(chart, { gender: life.gender });
-      dos.push(L(`Eat: ${hg.diet.eat.slice(0, 3).map((x) => x.en).join('; ')}`, `சாப்பிடலாம்: ${hg.diet.eat.slice(0, 3).map((x) => x.ta).join('; ')}`));
-      donts.push(L(`Avoid: ${hg.diet.avoid.slice(0, 3).map((x) => x.en).join('; ')}`, `தவிர்க்கவும்: ${hg.diet.avoid.slice(0, 3).map((x) => x.ta).join('; ')}`));
-    } catch { /* optional */ }
+    // Two separated parts: general wellbeing (not astrology) and an optional traditional reflection (not health advice).
+    const review = L('needs medical review', 'மருத்துவ மதிப்பாய்வு தேவை');
+    const well = hg ? hg.wellbeing.habits.map((x) => `${pick(x, lang)} (${review})`) : dos;
+    const pr = hg?.reflection.practices[0];
+    const reflect = [pr ? `${pick(pr.why, lang)}: ${pick(pr.lamp, lang)}` : pick(def.remedy, lang), L('Spiritual practice only — not health advice.', 'ஆன்மீகப் பழக்கம் மட்டுமே — உடல்நல ஆலோசனை அல்ல.')];
+    const sectionsH = [
+      { key: 'answer', title: L('Answer', 'பதில்'), lines: [head] },
+      { key: 'dos', title: L('General wellbeing', 'பொது நலம்'), lines: well },
+      { key: 'donts', title: L('Please', 'கவனிக்க'), lines: donts },
+      { key: 'remedy', title: L('Traditional reflection (optional)', 'மரபுச் சிந்தனை (விருப்பம்)'), lines: reflect },
+      { key: 'uncertainty', title: L('Limits', 'வரம்பு'), lines: [pick(LIMITS_LINE, lang)] },
+    ];
+    const actionsH = [{ go: def.action.go, label: pick(def.action.label, lang) }];
+    const textH = sectionsH.map((s) => `${s.title}:\n${s.lines.map((l) => `• ${l}`).join('\n')}`).join('\n\n');
+    const outH = { intent: topic, topic, question, text: textH, sections: sectionsH, meter: null, actions: actionsH, followups: def.follow.map((f) => pick(f, lang)), deadlineFirst: false };
+    return validateOffline(guardAnswer(outH, profile, lang), { lang, inputCertainty: certainty });
   }
-  if (today?.rahuKalam) donts.push(L(`Today’s Rahu Kalam: ${today.rahuKalam}`, `இன்றைய ராகு காலம்: ${today.rahuKalam}`));
 
   const sections = [
     { key: 'answer', title: L('Answer', 'பதில்'), lines: def.practicalFirst ? [pick(def.practicalFirst, lang), head] : [head] },
-    { key: 'periods', title: L('Favourable periods', 'சாதகமான காலங்கள்'), lines: periodLines },
+    { key: 'periods', title: `${L('Favourable periods', 'சாதகமான காலங்கள்')} · ${pick(horizonLabel(REPORT_YEARS.ask), lang)}`, lines: periodLines },
     { key: 'dos', title: L('Do', 'செய்யலாம்'), lines: dos },
     { key: 'donts', title: L('Avoid', 'தவிர்க்கவும்'), lines: donts },
     { key: 'remedy', title: L('Free parigaram', 'இலவச பரிகாரம்'), lines: rem },

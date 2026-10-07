@@ -12,7 +12,6 @@ import { grahaStrength, NAVAGRAHA } from './remedies.js';
 import { transitStatus, BHAVAS } from './analysis.js';
 import { luckyNumbers } from './personal.js';
 import { predictEvent } from './predict.js';
-import { capDate, minCap, clipPeriods } from './lifespan-cap.js';
 import { healthGuide } from './health.js';
 import { closingPrayer } from './daily.js';
 import { faithBlessing, universalPractice } from './faith.js';
@@ -105,7 +104,6 @@ export function chartFacts(chart, rel, now = new Date()) {
   const occupants = (h) => Object.keys(P).filter((k) => k !== 'Lagna' && house(from, P[k].rasi) === h);
   const houseInfo = (h) => ({ h, lord: lordOf(from, h), lordHouse: house(from, P[lordOf(from, h)].rasi), occupants: occupants(h) });
   const dasaOk = rel?.nakshatra !== false;
-  const horizon = capDate(chart);
   const cur = dasaOk ? chart.dasa.current : null;
   const bh = dasaOk ? chart.dasa.currentBhukti : null;
   const ruled = (k) => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((h) => lordOf(from, h) === k);
@@ -125,10 +123,10 @@ export function chartFacts(chart, rel, now = new Date()) {
     weakest: Object.values(strength).filter((g) => !['Rahu', 'Ketu'].includes(g.planet)).sort((a, b) => a.score - b.score).slice(0, 2),
     planetHouse: (k) => house(from, P[k].rasi),
     ruled,
-    // Listed dates stay inside the person's age 0–80 (shared/lifespan-cap.js).
-    dasa: cur && { lord: cur.lord, start: iso(cur.start), end: iso(minCap(cur.end, horizon)), approx: rel?.dasa === false, shiftDays: rel?.dasaShiftDays },
-    bhukti: bh && { lord: bh.lord, start: iso(bh.start), end: iso(minCap(bh.end, horizon)) },
-    nextDasa: dasaOk ? clipPeriods(chart.dasa.periods, horizon).find((p) => p.start > now) || null : null,
+    // The engine's own dates — no age cutoff (shared/report-horizon.js).
+    dasa: cur && { lord: cur.lord, start: iso(cur.start), end: iso(cur.end), approx: rel?.dasa === false, shiftDays: rel?.dasaShiftDays },
+    bhukti: bh && { lord: bh.lord, start: iso(bh.start), end: iso(bh.end) },
+    nextDasa: dasaOk ? chart.dasa.periods.find((p) => p.start > now) || null : null,
     transit,
     birthDate: chart.date,
   };
@@ -342,29 +340,20 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       break;
     }
     case 'health': {
-      // Traditional planetary health guidance (dasa, bhukti, gochara and peyarchi), kept separate from medical advice.
+      // Health: general wellbeing first; the chart only offers an optional spiritual practice (never health advice).
       const acute = /fever|pain|cancer|bleed|chest|breath|faint|accident|surgery|operation|hospital|காய்ச்சல்|வலி|ரத்த|நெஞ்சு|மூச்சு|மயக்க|விபத்து|அறுவை|ஆஸ்பத்திரி|kaichal|vali/i.test(question);
-      if (acute) add('answer', L('For a symptom like this, please see a doctor first — that comes before any horoscope reading. If it is urgent, call 112. Below is only the traditional planetary health outlook, for your peace of mind.', 'இத்தகைய அறிகுறிக்கு முதலில் மருத்துவரைப் பாருங்கள் — எந்த ஜாதகப் பலனையும் விட அதுவே முதன்மை. அவசரம் என்றால் 112. கீழே மன அமைதிக்காக பாரம்பரிய கிரக ஆரோக்கியப் பார்வை மட்டும்.'));
+      if (acute) add('answer', L('For a symptom like this, please see a doctor first — that comes before any horoscope reading. If it is urgent, call 112. Below is only general wellbeing and an optional spiritual practice.', 'இத்தகைய அறிகுறிக்கு முதலில் மருத்துவரைப் பாருங்கள் — எந்த ஜாதகப் பலனையும் விட அதுவே முதன்மை. அவசரம் என்றால் 112. கீழே பொது நலமும் விருப்ப ஆன்மீகப் பழக்கமும் மட்டும்.'));
       if (!f) { needChart(); break; }
       const hg = healthGuide(f.chart, { gender: life.gender });
-      const p = hg.period;
-      setMeter({ good: 80, steady: 63, care: 46 }[p.level] ?? 60, T('health', 'ஆரோக்கியம்'));
-      const lvlEn = { good: 'a supportive period for health', steady: 'a steady period — keep your routine', care: 'a period to take extra care of your health' }[p.level];
-      const lvlTa = { good: 'ஆரோக்கியத்திற்கு ஆதரவான காலம்', steady: 'நிலையான காலம் — வழக்கத்தைத் தொடருங்கள்', care: 'ஆரோக்கியத்தில் கூடுதல் கவனம் தேவையான காலம்' }[p.level];
-      if (!acute) add('answer', L(`By your dasa, bhukti and current transits, this is ${lvlEn}. Protect: ${hg.bodyAreas.slice(0, 2).map((x) => x.en).join('; ')}.`, `உங்கள் தசை, புக்தி, கோசாரப்படி இது ${lvlTa}. கவனிக்க: ${hg.bodyAreas.slice(0, 2).map((x) => x.ta).join('; ')}.`),
-        L(`Eat more: ${hg.diet.eat.slice(0, 3).map((x) => x.en.split(' — ')[0].toLowerCase()).join(', ')}. Reduce: ${hg.diet.avoid.slice(0, 2).map((x) => x.en.split(' — ')[0].toLowerCase()).join(', ')}.`, `அதிகம் உண்ண: ${hg.diet.eat.slice(0, 3).map((x) => x.ta.split(' — ')[0]).join(', ')}. குறைக்க: ${hg.diet.avoid.slice(0, 2).map((x) => x.ta.split(' — ')[0]).join(', ')}.`));
-      add('factors', dasaLine(f, lang), ...p.dasaNotes.slice(0, 3).map((n) => tr(n)), ...p.gochara.slice(0, 3).map((n) => `${lang === 'ta' ? 'கோசாரம்' : 'Transit'}: ${tr(n)}`),
-        L(`Body constitution (traditional): ${hg.constitution.name.en}`, `உடல்வாகு (பாரம்பரியம்): ${hg.constitution.name.ta}`));
-      add('interpretation', ...hg.bodyAreas.slice(0, 3).map((x) => `${x.icon || '•'} ${tr(x)} — ${x.reasons.slice(0, 1).map((r) => tr(r)).join('')} ${x.tip ? `· ${tr(x.tip)}` : ''}`));
-      const care = hg.months.filter((m) => m.level !== 'steady').slice(0, 3);
-      if (care.length) add('interpretation', L(`Coming months to note: ${care.map((m) => `${my(`${m.month}-15`, 'en')} (${m.level === 'good' ? 'good' : 'take care'})`).join(', ')}.`, `கவனிக்க வேண்டிய மாதங்கள்: ${care.map((m) => `${my(`${m.month}-15`, 'ta')} (${m.level === 'good' ? 'நன்று' : 'கவனம்'})`).join(', ')}.`));
-      add('facts', L(`Eat: ${hg.diet.eat.slice(0, 5).map((x) => x.en).join('; ')}`, `உண்ண: ${hg.diet.eat.slice(0, 5).map((x) => x.ta).join('; ')}`),
-        L(`Avoid / reduce: ${hg.diet.avoid.slice(0, 4).map((x) => x.en).join('; ')}`, `தவிர்க்க / குறைக்க: ${hg.diet.avoid.slice(0, 4).map((x) => x.ta).join('; ')}`),
-        hg.age >= 14 && L(`Fasting day: ${hg.diet.fasting.day.en}`, `விரத நாள்: ${hg.diet.fasting.day.ta}`));
-      add('uncertainty', L('This is traditional astrological and Siddha/Ayurveda-style guidance about tendencies — not a diagnosis and not a prediction of illness. Your doctor’s advice always comes first; keep regular check-ups.', 'இது பாரம்பரிய ஜோதிட, சித்த/ஆயுர்வேத வழியிலான போக்குகள் பற்றிய வழிகாட்டல் — நோய் கண்டறிதலோ நோய் கணிப்போ அல்ல. மருத்துவர் ஆலோசனையே எப்போதும் முதன்மை; வழக்கமான பரிசோதனைகளைத் தொடருங்கள்.'));
-      add('practice', ...hg.remedies.planets.slice(0, 2).map((r) => `${pName(r.planet, lang)}: ${tr(r.free)}`));
-      add('next', L('Open Health & Planets for the full 12-month care map, foods and yoga.', 'முழு 12 மாத கவன வரைபடம், உணவு, யோகாவுக்கு "ஆரோக்கியம் & கிரகங்கள்" திறங்கள்.'));
-      actions.push({ go: 'health', label: L('Health & Planets', 'ஆரோக்கியம் & கிரகங்கள்') });
+      // Two separated parts: general wellbeing (not astrology, needs medical review) and an optional traditional
+      // reflection (spiritual practices only, not health advice). No diet, body-part or period-level reading.
+      if (!acute) add('answer', L('Your horoscope does not decide your health, and good care is the same in every period: regular sleep, water, a daily walk and age-suited check-ups — and see a doctor for any symptom.', 'உங்கள் ஆரோக்கியத்தை ஜாதகம் தீர்மானிப்பதில்லை; நல்ல கவனிப்பு எல்லாக் காலத்திலும் ஒன்றே: சீரான உறக்கம், தண்ணீர், தினசரி நடை, வயதுக்கேற்ற பரிசோதனைகள் — எந்த அறிகுறிக்கும் மருத்துவரைப் பாருங்கள்.'));
+      add('facts', ...hg.wellbeing.habits.map((x) => `${tr(x)} (${L('general wellbeing — needs medical review', 'பொது நலம் — மருத்துவ மதிப்பாய்வு தேவை')})`));
+      add('factors', dasaLine(f, lang), ...hg.reflection.gochara.slice(0, 2).map((n) => `${lang === 'ta' ? 'கோசாரம்' : 'Transit'}: ${tr(n)}`));
+      add('uncertainty', L('The traditional reflection is a spiritual practice — not a diagnosis, not a prediction of illness and not health advice. Your doctor’s advice always comes first; keep regular check-ups.', 'மரபுச் சிந்தனை ஒரு ஆன்மீகப் பழக்கம் — நோய் கண்டறிதலோ நோய் கணிப்போ உடல்நல ஆலோசனையோ அல்ல. மருத்துவர் ஆலோசனையே எப்போதும் முதன்மை; வழக்கமான பரிசோதனைகளைத் தொடருங்கள்.'));
+      add('practice', ...hg.reflection.practices.slice(0, 2).map((r) => `${tr(r.why)}: ${tr(r.lamp)}`));
+      add('next', L('Open Health for general wellbeing, check-ups for your age and the optional traditional reflection.', 'பொது நலம், வயதுக்கேற்ற பரிசோதனைகள், விருப்ப மரபுச் சிந்தனைக்கு "ஆரோக்கியம்" திறங்கள்.'));
+      actions.push({ go: 'health', label: L('Health', 'ஆரோக்கியம்') });
       break;
     }
     case 'emotional': {

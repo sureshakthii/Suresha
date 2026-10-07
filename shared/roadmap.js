@@ -6,7 +6,6 @@ import { planetPositions, PLANETS } from './astro.js';
 import { significations, planetScore, predictEvent } from './predict.js';
 import { NAVAGRAHA } from './remedies.js';
 import { ageProfile, topicAllowed } from './age-guard.js';
-import { capDate, minCap } from './lifespan-cap.js';
 
 const DAY = 86400000;
 const YEAR = 365.25 * DAY;
@@ -71,9 +70,8 @@ function gochara(chart, date) {
  */
 export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
   const sig = significations(chart);
-  // Listing horizon (shared/lifespan-cap.js): periods and years stay inside age 0–80; straddling periods end at it.
-  const horizon = capDate(chart);
-  const end = minCap(new Date(from.getTime() + years * YEAR), horizon);
+  // Report horizon: `years` ahead of `from` (the screen says "Covers the next N years"). No age cutoff.
+  const end = new Date(from.getTime() + years * YEAR);
   const age = ageAt(chart, from);
   const senior = age >= 60; // later years: home, health, family and spiritual focus — no new marriage / career pushes
   const profile = ageProfile(chart, { now: from });
@@ -173,7 +171,7 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
   if (nextCare && !minor && !senior) now.push(T(`Prepare savings and health before ${nextCare.start.toISOString().slice(0, 7)} (a period needing care).`, `${nextCare.start.toISOString().slice(0, 7)} முன் சேமிப்பையும் ஆரோக்கியத்தையும் தயார் செய்யுங்கள் (கவனம் தேவைப்படும் காலம்).`));
 
   return {
-    age: profile.age ?? Math.floor(age), minor, senior, horizon, band: profile.band, areas: AREAS, stage, nextStage, periods, years: yearsOut, milestones, current, nextGood, nextCare, now,
+    age: profile.age ?? Math.floor(age), minor, senior, horizon: end, horizonYears: years, band: profile.band, areas: AREAS, stage, nextStage, periods, years: yearsOut, milestones, current, nextGood, nextCare, now,
     needsBirthTime: !sig,
     birthTimeNote: sig ? null : T('Birth time unknown — area scores use Moon-based transits only; house-based period readings need a known birth time.', 'பிறந்த நேரம் தெரியவில்லை — சந்திரன் சார்ந்த கோசாரம் மட்டுமே; பாவம் சார்ந்த கால பலன்களுக்குப் பிறந்த நேரம் தேவை.'),
     disclaimerId: 'roadmap.traditional-periods.v1',

@@ -8,7 +8,7 @@ import { MANTRAS, MANTRA_TAGS } from './shared/mantras.js';
 import { NAVAGRAHA, grahaStrength } from './shared/remedies.js';
 import { familyRelations } from './shared/relations.js';
 import { fullAnalysis, BHAVAS } from './shared/analysis.js';
-import { capDate, clipPeriods, cappedDasaPeriods, CAP_LINES } from './shared/lifespan-cap.js';
+import { REPORT_YEARS, horizonLabel, withinHorizon, HORIZON_LINES } from './shared/report-horizon.js';
 import { ageProfile, topicAllowed, adultText, childSafe } from './shared/age-guard.js';
 import { locName, zoneDiffText, countryOfLoc } from './shared/residence.js';
 import { moneyRange, currencyForCountry } from './shared/currency.js';
@@ -17,7 +17,7 @@ import { provLabel, asSaved, templeFacts, prov } from './shared/journey.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtIsoDate, api, store,
   activeMember, chartOf, registerScreen, go, subHeader, aiTask, toast, speak, stopSpeaking, STATIC, needsServerCard, displayName,
-  placeName, BRAND, copyright,
+  placeName, BRAND, copyright, hasLagna, stabilityChip, needsTimeNote, birthContext,
 } from './core.js';
 import { refreshSnap } from './screens-main.js';
 import { servicesOpen, servicesClosedCard } from './growth.js';
@@ -651,24 +651,24 @@ registerScreen('relations', { render: renderRelations, parent: 'home', needsLoc:
 const cleanDesc = (d) => ({ en: String(d.en).replace(/\s*[—-]\s*(traditional (view|belief)|for reflection[^.]*)\.?$/i, '').replace(/Traditional cancellation also present:/, 'Also present:'),
   ta: String(d.ta).replace(/\s*—\s*பாரம்பரியக் கருத்து\.?$/, '').replace('பாரம்பரிய நிவர்த்தியும் உண்டு:', 'உடன் உள்ளது:') });
 const yr = (d) => new Date(d).getUTCFullYear();
-/** Upcoming / running Mahadasa periods of a planet (max two), e.g. "Jupiter Dasa 2019–2035 (now)" — only inside the
- * person's listing horizon (age 0–80, shared/lifespan-cap.js): a straddling period ends at it, later ones are not listed. */
+/** Upcoming / running Mahadasa periods of a planet (max two), e.g. "Jupiter Dasa 2019–2035 (now)" — those that
+ * overlap the analysis report horizon (next REPORT_YEARS.analysis years, stated in the card header). No age cutoff. */
+const AN_YEARS = REPORT_YEARS.analysis;
 function lordPeriods(lord, c) {
   const now = new Date();
-  const cap = capDate(c);
-  const all = cappedDasaPeriods(c, cap);
-  const ps = all.filter((p) => p.lord === lord && new Date(p.end) > now).slice(0, 2);
+  const all = c.dasa.periods;
+  const ps = withinHorizon(all.filter((p) => p.lord === lord), { from: now, years: AN_YEARS }).slice(0, 2);
   const cur = all.find((p) => new Date(p.start) <= now && now < new Date(p.end));
   const bh = cur && cur.lord !== lord ? cur.bhuktis?.find((b) => b.lord === lord && new Date(b.end) > now) : null;
   const parts = ps.map((p) => `${planetName(lord)} ${L('Dasa', 'தசை')} ${yr(p.start)}–${yr(p.end)}${new Date(p.start) <= now ? ` (${L('now', 'நடப்பு')})` : ''}`);
   if (bh) parts.unshift(`${planetName(cur.lord)} ${L('Dasa', 'தசை')} / ${planetName(lord)} ${L('Bhukti', 'புக்தி')} ${fmtIsoDate(new Date(bh.start).toISOString().slice(0, 10))} – ${fmtIsoDate(new Date(bh.end).toISOString().slice(0, 10))}`);
   return parts;
 }
-/** "Gives results in" line for a yoga; the registry already clips periods to the horizon. Gentle line when none remain. */
+/** "Gives results in" line for a yoga: its periods inside the analysis horizon. Gentle line when none falls in it. */
 function yogaPeriods(y, c) {
   const now = new Date();
-  const ds = clipPeriods(y.periods?.dasas || [], capDate(c)).filter((p) => new Date(p.end) > now).slice(0, 2);
-  if (!ds.length) return `<p class="small">⏳ ${esc(bi(CAP_LINES.periods))}</p>`;
+  const ds = withinHorizon(y.periods?.dasas || [], { from: now, years: AN_YEARS }).slice(0, 2);
+  if (!ds.length) return `<p class="small">⏳ ${esc(bi(HORIZON_LINES.periods(AN_YEARS)))}</p>`;
   return `<p class="small">⏳ ${L('Gives results in', 'பலன் தரும் காலம்')}: ${ds.map((p) => `${esc(planetName(p.lord))} ${L('Dasa', 'தசை')} ${yr(p.start)}–${yr(p.end)}${new Date(p.start) <= now ? ` (${L('now', 'நடப்பு')})` : ''}`).join(' · ')}</p>`;
 }
 /** Badhakathipathi and Marakathipathi from houseRoles(chart) — a plain result with periods and a free parigaram. */
@@ -677,12 +677,12 @@ function rolesCard(r, c) {
   const b = r.badhaka, mk = r.maraka;
   const marakas = [...new Set([mk.second.lord, mk.seventh.lord])];
   const row = (lord, title, meaning) => `<div class="pari-row"><span class="pg" style="color:${COLOR[lord]}">${GLYPH[lord]}</span><div><b>${title}</b><p>${meaning}</p>
-    <p class="small">⏳ ${esc(lordPeriods(lord, c).join(' · ') || bi(CAP_LINES.periods))}</p><p class="small">🪔 ${esc(bi(NAVAGRAHA[lord].free))}</p></div></div>`;
-  return `<div class="card glass"><div class="card-title">🧭 ${L('Badhakathipathi & Marakathipathi', 'பாதகாதிபதி & மாரகாதிபதி')}</div>
+    <p class="small">⏳ ${esc(lordPeriods(lord, c).join(' · ') || bi(HORIZON_LINES.periods(AN_YEARS)))}</p><p class="small">🪔 ${esc(bi(NAVAGRAHA[lord].free))}</p></div></div>`;
+  return `<div class="card glass"><div class="card-title">🧭 ${L('Badhakathipathi & Marakathipathi', 'பாதகாதிபதி & மாரகாதிபதி')} <span class="pill horizon-label">${esc(bi(horizonLabel(AN_YEARS)))}</span>${stabilityChip(c, 'lagna')}</div>
     ${row(b.lord, `${L('Badhakathipathi', 'பாதகாதிபதி')}: ${esc(planetName(b.lord))} · ${L(`lord of the ${b.house}th house`, `${b.house}-ம் வீட்டு அதிபதி`)}`,
     esc(L('The planet tradition links with delays and unexpected hurdles. In its periods, plan early, stay patient and do its parigaram — hurdles turn into lessons and growth.', 'தாமதம், எதிர்பாராத தடைகளுடன் மரபு இணைக்கும் கிரகம். அதன் காலங்களில் முன்கூட்டியே திட்டமிட்டு, பொறுமையுடன், அதன் பரிகாரம் செய்தால் தடைகள் பாடமாகவும் வளர்ச்சியாகவும் மாறும்.')))}
     ${marakas.map((k) => row(k, `${L('Marakathipathi', 'மாரகாதிபதி')}: ${esc(planetName(k))} · ${L(`lord of the ${[2, 7].filter((h) => (h === 2 ? mk.second.lord : mk.seventh.lord) === k).join(' & ')} house`, `${[2, 7].filter((h) => (h === 2 ? mk.second.lord : mk.seventh.lord) === k).join(', ')}-ம் வீட்டு அதிபதி`)}`,
-    esc(L('Lord of the 2nd / 7th house — tradition asks for extra care of health, rest and family harmony in its periods. Regular check-ups, good sleep and loving time with family keep you strong.', '2 / 7-ம் வீட்டு அதிபதி — அதன் காலங்களில் உடல்நலம், ஓய்வு, குடும்ப ஒற்றுமைக்குக் கூடுதல் கவனம் தர மரபு சொல்கிறது. சீரான பரிசோதனை, நல்ல உறக்கம், குடும்பத்துடன் அன்பான நேரம் உங்களைப் பலமாக வைக்கும்.')))).join('')}
+    esc(L('Lord of the 2nd / 7th house from the Lagna. In the tradition these are the Maraka houses; the line below lists when this planet\'s periods run.', 'லக்னத்திலிருந்து 2 / 7-ம் வீட்டு அதிபதி. மரபில் இவை மாரக ஸ்தானங்கள்; இந்தக் கிரகத்தின் காலங்கள் கீழே உள்ளன.')))).join('')}
   </div>`;
 }
 
@@ -708,18 +708,26 @@ function renderAnalysis(sec) {
     const tz = state.loc.tz;
     const bar = (s, cls) => `<span class="gb-bar"><i class="${cls}" style="width:${s}%"></i></span>`;
     const lvl = (s) => (s >= 66 ? 'strong' : s >= 48 ? 'average' : 'weak');
+    const lagnaOk = hasLagna(c);
+    const st = c.stability;
+    const houseChip = (b) => (st ? stabilityChip(c, 'lagna', ...b.occupants.map((o) => `house:${o}`)) : '');
     $('#anBody').innerHTML = `
+      ${lagnaOk ? '' : needsTimeNote({ en: 'The 12 houses, Badhakathipathi and Marakathipathi are counted from the Lagna.', ta: '12 பாவங்கள், பாதகாதிபதி, மாரகாதிபதி லக்னத்திலிருந்து கணக்கிடப்படுகின்றன.' })}
+      ${lagnaOk && st?.timePrecision === 'approximate' ? `<div class="note-box small" role="note">🕰️ ${L(`Birth time approximate (±${Math.round(st.windowMinutes)} min): items marked`, `பிறந்த நேரம் தோராயம் (±${Math.round(st.windowMinutes)} நிமி): குறிக்கப்பட்டவை`)} ${stabilityChip(c)} ${L('can change within that window.', 'அந்த இடைவெளிக்குள் மாறலாம்.')}
+        <div>${L('Lagna', 'லக்னம்')}: <b>${esc(rasiName(c.lagna.rasi))}</b> ${stabilityChip(c, 'lagna')} · ${L('Navamsa Lagna', 'நவாம்ச லக்னம்')} ${stabilityChip(c, 'navamsaLagna') || `<span class="tag good">${L('stable', 'நிலையானது')}</span>`} · ${L('Birth star', 'நட்சத்திரம்')} ${stabilityChip(c, 'moonNakshatra', 'moonPada') || `<span class="tag good">${L('stable', 'நிலையானது')}</span>`}</div></div>` : ''}
       <div class="card glass"><div class="card-title">🌟 ${L('Life areas', 'வாழ்க்கைத் துறைகள்')}</div>
+        ${a.areas.some((x) => x.id !== 'health') ? '' : `<p class="small muted needs-time">${L('Life-area scores are read from the houses, which need the birth time.', 'வாழ்க்கைத் துறை மதிப்பீடுகள் பாவங்களிலிருந்து; அதற்குப் பிறந்த நேரம் தேவை.')}</p>`}
         ${a.areas.filter((x) => x.id !== 'health').map((x) => `<div class="gb-row static"><span class="gb-name">${esc(L(x.en, x.ta))}</span>${bar(x.score, lvl(x.score))}<span class="tag ${x.level === 'strong' ? 'good' : x.level === 'steady' ? 'warn' : 'bad'}">${x.level === 'strong' ? L('Strong', 'பலம்') : x.level === 'steady' ? L('Steady', 'நிலையானது') : L('Needs care', 'கவனம் தேவை')}</span></div>`).join('')}</div>
-      <div class="card glass"><div class="card-title">✨ ${L('Yogas in your chart', 'உங்கள் ஜாதக யோகங்கள்')}</div>
+      <div class="card glass"><div class="card-title">✨ ${L('Yogas in your chart', 'உங்கள் ஜாதக யோகங்கள்')} <span class="pill horizon-label">${esc(bi(horizonLabel(AN_YEARS)))}</span></div>
         ${a.yogas.length ? a.yogas.map((y) => `<div class="pari-row"><span class="pg">${y.kind === 'good' ? '🌟' : '🌙'}</span><div><b>${esc(bi(y.name))}</b><p>${esc(bi(cleanDesc(y.reading || y.desc)))}</p>${yogaPeriods(y, c)}</div></div>`).join('') : `<p class="small">${L('Your strength comes from steady planetary balance rather than a single yoga.', 'ஒரு யோகத்தை விட கிரகங்களின் சமநிலையே உங்கள் பலம்.')}</p>`}</div>
       ${rolesCard(a.roles, c)}
       <div class="card glass"><div class="card-title">🪐 ${L('Current transits (Gochara)', 'தற்போதைய கோசாரம்')}</div>
         ${a.transit.status.map((s) => `<div class="pari-row"><span class="pg">${s.kind === 'good' ? '✅' : s.kind === 'care' ? '🪔' : '🌙'}</span><div><b>${esc(L(s.en, s.ta))}</b><p>${esc(L(s.adviceEn, s.adviceTa))}</p></div></div>`).join('')}
         <p class="muted small">♄ ${L('Saturn in', 'சனி')} ${esc(rasiName(a.transit.saturnSign))} ${L('until', 'வரை')} ${fmtIsoDate(new Date(a.transit.satSpan.to.getTime() + tz * 3600000).toISOString().slice(0, 10))} · ♃ ${L('Jupiter in', 'குரு')} ${esc(rasiName(a.transit.jupiterSign))} ${L('until', 'வரை')} ${fmtIsoDate(new Date(a.transit.jupSpan.to.getTime() + tz * 3600000).toISOString().slice(0, 10))}</p></div>
-      ${a.dasaOutlook ? `<div class="card glass"><div class="card-title">⏳ ${L('Dasa outlook', 'தசா பலன்')}</div><p>${esc(L(a.dasaOutlook.en, a.dasaOutlook.ta))}</p></div>` : ''}
+      ${a.dasaOutlook ? `<div class="card glass"><div class="card-title">⏳ ${L('Dasa outlook', 'தசா பலன்')}${stabilityChip(c, 'moonNakshatra', 'moonPada')}</div><p>${esc(L(a.dasaOutlook.en, a.dasaOutlook.ta))}</p></div>` : ''}
       <div class="card glass"><div class="card-title">🏛️ ${L('The 12 houses (Bhavas)', '12 பாவங்கள்')}</div>
-        ${a.bhavas.map((b) => `<details class="bhava"><summary><span class="bh-n">${b.house}</span> <span class="bh-a">${esc(bi(b.area))}</span>${bar(b.score, lvl(b.score))}</summary>
+        ${a.bhavas.length ? '' : `<p class="small muted">${L('Needs the birth time — houses are counted from the Lagna.', 'பிறந்த நேரம் தேவை — பாவங்கள் லக்னத்திலிருந்து கணக்கிடப்படுகின்றன.')}</p>`}
+        ${a.bhavas.map((b) => `<details class="bhava"><summary><span class="bh-n">${b.house}</span> <span class="bh-a">${esc(bi(b.area))}</span>${houseChip(b)}${bar(b.score, lvl(b.score))}</summary>
           <div class="small"><p>${L('Sign', 'ராசி')}: ${esc(rasiName(b.rasi))} · ${L('Lord', 'அதிபதி')}: ${GLYPH[b.lord]} ${esc(planetName(b.lord))} → ${L('house', 'பாவம்')} ${b.lordHouse}</p>
           ${b.occupants.length ? `<p>${L('Planets here', 'இங்குள்ள கிரகங்கள்')}: ${b.occupants.map((o) => `${GLYPH[o]} ${esc(planetName(o))}`).join(', ')}</p>` : ''}
           ${b.aspects.length ? `<p>${L('Aspected by', 'பார்வை')}: ${b.aspects.map((o) => esc(planetName(o))).join(', ')}</p>` : ''}
@@ -733,7 +741,7 @@ function renderAnalysis(sec) {
       out.textContent = L('Preparing your reading…', 'உங்கள் பலன் தயாராகிறது…');
       out.classList.add('typing');
       const context = {
-        person: { name: m.name, birth: `${m.date} ${m.time} ${m.place}`, lagna: c.lagna.rasiName, rasi: c.janmaRasi.name, star: `${c.janmaNakshatra.name} pada ${c.janmaNakshatra.pada}` },
+        person: { name: m.name, ...birthContext(m, c), rasi: c.janmaRasi.name, star: `${c.janmaNakshatra.name} pada ${c.janmaNakshatra.pada}` },
         lifeAreas: a.areas.map((x) => `${x.en}: ${x.level} (${x.score})`), yogas: a.yogas.map((y) => y.name.en),
         transits: a.transit.status.map((s) => s.en), dasa: a.dasaOutlook?.en,
         houses: a.bhavas.map((b) => `H${b.house} ${b.rasiName.en}, lord ${b.lord} in H${b.lordHouse}${b.occupants.length ? `, has ${b.occupants.join('/')}` : ''} (${b.score})`),

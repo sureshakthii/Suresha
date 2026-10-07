@@ -248,10 +248,13 @@ London, the twice-in-month case (both settings), the skipped-sunrise case, and T
   date. The app states its convention on screen wherever this matters.
 - **Birth data limits.** An approximate birth time makes the Lagna, the divisional charts and the dasa dates
   approximate. `chartStability()` in `shared/astro.js` computes which items change within the uncertainty window and
-  stores it as `chart.stability`. <!-- TODO-LEAD: no screen shows chart.stability yet (checked 2026-10-07). When the
-  chart screen shows it for approximate birth times, replace this comment with: "This is shown on the chart screen for
-  approximate times." Until then the app does NOT mark unstable items. -->
-  It is **not yet shown** on any screen (TODO-LEAD).
+  stores it as `chart.stability`; family profiles pass their own ± window (`birthArgs()` in `shared/birthtime.js`).
+  For approximate times the app marks every item that changes inside that window with a "may change within your
+  ±N min / மாறக்கூடியது" chip — Lagna, Navamsa Lagna, D-chart Lagnas, planet houses, Moon nakshatra and pada, and the
+  dasa start — on the chart, divisional-chart (vargas) and full-analysis screens; D30/D60 placements are labelled
+  approximate for any uncertain time. Sookshma dasa lords are not shown on any screen. When the birth time is
+  unknown, no Lagna is calculated (no noon placeholder): Lagna- and house-based sections say "needs birth time" and
+  show Moon-based (Chandra Lagna) results only.
 - **Interpretation cannot be "100 % proven".** Predictions, porutham verdicts, yogas and remedies follow traditional
   rules (`docs/RULE-REGISTRY.md`). Those rules can be shown and reviewed by an astrologer, but nobody can prove them
   correct the way a sunrise time can be proven. The app presents them as traditional guidance, not certainty.
@@ -267,7 +270,7 @@ London, the twice-in-month case (both settings), the skipped-sunrise case, and T
 | Vakya panchangam | Not supported. The app is Thirukanitha only; Vakya almanac dates can differ by hours or a day | Not supported |
 | Rahu / Ketu | Mean node only. The true node differs by up to about 1.9° (§3.1); there is no true-node option | Convention, documented |
 | Ambiguous or missing local times (daylight saving changes) | A time that occurs twice (clocks go back) is flagged `ambiguous` and the earlier instant is used by default; a time that never occurred (clocks go forward) is flagged `nonexistent` and moved forward by the gap (`shared/datetime.js`) | Flagged |
-| Sookshma lords and D60 placements for approximate birth times | Computed exactly from the given time, but a few minutes of birth-time error can change them (§3.5, §3.6) | Limitation; stability not yet shown on screen (TODO-LEAD) |
+| Sookshma lords and D60 placements for approximate birth times | Computed exactly from the given time, but a few minutes of birth-time error can change them (§3.5, §3.6) | Limitation; D60 (and D30) is labelled approximate on the vargas screen for uncertain times, D-chart Lagnas carry "may change" chips; Sookshma lords are not shown on screen |
 | Topocentric Moon, hill-top or "visible" sunrise | Not used (geocentric positions, sea-level horizon) | Convention |
 | Interpretation (yogas, porutham, predictions, remedies) | Traditional rules, status *proposed* until an astrologer signs off (`docs/RULE-REGISTRY.md`) | Not an accuracy claim |
 

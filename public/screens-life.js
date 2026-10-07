@@ -1,9 +1,10 @@
 // Life Questions (வாழ்க்கைக் கேள்விகள்): marriage, job, PR / visa, own house, child, court case,
 // husband–wife harmony, Kula Deivam and habits — timed by Dasa–Bhukti and Guru–Sani double transit.
 import { QUESTIONS, predictEvent, kulaDeivam, habitGuard, careerCompass, questionFor, questionFitsAge } from './shared/predict.js';
-import { capDate, minCap, CAP_LINES } from './shared/lifespan-cap.js';
+import { REPORT_YEARS, horizonLabel, HORIZON_LINES } from './shared/report-horizon.js';
 import {
   state, $, $$, L, esc, bi, GLYPH, COLOR, planetName, fmtIsoDate, activeMember, chartOf, registerScreen, subHeader, aiTask, speak, displayName,
+  needsTimeNote, birthContext, stabilityChip,
 } from './core.js';
 import { isLocked, lockCard } from './growth.js';
 import { ageProfile, lifeQuestionAllowed, stageLabel } from './shared/age-guard.js';
@@ -64,13 +65,16 @@ function answer(m, scroll = true) {
 }
 
 function renderPrediction(c, m) {
-  const r0 = predictEvent(c, ui.q);
+  const years = REPORT_YEARS.life;
+  const r0 = predictEvent(c, ui.q, { years });
   const qg = questionFor(r0.question, m.gender);
   const r = { ...r0, remedy: qg.remedy || r0.remedy };
   const q = { ...r0.question, en: qg.en, ta: qg.ta };
-  const horizon = capDate(c);
   const best = r.windows[0];
-  const headline = !r.windows.length
+  const noTime = r.needsBirthTime && r.promise.level !== 'not-assessed';
+  const headline = noTime
+    ? L('This timing reads the houses from the Lagna, which needs the birth time. Add the birth time in the family profile to see the periods.', 'இந்தக் காலக் கணிப்பு லக்னத்திலிருந்து பாவங்களைப் பார்க்கிறது; அதற்குப் பிறந்த நேரம் தேவை. காலங்களைப் பார்க்க குடும்ப சுயவிவரத்தில் பிறந்த நேரத்தைச் சேர்க்கவும்.')
+    : !r.windows.length
     ? L('Steady effort and sincere parigaram open the way — keep going with faith; every Thursday and Friday morning is good for steps on this.', 'தொடர் முயற்சியும் மனமார்ந்த பரிகாரமும் வழி திறக்கும் — நம்பிக்கையுடன் தொடருங்கள்; ஒவ்வொரு வியாழன், வெள்ளி காலையும் இதற்கான முயற்சிக்கு நல்லது.')
     : L(`Tradition sees ${monthYear(r.earliest?.peakFrom || best.peakFrom)} onwards as a supportive period — ${planetName((r.earliest || best).md)} Dasa, ${planetName((r.earliest || best).ad)} Bhukti.`,
       `பாரம்பரியப்படி ${monthYear(r.earliest?.peakFrom || best.peakFrom)} முதல் சாதகமான காலம் — ${planetName((r.earliest || best).md)} தசை, ${planetName((r.earliest || best).ad)} புக்தி.`);
@@ -79,15 +83,15 @@ function renderPrediction(c, m) {
   $('#lifeOut').innerHTML = `${caution}
     <div class="card glass verdict-card life-head"><div class="ti-icon">${q.icon}</div><div class="mini-label">${esc(displayName(m))} · ${esc(bi(q))}</div>
       <div class="life-answer">${esc(headline)}</div>
-      ${r.promise.level === 'not-assessed' || r.promise.score == null
+      ${noTime ? `<button class="chip-btn" data-go="family" data-param='${esc(JSON.stringify({ edit: m.id }))}'>🕰️ ${L('Add the birth time', 'பிறந்த நேரத்தைச் சேர்')}</button>` : r.promise.level === 'not-assessed' || r.promise.score == null
     ? `<p class="small">🤍 ${L('Every family’s path to a child is its own. Keep both partners’ health routines gentle and regular, follow your doctor’s care, and let the prayer below support you with hope.', 'ஒவ்வொரு குடும்பத்திற்கும் குழந்தை பாக்கியத்திற்கான பாதை தனித்துவமானது. இருவரின் உடல்நல வழக்கத்தையும் மென்மையாகச் சீராக வைத்து, மருத்துவர் வழிகாட்டலைப் பின்பற்றி, கீழே உள்ள வழிபாட்டை நம்பிக்கையுடன் செய்யுங்கள்.')}</p>`
     : `<span class="tag ${r.promise.level === 'strong' || r.promise.level === 'good' ? 'good' : 'warn'}">${L('Promise in chart', 'ஜாதக வாக்குறுதி')}: ${r.promise.level === 'strong' ? L('Strong', 'வலுவானது') : r.promise.level === 'good' ? L('Good', 'நன்று') : L('Comes with effort', 'முயற்சியால் கிடைக்கும்')}</span>`}</div>
-    ${r.current ? `<div class="card glass"><div class="mini-label">${L('Running now', 'தற்போது நடப்பது')}</div><div class="mini-value">${esc(dasaLabel(r.current))}</div><div class="muted small">${L(`until ${fmtIsoDate(iso(minCap(r.current.end, horizon)))}`, `${fmtIsoDate(iso(minCap(r.current.end, horizon)))} வரை`)}</div></div>` : ''}
-    <div class="section-title">🌟 ${q.harmony ? L('Best periods for togetherness', 'ஒற்றுமைக்கு சிறந்த காலங்கள்') : L('Best periods', 'சிறந்த காலங்கள்')}</div>
+    ${r.current ? `<div class="card glass"><div class="mini-label">${L('Running now', 'தற்போது நடப்பது')}</div><div class="mini-value">${esc(dasaLabel(r.current))}</div><div class="muted small">${L(`until ${fmtIsoDate(iso(r.current.end))}`, `${fmtIsoDate(iso(r.current.end))} வரை`)}</div>${stabilityChip(c, 'moonNakshatra', 'moonPada')}</div>` : ''}
+    ${noTime ? '' : `<div class="section-title">🌟 ${q.harmony ? L('Best periods for togetherness', 'ஒற்றுமைக்கு சிறந்த காலங்கள்') : L('Best periods', 'சிறந்த காலங்கள்')} <span class="pill horizon-label">${esc(bi(horizonLabel(years)))}</span></div>`}
     ${r.windows.map((w) => `<div class="card glass window${w === r.earliest ? ' first' : ''}">
       <div class="win-dates">${monthYear(w.peakFrom)} – ${monthYear(w.peakTo)}${w.doubleTransit ? ` <span class="pill dt">${L('Guru + Sani support', 'குரு + சனி ஆதரவு')}</span>` : ''}</div>
       <div class="small">${esc(dasaLabel(w))} <span class="muted">(${fmtIsoDate(iso(w.start))} → ${fmtIsoDate(iso(w.end))})</span></div>
-      ${w.reasons.length ? `<div class="small muted">${w.reasons.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}</div>`).join('') || `<div class="card glass window"><p class="small">🌱 ${esc(bi(CAP_LINES.windows))}</p></div>`}
+      ${w.reasons.length ? `<div class="small muted">${w.reasons.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}</div>`).join('') || (noTime ? '' : `<div class="card glass window"><p class="small">🌱 ${esc(bi(HORIZON_LINES.windows(years)))}</p></div>`)}
     ${r.careful.length ? `<div class="section-title">🤍 ${L('Periods to be extra caring with each other', 'ஒருவருக்கொருவர் கூடுதல் அன்பு காட்ட வேண்டிய காலங்கள்')}</div>
       ${r.careful.map((w) => `<div class="card glass window care"><div class="win-dates">${monthYear(w.start)} – ${monthYear(w.end)}</div><div class="small">${esc(dasaLabel(w))}</div><p class="small">${L('Patience, shared prayer and open talks keep the bond strong in this period.', 'இந்தக் காலத்தில் பொறுமை, சேர்ந்த வழிபாடு, மனம் திறந்த பேச்சு உறவை வலுப்படுத்தும்.')}</p></div>`).join('')}` : ''}
     <div class="card glass"><div class="card-title">🔍 ${L('What the chart shows', 'ஜாதகம் காட்டுவது')}</div>${r.promise.notes.map((n) => `<div class="small">• ${esc(bi(n))}</div>`).join('')}</div>
@@ -101,9 +105,10 @@ function renderPrediction(c, m) {
     const t = $('#lifeText');
     t.classList.add('typing');
     const context = {
-      person: { name: m.name, relation: m.relation, gender: m.gender, birth: `${m.date} ${m.time} ${m.place}`, lagna: c.lagna.rasiName, rasi: c.janmaRasi.name, star: c.janmaNakshatra.name },
+      person: { name: m.name, relation: m.relation, gender: m.gender, ...birthContext(m, c), rasi: c.janmaRasi.name, star: c.janmaNakshatra.name },
       question: q.en, promise: { level: r.promise.level, notes: r.promise.notes.map((n) => n.en) },
-      runningNow: r.current && `${r.current.md} Dasa / ${r.current.ad} Bhukti until ${iso(minCap(r.current.end, horizon))}`,
+      runningNow: r.current && `${r.current.md} Dasa / ${r.current.ad} Bhukti until ${iso(r.current.end)}`,
+      coverage: `best periods searched over the next ${years} years`,
       bestPeriods: r.windows.map((w) => ({ from: iso(w.peakFrom), to: iso(w.peakTo), dasa: `${w.md}/${w.ad}`, doubleTransit: w.doubleTransit, why: w.reasons.map((x) => x.en) })),
       periodsNeedingCare: r.careful.map((w) => `${iso(w.start)}..${iso(w.end)} ${w.md}/${w.ad}`),
       remedy: r.remedy.en,
@@ -121,6 +126,7 @@ function renderKula(c, m) {
       <div class="life-answer">${L('Your Kula Deivam is a family tradition — ask your elders', 'குலதெய்வம் ஒரு குடும்ப மரபு — பெரியோரிடம் கேளுங்கள்')}</div>
       <p class="small muted">${L('A chart cannot establish a Kula Deivam conclusively. Tradition links your 9th house with this deity form, which some families use only as a hint', 'ஜாதகம் குலதெய்வத்தை உறுதியாக நிர்ணயிக்க முடியாது. உங்கள் 9-ம் பாவத்தைப் பாரம்பரியம் இந்தத் தெய்வ வடிவுடன் இணைக்கிறது; சில குடும்பங்கள் இதைக் குறிப்பாக மட்டும் பயன்படுத்தும்')}: ${esc(bi(k.deity))}</p></div>
     <div class="card glass"><p>${esc(bi(k.guidance))}</p><p class="small muted">${L('9th house', '9-ம் பாவம்')}: ${esc(bi(k.ninthSign))} · ${L('lord', 'அதிபதி')} ${esc(planetName(k.lord))}${k.occupants.length ? ` · ${L('planets', 'கிரகங்கள்')}: ${k.occupants.map((o) => esc(planetName(o))).join(', ')}` : ''}</p></div>
+    ${!c.planets.Lagna ? `<p class="small muted"><span class="pill">${L('Moon reference', 'சந்திர லக்னம்')}</span> ${L('The 9th house is counted from the Moon sign because the birth time (Lagna) is not known.', 'பிறந்த நேரம் (லக்னம்) தெரியாததால் 9-ம் பாவம் சந்திர ராசியிலிருந்து கணக்கிடப்பட்டது.')}</p>` : ''}
     ${k.periods.length ? `<div class="card glass"><div class="card-title">🙏 ${L('Especially good periods for a Kula Deivam visit', 'குலதெய்வ தரிசனத்திற்கு சிறப்பான காலங்கள்')}</div>${k.periods.map((p) => `<div class="factor"><span>${GLYPH[p.ad]} ${esc(planetName(p.md))} / ${esc(planetName(p.ad))}</span><b class="zero">${monthYear(p.start)} – ${monthYear(p.end)}</b></div>`).join('')}</div>` : ''}`;
 }
 
@@ -128,7 +134,7 @@ function renderCompass(c, m) {
   const r = careerCompass(c);
   $('#lifeOut').innerHTML = `<div class="card glass verdict-card life-head"><div class="ti-icon">🧭</div><div class="mini-label">${esc(displayName(m))}</div>
       <div class="life-answer">${L('Best suited', 'மிகப் பொருத்தமானது')}: ${esc(bi(r.top[0]))}</div>
-      <span class="tag good">${L('10th lord', '10-ம் அதிபதி')}: ${GLYPH[r.tenthLord]} ${esc(planetName(r.tenthLord))} · ${esc(bi(r.tenthSign))}</span></div>
+      ${r.tenthLord ? `<span class="tag good">${L('10th lord', '10-ம் அதிபதி')}: ${GLYPH[r.tenthLord]} ${esc(planetName(r.tenthLord))} · ${esc(bi(r.tenthSign))}</span>${stabilityChip(c, 'lagna')}` : needsTimeNote({ en: 'The 10th house (career) is counted from the Lagna.', ta: '10-ம் பாவம் (தொழில்) லக்னத்திலிருந்து கணக்கிடப்படுகிறது.' })}</div>
     ${r.top.map((f, i) => `<div class="card glass window${i === 0 ? ' first' : ''}"><div class="win-dates">${i + 1}. ${esc(bi(f))} <span class="pill">${f.score}</span></div>
       <p class="small">🎓 ${esc(bi(f.study))}</p>${f.reasons.map((x) => `<div class="small">• ${esc(bi(x))}</div>`).join('')}</div>`).join('')}
     <div class="card glass"><div class="card-title">${L('All fields', 'அனைத்துத் துறைகளும்')}</div>${r.all.map((f) => `<div class="gb-row static"><span class="gb-name">${esc(bi(f))}</span><span class="gb-bar"><i class="${f.score >= 66 ? 'strong' : f.score >= 50 ? 'average' : 'weak'}" style="width:${f.score}%"></i></span><span class="muted small">${f.score}</span></div>`).join('')}</div>

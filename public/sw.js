@@ -1,10 +1,10 @@
 // App-shell cache so the Jathagam and live Panchangam work offline. API calls always go to the network.
-const CACHE = 'kj-v20';
+const CACHE = 'kj-v22';
 const SHELL = [
   '/', '/index.html', '/styles.css', '/app.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/screens-world.js',
   '/screens-life.js', '/screens-plans.js', '/screens-couple.js', '/screens-guide.js', '/remind.js', '/screens-roadmap.js',
   '/screens-depth.js', '/screens-extra.js', '/screens-peyarchi.js', '/screens-health.js', '/screens-love.js', '/screens-kattam.js',
-  '/easy-date.js', '/growth.js', '/legal.js', '/account.js', '/icons.js', '/screens-hubs.js', '/tool-registry.js', '/screens-journey.js', '/screens-trust.js', '/screens-names.js',
+  '/easy-date.js', '/growth.js', '/legal.js', '/account.js', '/icons.js', '/screens-hubs.js', '/tool-registry.js', '/screens-journey.js', '/screens-trust.js', '/screens-names.js', '/screens-week.js', '/shared/week-plan.js',
   '/shared/baby-names.js', '/shared/baby-names-data-1.js', '/shared/baby-names-data-2.js', '/shared/baby-names-data-3.js',
   '/shared/baby-names-data-4.js', '/shared/baby-names-data-5.js', '/shared/baby-names-data-6.js', '/shared/baby-names-data-7.js',
   '/shared/baby-names-data-8.js', '/shared/baby-names-data-9.js', '/shared/baby-names-data-10.js',
@@ -14,7 +14,7 @@ const SHELL = [
   '/shared/temple-info.js', '/shared/roadmap.js', '/shared/varga.js', '/shared/ashtakoota.js', '/shared/numerology.js',
   '/shared/peyarchi.js', '/shared/health.js', '/shared/brand.js', '/shared/sync-policy.js', '/shared/birthtime.js', '/shared/guidance.js', '/shared/journey.js',
   '/shared/version.js', '/shared/temple-verified.js', '/shared/kattam.js', '/shared/daily.js', '/shared/today-plan.js', '/shared/faith.js',
-  '/today-lines.js', '/ask-thunai.js', '/shared/weather.js', '/shared/station.js', '/shared/love.js', '/shared/datetime.js', '/shared/age-guard.js', '/shared/themes.js', '/shared/lifespan-cap.js',
+  '/today-lines.js', '/ask-thunai.js', '/shared/weather.js', '/shared/station.js', '/shared/love.js', '/shared/datetime.js', '/shared/age-guard.js', '/shared/themes.js', '/shared/report-horizon.js', '/shared/written-date.js',
   '/shared/rules/core.js', '/shared/rules/profiles.js', '/shared/rules/registry.js', '/shared/rules/chevvai.js', '/shared/rules/roles.js',
   '/shared/rules/yogas.js', '/shared/rules/disputed.js', '/shared/rules/define.js', '/vendor/astronomy-engine.js', '/icon.svg',
   '/phone-input.js', '/shared/countries.js', '/shared/country-data.js', '/shared/world-places.js', '/shared/currency.js',

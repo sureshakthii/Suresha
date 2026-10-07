@@ -6,7 +6,6 @@ import { planetPositions, RASIS, PLANETS } from './astro.js';
 import { grahaStrength } from './remedies.js';
 import { evaluateRules, resolveProfile } from './rules/registry.js';
 import { houseRoles as computeHouseRoles } from './rules/roles.js';
-import { capDate, minCap } from './lifespan-cap.js';
 
 const KENDRA = [1, 4, 7, 10];
 const TRIKONA = [1, 5, 9];
@@ -222,7 +221,7 @@ export function fullAnalysis(chart, now = new Date(), { profile } = {}) {
     const ruled = hasLagna && k in OWN ? housesRuled(chart.planets.Lagna.rasi, k) : [];
     const good = sMap[k] >= 55 && !DUSTHANA.includes(house);
     const where = house ? { en: ` sits in house ${house}`, ta: `: ${house}-ம் வீட்டில்` } : { en: ' (house needs birth time)', ta: ': (பாவத்திற்கு பிறந்த நேரம் தேவை)' };
-    const until = minCap(dasa.end, capDate(chart));
+    const until = dasa.end;
     const uy = until ? new Date(until).getUTCFullYear() : null;
     dasaOutlook = {
       lord: k, house, ruled, strength: sMap[k], tone: good ? 'favourable' : 'growth through effort', until,

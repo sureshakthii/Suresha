@@ -1,7 +1,8 @@
 // Love Match (காதல் பொருத்தம்) — a modern, friendly compatibility read for two people, built from
 // both birth charts: Moon (emotional sync), Venus–Mars (chemistry), Mercury (communication),
 // Jupiter (trust & growth) and the traditional 10-porutham star match (both directions).
-// It is guidance for understanding each other — never a verdict on a person or a relationship.
+// It is guidance for understanding each other — never a verdict on a person or a relationship: the result is a
+// neutral list of traditional affinity notes with no percentage, no tier and no combined score.
 import { RASIS, PLANETS } from './astro.js';
 import { matchPorutham } from './porutham.js';
 
@@ -47,17 +48,14 @@ export function loveMatch(a, b, { genderA, genderB, names = ['A', 'B'] } = {}) {
   const side = (c) => ({ star: c.janmaNakshatra.index, rasi: c.janmaRasi.index });
   const ab = matchPorutham(side(a), side(b)), ba = matchPorutham(side(b), side(a));
   const por = genderA === 'female' && genderB === 'male' ? ab : genderA === 'male' && genderB === 'female' ? ba : (ab.score >= ba.score ? ab : ba);
-  const porPct = Math.round(por.score * 10);
-
-  const vibe = Math.round(emo * 0.28 + chem * 0.24 + comm * 0.18 + trust * 0.12 + porPct * 0.18);
-  const tier = vibe >= 80 ? T('Soulmate vibes 💞', 'உயிர்த் துணை அதிர்வு 💞') : vibe >= 68 ? T('Strong match 💘', 'வலுவான பொருத்தம் 💘') : vibe >= 55 ? T('Growing bond 🌱', 'வளரும் பிணைப்பு 🌱') : T('Work-in-progress 🛠️', 'உழைப்பு தேவைப்படும் உறவு 🛠️');
+  const porPct = Math.round(por.score * 10); // internal only — never shown
 
   const meters = [
     { id: 'emotion', icon: '🌙', name: T('Emotional sync', 'உணர்வு இணக்கம்'), score: emo, why: T(`Moon signs ${RASIS[a.janmaRasi.index].en} & ${RASIS[b.janmaRasi.index].en}: ${moon.text.en}`, `சந்திர ராசிகள் ${RASIS[a.janmaRasi.index].ta} & ${RASIS[b.janmaRasi.index].ta}: ${moon.text.ta}`) },
     { id: 'chemistry', icon: '🔥', name: T('Chemistry', 'ஈர்ப்பு'), score: chem, why: T(`Venus in ${RASIS[P(a, 'Venus')].en} / ${RASIS[P(b, 'Venus')].en}, Mars in ${RASIS[P(a, 'Mars')].en} / ${RASIS[P(b, 'Mars')].en}`, `சுக்கிரன் ${RASIS[P(a, 'Venus')].ta} / ${RASIS[P(b, 'Venus')].ta}, செவ்வாய் ${RASIS[P(a, 'Mars')].ta} / ${RASIS[P(b, 'Mars')].ta}`) },
     { id: 'talk', icon: '💬', name: T('Communication', 'பேச்சு இணக்கம்'), score: comm, why: T(`Mercury: ${ELEMENT_NAME[ELEMENT(P(a, 'Mercury'))].en} & ${ELEMENT_NAME[ELEMENT(P(b, 'Mercury'))].en} signs`, `புதன்: ${ELEMENT_NAME[ELEMENT(P(a, 'Mercury'))].ta} & ${ELEMENT_NAME[ELEMENT(P(b, 'Mercury'))].ta} ராசிகள்`) },
     { id: 'trust', icon: '🤝', name: T('Trust & growth', 'நம்பிக்கை & வளர்ச்சி'), score: trust, why: T('Jupiter of each person seen from the other’s Moon sign', 'ஒவ்வொருவரின் குரு, மற்றவரின் ராசியிலிருந்து') },
-    { id: 'porutham', icon: '🪐', name: T('Traditional star match', 'பாரம்பரிய நட்சத்திரப் பொருத்தம்'), score: porPct, why: T(`${por.score}/10 poruthams`, `${por.score}/10 பொருத்தங்கள்`) },
+    { id: 'porutham', icon: '🪐', name: T('Traditional star match', 'பாரம்பரிய நட்சத்திரப் பொருத்தம்'), score: porPct, why: T(`${por.agree} of 10 traditional factors agree`, `10 மரபுக் காரணிகளில் ${por.agree} பொருந்துகின்றன`) },
   ];
   const sorted = [...meters].sort((x, y) => y.score - x.score);
   const GREEN = {
@@ -72,12 +70,24 @@ export function loveMatch(a, b, { genderA, genderB, names = ['A', 'B'] } = {}) {
     chemistry: T('Spark needs effort — plan time together without phones', 'ஈர்ப்புக்கு முயற்சி தேவை — கைப்பேசி இல்லாத நேரம் ஒதுக்குங்கள்'),
     talk: T('Different talking styles — listen fully before replying', 'வேறுபட்ட பேச்சு முறை — முழுதாகக் கேட்ட பின் பதில் சொல்லுங்கள்'),
     trust: T('Build trust with small promises kept', 'சிறிய வாக்குறுதிகளைக் காப்பதன் மூலம் நம்பிக்கை வளரும்'),
-    porutham: T('Star match is weak — if you plan marriage, do the detailed matching with family', 'நட்சத்திரப் பொருத்தம் குறைவு — திருமணம் என்றால் குடும்பத்துடன் விரிவான பொருத்தம் பாருங்கள்'),
+    porutham: T('Fewer star factors agree — if you plan marriage, look at the detailed matching together with family', 'குறைவான நட்சத்திரக் காரணிகள் பொருந்துகின்றன — திருமணம் என்றால் குடும்பத்துடன் சேர்ந்து விரிவான பொருத்தம் பாருங்கள்'),
   };
   // Best day for dates: the weekday whose lord is friendly to both Venus signs (simple: Friday, else Venus-element day).
   const dateDay = T('Friday (Venus) — and any day with Amirtha / Siddha yogam', 'வெள்ளிக்கிழமை (சுக்கிரன்) — மற்றும் அமிர்த / சித்த யோக நாட்கள்');
+  // Neutral affinity notes: what each traditional factor looks at, and one gentle line — no number on any of them.
+  const NEUTRAL = {
+    emotion: T('Talk about how each of you shows and needs care', 'அன்பை நீங்கள் ஒவ்வொருவரும் எப்படிக் காட்டுகிறீர்கள், எதிர்பார்க்கிறீர்கள் என்று பேசுங்கள்'),
+    chemistry: T('Keep time together that is just for the two of you', 'உங்கள் இருவருக்கு மட்டுமான நேரத்தை ஒதுக்குங்கள்'),
+    talk: T('Listen fully before replying', 'முழுதாகக் கேட்ட பின் பதில் சொல்லுங்கள்'),
+    trust: T('Small promises kept build trust', 'சிறிய வாக்குறுதிகளைக் காப்பது நம்பிக்கையை வளர்க்கும்'),
+    porutham: T('If you plan marriage, look at the 10 poruthams together with family', 'திருமணம் என்றால் 10 பொருத்தங்களைக் குடும்பத்துடன் சேர்ந்து பாருங்கள்'),
+  };
+  const notes = meters.map((m) => ({ id: m.id, icon: m.icon, name: m.name, basis: m.why, line: m.score >= 70 ? GREEN[m.id] : m.score < 65 ? WORK[m.id] : NEUTRAL[m.id] }));
   return {
-    names, vibe, tier, meters,
+    names, notes,
+    title: T('Traditional affinity notes', 'மரபு இணக்கக் குறிப்புகள்'),
+    note: T('A traditional reading to understand each other — no score, no verdict. It does not decide anyone’s worth or your future together.', 'ஒருவரை ஒருவர் புரிந்துகொள்ள உதவும் மரபு வாசிப்பு — மதிப்பெண்ணோ தீர்ப்போ இல்லை. யாருடைய மதிப்பையும் உங்கள் எதிர்காலத்தையும் தீர்மானிப்பதில்லை.'),
+    noPercentage: true, noVerdict: true,
     green: sorted.filter((m) => m.score >= 70).slice(0, 3).map((m) => GREEN[m.id]),
     work: sorted.filter((m) => m.score < 65).slice(-2).map((m) => WORK[m.id]),
     porutham: por, rajjuOk: !por.criticalFail, dateDay,

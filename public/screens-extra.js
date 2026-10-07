@@ -1,6 +1,6 @@
 // Extra tools competitors offer: North-Indian Ashtakoota Guna Milan (36 gunas) for NRI / inter-state
 // marriages, and Chaldean name / mobile / vehicle numerology.
-import { gunaMilan, GUNA_VERDICTS } from './shared/ashtakoota.js';
+import { gunaMilan } from './shared/ashtakoota.js';
 import { nameAdvice, mobileNumberLuck, vehicleNumberLuck } from './shared/numerology.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, planetName, nakName, rasiName, starOptions, rasiOfStarPada,
@@ -77,7 +77,7 @@ function renderGunaMilan(sec) {
     <div class="card glass"><div class="card-title">${L('Bride & groom', 'மணமகள் & மணமகன்')}</div>
       ${adults().length < people().length ? `<p class="small muted age-note">🌱 ${esc(bi(MATCH_ADULTS_NOTE))}</p>` : ''}<div class="por-grid">${gmForm('bride')}${gmForm('groom')}</div></div>
     <div id="gmResult"></div>
-    <div class="card glass"><p class="small">🪔 ${L('Tamil tradition matches by the 10 poruthams (with Rajju and Vedhai as essentials). Guna Milan is the North-Indian system — use it alongside, not instead.', 'தமிழ் மரபில் 10 பொருத்தங்கள் (ரஜ்ஜு, வேதை அவசியம்) பார்க்கப்படுகின்றன. குண மிலன் வட இந்திய முறை — அதற்கு மாற்றாக அல்ல, துணையாகப் பயன்படுத்துங்கள்.')}</p>
+    <div class="card glass"><p class="small">🪔 ${L('Tamil tradition looks at the 10 poruthams (Rajju and Vedhai as key factors to discuss). Guna Milan is a separate North-Indian system with its own points — it is never added to the poruthams.', 'தமிழ் மரபில் 10 பொருத்தங்கள் பார்க்கப்படுகின்றன (ரஜ்ஜு, வேதை — பேச வேண்டிய முக்கியக் காரணிகள்). குண மிலன் தனி வட இந்திய முறை, அதன் சொந்தப் புள்ளிகள் — பொருத்தங்களுடன் ஒருபோதும் கூட்டப்படுவதில்லை.')}</p>
       <div class="btn-row"><button type="button" class="btn-gold" data-go="couple">💑 ${L('Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்')}</button>
       <button type="button" class="chip-btn" data-go="porutham">💞 ${L('10 poruthams by star', 'நட்சத்திரம் மூலம் 10 பொருத்தங்கள்')}</button></div></div>`;
   $$('.seg button[data-who]', sec).forEach((b) => b.addEventListener('click', () => { gmSide[b.dataset.who].mode = b.dataset.mode; renderGunaMilan(sec); }));
@@ -97,17 +97,16 @@ function showGuna(sec) {
     if (el) el.textContent = `${nakName(d.star)} · ${rasiName(d.rasi)}`;
   }
   const r = gunaMilan(b, g);
-  const vClass = r.verdict === 'excellent' || r.verdict === 'good' ? 'DO' : r.verdict === 'average' ? 'CAUTION' : 'AVOID';
   const doshaList = [
-    r.doshas.nadi ? `<span class="tag bad">${L('Nadi dosha', 'நாடி தோஷம்')}</span>` : `<span class="tag good">${L('No Nadi dosha', 'நாடி தோஷம் இல்லை')}</span>`,
-    r.doshas.bhakoot ? `<span class="tag bad">${L('Bhakoot dosha', 'பகூட் தோஷம்')}</span>` : `<span class="tag good">${L('No Bhakoot dosha', 'பகூட் தோஷம் இல்லை')}</span>`,
+    r.doshas.nadi ? `<span class="tag warn">${L('Nadi dosha (traditional)', 'நாடி தோஷம் (மரபு)')}</span>` : `<span class="pill">${L('No Nadi dosha', 'நாடி தோஷம் இல்லை')}</span>`,
+    r.doshas.bhakoot ? `<span class="tag warn">${L('Bhakoot dosha (traditional)', 'பகூட் தோஷம் (மரபு)')}</span>` : `<span class="pill">${L('No Bhakoot dosha', 'பகூட் தோஷம் இல்லை')}</span>`,
   ].join(' ');
-  $('#gmResult', sec).innerHTML = `<div class="card glass verdict-card gm-center">
+  $('#gmResult', sec).innerHTML = `<div class="card glass gm-center">
       <div class="muted small">${esc(b.name)} (${esc(nakName(b.star))}) · ${esc(g.name)} (${esc(nakName(g.star))})</div>
       <div class="big-score">${r.total}<small> / ${r.max} ${L('gunas', 'குணங்கள்')}</small></div>
       <div class="gb-bar"><i class="${barClass(r.total, r.max)}" style="width:${Math.round((r.total / r.max) * 100)}%"></i></div>
-      <div class="verdict-big ${vClass}">${esc(bi(GUNA_VERDICTS[r.verdict]))}</div>
-      <p class="muted small">${L('18 or more is the usual minimum; 24+ good; 28+ excellent.', '18 அல்லது அதற்கு மேல் குறைந்தபட்சம்; 24+ நல்லது; 28+ மிகச் சிறப்பு.')}</p>
+      <p class="small">${esc(bi(r.scoreLabel))}</p>
+      <p class="muted small">${esc(bi(r.note))} ${L('Shown only here — it is not combined with the 10 poruthams.', 'இங்கு மட்டுமே காட்டப்படுகிறது — 10 பொருத்தங்களுடன் இணைக்கப்படவில்லை.')}</p>
     </div>
     <div class="card glass"><div class="card-title">${L('8 Kootas', '8 கூடங்கள்')}</div>
       ${r.rows.map((x) => `<div class="gm-row"><div class="gm-head"><span>${esc(ta() ? x.ta : x.en)}</span><b>${x.got} / ${x.max}</b></div>

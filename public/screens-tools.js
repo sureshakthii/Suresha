@@ -4,7 +4,8 @@ import { faithOf } from './shared/faith.js';
 import { panchang, vedicDay, RASIS, NAKSHATRAS } from './shared/astro.js';
 import { CATEGORIES, getCategory } from './shared/prasna.js';
 import { tamilMonth, tamilDay, TAMIL_MONTHS } from './shared/tamilcal.js';
-import { matchPorutham, doshams, doshaSamyam, VERDICTS } from './shared/porutham.js';
+import { matchPorutham, doshams, doshaSamyam } from './shared/porutham.js';
+import { poruthamView, discussionHtml } from './screens-couple.js';
 import { grahaStrength, dailyParigaram, NAVAGRAHA } from './shared/remedies.js';
 import { thivasamDates, natchathiraBirthdays, findMuhurtham, milestones, birthTamilMonth, STAR_BIRTHDAY_RULE } from './shared/special.js';
 import { remindBtn } from './remind.js';
@@ -16,7 +17,7 @@ import { templeSearchField, attachTempleSearch } from './temple-search.js';
 import { dayInfo } from './shared/journey.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtIsoDate,
-  activeMember, chartOf, registerScreen, go, subHeader, aiTask, toast, speak, saveFamily, saveSettings, starOptions, rasiOfStarPada, STATIC,
+  activeMember, chartOf, hasLagna, registerScreen, go, subHeader, aiTask, toast, speak, saveFamily, saveSettings, starOptions, rasiOfStarPada, STATIC,
   listen, micMessage,
   yogaName, karanaName,
   placeName,
@@ -27,6 +28,7 @@ import { chartFacts, composeAnswer, factsForAI, classify, answerLang } from './s
 import { detectTopic, detectTopics, topicAnswer, cleanSharedAnswer, generalFollowups, guardAnswer, childGeneralAnswer, validateOffline, LIMITED_LABEL } from './ask-thunai.js';
 import { ageProfile, suggestionsFor, isAdult, MATCH_ADULTS_NOTE } from './shared/age-guard.js';
 import { dailyReview } from './shared/daily.js';
+import { clarityPrompt } from './growth.js';
 
 const wait = () => new Promise((r) => setTimeout(r, 40));
 const loader = (msg) => `<div class="loader"><i></i><i></i><i></i></div><p class="muted center">${msg}</p>`;
@@ -150,7 +152,7 @@ function sideForm(who) {
 
 function renderPorutham(sec) {
   sec.innerHTML = `${subHeader(L('Thirumana Porutham', 'திருமணப் பொருத்தம்'), L('Traditional 10 poruthams, doshams and dosha samyam', 'பாரம்பரிய 10 பொருத்தங்கள், தோஷங்கள், தோஷ சாம்யம்'))}
-    <div class="card glass"><p class="small">⚠️ ${L('Matching only the 10 poruthams by star is not enough. Before finalising a marriage, check both full horoscopes (birth date, time and place) — long life, papa samyam, dasa sandhi and the marriage houses.', 'நட்சத்திரம் மூலம் 10 பொருத்தம் மட்டும் பார்ப்பது போதாது. திருமணத்தை உறுதி செய்யும் முன் இருவரின் முழு ஜாதகத்தையும் (பிறந்த தேதி, நேரம், இடம்) பாருங்கள் — ஆயுள், பாப சாம்யம், தசா சந்தி, திருமண பாவங்கள்.')}</p>
+    <div class="card glass"><p class="small">⚠️ ${L('Matching only the 10 poruthams by star is not enough. Before finalising a marriage, look at both full horoscopes (birth date, time and place) — papa samyam, dasa sandhi and the marriage houses.', 'நட்சத்திரம் மூலம் 10 பொருத்தம் மட்டும் பார்ப்பது போதாது. திருமணத்தை உறுதி செய்யும் முன் இருவரின் முழு ஜாதகத்தையும் (பிறந்த தேதி, நேரம், இடம்) பாருங்கள் — பாப சாம்யம், தசா சந்தி, திருமண பாவங்கள்.')}</p>
     <button class="btn-gold big-cta" data-go="couple">💑 ${L('Complete Marriage Porutham — with birth date & place of both', 'முழுமையான திருமணப் பொருத்தம் — இருவரின் பிறந்த தேதி, இடத்துடன்')}</button></div>
     <div class="card glass"><div class="card-title">${L('Quick check by star', 'நட்சத்திரம் மூலம் விரைவுப் பொருத்தம்')}</div>${adultsNote()}<div class="por-grid">${sideForm('girl')}${sideForm('boy')}</div>
       ${starSideUsed() ? `<label class="adult-confirm"><input type="checkbox" id="porAdults"${porSide.adultsOk ? ' checked' : ''}> ${L('I confirm both people are adults (18 or older). Marriage matching is never done for anyone under 18.', 'இருவரும் 18 வயது அல்லது அதற்கு மேற்பட்டவர்கள் என்று உறுதி செய்கிறேன். 18 வயதுக்குக் குறைவானவர்களுக்குத் திருமணப் பொருத்தம் பார்க்கப்படுவதில்லை.')}</label><p class="small adult-confirm-err" id="porAdultsErr" role="alert" hidden>${L('Please confirm that both people are 18 or older to see the porutham.', 'பொருத்தம் பார்க்க, இருவரும் 18 வயது அல்லது அதற்கு மேற்பட்டவர்கள் என்று உறுதி செய்யவும்.')}</p>` : ''}
@@ -178,7 +180,7 @@ function sideData(who) {
   if (s.mode === 'member' && matchPool().length) {
     const m = matchPool().find((x) => x.id === s.memberId) || matchPool().find((x) => x.id === sideDefault(who));
     const c = chartOf(m);
-    return { name: displayName(m), star: c.janmaNakshatra.index, rasi: c.janmaRasi.index, doshams: doshams(c.planets) };
+    return { name: displayName(m), star: c.janmaNakshatra.index, rasi: c.janmaRasi.index, doshams: doshams(c.planets, { stability: c.stability }), lagnaUnknown: !hasLagna(c), chart: c };
   }
   return { name: who === 'girl' ? L('Bride', 'மணமகள்') : L('Groom', 'மணமகன்'), star: s.star, rasi: rasiOfStarPada(s.star, s.pada) };
 }
@@ -186,25 +188,22 @@ function sideData(who) {
 function computePorutham() {
   const g = sideData('girl'), b = sideData('boy');
   const r = matchPorutham(g, b);
+  document.dispatchEvent(new CustomEvent('kj:task', { detail: 'porutham' })); // metrics: porutham result shown (consent-gated, growth.js)
   const samyam = g.doshams && b.doshams ? doshaSamyam(g.doshams, b.doshams) : null;
-  const icon = (st) => (st === 'uttamam' ? '✅' : st === 'madhyamam' ? '🟡' : '❌');
-  const verdictClass = r.verdict === 'EXCELLENT' || r.verdict === 'GOOD' ? 'DO' : r.verdict === 'AVERAGE' ? 'CAUTION' : 'AVOID';
-  $('#porResult').innerHTML = `<div class="card glass verdict-card">
-      <div class="muted small">${esc(g.name)} (${esc(nakName(g.star))}) · ${esc(b.name)} (${esc(nakName(b.star))})</div>
-      ${gauge(Math.round(r.score * 10), verdictClass).replace(/(\d+)<small>[^<]*<\/small>/, `${r.score}<small>/ 10 ${L('poruthams', 'பொருத்தங்கள்')}</small>`)}
-      <div class="verdict-big ${verdictClass}">${esc(bi(VERDICTS[r.verdict]))}</div>
-      ${r.criticalFail ? `<p class="tag bad block">${L('Rajju or Vedhai does not match — traditionally considered essential.', 'ரஜ்ஜு அல்லது வேதை பொருந்தவில்லை — பாரம்பரியமாக இது அவசியமானது.')}</p>` : ''}
-    </div>
-    <div class="card glass"><div class="card-title">${L('10 Poruthams', '10 பொருத்தங்கள்')}</div>
-      ${r.rows.map((x) => `<div class="factor"><span>${icon(x.status)} ${esc(ta() ? x.ta : x.en)}${x.importance !== 'normal' ? ` <span class="pill">${x.importance === 'critical' ? L('essential', 'அவசியம்') : L('important', 'முக்கியம்')}</span>` : ''}<br><small class="muted">${esc(bi(x.detail))}</small></span><b class="${x.status === 'uttamam' ? 'pos' : x.status === 'madhyamam' ? 'zero' : 'neg'}">${x.status === 'uttamam' ? L('Good', 'உத்தமம்') : x.status === 'madhyamam' ? L('Medium', 'மத்திமம்') : L('No', 'இல்லை')}</b></div>`).join('')}
-    </div>
-    ${samyam ? `<div class="card glass"><div class="card-title">${L('Dosha samyam', 'தோஷ சாம்யம்')}</div>${samyam.map((n) => `<div class="factor"><span>${esc(bi(n))}</span><b class="${n.ok ? 'pos' : 'neg'}">${n.ok ? '✓' : '!'}</b></div>`).join('')}</div>` : ''}
+  // No verdict and no combined score: the count of factors that agree, the key factors to discuss, a neutral
+  // summary and the detailed view (screens-couple.js poruthamView), then optional talking points.
+  $('#porResult').innerHTML = `${poruthamView(r, {
+    names: [g.name, b.name], doshas: g.doshams && b.doshams ? [g.doshams, b.doshams] : null, charts: [g.chart, b.chart], lagnaUnknown: [!!g.lagnaUnknown, !!b.lagnaUnknown], samyam,
+    starOnly: !(g.doshams && b.doshams),
+    header: `<div class="muted small">${esc(g.name)} (${esc(nakName(g.star))}) · ${esc(b.name)} (${esc(nakName(b.star))})</div>`,
+  })}
+    ${discussionHtml()}
     <button class="btn-gold" id="porExplain">✨ ${L('Thunai explains', 'துணை விளக்கம்')}</button>`;
-  animateGauges();
   $('#porExplain').addEventListener('click', () => {
     const context = { bride: { name: g.name, star: NAKSHATRAS[g.star].en, rasi: RASIS[g.rasi].en }, groom: { name: b.name, star: NAKSHATRAS[b.star].en, rasi: RASIS[b.rasi].en },
-      poruthams: r.rows.map((x) => ({ name: x.en, status: x.status, detail: x.detail.en })), score: `${r.score}/10`, verdict: VERDICTS[r.verdict].en, doshaSamyam: samyam?.map((n) => n.en) };
-    const fallback = `${bi(VERDICTS[r.verdict])} — ${r.score}/10.\n${r.rows.filter((x) => x.status !== 'uttamam').map((x) => `• ${ta() ? x.ta : x.en}: ${x.status === 'madhyamam' ? L('medium', 'மத்திமம்') : L('does not match', 'பொருந்தவில்லை')}`).join('\n')}`;
+      poruthams: r.rows.map((x) => ({ name: x.en, result: x.label.en, detail: x.detail.en })), factorsAgree: `${r.agree} of ${r.rows.length}`, keyFactors: r.keyFactors.map((k) => `${k.en}: ${k.label.en}`), doshaSamyam: samyam?.map((n) => n.en),
+      rules: 'No verdict, no score, no advice to marry or not; describe each factor neutrally and suggest talking it through together.' };
+    const fallback = `${bi(r.summary)}\n${r.rows.filter((x) => x.status !== 'uttamam').map((x) => `• ${ta() ? x.ta : x.en}: ${bi(x.label)}`).join('\n')}\n${bi(r.note)}`;
     runAi('porAi', 'porutham', context, fallback);
   });
 }
@@ -700,6 +699,7 @@ function addBubble(role, text, meta = {}) {
     meta.answer.actions.forEach((a) => { const x = document.createElement('button'); x.className = 'chip-btn'; x.textContent = `${a.label} ›`; x.addEventListener('click', () => go(a.go, a.param || {})); row.append(x); });
     b.append(row);
   }
+  if (meta.typing !== true) b.insertAdjacentHTML('beforeend', clarityPrompt('chat')); // "Was this clear?" under each answer
   $('#chatLog').append(b);
   $('#chatLog').scrollTop = $('#chatLog').scrollHeight;
   return b;

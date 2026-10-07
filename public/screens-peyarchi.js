@@ -10,7 +10,6 @@ import {
 } from './core.js';
 import { remindBtn } from './remind.js';
 import { ageProfile, adultText } from './shared/age-guard.js';
-import { capDate, withinCap } from './shared/lifespan-cap.js';
 
 // Age first: when the selected person is a child and this is their own rasi, keep only child-appropriate sentences
 // (no marriage, spouse, business, money) and hide the career / money bars.
@@ -80,6 +79,18 @@ function defaultRasi() {
   return c ? c.janmaRasi.index : null;
 }
 
+/** Peyarchi palan is read from the Moon sign (no birth time needed); say so when that sign itself is uncertain. */
+function moonRasiNote(m) {
+  const c = m && chartOf(m);
+  const st = c?.stability;
+  if (!st || !st.unstable.includes('moonRasi')) return '';
+  const alt = [...new Set(st.items.find((i) => i.key === 'moonRasi')?.values || [])];
+  const names = alt.map((i) => rasiName(i)).join(' / ');
+  return `<p class="small note-box unv" role="note">🕰️ ${st.timePrecision === 'unknown'
+    ? L(`The Moon changes sign on the birth day (${names}) — the birth time decides which rasi is yours.`, `பிறந்த நாளில் சந்திரன் ராசி மாறுகிறது (${names}) — எந்த ராசி என்பதைப் பிறந்த நேரமே தீர்மானிக்கும்.`)
+    : L(`The Moon sign may change within your ±${Math.round(st.windowMinutes)} min (${names}).`, `உங்கள் ±${Math.round(st.windowMinutes)} நிமிடத்திற்குள் சந்திர ராசி மாறக்கூடும் (${names}).`)}</p>`;
+}
+
 function renderPeyarchi(sec) {
   injectCss();
   const mine = defaultRasi();
@@ -90,6 +101,7 @@ function renderPeyarchi(sec) {
     <div id="pyNow">${LOADER}</div>
     <div class="card glass">
       <div class="card-title"><span>${L('Choose your rasi', 'உங்கள் ராசியைத் தேர்ந்தெடுங்கள்')}</span>${mine != null && m ? `<span class="pill">★ ${esc(displayName(m))}</span>` : ''}</div>
+      ${moonRasiNote(m)}
       <div class="member-switch py-rasis">${RASIS.map((_, i) => `<button class="mchip${i === pyRasi ? ' sel' : ''}" data-rasi="${i}">${i === mine ? '★ ' : ''}${esc(rasiName(i))}</button>`).join('')}</div>
     </div>
     <div id="pyPalan"></div>
@@ -116,12 +128,9 @@ function renderPeyarchi(sec) {
 }
 
 function fillNow(cur) {
-  // Personal view (own ★ rasi): transit changes are listed only inside the member's age 0–80 (shared/lifespan-cap.js).
-  const m = activeMember();
-  const horizon = m && pyRasi === defaultRasi() && m.relation !== 'organization' ? capDate(m) : null;
+  // Every member sees the next transit change — no age cutoff.
   $('#pyNow').innerHTML = `<div class="py-grid">${PEYARCHI_PLANETS.map((p) => {
-    const c0 = cur[p];
-    const c = c0.next && !withinCap(c0.next, horizon) ? { ...c0, next: null, nextRasi: null } : c0;
+    const c = cur[p];
     return `<div class="card glass rp">
       <span class="gl" style="color:${COLOR[p]}">${GLYPH[p]}</span>
       <b>${esc(planetName(p))} · ${esc(rasiName(c.rasi))}${c.retrograde && p !== 'Rahu' && p !== 'Ketu' ? ` <span class="pill">${L('retro', 'வக்ரம்')}</span>` : ''}</b>

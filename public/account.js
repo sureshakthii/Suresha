@@ -254,9 +254,14 @@ export function placeSearch(input, list, onPick) {
 }
 
 /** UTC offset (hours) of `zone` at a local birth date/time — the historical one (DST, war time, Sri Lanka 1996…). */
-function birthOffset(zone, date, time) {
+function birthOffset(zone, date, time, disambiguation = 'earlier') {
   if (!isValidZone(zone)) return null;
-  try { return date ? zonedToUtc(date, time || '12:00', zone).offsetMinutes / 60 : zoneOffsetHours(zone); } catch { return zoneOffsetHours(zone); }
+  try { return date ? zonedToUtc(date, time || '12:00', zone, { disambiguation }).offsetMinutes / 60 : zoneOffsetHours(zone); } catch { return zoneOffsetHours(zone); }
+}
+/** Daylight-saving check of the entered wall time: { ambiguous, nonexistent, alternatives } or null. */
+function dstCheck(zone, date, time) {
+  if (!isValidZone(zone) || !date || !time) return null;
+  try { const z = zonedToUtc(date, time, zone); return z.ambiguous || z.nonexistent ? z : null; } catch { return null; }
 }
 
 function memberForm(m, first) {
@@ -298,6 +303,7 @@ function memberForm(m, first) {
       <label>${L('UTC offset', 'நேர மண்டலம்')}<input name="tz" type="number" step="0.25" required value="${m.tz ?? 5.5}"></label>
     </div>
     <p class="small muted zone-note" id="zoneNote"></p>
+    <div class="note-box dst-box" id="dstBox" role="note" hidden></div>
     <button class="btn-gold" type="submit">✨ ${first ? L('Create my Jathagam', 'என் ஜாதகம் உருவாக்கு') : L('Save', 'சேமி')}</button>
     ${m.id && state.family.length > 1 ? `<button type="button" class="link-btn danger center-block" id="delMember">${L('Delete this person', 'இவரை நீக்கு')}</button>` : ''}
     <p class="err" id="formErr"></p></form>`;
@@ -314,13 +320,37 @@ function renderFamily(sec, params = {}) {
       ${memberForm(editing, first)}</div>`;
     const f = $('#memberForm');
     // Time zone: picking a place fills its IANA zone; the offset shown is the one in force on the birth date.
+    // Daylight saving: a wall time that occurs twice (clocks went back) needs an earlier / later choice; one that
+    // never occurred (clocks went forward) must be corrected (shared/datetime.js flags both).
+    let dstChoice = editing.dstChoice || 'earlier';
+    const showDst = () => {
+      const box = $('#dstBox');
+      const unknownTime = f.elements.timeCertainty.value === 'unknown';
+      const d = unknownTime ? null : dstCheck(f.elements.zone.value, f.elements.date.value, f.elements.time.value);
+      f.dataset.dst = d ? (d.ambiguous ? 'ambiguous' : 'nonexistent') : '';
+      if (!d) { box.hidden = true; box.innerHTML = ''; return; }
+      box.hidden = false;
+      if (d.nonexistent) {
+        box.className = 'note-box unv dst-box';
+        box.innerHTML = `⏰ ${L('This time did not exist on the clock that day — clocks jumped forward (daylight saving). Please check the birth time on the certificate and correct it.', 'அன்று இந்த நேரம் கடிகாரத்தில் இல்லை — கடிகாரம் முன்னோக்கி நகர்த்தப்பட்டது (பகல் சேமிப்பு நேரம்). சான்றிதழில் பிறந்த நேரத்தைச் சரிபார்த்துத் திருத்தவும்.')}`;
+        return;
+      }
+      const [a, b] = d.alternatives;
+      const offs = [a, b].map((x) => offsetLabel(zonedToUtc(f.elements.date.value, f.elements.time.value, f.elements.zone.value, { disambiguation: x === a ? 'earlier' : 'later' }).offsetMinutes / 60));
+      box.className = 'note-box dst-box';
+      box.innerHTML = `⏰ ${L('This time occurs twice during the clock change (daylight saving ended) — was it the earlier or the later one?', 'இந்த நேரம் கடிகார மாற்றத்தின் போது இருமுறை வருகிறது — முதலாவதா, இரண்டாவதா?')}
+        <div class="seg" role="radiogroup">${[['earlier', 'Earlier', 'முதலாவது (முந்தையது)', offs[0]], ['later', 'Later', 'இரண்டாவது (பிந்தையது)', offs[1]]].map(([id, en, tx, o]) => `<label class="seg-opt"><input type="radio" name="dstChoice" value="${id}"${dstChoice === id ? ' checked' : ''}> ${L(en, tx)} <span class="muted small">(${esc(o)})</span></label>`).join('')}</div>`;
+      $$('input[name="dstChoice"]', box).forEach((r) => r.addEventListener('change', () => { dstChoice = r.value; f.dataset.dstChoice = dstChoice; showZone(); }));
+    };
+    f.dataset.dstChoice = dstChoice;
     const showZone = () => {
       const z = f.elements.zone.value;
-      const off = z ? birthOffset(z, f.elements.date.value, f.elements.time.value) : null;
+      const off = z ? birthOffset(z, f.elements.date.value, f.elements.time.value, f.dataset.dstChoice || 'earlier') : null;
       if (off != null) f.elements.tz.value = off;
       $('#zoneNote').textContent = z
         ? `🕰 ${L('Time zone', 'நேர மண்டலம்')}: ${z.replace(/_/g, ' ')} · ${offsetLabel(off)} ${L('on the birth date (daylight saving and old rules included)', 'பிறந்த நாளில் (பகல் சேமிப்பு நேரம், பழைய விதிகள் உட்பட)')}`
         : L('Pick the place from the list to fill the time zone automatically.', 'நேர மண்டலம் தானாக நிரம்ப, பட்டியலிலிருந்து இடத்தைத் தேர்வு செய்யவும்.');
+      if (!$('#dstBox')?.contains(document.activeElement)) showDst();
     };
     placeSearch(f.elements.place, $('#placeList'), (p) => {
       f.elements.place.value = p.text || p.name; f.elements.lat.value = p.lat; f.elements.lon.value = p.lon;
@@ -338,6 +368,7 @@ function renderFamily(sec, params = {}) {
       f.elements.time.disabled = v === 'unknown';
       f.elements.time.required = v !== 'unknown';
       if (v === 'unknown') f.elements.time.value = '';
+      showZone();
     });
     $('#delMember')?.addEventListener('click', () => {
       state.family = state.family.filter((x) => x.id !== editing.id);
@@ -364,10 +395,12 @@ function renderFamily(sec, params = {}) {
 function saveMember(f) {
   const timeCertainty = f.elements.timeCertainty.value || 'exact';
   const raw = f.elements.time.value;
+  if (timeCertainty !== 'unknown' && f.dataset.dst === 'nonexistent') { $('#formErr').textContent = L('This birth time did not exist on the clock that day (daylight saving). Please correct it.', 'அன்று இந்தப் பிறந்த நேரம் கடிகாரத்தில் இல்லை (பகல் சேமிப்பு நேரம்). திருத்தவும்.'); return; }
+  const dstChoice = timeCertainty !== 'unknown' && f.dataset.dst === 'ambiguous' ? (f.dataset.dstChoice || 'earlier') : undefined;
   // Unknown time: a fixed calculation placeholder that is never displayed (see shared/birthtime.js).
   const time = timeCertainty === 'unknown' ? UNKNOWN_TIME_PLACEHOLDER : raw.length === 5 ? `${raw}:00` : raw;
   const m = {
-    timeCertainty, timeWindowMin: timeCertainty === 'approx' ? Number(f.elements.timeWindowMin.value) : undefined, private: f.elements.private.checked || undefined,
+    timeCertainty, timeWindowMin: timeCertainty === 'approx' ? Number(f.elements.timeWindowMin.value) : undefined, dstChoice, private: f.elements.private.checked || undefined,
     maritalStatus: f.elements.maritalStatus.value || undefined,
     faith: f.elements.faith.value && f.elements.faith.value !== 'auto' ? f.elements.faith.value : undefined,
     marriedYear: /^(19|20)\d{2}$/.test(f.elements.marriedYear.value.trim()) ? Number(f.elements.marriedYear.value.trim()) : undefined,
@@ -379,7 +412,7 @@ function saveMember(f) {
     lat: Number(f.elements.lat.value), lon: Number(f.elements.lon.value), tz: Number(f.elements.tz.value),
     zone: isValidZone(f.elements.zone.value) ? f.elements.zone.value : undefined,
   };
-  if (m.zone) m.tz = birthOffset(m.zone, m.date, m.time) ?? m.tz;
+  if (m.zone) m.tz = birthOffset(m.zone, m.date, m.time, dstChoice || 'earlier') ?? m.tz;
   if (!m.lat && !m.lon) { $('#formErr').textContent = L('Please pick the place from the list, or enter latitude and longitude.', 'பட்டியலிலிருந்து இடத்தைத் தேர்வு செய்யவும் அல்லது அட்சரேகை, தீர்க்கரேகை உள்ளிடவும்.'); return; }
   const i = state.family.findIndex((x) => x.id === m.id);
   if (i < 0 && m.relation !== 'organization' && state.family.filter((x) => x.relation !== 'organization').length >= 8) { $('#formErr').textContent = L('The Family plan holds up to 8 profiles.', 'குடும்பத் திட்டத்தில் 8 சுயவிவரங்கள் வரை.'); return; }
@@ -443,7 +476,7 @@ function renderAbout(sec) {
   const P = [
     ['🧭', 'Honest astrology', 'நேர்மையான ஜோதிடம்', 'No fear, no death predictions, no pressure to buy costly poojas or gems. Astrology shows tendencies and timing; your effort and dharma shape the result.', 'பயமுறுத்தல் இல்லை, மரண கணிப்பு இல்லை, விலையுயர்ந்த பூஜை/ரத்தினம் வாங்க அழுத்தம் இல்லை. ஜோதிடம் போக்கையும் நேரத்தையும் காட்டும்; முயற்சியும் தர்மமும் பலனைத் தீர்மானிக்கும்.'],
     ['🔍', 'See the calculation', 'கணக்கைப் பாருங்கள்', 'Every answer lists the chart factors it used, separates traditional interpretation from facts, and says what is uncertain.', 'ஒவ்வொரு பதிலிலும் ஓரை, தாரா பலம், ராகு காலம், பிரசன்ன லக்னம் போன்ற உண்மையான காரணிகள் மதிப்புடன் காட்டப்படும்.'],
-    ['🔭', 'Precise to the second', 'நொடி துல்லியம்', 'Planet positions from an astronomy engine with the Lahiri ayanamsa. Astronomical accuracy does not prove predictions — it only makes the inputs right.', 'தொழில்முறை வானியல் கணிப்பு, லாஹிரி அயனாம்சம் — சரியான இடம், நொடிக்கு.'],
+    ['🔭', 'Calculated to the second', 'நொடி வரை கணிப்பு', 'Planet positions are calculated to the second by an astronomy engine with the Lahiri ayanamsa; how closely they agree with a professional reference is published in the Accuracy Report. Your result can only be as exact as the birth time you enter — approximate times are marked “may change”. Astronomical accuracy does not prove predictions — it only makes the inputs right.', 'லாஹிரி அயனாம்சத்துடன் வானியல் கணிப்பு இயந்திரம் கிரக நிலைகளை நொடி வரை கணக்கிடுகிறது; தொழில்முறை ஒப்பீட்டுடன் எவ்வளவு ஒத்துப்போகிறது என்பது துல்லிய அறிக்கையில் வெளியிடப்பட்டுள்ளது. நீங்கள் உள்ளிடும் பிறந்த நேரம் அளவுக்கே பலனும் துல்லியமாக இருக்கும் — தோராய நேரங்கள் “மாறக்கூடியது” எனக் குறிக்கப்படும். வானியல் துல்லியம் பலன்களை நிரூபிப்பதில்லை — உள்ளீடுகளைச் சரியாக்குகிறது மட்டுமே.'],
     ['👨‍👩‍👧', 'Made for families', 'குடும்பத்திற்காக', 'All your family\'s charts together: who should be careful today, muhurthams that suit everyone, star birthdays and ancestors\' thivasam.', 'குடும்பத்தினர் அனைவரின் ஜாதகமும் ஒன்றாக: இன்று யார் கவனமாக இருக்க வேண்டும், அனைவருக்கும் ஏற்ற முகூர்த்தம், நட்சத்திரப் பிறந்தநாள், முன்னோர் திவசம்.'],
     ['💬', 'A Jothidar who listens', 'கேட்கும் ஜோதிடர்', 'Talk in Tamil or English, by voice or text. Answers come from your own chart and today’s sky.', 'தமிழ் அல்லது ஆங்கிலத்தில், குரல் அல்லது எழுத்தில் பேசுங்கள். உங்கள் ஜாதகம், இன்றைய வானம் அடிப்படையில் பதில் கிடைக்கும்.'],
     ['🪔', 'Free parigaram first', 'இலவச பரிகாரம் முதலில்', 'Prayer, a lamp, charity, feeding animals, respecting elders — remedies anyone can do, every day.', 'வழிபாடு, தீபம், தானம், உயிர்களுக்கு உணவு, பெரியோரை மதித்தல் — யாரும் தினமும் செய்யக்கூடியவை.'],

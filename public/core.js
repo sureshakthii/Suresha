@@ -1,6 +1,7 @@
 // Shared UI core: state, language, formatting, API/AI plumbing, family profiles and navigation.
 import { chartFromKattam } from './shared/kattam.js';
-import { birthChart, RASIS, NAKSHATRAS, PLANETS } from './shared/astro.js';
+import { birthChart, buildCharts, RASIS, NAKSHATRAS, PLANETS } from './shared/astro.js';
+import { birthArgs } from './shared/birthtime.js';
 import { placeTa, attachZone, zoneOffsetHours } from './shared/places.js';
 import { activeLocation, travelExpired, countryOfLoc, zoneLabel, inIndiaTime, locFromPlace } from './shared/residence.js';
 import { BRAND } from './shared/brand.js';
@@ -108,13 +109,60 @@ export function countdown(to, now = Date.now()) {
 // ---------------------------------------------------------------- family
 export const activeMember = () => state.family.find((m) => m.id === state.activeId) || state.family[0] || null;
 const chartCache = new Map();
+/** A written-kattam chart: without a marked "ல" box there is no Lagna (never the noon placeholder). */
+function kattamChart(m) {
+  const c = chartFromKattam(m);
+  if (m.kattam.lagna != null) return { ...c, stability: null };
+  const planets = { ...c.planets };
+  delete planets.Lagna;
+  return { ...c, planets, charts: buildCharts(planets), lagna: null, stability: null, availability: { lagna: false, houses: false, reason: { en: 'No Lagnam marked in the written chart — Lagna and houses are not calculated.', ta: 'எழுதிய ஜாதகத்தில் லக்னம் குறிக்கப்படவில்லை — லக்னமும் பாவங்களும் கணிக்கப்படவில்லை.' } } };
+}
+/**
+ * The member's chart. Birth-time certainty is passed to the engine (birthArgs, shared/birthtime.js): an unknown time
+ * gives no Lagna (chart.lagna === null, planets.Lagna absent); an approximate one carries chart.stability for its
+ * own ± window.
+ */
 export function chartOf(m) {
   if (!m) return null;
   if (!m.zone && !m.kattam) m = attachZone({ ...m });
-  const key = `${m.id}|${m.date}|${m.time}|${m.lat}|${m.lon}|${m.tz}|${m.zone || ''}|${m.kattam ? JSON.stringify(m.kattam) : ''}`;
-  if (!chartCache.has(key)) chartCache.set(key, m.kattam ? chartFromKattam(m) : birthChart(m));
+  const key = `${m.id}|${m.date}|${m.time}|${m.lat}|${m.lon}|${m.tz}|${m.zone || ''}|${m.timeCertainty || m.timePrecision || ''}|${m.timeWindowMin || ''}|${m.dstChoice || ''}|${m.kattam ? JSON.stringify(m.kattam) : ''}`;
+  if (!chartCache.has(key)) chartCache.set(key, m.kattam ? kattamChart(m) : birthChart(birthArgs(m)));
   return chartCache.get(key);
 }
+/** True when the chart has a real Lagna (birth time known or the written chart marks "ல"). */
+export const hasLagna = (c) => !!(c && c.lagna && c.planets?.Lagna);
+/**
+ * Stability chip for an item of chart.stability (approximate birth time): "may change within your ±N min".
+ * keys: 'lagna', 'navamsaLagna', 'D10Lagna', 'house:Mars', 'moonNakshatra', 'moonPada', 'moonRasi'. '' when stable.
+ */
+export function stabilityChip(c, ...keys) {
+  const st = c?.stability;
+  if (!st || st.timePrecision !== 'approximate') return '';
+  if (keys.length && !keys.some((k) => st.unstable.includes(k))) return '';
+  const w = Math.round(st.windowMinutes);
+  return `<span class="badge est stab-chip" title="${esc(L(`Changes within ±${w} minutes of the entered time`, `உள்ளிட்ட நேரத்திலிருந்து ±${w} நிமிடத்திற்குள் மாறுகிறது`))}">${L(`may change within your ±${w} min`, `மாறக்கூடியது · ±${w} நிமி`)}</span>`;
+}
+/** "Needs birth time" note for Lagna- / house-based sections when the time is unknown (Moon-based results shown). */
+export const needsTimeNote = (what = null) => `<p class="note-box unv small needs-time" role="note">🕰️ ${what ? `${esc(L(what.en, what.ta))} ` : ''}${L('Needs the birth time — shown from the Moon sign (Chandra Lagnam) instead.', 'பிறந்த நேரம் தேவை — பதிலாக சந்திர ராசியிலிருந்து (சந்திர லக்னம்) காட்டப்படுகிறது.')}</p>`;
+/**
+ * Birth facts for an AI context: never the unknown-time placeholder (12:00) and never a Lagna that is not known.
+ * Returns { birth: 'YYYY-MM-DD HH:MM:SS place' | 'YYYY-MM-DD (birth time unknown) place', lagna: name | null, birthTime }.
+ */
+export function birthContext(m, c) {
+  const cert = m?.kattam ? 'kattam' : m?.timeCertainty === 'unknown' || m?.timePrecision === 'unknown' ? 'unknown' : m?.timeCertainty === 'approx' ? 'approx' : 'exact';
+  const time = cert === 'unknown' || cert === 'kattam' ? '(birth time unknown)' : cert === 'approx' ? `${m.time} (approximate, ±${m.timeWindowMin || 60} min)` : m.time;
+  const lagnaUnstable = (c?.stability?.unstable || []).includes('lagna');
+  return {
+    birth: `${m.date} ${time} ${m.place || ''}`.trim(),
+    birthTime: cert,
+    lagna: hasLagna(c) ? `${c.lagna.rasiName}${lagnaUnstable ? ' (may change within the birth-time window)' : ''}` : null,
+    lagnaNote: hasLagna(c) ? undefined : 'Lagna unknown (no birth time) — use Moon-sign (Chandra Lagna) based reading only; do not mention a Lagna or houses from Lagna.',
+  };
+}
+/** Doshams reference label: Moon-based only when the Lagna is unknown (doshams() reports needsBirthTime). */
+export const doshamReference = (d) => (d?.chevvai?.needsBirthTime
+  ? { en: 'Checked from the Moon sign only — the Lagna reference needs the birth time.', ta: 'சந்திர ராசியிலிருந்து மட்டும் பார்க்கப்பட்டது — லக்னக் கணக்கிற்குப் பிறந்த நேரம் தேவை.' }
+  : null);
 export const RELATIONS = [
   { id: 'self', en: 'Self', ta: 'நான்' }, { id: 'spouse', en: 'Spouse', ta: 'வாழ்க்கைத் துணை' },
   { id: 'son', en: 'Son', ta: 'மகன்' }, { id: 'daughter', en: 'Daughter', ta: 'மகள்' },

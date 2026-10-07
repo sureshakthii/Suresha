@@ -127,14 +127,14 @@ test('health: wellbeing separated from optional traditional context; no lifespan
   assert.equal(h.stage.source.status, 'needs-medical-review');
   assert.equal(h.traditionalContext.optional, true);
   assert.ok(/not medical advice/.test(h.traditionalContext.label.en));
-  assert.ok(h.bodyAreas.every((a) => a.id !== 'reproductive' && a.canDriveTreatment === false));
+  assert.equal(h.bodyAreas, undefined);
+  assert.equal(h.reflection.notHealthAdvice, true);
   assert.equal(h.vitality.level, 'not-assessed');
   assert.ok(!/protects your health|long life|healing influence/i.test(JSON.stringify(h)));
   assert.deepEqual(findProhibited(h), []);
   const u = healthGuide(noTime, { now });
   assert.equal(u.needsBirthTime, true);
-  assert.equal(u.bodyAreas.length, 0);
-  assert.equal(u.constitution.vata + u.constitution.pitta + u.constitution.kapha, 100);
+  assert.ok(u.birthTimeNote.en && u.reflection.practices.length >= 1);
 });
 
 // ------------------------------------------------------------------ Themes

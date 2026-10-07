@@ -60,5 +60,7 @@ test('honesty: sample sizes, agreement ≠ prediction accuracy, limits and no un
   assert.match(report, /## 9\. Unsupported or limited cases/);
   for (const k of ['Polar latitudes', '1940–2060', 'Vakya', 'Mean node only', 'daylight saving']) assert.ok(report.includes(k), k);
   assert.match(report, /## 10\. Test coverage/);
-  assert.doesNotMatch(report, /The app already\s+marks unstable items/, 'stability is not shown on screen yet');
+  assert.doesNotMatch(report, /TODO-LEAD/, 'no open lead TODO about stability');
+  assert.match(report, /may change within your\s+±N min/, 'states that unstable items are marked on screen');
+  assert.match(report, /Sookshma dasa lords are not shown on any screen/);
 });

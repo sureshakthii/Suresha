@@ -91,16 +91,17 @@ export const TIME_PRECISION = ['exact', 'approximate', 'unknown'];
 
 /**
  * Normalise a birth record. Keeps the ORIGINAL local date/time and place next to the derived UTC instant.
- * Input: { date, time?, zone? (IANA), tz? (hours, legacy), lat, lon, place?, timePrecision? }
+ * Input: { date, time?, zone? (IANA), tz? (hours, legacy), lat, lon, place?, timePrecision?, disambiguation? }
+ * `disambiguation` ('earlier' default | 'later') picks the instant of a wall time repeated when clocks go back.
  * When `zone` is given it wins over the numeric `tz`. Unknown time → computed at local noon, flagged.
  */
-export function birthInput({ date, time, zone, tz, lat, lon, place, timePrecision } = {}) {
+export function birthInput({ date, time, zone, tz, lat, lon, place, timePrecision, disambiguation = 'earlier' } = {}) {
   let precision = TIME_PRECISION.includes(timePrecision) ? timePrecision : (time ? 'exact' : 'unknown');
   if (!time) precision = 'unknown';
   const usedTime = precision === 'unknown' ? '12:00' : time;
   let utc; let offsetMinutes; let flags = { ambiguous: false, nonexistent: false };
   if (zone) {
-    const z = zonedToUtc(date, usedTime, zone);
+    const z = zonedToUtc(date, usedTime, zone, { disambiguation });
     utc = z.utc; offsetMinutes = z.offsetMinutes; flags = { ambiguous: z.ambiguous, nonexistent: z.nonexistent };
   } else {
     const off = Number(tz ?? 0);

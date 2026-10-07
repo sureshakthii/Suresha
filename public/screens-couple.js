@@ -339,7 +339,7 @@ function showCouple(bride, groom) {
     <div class="card glass mc-share"><div class="card-title">🔒 ${L('Share or print this report', 'இந்த அறிக்கையைப் பகிர் அல்லது அச்சிடு')}</div>
       <p class="small muted">${L('Only after both people agree. A marriage context marked private is never included.', 'இருவரும் ஒப்புக்கொண்ட பின்பே. தனிப்பட்டதாகக் குறித்த திருமண நிலை ஒருபோதும் சேர்க்கப்படாது.')}</p>
       ${SLOTS.map((slot, i) => permissionCheckbox(`mcPerm_${slot}`, `${nm[i]}: ${PERMISSION_LABEL()}`)).join('')}
-      <div class="mc-links"><button type="button" class="btn-gold" id="mcShare">📤 ${L('Share summary', 'சுருக்கத்தைப் பகிர்')}</button><button type="button" class="chip-btn" id="mcPrint">🖨️ ${L('Print / PDF', 'அச்சிடு / PDF')}</button></div></div>
+      <div class="mc-links"><button type="button" class="btn-gold" id="mcShare">📤 ${L('Share summary', 'சுருக்கத்தைப் பகிர்')}</button><button type="button" class="chip-btn" id="mcPrint">🖨️ ${L('Print / PDF', 'அச்சிடு / PDF')}</button><button type="button" class="chip-btn" id="mcCard">🖼️ ${L('Share as image', 'படமாகப் பகிர்')}</button></div></div>
     <p class="muted small center">${L('Marriage is made by love, respect and effort; astrology shows the seasons so you can prepare together.', 'திருமணம் அன்பு, மரியாதை, முயற்சியால் நிலைக்கிறது; ஜோதிடம் பருவங்களைக் காட்டி சேர்ந்து தயாராக உதவுகிறது.')}</p>`;
   // Each checkbox is that person's own permission in the pair ledger; unticking revokes it.
   SLOTS.forEach((slot) => $(`#mcPerm_${slot}`)?.addEventListener('change', (e) => {
@@ -361,6 +361,12 @@ function showCouple(bride, groom) {
     const text = shareText(mr, nm);
     if (navigator.share) { navigator.share({ text }).catch(() => {}); return; }
     navigator.clipboard?.writeText(text).then(() => toast(L('Copied', 'நகலெடுக்கப்பட்டது'))).catch(() => {});
+  });
+  // Image card (public/share-card.js): the same both-people share consent; names, factor count and topics only.
+  $('#mcCard').addEventListener('click', () => {
+    if (!consented('share')) return;
+    const { agree, total } = factorCounts(mr);
+    import('./screens-journal.js').then((g) => g.openShareCard(g.matchSpec({ names: nm, agree, total, topics: (mr.cards || []).map((c) => bi(c.title)) }), { filename: 'thunai-porutham.png' }));
   });
   $('#mcPrint').addEventListener('click', () => {
     if (!consented('export')) return;

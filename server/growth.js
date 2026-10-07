@@ -240,7 +240,7 @@ export function computeStats(days = 30) {
   const from = today - (days - 1) * DAY;
   const paidOnly = `gateway NOT IN (${COMPLIMENTARY.map((g) => `'${g}'`).join(', ')})`;
 
-  const revenueByCurrency = { INR: 0, USD: 0 };
+  const revenueByCurrency = { INR: 0, AED: 0, USD: 0 }; // the three payment currencies (shared/currency.js)
   try {
     const rows = d.prepare(`SELECT currency, SUM(amount_minor) AS n FROM subscriptions
       WHERE status IN ('active', 'expired') AND gateway IS NOT NULL AND gateway NOT IN ('gift', 'trial') GROUP BY currency`).all();

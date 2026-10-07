@@ -38,6 +38,7 @@ async function getJsonNative(url) {
 }
 const phoneStation = (lat, lon) => stationObservation(lat, lon, getJsonNative);
 import { tamilDay } from './shared/tamilcal.js';
+import { doshamCardHtml, bindDosham } from './screens-dosham.js';
 import { remindBtn } from './remind.js';
 import { upcomingReminders, deleteReminder } from './remind.js';
 const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
@@ -756,6 +757,7 @@ function renderAnalysis(sec) {
       ${lagnaOk ? '' : needsTimeNote({ en: 'The 12 houses, Badhakathipathi and Marakathipathi are counted from the Lagna.', ta: '12 பாவங்கள், பாதகாதிபதி, மாரகாதிபதி லக்னத்திலிருந்து கணக்கிடப்படுகின்றன.' })}
       ${lagnaOk && st?.timePrecision === 'approximate' ? `<div class="note-box small" role="note">🕰️ ${L(`Birth time approximate (±${Math.round(st.windowMinutes)} min): items marked`, `பிறந்த நேரம் தோராயம் (±${Math.round(st.windowMinutes)} நிமி): குறிக்கப்பட்டவை`)} ${stabilityChip(c)} ${L('can change within that window.', 'அந்த இடைவெளிக்குள் மாறலாம்.')}
         <div>${L('Lagna', 'லக்னம்')}: <b>${esc(rasiName(c.lagna.rasi))}</b> ${stabilityChip(c, 'lagna')} · ${L('Navamsa Lagna', 'நவாம்ச லக்னம்')} ${stabilityChip(c, 'navamsaLagna') || `<span class="tag good">${L('stable', 'நிலையானது')}</span>`} · ${L('Birth star', 'நட்சத்திரம்')} ${stabilityChip(c, 'moonNakshatra', 'moonPada') || `<span class="tag good">${L('stable', 'நிலையானது')}</span>`}</div></div>` : ''}
+      ${doshamCardHtml(m, { now })}
       ${palanCard(palan, c, asks)}
       ${healthNowHtml(m, { now, chart: c, card: true })}
       <div class="card glass"><div class="card-title">🌟 ${L('Life areas', 'வாழ்க்கைத் துறைகள்')}</div>
@@ -780,6 +782,7 @@ function renderAnalysis(sec) {
       <div class="card glass" id="anAi" hidden><div class="card-title"><span>📜 ${L('Your reading', 'உங்கள் பலன்')}</span><button class="link-btn" id="anSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="anText"></div></div>
       ${copyright()}`;
     $$('[data-palan-ask]', sec).forEach((b) => b.addEventListener('click', () => go('chat', { q: b.dataset.palanAsk })));
+    bindDosham(sec);
     $('#palanSpeak')?.addEventListener('click', () => speak($('#anPalan').innerText.replace(/🔊|💬/g, '')));
     $('#anRead').addEventListener('click', async () => {
       $('#anAi').hidden = false;

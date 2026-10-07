@@ -648,6 +648,38 @@ const RAW = {
   },
 };
 const RAW_EXTRA = {
+  // Dosham parigara sthalams (Oct 2026). Opening hours are NOT on file for these — shown as "please check with the
+  // temple" (t: ASK). Traditions are phrased as devotional associations; travel distances are estimates.
+  thirukarugavur: {
+    s: B('Goddess Garbharakshambigai — "protector of the womb" — is the heart of this Thevaram sthalam on the Vettar river.', 'கருவைக் காக்கும் அன்னை கர்ப்பரக்ஷாம்பிகை — வெட்டாறு கரையில் உள்ள தேவாரத் தலம்.'),
+    p: B('Prayers for children and for a safe pregnancy and delivery (tradition; alongside medical care).', 'குழந்தை பாக்கியம், சுகப்பிரசவத்திற்கான வேண்டுதல் (மரபு; மருத்துவ சிகிச்சையுடன் சேர்த்து).'),
+    v: B('The Goddess is said to have protected the unborn child of a sage\'s wife here, and is worshipped as the guardian of every expectant mother.', 'ஒரு முனிவரின் மனைவியின் கருவை அம்பாள் இங்கு காத்ததாகத் தல வரலாறு; கருவுற்ற தாய்மார்களின் காவல் தெய்வமாக வழிபடப்படுகிறாள்.'),
+    r: ['Papanasam', 'பாபநாசம்', 7], t: ASK,
+  },
+  thirupampuram: {
+    s: B('Rahu and Ketu are enshrined as one form worshipping Shiva — rare among temples.', 'ராகுவும் கேதுவும் ஒரே உருவில் சிவனை வழிபடும் அரிய தலம்.'),
+    p: B('Rahu–Ketu, sarpa and Kala Sarpa dosha parihara (tradition).', 'ராகு–கேது, சர்ப்ப, கால சர்ப்ப தோஷ பரிகாரம் (மரபு).'),
+    v: B('Adisesha and the serpent kings are said to have worshipped Shiva here to be freed of a curse.', 'ஆதிசேஷனும் நாகராஜர்களும் சாப விமோசனம் வேண்டி இங்கு சிவனை வழிபட்டதாகத் தல வரலாறு.'),
+    t: ASK,
+  },
+  nagercoil_nagaraja: {
+    s: B('The serpent king Nagaraja is the main deity; the sanctum has a thatched roof by tradition.', 'நாகராஜாவே மூலவர்; கருவறை மரபுப்படி ஓலைக் கூரையுடன்.'),
+    p: B('Naga dosha relief; prayers for marriage and children (tradition). Aayilyam (Ashlesha) days are special.', 'நாக தோஷ நிவர்த்தி; திருமணம், குழந்தை பாக்கியத்திற்கான வேண்டுதல் (மரபு). ஆயில்ய நாட்கள் சிறப்பு.'),
+    v: B('The town of Nagercoil takes its name from this temple of the serpent king.', 'நாகர்கோவில் நகரின் பெயரே இந்த நாகராஜா கோவிலிலிருந்து வந்தது.'),
+    t: ASK, f: B('Aayilyam pooja, especially in Aippasi (Thula) month', 'ஆயில்ய பூஜை — குறிப்பாக ஐப்பசி மாதம்'),
+  },
+  thilatharpanapuri: {
+    s: B('One of the pitru sthalams for thila (sesame) tharpanam; the Adi Vinayagar here has a human face.', 'எள்ளுடன் தர்ப்பணம் (தில தர்ப்பணம்) செய்யும் பித்ரு தலங்களில் ஒன்று; இங்குள்ள ஆதி விநாயகர் மனித முகத்துடன்.'),
+    p: B('Tharpanam and prayers for departed ancestors (pitru); Amavasai is the traditional day.', 'முன்னோர்களுக்கான தர்ப்பணமும் வழிபாடும்; அமாவாசை மரபான நாள்.'),
+    v: B('Sri Rama is said to have offered tharpanam here for King Dasaratha and Jatayu — the name means "the town of sesame tharpanam".', 'ஸ்ரீ ராமர் தசரதருக்கும் ஜடாயுவுக்கும் இங்கு தர்ப்பணம் செய்ததாகத் தல வரலாறு — ஊரின் பெயரே "எள் தர்ப்பணபுரி".'),
+    t: ASK,
+  },
+  thiruvallur_veeraraghava: {
+    s: B('Reclining Veeraraghava Perumal; Divya Desam sung by the Azhwars; the Hritha Papa Nasini tank.', 'சயனக் கோலத்தில் வீரராகவப் பெருமாள்; ஆழ்வார்கள் பாடிய திவ்ய தேசம்; ஹிருதாபநாசினி தீர்த்தம்.'),
+    p: B('Amavasai worship and ancestral rites; prayers for relief from worry and illness (tradition, alongside medical care).', 'அமாவாசை வழிபாடு, முன்னோர் கடன்; கவலை, நோய் நீங்க வேண்டுதல் (மரபு; மருத்துவத்துடன் சேர்த்து).'),
+    v: B('The Lord is said to have come as a guest to the sage Salihotra and asked "evvul" — "where shall I rest?" — giving the place its old name Thiruevvul.', 'சாலிஹோத்ர முனிவரிடம் விருந்தினராக வந்த பெருமாள் "எவ்வுள் உறங்குவது?" என்று கேட்டதாகத் தல வரலாறு — திருஎவ்வுள் என்ற பழைய பெயர்.'),
+    t: ASK, f: B('Thai Amavasai; Chithirai Brahmotsavam', 'தை அமாவாசை; சித்திரை பிரம்மோற்சவம்'),
+  },
   padmanabhaswamy: {
     s: B('Reclining Vishnu on Adisesha seen through three doors; Hindus only, strict dress code.', 'மூன்று வாயில்கள் வழி ஆதிசேஷன் மேல் சயனப் பெருமாள்; கடுமையான உடைக் கட்டுப்பாடு.'),
     p: B('Prosperity, protection and moksha.', 'செல்வம், பாதுகாப்பு, முக்தி.'),

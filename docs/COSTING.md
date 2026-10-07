@@ -6,7 +6,7 @@ assumption to verify** against the provider's current price page and against our
 (`/api/admin/metrics` → AI cost per payer, once `AI_COST_INR_PER_MTOK_IN/OUT` are set).
 
 Status: draft for the owner. Prices in the app are labelled "initial test price" and are all env-configurable
-(`PRICE_INR_*`, `PRICE_USD_*`, `AI_PERSONAL_MONTHLY`, `AI_FAMILY_MONTHLY`, `PACKAGE_MARRIAGE_ANSWERS`,
+(`PRICE_INR_*`, `PRICE_AED_*`, `PRICE_USD_*`, `AI_PERSONAL_MONTHLY`, `AI_FAMILY_MONTHLY`, `PACKAGE_MARRIAGE_ANSWERS`,
 `PACKAGE_JOURNEY_ANSWERS`), so every recommendation here can be applied without a code change.
 
 ## 1. What is being sold
@@ -14,11 +14,42 @@ Status: draft for the owner. Prices in the app are labelled "initial test price"
 | Offer | Price (test) | Term | Detailed answers | Other paid rights |
 |---|---|---|---|---|
 | Free | ₹0 | — | `AI_FREE_DAILY` (5/day) | Everything basic: calendar, charts, guidance, basic porutham, baby-name browsing/meanings/star letters, weekly planning, 1 saved goal, 1 saved journey, 10 shortlisted names |
-| Personal | ₹199 / month, ₹1,999 / year ($4.99 / $49) | one-time, no auto-renew | 100 / month | unlimited goals, longer shortlists, printable reports, detailed reports |
-| Family | ₹399 / month, ₹3,999 / year ($9.99 / $99) | one-time, no auto-renew | 250 / month, shared | + up to 8 permission-based profiles, family collaboration, shared planning |
-| Marriage package | ₹499 ($9) | 90 days, one couple | 30 in total | full five-card matching report + print for that couple (muhurtham shortlist marked "coming soon") |
-| Journey package | ₹299 ($6) | 60 days, one journey | 15 in total | saved itinerary with live re-checks, printable plan |
+| Personal | ₹199 / month, ₹1,999 / year (AED 18 / AED 179 · $4.99 / $49) | one-time, no auto-renew | 100 / month | unlimited goals, longer shortlists, printable reports, detailed reports |
+| Family | ₹399 / month, ₹3,999 / year (AED 36 / AED 359 · $9.99 / $99) | one-time, no auto-renew | 250 / month, shared | + up to 8 permission-based profiles, family collaboration, shared planning |
+| Marriage package | ₹499 (AED 33 · $9) | 90 days, one couple | 30 in total | full five-card matching report + print for that couple (muhurtham shortlist marked "coming soon") |
+| Journey package | ₹299 (AED 22 · $6) | 60 days, one journey | 15 in total | saved itinerary with live re-checks, printable plan |
 | Thunai Private (concierge) | — | **deferred, not advertised** | — | — |
+
+### 1a. Payment currencies — exactly three
+
+Owner rule: the currency follows the country of **residence** the person sets in the app (Settings → Location;
+the Plans screen shows "Prices in AED for United Arab Emirates · Change country"). If no residence is saved, the
+account phone's country code is used, then the phone's locale / time zone.
+
+| Residence | Currency | Gateway | Env prefix |
+|---|---|---|---|
+| India | ₹ INR | Razorpay | `PRICE_INR_*` |
+| United Arab Emirates | AED | Stripe Checkout (`aed`, 100 fils = 1 AED) | `PRICE_AED_*` |
+| every other country (US, UK, Singapore, Malaysia, Sri Lanka, Canada, Gulf states other than the UAE …) | $ USD | Stripe Checkout (`usd`) | `PRICE_USD_*` |
+
+The server decides the currency again at checkout from the country the app sends (never a client price) and
+refuses a currency that does not match that country. No other currency is ever charged; the "≈ LKR / GBP"
+travel-budget estimates elsewhere in the app are guidance, not payments.
+
+**AED price mapping** — clean local prices at ≈ USD × 3.6725 (the dirham's dollar peg), rounded to a whole
+dirham; Family = 2 × Personal, as in USD:
+
+| Offer | USD | × 3.6725 | AED price | env var |
+|---|---|---|---|---|
+| Personal monthly | $4.99 | 18.33 | **AED 18** | `PRICE_AED_PERSONAL_MONTH` |
+| Personal yearly | $49 | 179.95 | **AED 179** | `PRICE_AED_PERSONAL_YEAR` |
+| Family monthly | $9.99 | 36.69 | **AED 36** | `PRICE_AED_FAMILY_MONTH` |
+| Family yearly | $99 | 363.58 | **AED 359** | `PRICE_AED_FAMILY_YEAR` |
+| Marriage package | $9 | 33.05 | **AED 33** | `PRICE_AED_MARRIAGE_PACKAGE` |
+| Journey package | $6 | 22.04 | **AED 22** | `PRICE_AED_JOURNEY_PACKAGE` |
+
+(`PRICE_AED_PREMIUM_*` is also read for the Personal plan, like the INR/USD names.) Every AED price is above
+Stripe's AED 2.00 minimum charge.
 
 ## 2. Assumptions (parameters — fill in / verify)
 
@@ -76,6 +107,28 @@ monthly plans, so the gap is wider.
 USD buyers: Stripe ≈ 5.4 % + $0.30 (A14): on $4.99 that is ≈ $0.57 (11 %) — the $4.99 monthly price carries the
 highest fee share; the $49 / $99 yearly prices are far better.
 
+### 4a. AED and USD buyers (Stripe)
+
+Assumptions: FX ₹85 = $1 = AED 3.6725 (≈ ₹23.1 per dirham); Stripe A14 ≈ 5.4 % + AED 1.10 (≈ $0.30); a
+conservative 5 % UAE VAT taken out of the AED price (prices are shown as "include applicable taxes" — **verify
+with the accountant whether UAE VAT registration applies**; the same 5 % is applied to USD for comparison, the
+real rate depends on the buyer's country); SMS by Twilio (A11) ≈ ₹6 a month (₹26 for a family); support, hosting,
+refund reserve and AI utilisation as §4. **The free-user subsidy (₹138) is left out** — add it back if diaspora
+free users are paid for from these prices.
+
+| Offer | AED price (≈ ₹) | Net after VAT + Stripe | Typical cost | **Margin (AED)** | USD price → margin |
+|---|---|---|---|---|---|
+| Personal monthly | AED 18 (₹417) | ₹349 | ₹175 | **≈ +₹174** | $4.99 → ≈ +₹180 |
+| Personal yearly (per month) | AED 179 ÷ 12 (₹345) | ₹308 | ₹172 | **≈ +₹136** | $49 → ≈ +₹138 |
+| Family monthly | AED 36 (₹833) | ₹723 | ₹422 | **≈ +₹301** | $9.99 → ≈ +₹315 |
+| Family yearly (per month) | AED 359 ÷ 12 (₹692) | ₹620 | ₹415 | **≈ +₹205** | $99 → ≈ +₹212 |
+| Marriage package | AED 33 (₹764) | ₹661 | ₹199 | **≈ +₹462** | $9 → ≈ +₹463 |
+| Journey package | AED 22 (₹509) | ₹432 | ₹144 | **≈ +₹288** | $6 → ≈ +₹288 |
+
+Reading: AED prices sit within 1–2 % of the USD margins (the rounding down to clean dirham prices costs at most
+≈ ₹8 a month). Abroad prices are about 2× the rupee prices, so every AED / USD offer covers its typical cost even
+at 30 % allowance use; at 100 % use the Personal monthly allowance (₹460 of AI) still exceeds its AED net.
+
 ## 5. Break-even at the test prices
 
 Break-even AI utilisation `u` (other costs fixed, free-user subsidy included):
@@ -104,7 +157,8 @@ are paid for elsewhere. At 100 % utilisation the Personal allowance (₹460 of A
 5. **Keep the packages as priced** (₹499 / ₹299): they cover their full allowance with margin, suit occasional
    users and have no renewal. Support time (A15) is their largest non-AI cost — keep the scope picker and the
    "what this adds" list clear to avoid tickets.
-6. **Prefer yearly USD prices** (or raise $4.99 → $5.99 monthly) because of Stripe's fixed $0.30.
+6. **Prefer yearly USD / AED prices** (or raise $4.99 → $5.99 and AED 18 → AED 22 monthly) because of Stripe's
+   fixed per-payment fee.
 7. **Refunds:** keep the 7-day full-refund window; revisit if `refundsInr` exceeds 5 % of revenue.
 8. **Expert services and Thunai Private stay deferred**; cost them separately (practitioner fee, review time,
    commission disclosure) before any offer, and never advertise them until then.

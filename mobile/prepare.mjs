@@ -141,7 +141,7 @@ function wrapArtifactPage(page) {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#6e1a35" />
+<meta name="theme-color" content="#18131a" />
 ${head}
 </head>
 <body>${body}

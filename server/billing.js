@@ -5,11 +5,17 @@ import { getDb } from './db.js';
 import { requireAdmin as adminRole, audit } from './admin.js';
 import { currentUser } from './auth.js';
 import { FREE_LIMITS } from '../shared/plan-gates.js';
+import { PAY_CURRENCIES, payCurrencyFor, payGateway, toMinor, formatPrice } from '../shared/currency.js';
+import { countryByCode, parseE164 } from '../shared/countries.js';
 
-// Subscriptions: plans, Razorpay (INR) / Stripe Checkout (USD) payments, entitlements and the free AI quota.
+// Subscriptions: plans, payments, entitlements and the free AI quota.
+// Exactly three payment currencies, decided HERE from the buyer's residence country (shared/currency.js):
+//   India → INR via Razorpay · United Arab Emirates → AED via Stripe Checkout · every other country → USD via Stripe.
+// The client sends only the plan and its residence country; the price always comes from PLANS below.
 
 const RAZORPAY = 'https://api.razorpay.com/v1/orders';
 const STRIPE = 'https://api.stripe.com/v1/checkout/sessions';
+const STRIPE_REFUNDS = 'https://api.stripe.com/v1/refunds';
 const STRIPE_TOLERANCE = 5 * 60; // seconds
 const DAY = 86400000;
 const IST = 5.5 * 3600000; // quota days roll over at midnight India time
@@ -21,6 +27,8 @@ const price = (cur, key, dflt) => {
   const v = Number(raw);
   return Number.isFinite(v) && v > 0 ? v : dflt;
 };
+/** { INR, AED, USD } for one plan key — each overridable by PRICE_{CUR}_{KEY}. */
+const prices = (key, inr, aed, usd) => ({ INR: price('INR', key, inr), AED: price('AED', key, aed), USD: price('USD', key, usd) });
 /**
  * Monthly AI-answer allowance per plan (AI_PERSONAL_MONTHLY — AI_PREMIUM_MONTHLY still read as the old name —
  * and AI_FAMILY_MONTHLY). Never "unlimited" until costs are measured.
@@ -70,7 +78,8 @@ const FAMILY_FEATURES = [
 /**
  * One-time packages for occasional users (kind 'package'): no subscription, no automatic renewal, scoped to ONE
  * couple (pairId) or ONE saved journey (journeyId) captured at purchase. Initial test prices, configurable:
- *   PRICE_INR_MARRIAGE_PACKAGE (499) · PRICE_USD_MARRIAGE_PACKAGE (9) · PRICE_INR_JOURNEY_PACKAGE (299) · PRICE_USD_JOURNEY_PACKAGE (6)
+ *   PRICE_INR_MARRIAGE_PACKAGE (499) · PRICE_AED_MARRIAGE_PACKAGE (33) · PRICE_USD_MARRIAGE_PACKAGE (9)
+ *   PRICE_INR_JOURNEY_PACKAGE (299)  · PRICE_AED_JOURNEY_PACKAGE (22)  · PRICE_USD_JOURNEY_PACKAGE (6)
  * Answer allowances: PACKAGE_MARRIAGE_ANSWERS (30) · PACKAGE_JOURNEY_ANSWERS (15). Costed in docs/COSTING.md.
  */
 const count = (k, dflt) => { const v = Number(process.env[k]); return Number.isInteger(v) && v > 0 ? v : dflt; };
@@ -79,7 +88,7 @@ const PACKAGES = [
   {
     id: 'marriage_package', kind: 'package', interval: null, durationDays: 90, scopeKind: 'pair', answers: packageAnswers('marriage_package'),
     name: f('Marriage package — one couple, 90 days', 'திருமணத் தொகுப்பு — ஒரு ஜோடி, 90 நாள்'),
-    price: { INR: price('INR', 'MARRIAGE_PACKAGE', 499), USD: price('USD', 'MARRIAGE_PACKAGE', 9) },
+    price: prices('MARRIAGE_PACKAGE', 499, 33, 9),
     features: [
       f('One-time payment — no subscription, nothing renews', 'ஒருமுறைக் கட்டணம் — சந்தா இல்லை, எதுவும் தானாகப் புதுப்பிக்கப்படாது'),
       f('90 days of access for ONE couple you choose at purchase', 'வாங்கும்போது நீங்கள் தேர்ந்தெடுக்கும் ஒரு ஜோடிக்கு 90 நாள் அணுகல்'),
@@ -92,7 +101,7 @@ const PACKAGES = [
   {
     id: 'journey_package', kind: 'package', interval: null, durationDays: 60, scopeKind: 'journey', answers: packageAnswers('journey_package'),
     name: f('Journey package — one journey, 60 days', 'யாத்திரைத் தொகுப்பு — ஒரு பயணம், 60 நாள்'),
-    price: { INR: price('INR', 'JOURNEY_PACKAGE', 299), USD: price('USD', 'JOURNEY_PACKAGE', 6) },
+    price: prices('JOURNEY_PACKAGE', 299, 22, 6),
     features: [
       f('One-time payment — no subscription, nothing renews', 'ஒருமுறைக் கட்டணம் — சந்தா இல்லை, எதுவும் தானாகப் புதுப்பிக்கப்படாது'),
       f('60 days for ONE saved journey you choose at purchase', 'வாங்கும்போது தேர்ந்தெடுக்கும் ஒரு சேமித்த பயணத்திற்கு 60 நாள்'),
@@ -109,17 +118,19 @@ const PKG_SQL = PACKAGE_IDS.map((id) => `'${id}'`).join(', ');
 /**
  * Plans. Prices are INITIAL TEST PRICES and are configurable without code changes:
  *   PRICE_INR_PERSONAL_MONTH (199) · PRICE_INR_PERSONAL_YEAR (1999) · PRICE_INR_FAMILY_MONTH (399) · PRICE_INR_FAMILY_YEAR (3999)
+ *   PRICE_AED_PERSONAL_MONTH (18)   · PRICE_AED_PERSONAL_YEAR (179) · PRICE_AED_FAMILY_MONTH (36)   · PRICE_AED_FAMILY_YEAR (359)
  *   PRICE_USD_PERSONAL_MONTH (4.99) · PRICE_USD_PERSONAL_YEAR (49) · PRICE_USD_FAMILY_MONTH (9.99) · PRICE_USD_FAMILY_YEAR (99)
- * Payments are one-time for the period (no automatic renewal). Prices are in rupees / dollars (not minor units).
+ * Payments are one-time for the period (no automatic renewal). Prices are in rupees / dirhams / dollars (not minor
+ * units); AED prices are set as clean local prices (≈ USD × 3.67), not converted at checkout — docs/COSTING.md.
  * "Personal" was called "Premium" before: the old ids premium_month / premium_year are accepted everywhere as
  * aliases (PLAN_ALIASES), so existing subscription rows, gift codes, webhooks and referral grants keep working.
  */
 export const PLANS = [
-  { id: 'free', kind: 'free', name: f('Free', 'இலவசம்'), interval: null, price: { INR: 0, USD: 0 }, features: FREE_FEATURES },
-  { id: 'personal_month', kind: 'subscription', name: f('Personal — monthly', 'தனிநபர் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'PERSONAL_MONTH', 199), USD: price('USD', 'PERSONAL_MONTH', 4.99) }, features: PERSONAL_FEATURES },
-  { id: 'personal_year', kind: 'subscription', name: f('Personal — yearly', 'தனிநபர் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'PERSONAL_YEAR', 1999), USD: price('USD', 'PERSONAL_YEAR', 49) }, features: PERSONAL_FEATURES },
-  { id: 'family_month', kind: 'subscription', name: f('Family — monthly', 'குடும்பம் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'FAMILY_MONTH', 399), USD: price('USD', 'FAMILY_MONTH', 9.99) }, features: FAMILY_FEATURES },
-  { id: 'family_year', kind: 'subscription', name: f('Family — yearly', 'குடும்பம் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'FAMILY_YEAR', 3999), USD: price('USD', 'FAMILY_YEAR', 99) }, features: FAMILY_FEATURES },
+  { id: 'free', kind: 'free', name: f('Free', 'இலவசம்'), interval: null, price: { INR: 0, AED: 0, USD: 0 }, features: FREE_FEATURES },
+  { id: 'personal_month', kind: 'subscription', name: f('Personal — monthly', 'தனிநபர் — மாதாந்திரம்'), interval: 'month', price: prices('PERSONAL_MONTH', 199, 18, 4.99), features: PERSONAL_FEATURES },
+  { id: 'personal_year', kind: 'subscription', name: f('Personal — yearly', 'தனிநபர் — ஆண்டுக்கு'), interval: 'year', price: prices('PERSONAL_YEAR', 1999, 179, 49), features: PERSONAL_FEATURES },
+  { id: 'family_month', kind: 'subscription', name: f('Family — monthly', 'குடும்பம் — மாதாந்திரம்'), interval: 'month', price: prices('FAMILY_MONTH', 399, 36, 9.99), features: FAMILY_FEATURES },
+  { id: 'family_year', kind: 'subscription', name: f('Family — yearly', 'குடும்பம் — ஆண்டுக்கு'), interval: 'year', price: prices('FAMILY_YEAR', 3999, 359, 99), features: FAMILY_FEATURES },
   ...PACKAGES,
 ];
 /** Old plan id → current id. */
@@ -132,7 +143,7 @@ export const PAID_PLAN_IDS = [...PLANS.filter((p) => p.interval).map((p) => p.id
 const PAID = PAID_PLAN_IDS;
 /** Everything that can be bought at checkout: subscriptions (and their aliases) plus one-time packages. */
 const BUYABLE = [...PAID, ...PACKAGE_IDS];
-const CURRENCIES = ['INR', 'USD'];
+const CURRENCIES = PAY_CURRENCIES; // INR · AED · USD — nothing else is ever charged
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS subscriptions (
@@ -181,7 +192,10 @@ function db() {
   if (!ready.has(d)) {
     d.exec(SCHEMA);
     // Older databases: add the package scope column (JSON {pairId} / {journeyId}; NULL for subscriptions).
-    if (!d.prepare('PRAGMA table_info(subscriptions)').all().some((c) => c.name === 'scope')) d.exec('ALTER TABLE subscriptions ADD COLUMN scope TEXT');
+    const cols = d.prepare('PRAGMA table_info(subscriptions)').all();
+    if (!cols.some((c) => c.name === 'scope')) d.exec('ALTER TABLE subscriptions ADD COLUMN scope TEXT');
+    // The residence country the price was chosen for (ISO code; NULL for grants and older rows).
+    if (!cols.some((c) => c.name === 'country')) d.exec('ALTER TABLE subscriptions ADD COLUMN country TEXT');
     ready.add(d);
   }
   return d;
@@ -195,7 +209,7 @@ function safeEqual(a, b) {
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
 
-const minor = (plan, currency) => Math.round(plan.price[currency] * 100);
+const minor = (plan, currency) => toMinor(plan.price[currency]); // paise / fils / cents
 
 function addInterval(from, interval) {
   const d = new Date(from);
@@ -238,7 +252,7 @@ function activate(sub, { paymentRef = null, days = null } = {}) {
 
 const subOut = (s, admin = false) => ({
   id: s.id, plan: canonicalPlan(s.plan), status: s.status, currency: s.currency, amountMinor: s.amount_minor, gateway: s.gateway,
-  startsAt: s.starts_at, expiresAt: s.expires_at, createdAt: s.created_at, ...(s.scope ? { scope: parseScope(s.scope) } : {}), ...(admin ? { userId: s.user_id, gatewayRef: s.gateway_ref } : {}),
+  startsAt: s.starts_at, expiresAt: s.expires_at, createdAt: s.created_at, ...(s.country ? { country: s.country } : {}), ...(s.scope ? { scope: parseScope(s.scope) } : {}), ...(admin ? { userId: s.user_id, gatewayRef: s.gateway_ref } : {}),
 });
 
 /**
@@ -375,17 +389,21 @@ async function createRazorpayOrder(amountPaise, receipt) {
   return body;
 }
 
-async function createStripeSession({ subId, plan, amountCents, publicUrl }) {
+/** Stripe Checkout for AED or USD (amount in fils / cents; Stripe takes the lower-case ISO code). */
+async function createStripeSession({ subId, plan, currency, amountMinor, publicUrl, country = null }) {
+  if (currency !== 'AED' && currency !== 'USD') throw new Error(`Stripe is used only for AED and USD, not ${currency}`);
   const form = new URLSearchParams({
     mode: 'payment',
-    'line_items[0][price_data][currency]': 'usd',
-    'line_items[0][price_data][unit_amount]': String(amountCents),
+    'line_items[0][price_data][currency]': currency.toLowerCase(),
+    'line_items[0][price_data][unit_amount]': String(amountMinor),
     'line_items[0][price_data][product_data][name]': `${BRAND.name} ${plan.name.en}`,
     'line_items[0][quantity]': '1',
     success_url: `${publicUrl}/#billing-success`,
     cancel_url: `${publicUrl}/#billing-cancel`,
     client_reference_id: subId,
     'metadata[subscription_id]': subId,
+    'metadata[currency]': currency,
+    ...(country ? { 'metadata[country]': country } : {}),
   });
   const r = await billingFetch(STRIPE, {
     method: 'POST',
@@ -444,19 +462,46 @@ function scopeFor(plan, raw) {
   }
   return { [key]: v };
 }
+const given = (v) => v !== undefined && v !== null && v !== '';
 const currencyOf = (v, dflt) => {
-  const c = v === undefined || v === null || v === '' ? dflt : String(v).toUpperCase();
-  return CURRENCIES.includes(c) ? c : fail('currency must be INR or USD');
+  const c = given(v) ? String(v).toUpperCase() : dflt;
+  return CURRENCIES.includes(c) ? c : fail(`currency must be one of: ${CURRENCIES.join(', ')}`);
 };
+/** A two-letter ISO country code that exists in shared/countries.js, upper-cased; 400 otherwise. */
+const countryOf = (v) => {
+  const c = String(v).trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(c) && countryByCode(c) ? c : fail('country must be a two-letter ISO country code (e.g. IN, AE, US)');
+};
+/** Country of the account's phone number (+91 → IN, +971 → AE), or null. */
+const phoneCountry = (user) => parseE164(user?.phone)?.country?.cc || null;
+
+/**
+ * The country and currency a payment is priced in, decided on the server. The country is the residence country the
+ * app sends (`country`), else the account phone's country, else India. The currency always follows the country
+ * (IN → INR, AE → AED, other → USD); a `currency` the client also sends must match it, or the request is refused —
+ * to pay in another currency the person changes their residence in the app first.
+ */
+function pricing({ country, currency }, user = null, dfltCountry = 'IN') {
+  const cc = given(country) ? countryOf(country) : phoneCountry(user) || dfltCountry;
+  const cur = payCurrencyFor(cc);
+  if (given(currency)) {
+    const asked = currencyOf(currency);
+    if (asked !== cur) fail(`Prices for ${countryByCode(cc)?.en || cc} are in ${cur}, not ${asked}. Change your country of residence to pay in another currency.`);
+  }
+  return { country: cc, currency: cur };
+}
 
 // ---- router ----
 
 export function billingRouter() {
   const r = express.Router();
 
+  // ?country=AE → that country's currency (a ?currency= sent with it must match). ?currency= alone lists one of the
+  // three for display. Neither → the signed-in account's phone country, else India.
   r.get('/billing/plans', handle((req, res) => {
-    const currency = currencyOf(req.query.currency, 'INR');
-    res.json({ currency, testPrices: true, terms: PLAN_TERMS, plans: PLANS.map((p) => ({ ...p, currency, amount: p.price[currency] })) });
+    const q = req.query || {};
+    const { country, currency } = given(q.country) || !given(q.currency) ? pricing(q, currentUser(req)) : { country: null, currency: currencyOf(q.currency) };
+    res.json({ country, currency, gateway: payGateway(currency), currencies: CURRENCIES, testPrices: true, terms: PLAN_TERMS, plans: PLANS.map((p) => ({ ...p, currency, amount: p.price[currency], display: formatPrice(p.price[currency], currency) })) });
   }));
 
   r.get('/billing/me', (req, res) => {
@@ -470,8 +515,11 @@ export function billingRouter() {
     const quota = checkAiQuota(req);
     // locked: had paid/gift/trial access that has now lapsed (expiry is enforced via activeSub).
     const lapsed = !sub && !!user && !!db().prepare(`SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'expired' AND plan NOT IN (${PKG_SQL}) LIMIT 1`).get(user.id);
+    // Receipt line for the Plans screen: the latest real payment, in the currency it was charged in.
+    const last = user && db().prepare("SELECT plan, status, currency, amount_minor, starts_at, created_at FROM subscriptions WHERE user_id = ? AND amount_minor > 0 AND status IN ('active', 'expired', 'refunded') ORDER BY COALESCE(starts_at, created_at) DESC LIMIT 1").get(user.id);
     res.json({
       plan: sub ? canonicalPlan(sub.plan) : 'free', status: sub ? sub.status : 'active', expiresAt: sub ? sub.expires_at : null,
+      lastPayment: last ? { plan: canonicalPlan(last.plan), status: last.status, currency: last.currency, amount: last.amount_minor / 100, display: formatPrice(last.amount_minor / 100, last.currency), paidAt: last.starts_at || last.created_at } : null,
       trialEndsAt: sub && ['gift', 'trial'].includes(sub.gateway) ? sub.expires_at : null, locked: lapsed, enforced: billingEnforced(),
       entitlements: entitlementsFor(user), aiUsedToday: quota.period === 'day' ? quota.used : null, aiUsedThisMonth: quota.period === 'month' ? quota.used : null, aiUsedPackage: quota.period === 'package' ? quota.used : null, aiLimit: quota.limit, aiPeriod: quota.period, aiFreeDaily: freeDaily(),
     });
@@ -481,19 +529,20 @@ export function billingRouter() {
     const b = body(req);
     const plan = buyablePlan(b.plan);
     const scope = scopeFor(plan, b.scope);
-    const currency = currencyOf(b.currency, 'INR');
+    const { country, currency } = pricing(b, req.user); // server-side: country → currency → price; never a client price
     const amount = minor(plan, currency);
     const id = crypto.randomUUID();
     let out = { subscriptionId: id, gateway: null, status: 'payment_setup_pending' };
     let gateway = null, ref = null;
     try {
-      if (currency === 'INR' && razorpayConfigured()) {
+      // Razorpay takes INR only; Stripe takes AED and USD only.
+      if (payGateway(currency) === 'razorpay' && razorpayConfigured()) {
         const rz = await createRazorpayOrder(amount, id);
         gateway = 'razorpay'; ref = rz.id;
         out = { subscriptionId: id, gateway, keyId: env('RAZORPAY_KEY_ID'), razorpayOrderId: rz.id, amount, currency };
-      } else if (currency === 'USD' && env('STRIPE_SECRET_KEY')) {
+      } else if (payGateway(currency) === 'stripe' && env('STRIPE_SECRET_KEY')) {
         const publicUrl = (env('PUBLIC_URL') || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
-        const s = await createStripeSession({ subId: id, plan, amountCents: amount, publicUrl });
+        const s = await createStripeSession({ subId: id, plan, currency, amountMinor: amount, publicUrl, country });
         gateway = 'stripe'; ref = s.id;
         out = { subscriptionId: id, gateway, url: s.url };
       }
@@ -501,8 +550,9 @@ export function billingRouter() {
       console.error('Billing checkout failed:', err.message);
       return res.status(502).json({ error: 'Payment gateway is unavailable right now. Please try again.' });
     }
-    db().prepare(`INSERT INTO subscriptions (id, user_id, plan, status, currency, amount_minor, gateway, gateway_ref, created_at, scope)
-      VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`).run(id, req.user.id, plan.id, currency, amount, gateway, ref, now(), scope ? JSON.stringify(scope) : null);
+    db().prepare(`INSERT INTO subscriptions (id, user_id, plan, status, currency, amount_minor, gateway, gateway_ref, created_at, scope, country)
+      VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)`).run(id, req.user.id, plan.id, currency, amount, gateway, ref, now(), scope ? JSON.stringify(scope) : null, country);
+    if (!gateway) out = { ...out, currency, amount };
     res.json(scope ? { ...out, scope } : out);
   }));
 
@@ -535,7 +585,19 @@ export function billingRouter() {
       const session = event.data?.object || {};
       const subId = session.metadata?.subscription_id || session.client_reference_id;
       const sub = subId && db().prepare("SELECT * FROM subscriptions WHERE id = ? AND gateway = 'stripe'").get(String(subId));
-      if (sub && (sub.status === 'pending' || sub.status === 'active')) activate(sub, { paymentRef: session.payment_intent || session.id || null });
+      // The session must have charged the currency and amount this subscription was priced at (AED fils / USD cents).
+      const sameMoney = sub && (!session.currency || String(session.currency).toUpperCase() === sub.currency)
+        && (session.amount_total === undefined || session.amount_total === null || Number(session.amount_total) === Number(sub.amount_minor));
+      if (sub && !sameMoney) console.error(`Stripe session ${session.id} does not match subscription ${sub.id} (${session.amount_total} ${session.currency})`);
+      else if (sub && (sub.status === 'pending' || sub.status === 'active')) activate(sub, { paymentRef: session.payment_intent || session.id || null });
+    } else if (event?.type === 'charge.refunded') {
+      // Refund made in the Stripe dashboard (or by /admin/billing/refund): a full refund revokes the plan.
+      const ch = event.data?.object || {};
+      const sub = ch.payment_intent && db().prepare("SELECT * FROM subscriptions WHERE gateway = 'stripe' AND payment_ref = ?").get(String(ch.payment_intent));
+      if (sub && sub.status !== 'refunded' && String(ch.currency || '').toUpperCase() === sub.currency && Number(ch.amount_refunded) >= Number(sub.amount_minor)) {
+        db().prepare("UPDATE subscriptions SET status = 'refunded', expires_at = ? WHERE id = ?").run(now(), sub.id);
+        audit(null, 'billing.refund.webhook', sub.id, { amount: ch.amount_refunded, currency: sub.currency });
+      }
     }
     res.json({ received: true });
   });
@@ -596,22 +658,29 @@ export function billingRouter() {
     res.json({ restored, plan: sub ? canonicalPlan(sub.plan) : 'free', expiresAt: sub ? sub.expires_at : null });
   }));
 
-  // Admin refund (finance role): refunds through Razorpay, revokes access and writes an audit record.
+  // Admin refund (finance role): refunds through the gateway that took the payment — Razorpay (INR) or Stripe
+  // (AED / USD, in the original currency) — revokes access on a full refund and writes an audit record.
   r.post('/admin/billing/refund', requireAdmin, handle(async (req, res) => {
     const b = body(req);
     const sub = typeof b.subscriptionId === 'string' && db().prepare('SELECT * FROM subscriptions WHERE id = ?').get(b.subscriptionId);
     if (!sub) return res.status(404).json({ error: 'Subscription not found' });
     if (sub.status === 'refunded') return res.json({ subscription: subOut(sub, true), already: true });
-    if (sub.gateway !== 'razorpay' || !sub.payment_ref) return res.status(400).json({ error: 'Only captured Razorpay payments can be refunded here; refund Stripe payments from the Stripe dashboard.' });
+    const viaStripe = sub.gateway === 'stripe' && !!sub.payment_ref && !!env('STRIPE_SECRET_KEY');
+    if (!(sub.gateway === 'razorpay' && sub.payment_ref) && !viaStripe) return res.status(400).json({ error: 'Only captured Razorpay or Stripe payments can be refunded here.' });
     const amount = b.amountMinor === undefined ? sub.amount_minor : Number(b.amountMinor);
     if (!Number.isInteger(amount) || amount < 1 || amount > sub.amount_minor) fail('amountMinor must be between 1 and the amount paid');
-    const r2 = await billingFetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(sub.payment_ref)}/refund`, {
-      method: 'POST', headers: { Authorization: razorpayAuth(), 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, notes: { subscription: sub.id } }),
-    });
+    const r2 = viaStripe
+      ? await billingFetch(STRIPE_REFUNDS, {
+        method: 'POST', headers: { Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ payment_intent: sub.payment_ref, amount: String(amount), 'metadata[subscription_id]': sub.id }).toString(),
+      })
+      : await billingFetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(sub.payment_ref)}/refund`, {
+        method: 'POST', headers: { Authorization: razorpayAuth(), 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, notes: { subscription: sub.id } }),
+      });
     const out = await r2.json().catch(() => ({}));
-    if (!r2.ok) return res.status(502).json({ error: `Razorpay refund failed (${r2.status})` });
+    if (!r2.ok) return res.status(502).json({ error: `${viaStripe ? 'Stripe' : 'Razorpay'} refund failed (${r2.status})` });
     if (amount >= sub.amount_minor) db().prepare("UPDATE subscriptions SET status = 'refunded', expires_at = ? WHERE id = ?").run(now(), sub.id);
-    audit(req, 'billing.refund', sub.id, { amount, refundId: out.id || null });
+    audit(req, 'billing.refund', sub.id, { amount, currency: sub.currency, gateway: sub.gateway, refundId: out.id || null });
     res.json({ subscription: subOut(db().prepare('SELECT * FROM subscriptions WHERE id = ?').get(sub.id), true), refundId: out.id || null });
   }));
 

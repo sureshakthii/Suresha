@@ -87,13 +87,39 @@ inherits the right owner automatically. A host folder (`-v /srv/kaippesi:/data`)
 | `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | one SMS provider | SMS OTP through MSG91 (India, DLT template) |
 | `SMTP_URL`, `MAIL_FROM` | for email OTP | e.g. `smtps://user:pass@smtp.gmail.com:465` |
 | `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` | optional | Facebook login. Redirect URI: `${PUBLIC_URL}/api/auth/facebook/callback` |
-| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | for INR payments | Razorpay keys (store orders, INR subscriptions) |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | for USD payments | Stripe Checkout. Webhook: `${PUBLIC_URL}/api/billing/stripe/webhook` (event `checkout.session.completed`) |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | for INR payments | Razorpay keys (store orders, INR subscriptions). Razorpay is used **only for INR** (residence India) |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | for AED and USD payments | Stripe Checkout for residents of the UAE (AED) and every other country (USD). Webhook: `${PUBLIC_URL}/api/billing/stripe/webhook`, events `checkout.session.completed` and `charge.refunded`. See "Payment currencies" below |
+| `PRICE_{INR,AED,USD}_{PERSONAL_MONTH,PERSONAL_YEAR,FAMILY_MONTH,FAMILY_YEAR,MARRIAGE_PACKAGE,JOURNEY_PACKAGE}` | optional | Price overrides in rupees / dirhams / dollars (not minor units). Defaults: INR 199 · 1999 · 399 · 3999 · 499 · 299; AED 18 · 179 · 36 · 359 · 33 · 22; USD 4.99 · 49 · 9.99 · 99 · 9 · 6 (`docs/COSTING.md`) |
 | `ADMIN_TOKEN` | recommended | Secret for the admin endpoints (`x-admin-token` header) |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | recommended | Web Push keys. Generate once with `npx web-push generate-vapid-keys`. **Changing them breaks every existing push subscription.** |
 | `ANNADHANAM_RATE`, `TRIAL_HOURS`, `REFERRAL_DAYS` | optional | Business settings (see `.env.example`) |
 
 On Render, set these under the service's **Environment** tab. A change triggers a redeploy.
+
+### Payment currencies (INR · AED · USD only)
+
+The currency follows the country of residence set in the app (Settings → Location; fallback: the account phone's
+country code, then the phone's locale): **India → INR via Razorpay, United Arab Emirates → AED via Stripe, every
+other country → USD via Stripe.** The server re-derives the currency from that country at checkout, refuses a
+currency that does not match it, and takes the price only from `server/billing.js` / `PRICE_*`.
+
+Stripe AED enablement checklist:
+
+1. AED is a standard Stripe presentment currency (2 decimals — amounts are sent in fils, AED 179 = `17900`);
+   no product or price objects are needed because Checkout uses inline `price_data`. Confirm in the Stripe
+   dashboard (Settings → Payments → Currencies / the account's supported presentment currencies) that AED is
+   available for your account's country, and check the settlement / conversion fee for AED into your payout
+   currency.
+2. Webhook endpoint `${PUBLIC_URL}/api/billing/stripe/webhook` with events **`checkout.session.completed`** (activates
+   the plan only when the session's currency and `amount_total` match what was priced) and **`charge.refunded`**
+   (a full refund in the original currency revokes the plan). Put its signing secret in `STRIPE_WEBHOOK_SECRET`.
+3. Refunds: the finance-role endpoint `POST /api/admin/billing/refund` refunds Stripe payments (AED or USD,
+   in fils / cents) through `https://api.stripe.com/v1/refunds`, and Razorpay payments as before.
+4. Test with a Stripe test key: set your residence to Dubai, buy Personal yearly and confirm Checkout shows
+   **AED 179.00**; repeat with London (→ **$49.00**) and Chennai (→ Razorpay **₹1,999**).
+5. Tax: the Plans screen says "Prices include applicable taxes" for AED / USD (and "once GST registration is
+   complete" for INR). No tax is calculated in code — confirm UAE VAT obligations with the accountant before
+   launch.
 
 ## Backups of `/data`
 

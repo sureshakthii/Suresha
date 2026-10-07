@@ -1,7 +1,7 @@
 {
  "description": "Ask Thunai evaluation corpus: real questions people ask a family jothidar (Tamil script, Tanglish, English). Each row lists the expected topic(s), the asker's age band, faith (when stated), whether it asks \"when\", and tags a good answer MUST / MUST NOT contain. Tags are defined in test/common-questions.test.js (CHECKS).",
  "version": 1,
- "count": 446,
+ "count": 478,
  "questions": [
   {
    "id": "child-01",
@@ -9325,6 +9325,741 @@
     "meter",
     "certainty",
     "astrology_reading"
+   ]
+  },
+  {
+   "id": "dosham-n01",
+   "category": "dosham",
+   "q": "எனக்கு என்ன தோஷம் இருக்கிறது?",
+   "lang": "ta",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup",
+    "belief_framing"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n02",
+   "category": "dosham",
+   "q": "enna dosham irukku enakku",
+   "lang": "tanglish",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup",
+    "belief_framing"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n03",
+   "category": "dosham",
+   "q": "What doshams are there in my horoscope?",
+   "lang": "en",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup",
+    "belief_framing"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n04",
+   "category": "dosham",
+   "q": "dosham parigaram enna",
+   "lang": "tanglish",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup",
+    "nivarthi_sthalam",
+    "free_remedy"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n05",
+   "category": "dosham",
+   "q": "rahu dosham parigaram kovil",
+   "lang": "tanglish",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup",
+    "nivarthi_sthalam"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n06",
+   "category": "dosham",
+   "q": "ராகு தோஷத்திற்கு எந்தக் கோவிலுக்குப் போக வேண்டும்?",
+   "lang": "ta",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup",
+    "nivarthi_sthalam"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n07",
+   "category": "dosham",
+   "q": "Which temple should I visit for Rahu Ketu dosham?",
+   "lang": "en",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup",
+    "nivarthi_sthalam"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n08",
+   "category": "dosham",
+   "q": "sani dosham irukka? parigaram enna?",
+   "lang": "tanglish",
+   "topic": [
+    "dosham",
+    "sani"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "no_fear",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n09",
+   "category": "dosham",
+   "q": "செவ்வாய் தோஷ நிவர்த்திக்கு எந்தத் தலம்?",
+   "lang": "ta",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup",
+    "nivarthi_sthalam"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n10",
+   "category": "dosham",
+   "q": "Is there putra dosham in my chart?",
+   "lang": "en",
+   "topic": [
+    "dosham",
+    "child"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_area",
+    "doctor",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty",
+    "fertility_verdict"
+   ]
+  },
+  {
+   "id": "dosham-n11",
+   "category": "dosham",
+   "q": "புத்திர தோஷம் இருக்கிறதா? என்ன பரிகாரம்?",
+   "lang": "ta",
+   "topic": [
+    "dosham",
+    "child"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_area",
+    "doctor",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty",
+    "fertility_verdict"
+   ]
+  },
+  {
+   "id": "dosham-n12",
+   "category": "dosham",
+   "q": "pitru dosham parigaram eppo seyyanum",
+   "lang": "tanglish",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n13",
+   "category": "dosham",
+   "q": "Do I have kalathra dosham?",
+   "lang": "en",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n14",
+   "category": "dosham",
+   "q": "தோஷ நிவர்த்திக்கு எந்தக் கிழமை சிறந்தது?",
+   "lang": "ta",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n15",
+   "category": "dosham",
+   "q": "dosha nivarthi ku kandippa periya pooja pannanuma",
+   "lang": "tanglish",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup",
+    "free_remedy"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n16",
+   "category": "dosham",
+   "q": "Is my dosham active now? When will it reduce?",
+   "lang": "en",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n17",
+   "category": "dosham",
+   "q": "நாக தோஷத்துக்கு நாகர்கோவில் போகலாமா?",
+   "lang": "ta",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n18",
+   "category": "dosham",
+   "q": "kala sarpa yogam iruntha enna pannanum",
+   "lang": "tanglish",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n19",
+   "category": "dosham",
+   "q": "Which dosham is delaying things in my life?",
+   "lang": "en",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "dosham-n20",
+   "category": "dosham",
+   "q": "என் ஜாதகத்தில் உள்ள தோஷங்களுக்கு முழு பரிகாரத் திட்டம் சொல்லுங்கள்",
+   "lang": "ta",
+   "topic": [
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "dosham_explained",
+    "no_fear",
+    "remedy",
+    "followup",
+    "nivarthi_sthalam"
+   ],
+   "mustNot": [
+    "fear",
+    "paid_remedy",
+    "certainty"
+   ]
+  },
+  {
+   "id": "delay-01",
+   "category": "why",
+   "q": "kalyanam yen thalli pogudhu",
+   "lang": "tanglish",
+   "topic": [
+    "marriage"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "why_reasons",
+    "house:7",
+    "empathy",
+    "remedy",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy"
+   ],
+   "qtype": "why"
+  },
+  {
+   "id": "delay-02",
+   "category": "why",
+   "q": "திருமணம் ஏன் தாமதமாகிறது? எந்த தோஷம் காரணம்?",
+   "lang": "ta",
+   "topic": [
+    "marriage",
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "remedy",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy"
+   ]
+  },
+  {
+   "id": "delay-03",
+   "category": "why",
+   "q": "Why is my marriage delayed — is it because of a dosham?",
+   "lang": "en",
+   "topic": [
+    "marriage",
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "remedy",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy"
+   ]
+  },
+  {
+   "id": "delay-04",
+   "category": "why",
+   "q": "kulanthai yen late aaguthu",
+   "lang": "tanglish",
+   "topic": [
+    "child"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "doctor",
+    "remedy",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy",
+    "fertility_verdict"
+   ],
+   "qtype": "why"
+  },
+  {
+   "id": "delay-05",
+   "category": "why",
+   "q": "குழந்தை பாக்கியம் ஏன் தாமதமாகிறது?",
+   "lang": "ta",
+   "topic": [
+    "child"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "doctor",
+    "remedy",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy",
+    "fertility_verdict"
+   ],
+   "qtype": "why"
+  },
+  {
+   "id": "delay-06",
+   "category": "why",
+   "q": "Why are we not getting a child even after years?",
+   "lang": "en",
+   "topic": [
+    "child"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "doctor",
+    "remedy",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy",
+    "fertility_verdict"
+   ],
+   "qtype": "why"
+  },
+  {
+   "id": "delay-07",
+   "category": "why",
+   "q": "velai yen kidaikkala",
+   "lang": "tanglish",
+   "topic": [
+    "job",
+    "career"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "why_reasons",
+    "house:10",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy"
+   ],
+   "qtype": "why"
+  },
+  {
+   "id": "delay-08",
+   "category": "why",
+   "q": "Why is my job search getting delayed for so long?",
+   "lang": "en",
+   "topic": [
+    "job",
+    "career"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "why_reasons",
+    "house:10",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy"
+   ],
+   "qtype": "why"
+  },
+  {
+   "id": "delay-09",
+   "category": "why",
+   "q": "ஏன் என் வேலையில் முன்னேற்றம் தள்ளிப்போகிறது?",
+   "lang": "ta",
+   "topic": [
+    "career",
+    "job"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "why_reasons",
+    "house:10",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy"
+   ],
+   "qtype": "why"
+  },
+  {
+   "id": "delay-10",
+   "category": "why",
+   "q": "en kalyanam thadai aaguthu, enna karanam",
+   "lang": "tanglish",
+   "topic": [
+    "marriage"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "remedy",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy"
+   ]
+  },
+  {
+   "id": "delay-11",
+   "category": "why",
+   "q": "Why does my marriage keep getting cancelled at the last minute?",
+   "lang": "en",
+   "topic": [
+    "marriage"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "house:7",
+    "remedy",
+    "followup",
+    "dosham_area"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy"
+   ],
+   "qtype": "why"
+  },
+  {
+   "id": "delay-12",
+   "category": "why",
+   "q": "பிள்ளை பிறப்பு ஏன் தள்ளிப்போகிறது, என்ன தோஷம்?",
+   "lang": "ta",
+   "topic": [
+    "child",
+    "dosham"
+   ],
+   "band": "26-59",
+   "when": false,
+   "must": [
+    "doctor",
+    "remedy",
+    "followup"
+   ],
+   "mustNot": [
+    "certainty",
+    "fear",
+    "paid_remedy",
+    "fertility_verdict"
    ]
   }
  ]

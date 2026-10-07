@@ -44,7 +44,12 @@ const css = fs.readFileSync('public/styles.css', 'utf8');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('</body>'))
   .replace('<script type="module" src="/app.js"></script>', `<script>window.KJ_STATIC = true; window.KJ_BUILD = '${(process.env.GITHUB_RUN_NUMBER ? `build ${process.env.GITHUB_RUN_NUMBER} · ` : '')}${new Date().toISOString().slice(0, 10)}${REVIEW ? ' · review' : ''}';${REVIEW ? ` window.KJ_REVIEW = ${JSON.stringify(REVIEW)};` : ''}</script>\n  ${REVIEW ? '<script src="review-lock.js"></script>\n  ' : ''}<script type="module" src="app.js"></script>`);
 const fonts = `<style>\n${fs.readFileSync('public/fonts.css', 'utf8')}</style>`;
+// In the Android / iOS app the native splash goes as soon as this page paints its own splash (no blank gap).
+// (Measured and left out: <link rel=modulepreload> for every boot module saved ~0.1 s to Today but delayed the
+// first paint by ~0.2 s on a slow phone; font preloads delayed it too — the @font-face rules are inline anyway.)
+const head = `<script>requestAnimationFrame(function () { try { window.Capacitor && window.Capacitor.Plugins.SplashScreen && window.Capacitor.Plugins.SplashScreen.hide({ fadeOutDuration: 150 }); } catch (e) { /* web */ } });</script>`;
 const page = `<title>${REVIEW ? "துணை · THUNAI Review" : "துணை · THUNAI"}</title>
+${head}
 ${fonts}
 <style>
 :root { color-scheme: dark; }

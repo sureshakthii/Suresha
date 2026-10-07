@@ -187,7 +187,8 @@ export function saveFamily() {
   if (state.user && !STATIC) {
     clearTimeout(syncTimer);
     // Only with backup consent, and never private profiles (shared/sync-policy.js).
-    const data = backupPayload({ family: state.family, activeId: state.activeId, ancestors: state.ancestors, goals: store.get('kj_goals', null) }, { backup: backupConsent() });
+    // The diary (kj_journal) joins only with its own switch on too (Settings → Daily brief & reminders).
+    const data = backupPayload({ family: state.family, activeId: state.activeId, ancestors: state.ancestors, goals: store.get('kj_goals', null), journal: store.get('kj_journal', null) }, { backup: backupConsent(), journal: store.get('kj_daily', {}).journalBackup === true });
     if (data) syncTimer = setTimeout(() => api('/api/me/data', { method: 'PUT', body: { data } }).catch(() => {}), 600);
   }
 }
@@ -205,7 +206,8 @@ export function applyTheme() {
   const pref = state.themeOverride || state.settings.theme || 'dark';
   const dark = pref === 'dark' || (pref === 'auto' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b0620' : '#f6f1e8');
+  // Browser / installed-app status bar = the top bar's colour (--surface-strong), so the two read as one surface.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#18131a' : '#ffffff');
 }
 applyTheme();
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
@@ -597,10 +599,15 @@ if (typeof window !== 'undefined') {
   const hookBack = () => {
     const App = window.Capacitor?.Plugins?.App;
     if (!App?.addListener) return;
+    let lastBackOnToday = 0;
     App.addListener('backButton', () => {
       const modal = document.querySelector('.modal');
       if (modal) { modal.remove(); return; }
-      if (!goBack('home')) App.minimizeApp?.() ?? App.exitApp?.();
+      if (state.view !== 'home') { goBack('home'); return; }
+      // Today: a second press within 2 seconds leaves the app (a stray press never closes it).
+      if (Date.now() - lastBackOnToday < 2000) { lastBackOnToday = 0; App.minimizeApp?.() ?? App.exitApp?.(); return; }
+      lastBackOnToday = Date.now();
+      toast(L('Press back again to exit', 'வெளியேற மீண்டும் பின் பொத்தானை அழுத்தவும்'), 2000);
     });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hookBack); else hookBack();

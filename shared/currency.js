@@ -1,7 +1,7 @@
 // Showing rupee estimates in the user's own currency (e.g. Sri Lanka → LKR, UK → GBP).
-// All planning estimates and every payment in the app stay in INR (₹); this only adds an approximate
+// All planning estimates stay in INR (₹); this only adds an approximate
 // conversion for people abroad. Rates are rough guidance values, NOT live exchange rates, and are always
-// labelled "≈". Billing never uses this file.
+// labelled "≈". Billing uses only the "payment currencies" part at the end (INR / AED / USD, no conversion).
 import { guessCountry, countryByCode } from './countries.js';
 
 /** Approximate rupees per one unit of the currency (rounded; reviewed 2026). */
@@ -52,3 +52,46 @@ export function moneyRange(lowInr, highInr, cur = userCurrency()) {
   const hi = fmt(nice(highInr / INR_PER[cur]), cur).replace(/^[^\d]*/, '');
   return `≈ ${lo}–${hi} (${rupees})`;
 }
+
+// ---------------------------------------------------------------- payment currencies (billing)
+// Payments use exactly three currencies, chosen from the person's RESIDENCE country (never a travelling place):
+// India → INR (₹, Razorpay) · United Arab Emirates → AED (Stripe) · every other country → USD ($, Stripe).
+// Prices come from server/billing.js (PRICE_{INR|AED|USD}_*); nothing here converts money for a payment.
+
+/** The only currencies a payment can be made in. */
+export const PAY_CURRENCIES = Object.freeze(['INR', 'AED', 'USD']);
+
+/** Payment currency for an ISO country code: IN → INR, AE → AED, anything else (or unknown) → USD. */
+export function payCurrencyFor(cc) {
+  const c = String(cc || '').toUpperCase();
+  return c === 'IN' ? 'INR' : c === 'AE' ? 'AED' : 'USD';
+}
+
+/** The gateway that takes a payment currency: Razorpay for INR only; Stripe for AED and USD. */
+export const payGateway = (cur) => (cur === 'INR' ? 'razorpay' : 'stripe');
+
+/**
+ * The country payments are priced for: the saved residence country, else the account phone's country code,
+ * else the device's locale / time zone. Returns { cc, source: 'residence' | 'phone' | 'device' }.
+ * @param {{residenceCc?: string|null, phoneCc?: string|null, deviceCc?: string|null}} hints
+ */
+export function payCountry({ residenceCc, phoneCc, deviceCc } = {}) {
+  const ok = (c) => (c && countryByCode(c) ? String(c).toUpperCase() : null);
+  if (ok(residenceCc)) return { cc: ok(residenceCc), source: 'residence' };
+  if (ok(phoneCc)) return { cc: ok(phoneCc), source: 'phone' };
+  return { cc: ok(deviceCc) || guessCountry()?.cc || 'IN', source: 'device' };
+}
+
+/**
+ * A price as shown everywhere a payment is offered: "₹1,999" · "AED 75" · "$19.99" (whole amounts without
+ * decimals, others with two). Same text in Tamil and English.
+ */
+export function formatPrice(amount, cur) {
+  const n = Number(amount) || 0;
+  const whole = Number.isInteger(n);
+  const num = n.toLocaleString(cur === 'INR' ? 'en-IN' : 'en-US', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
+  return cur === 'INR' ? `₹${num}` : cur === 'AED' ? `AED ${num}` : `$${num}`;
+}
+
+/** Amount in minor units for a gateway (paise / fils / cents — all three currencies use 100). */
+export const toMinor = (amount) => Math.round(Number(amount) * 100);

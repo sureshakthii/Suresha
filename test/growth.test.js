@@ -174,7 +174,7 @@ test('events ingest → admin stats by platform, daily and top lists', async () 
   assert.equal(s.totals.active7, 6);
   assert.equal(s.totals.active30, 6);
   assert.ok(s.totals.users >= 4);
-  assert.deepEqual(s.totals.revenueByCurrency, { INR: 0, USD: 0 }); // gift / trial excluded
+  assert.deepEqual(s.totals.revenueByCurrency, { INR: 0, AED: 0, USD: 0 }); // gift / trial excluded
   assert.equal(s.totals.payingUsers, 0);
   assert.deepEqual(s.byPlatform, { android: 2, ios: 1, huawei: 1, pwa: 1, web: 1 });
   assert.equal(s.daily.length, 7);

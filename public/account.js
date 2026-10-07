@@ -701,6 +701,7 @@ function renderMore(sec) {
       ${locationSettingsHtml()}
     </div>
     <div class="menu">
+      <button data-go="dailyset">${iconChip('reminders', { size: 20, cls: 'mi-icon' })}<span>${L('Daily brief, reminders & prompts — on / off', 'தினசரி குறிப்பு, நினைவூட்டல்கள் — இயக்கு / நிறுத்து')}</span></button>
       <button data-go="privacy">${iconChip('privacy', { size: 20, cls: 'mi-icon' })}<span>${L('Privacy & data — consent, export, delete', 'தனியுரிமை & தரவு — அனுமதி, ஏற்றுமதி, நீக்கம்')}</span></button>
       <button data-go="why">${iconChip('why', { size: 20, cls: 'mi-icon' })}<span>${L('How Thunai reads your chart', 'துணை ஜாதகத்தைப் படிக்கும் முறை')}</span></button>
       <button data-go="calc">${iconChip('calc', { size: 20, cls: 'mi-icon' })}<span>${L('Calculation methods', 'கணிப்பு முறைகள்')}</span></button>

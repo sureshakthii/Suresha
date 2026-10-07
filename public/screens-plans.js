@@ -1,8 +1,15 @@
-// Subscription plans: Free, Personal (தனிநபர் — formerly "Premium") and Family — INR in India, USD abroad —
-// plus one-time packages for occasional needs (Marriage / Journey), and the optional "Your Thunai so far" summary.
+// Subscription plans: Free, Personal (தனிநபர் — formerly "Premium") and Family — plus one-time packages for
+// occasional needs (Marriage / Journey), and the optional "Your Thunai so far" summary.
+// Prices follow the country of RESIDENCE (shared/currency.js): India → ₹ INR, United Arab Emirates → AED, any other
+// country → $ USD. The server decides the currency again at checkout from the same country; changing the
+// residence is the only way to see another currency.
 import { state, $, $$, L, esc, bi, api, STATIC, store, registerScreen, subHeader, go, toast, fmtIsoDate, displayName, BRAND } from './core.js';
 import { redeemBox, wireRedeem, trialBanner, track, taskLog, pairKey } from './growth.js';
 import { valueSummary, PLAN_FEATURE_LINES } from './shared/plan-gates.js';
+import { formatPrice, payCountry, payCurrencyFor } from './shared/currency.js';
+import { countryByCode, parseE164 } from './shared/countries.js';
+import { countryOfLoc } from './shared/residence.js';
+import { residenceStep } from './residence-ui.js';
 
 /** Display name of a plan id (old premium_* ids are the Personal plan). */
 export const planLabel = (id) => (!id || id === 'free' ? L('Free', 'இலவசம்')
@@ -11,18 +18,34 @@ export const planLabel = (id) => (!id || id === 'free' ? L('Free', 'இலவச
 /** One feature line; planned-but-not-built features carry `soon` and are labelled, never sold as included. */
 const featureItem = (f) => `<li${f.soon ? ' class="soon"' : ''}>${esc(bi(f))}${f.soon ? ` <span class="badge unv">${L('Coming soon — not included yet', 'விரைவில் — இன்னும் சேர்க்கப்படவில்லை')}</span>` : ''}</li>`;
 
-const inIndia = () => Math.abs((state.loc?.tz ?? 5.5) - 5.5) < 0.01;
-const money = (amount, cur) => (cur === 'INR' ? `₹${Number(amount).toLocaleString('en-IN')}` : `$${amount}`);
+/** The country prices are shown and charged for: residence (not a travelling place) → account phone → device. */
+export const priceCountry = () => payCountry({
+  residenceCc: state.residence ? countryOfLoc(state.residence) : null,
+  phoneCc: parseE164(state.user?.phone)?.country?.cc || null,
+});
+const money = (amount, cur) => formatPrice(amount, cur);
+const CUR_LABEL = { INR: '₹ (INR)', AED: 'AED', USD: '$ (USD)' };
+/** "Prices in AED for United Arab Emirates · Change country" — always visible above the plans. */
+function countryLine(cc, source, currency) {
+  const c = countryByCode(cc);
+  const en = c?.en || cc, ta = c?.ta || en;
+  const why = source === 'residence' ? '' : source === 'phone'
+    ? L(' (from your phone number — set where you live for the right prices)', ' (உங்கள் கைப்பேசி எண்ணிலிருந்து — சரியான விலைக்கு வசிக்கும் இடத்தை அமைக்கவும்)')
+    : L(' (from this phone’s settings — set where you live for the right prices)', ' (இந்தக் கைப்பேசி அமைப்பிலிருந்து — சரியான விலைக்கு வசிக்கும் இடத்தை அமைக்கவும்)');
+  return `<div class="card glass price-country" id="priceCountry" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px"><span>🌐 ${L(`Prices in ${CUR_LABEL[currency]} for ${esc(en)}`, `${esc(ta)} — விலைகள்: ${CUR_LABEL[currency]}`)}<span class="small muted">${why}</span></span>
+    <button type="button" class="link-btn" id="changeCountry">${L('Change country', 'நாட்டை மாற்று')}</button></div>`;
+}
 const dateOf = (t) => fmtIsoDate(new Date(t).toISOString().slice(0, 10));
 const bar = (label, used, limit) => `<div class="tb-row"><span class="tb-label">${label}</span><span class="tb-value">${used} / ${limit}</span><span class="tb-bar"><i style="width:${Math.min(100, Math.round(100 * used / limit))}%"></i></span></div>`;
 
-async function loadPlans(currency) {
+async function loadPlans(country) {
   if (STATIC) {
+    const currency = payCurrencyFor(country);
     const j = await (await fetch('plans.json')).json();
     const all = Array.isArray(j) ? j : j.plans;
-    return { currency, testPrices: true, terms: j.terms, plans: all.map((p) => ({ ...p, currency, amount: p.price[currency] })) };
+    return { country, currency, testPrices: true, terms: j.terms, plans: all.map((p) => ({ ...p, currency, amount: p.price?.[currency] })) };
   }
-  return api(`/api/billing/plans?currency=${currency}`);
+  return api(`/api/billing/plans?country=${encodeURIComponent(country)}`);
 }
 
 /** Saved journeys on this phone (screens-journey.js, kj_plans). */
@@ -74,17 +97,20 @@ const packageCard = (p, currency, params) => `<div class="card glass plan pkg" d
       <button class="btn-gold" data-buy="${p.id}">${L('Buy once', 'ஒருமுறை வாங்கு')}</button></div>`;
 
 async function renderPlans(sec, params = {}) {
-  const currency = params.currency || (inIndia() ? 'INR' : 'USD');
+  const { cc: country, source } = priceCountry();
+  let currency = payCurrencyFor(country);
   sec.innerHTML = `${subHeader(L(`${BRAND.personalEn} & ${BRAND.familyEn}`, `${BRAND.personalTa} & ${BRAND.familyTa}`), L('Calendar, guidance and baby-name browsing stay free for everyone. Personal adds detailed reports; Family adds up to 8 profiles shared only with permission.', 'நாட்காட்டி, வழிகாட்டல், குழந்தைப் பெயர் தேடல் அனைவருக்கும் இலவசம். தனிநபர் திட்டத்தில் விரிவான அறிக்கைகள்; குடும்பத் திட்டத்தில் அனுமதியுடன் பகிரப்படும் 8 சுயவிவரங்கள் வரை.'), 'more')}
-    <div class="seg"><button data-cur="INR" class="${currency === 'INR' ? 'sel' : ''}">₹ ${L('India', 'இந்தியா')}</button><button data-cur="USD" class="${currency === 'USD' ? 'sel' : ''}">$ ${L('Abroad', 'வெளிநாடு')}</button></div>
+    ${countryLine(country, source, currency)}
     ${trialBanner()}${params.redeem ? redeemBox() : ''}<div id="myPlan"></div><div id="planList"><div class="loader"><i></i><i></i><i></i></div></div>`;
-  $$('[data-cur]', sec).forEach((b) => b.addEventListener('click', () => renderPlans(sec, { ...params, currency: b.dataset.cur })));
+  // Saving a new residence redraws this screen (residence-ui.js), so the prices follow the new country.
+  $('#changeCountry', sec)?.addEventListener('click', () => residenceStep());
   wireRedeem(() => renderPlans(sec, params));
   if (!STATIC) {
     api('/api/billing/me').then((me) => {
       if (!$('#myPlan')) return;
       const pk = me.entitlements?.packages || [];
       $('#myPlan').innerHTML = `<div class="card glass"><b>${L('Your plan', 'உங்கள் திட்டம்')}: ${planLabel(me.plan)}</b>${me.expiresAt ? ` <span class="muted small">${L('until', 'வரை')} ${dateOf(me.expiresAt)}</span>` : ''}
+        ${me.lastPayment ? `<div class="small receipt-line">🧾 ${L('Last payment', 'கடைசிக் கட்டணம்')}: <b>${money(me.lastPayment.amount, me.lastPayment.currency)}</b> · ${planLabel(me.lastPayment.plan)}${me.lastPayment.paidAt ? ` · ${dateOf(me.lastPayment.paidAt)}` : ''}${me.lastPayment.status === 'refunded' ? ` · ${L('refunded', 'திருப்பித் தரப்பட்டது')}` : ''}</div>` : ''}
         ${pk.map((p) => `<div class="small">🎫 ${planLabel(p.plan)} — ${p.scope?.pairId ? L('one couple', 'ஒரு ஜோடி') : L('one journey', 'ஒரு பயணம்')} · ${L('until', 'வரை')} ${dateOf(p.expiresAt)}</div>`).join('')}
         ${me.aiPeriod === 'day' && me.aiLimit ? bar(L('Detailed answers today', 'இன்றைய விரிவான பதில்கள்'), me.aiUsedToday, me.aiLimit) : ''}
         ${me.aiPeriod === 'month' && me.aiLimit ? bar(L('Detailed answers this month', 'இந்த மாத விரிவான பதில்கள்'), me.aiUsedThisMonth, me.aiLimit) : ''}
@@ -95,7 +121,9 @@ async function renderPlans(sec, params = {}) {
     }).catch(() => {});
   }
   try {
-    const { plans, terms } = await loadPlans(currency);
+    const loaded = await loadPlans(country);
+    const { plans, terms } = loaded;
+    currency = loaded.currency || currency; // the server's decision wins
     const subs = plans.filter((p) => p.kind !== 'package');
     const pkgs = plans.filter((p) => p.kind === 'package' && p.amount);
     $('#planList').innerHTML = `<div class="note-box">${L('Initial test prices — they may change before launch. Daily calendar and basic guidance stay free. Calculations, safety explanations and privacy controls are the same on every plan.', 'தொடக்கச் சோதனை விலைகள் — வெளியீட்டுக்கு முன் மாறலாம். தினசரி நாட்காட்டியும் அடிப்படை வழிகாட்டலும் எப்போதும் இலவசம். கணிப்பு, பாதுகாப்பு விளக்கம், தனியுரிமைக் கட்டுப்பாடுகள் எல்லாத் திட்டங்களிலும் ஒன்றே.')}</div>`
@@ -104,7 +132,7 @@ async function renderPlans(sec, params = {}) {
         <p class="small muted">${L('For one wedding or one journey, without a subscription. Each package covers only the couple or journey you choose, for a fixed number of days, and then simply ends.', 'ஒரு திருமணம் அல்லது ஒரு பயணத்திற்கு — சந்தா இன்றி. ஒவ்வொரு தொகுப்பும் நீங்கள் தேர்ந்தெடுக்கும் ஜோடி / பயணத்திற்கு மட்டும், குறிப்பிட்ட நாட்களுக்கு; பிறகு தானாக முடியும்.')}</p>
         ${pkgs.map((p) => packageCard(p, currency, params)).join('')}` : '')
       + (terms ? `<div class="card glass"><div class="card-title">📄 ${L('Renewal, cancellation & refunds', 'புதுப்பித்தல், ரத்து, பணத்திருப்பம்')}</div><ul class="small">${['renewal', 'cancellation', 'refund', 'packages'].filter((k) => terms[k]).map((k) => `<li>${esc(bi(terms[k]))}</li>`).join('')}</ul>
-        <p class="small muted">${L('Payments are processed by Razorpay (India) or Stripe (abroad); card details never reach our servers. Prices include applicable taxes once GST registration is complete.', 'கட்டணங்களை Razorpay (இந்தியா) / Stripe (வெளிநாடு) செயலாக்கும்; அட்டை விவரம் எங்கள் சேவையகத்திற்கு வராது.')}</p>
+        <p class="small muted">${payNote(currency)}</p>
         <button class="link-btn" data-go="legal" data-param='{"open":"refunds"}'>${L('Full terms', 'முழு விதிமுறைகள்')}</button></div>` : '')
       + `<button class="chip-btn center-block" data-go="value">📒 ${L('Your Thunai so far', 'என் பயன்')}</button>`
       + (params.redeem ? '' : redeemBox());
@@ -114,7 +142,7 @@ async function renderPlans(sec, params = {}) {
       let scope;
       if (plan?.kind === 'package') { scope = chosenScope(b.closest('.card'), plan); if (!scope) return; }
       track('plan_click', { feature: b.dataset.buy });
-      buy(b.dataset.buy, currency, scope);
+      buy(b.dataset.buy, country, currency, scope);
     }));
     if (params.pkg) requestAnimationFrame(() => $(`#pkg-${params.pkg}`)?.scrollIntoView({ block: 'start' }));
   } catch {
@@ -122,11 +150,19 @@ async function renderPlans(sec, params = {}) {
   }
 }
 
-async function buy(plan, currency, scope) {
+/** Who processes the payment, in which currency, and the tax line (display only — no tax is calculated here). */
+function payNote(currency) {
+  const card = L('Card details never reach our servers.', 'அட்டை விவரம் எங்கள் சேவையகத்திற்கு வராது.');
+  if (currency === 'INR') return `${L('Payments in rupees (₹) are processed by Razorpay.', 'ரூபாய் (₹) கட்டணங்களை Razorpay செயலாக்கும்.')} ${card} ${L('Prices include applicable taxes once GST registration is complete.', 'GST பதிவு முடிந்ததும் விலைகளில் பொருந்தும் வரிகள் அடங்கும்.')}`;
+  return `${currency === 'AED' ? L('Payments in UAE dirhams (AED) are processed by Stripe.', 'அமீரக திர்ஹாம் (AED) கட்டணங்களை Stripe செயலாக்கும்.') : L('Payments in US dollars ($) are processed by Stripe.', 'அமெரிக்க டாலர் ($) கட்டணங்களை Stripe செயலாக்கும்.')} ${card} ${L('Prices include applicable taxes.', 'விலைகளில் பொருந்தும் வரிகள் அடங்கும்.')}`;
+}
+
+async function buy(plan, country, currency, scope) {
   if (STATIC) { toast(L('Payments are not available in this version — nothing has been charged.', 'இந்தப் பதிப்பில் கட்டணம் இல்லை — எதுவும் வசூலிக்கப்படவில்லை.'), 4000); return; }
   if (!state.user) { toast(L('Please sign in first', 'முதலில் உள்நுழையவும்')); go('login'); return; }
   try {
-    const r = await api('/api/billing/checkout', { method: 'POST', body: { plan, currency, ...(scope ? { scope } : {}) } });
+    // Only the plan and the residence country are sent; the server works out the currency and price again.
+    const r = await api('/api/billing/checkout', { method: 'POST', body: { plan, country, currency, ...(scope ? { scope } : {}) } });
     if (r.gateway === 'stripe') { location.href = r.url; return; }
     if (r.gateway === 'razorpay') {
       await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://checkout.razorpay.com/v1/checkout.js'; s.onload = res; s.onerror = rej; document.head.append(s); });

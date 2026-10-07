@@ -27,6 +27,8 @@ export const TOOLS = [
   { id: 'week', group: 'today', en: 'Weekly plan', ta: 'வாரத் திட்டம்', k: 'week weekly this week vaaram vaara plan thittam திட்டம் வாரம் இந்த வாரம் tasks appointment deadline' },
   { id: 'goals', group: 'today', en: 'My goals', ta: 'என் இலக்குகள்', k: 'goal goals ilakku ilakkugal இலக்கு இலக்குகள் plan target checklist next steps marriage preparation thirumana erpadu career job preparation exam temple journey house deadline' },
   { id: 'reminders', group: 'today', en: 'Alarms & reminders', ta: 'அலாரம் & நினைவூட்டல்', k: 'alarm reminder ninaivootal notification' },
+  { id: 'diary', group: 'today', en: 'My Thunai diary — good things that happened', ta: 'என் துணை நாட்குறிப்பு — நல்லது நடந்தது', k: 'diary journal naatkurippu nallathu nadanthathu helped happened gratitude remedy done நாட்குறிப்பு நன்றி' },
+  { id: 'dailyset', group: 'today', en: 'Daily brief & reminders — on / off', ta: 'தினசரி குறிப்பு & நினைவூட்டல்கள் — இயக்கு / நிறுத்து', k: 'morning brief kaalai kurippu notification off turn off sandhya lamp weekly monthly share prompt settings காலைக் குறிப்பு அறிவிப்பு நிறுத்து' },
   { id: 'relations', group: 'today', en: 'Family relations today', ta: 'இன்று குடும்ப உறவு', k: 'relations uravu family today kudumbam' },
   // 2. Ask
   { id: 'chat', group: 'ask', en: 'Ask Thunai', ta: 'துணையிடம் கேளுங்கள்', k: 'ask question kelvi kel chat thunai jothidar astrologer doubt' },
@@ -34,6 +36,7 @@ export const TOOLS = [
   // 3. My Jathagam
   { id: 'chart', group: 'mychart', en: 'My Jathagam (birth chart)', ta: 'என் ஜாதகம்', k: 'jathagam jadhagam jathakam horoscope birth chart kundli rasi kattam lagnam navamsam' },
   { id: 'analysis', group: 'mychart', en: 'Full chart reading', ta: 'முழு ஜாதக ஆய்வு', k: 'analysis reading palan bhavam yogam dosham chevvai dosham' },
+  { id: 'dosham', group: 'mychart', en: 'Doshams & remedies — expert view', ta: 'தோஷங்கள் & நிவர்த்தி — நிபுணர் பார்வை', k: 'dosham dosha thosham dosam nivarthi nivarthi parigara sthalam pariharam kovil sarpa rahu ketu dosham naga dosham kala sarpam chevvai dosham sevvai mangal manglik putra dosham puthira santhana kalathra pitru pithru sani dosham moudyam asthangam combust delay thamatham marriage delay child delay தோஷம் நிவர்த்தி பரிகாரத் தலம் தாமதம் சர்ப்ப நாக தோஷம் புத்திர தோஷம் களத்திர தோஷம் பித்ரு தோஷம்' },
   { id: 'roadmap', group: 'mychart', en: 'Dasa road map — life periods', ta: 'தசா வரைபடம் — வாழ்க்கைக் காலங்கள்', k: 'dasa dasai thasa bhukti puthi road map life periods kaalam' },
   { id: 'life', group: 'mychart', en: 'Life questions — job, marriage, house', ta: 'வாழ்க்கைக் கேள்விகள் — வேலை, திருமணம், வீடு', k: 'life questions job velai marriage kalyanam house veedu child kuzhandhai career timing' },
   { id: 'health', group: 'mychart', en: 'Health — general wellbeing', ta: 'ஆரோக்கியம் — பொது நலம்', k: 'health arokiyam arogyam udal food unavu diet' },

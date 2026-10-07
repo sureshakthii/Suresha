@@ -3,7 +3,8 @@
   "appName": "துணை",
   "webDir": "mobile/www",
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": false,
+    "backgroundColor": "#141016"
   },
   "ios": {
     "contentInset": "never"
@@ -14,11 +15,12 @@
       "launchAutoHide": true,
       "backgroundColor": "#3d0d1f",
       "androidScaleType": "CENTER_CROP",
-      "showSpinner": false
+      "showSpinner": false,
+      "launchFadeOutDuration": 150
     },
     "StatusBar": {
       "style": "DARK",
-      "backgroundColor": "#6e1a35",
+      "backgroundColor": "#141016",
       "overlaysWebView": false
     },
     "PushNotifications": {
@@ -28,5 +30,6 @@
         "alert"
       ]
     }
-  }
+  },
+  "backgroundColor": "#141016"
 }

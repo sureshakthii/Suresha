@@ -16,6 +16,7 @@ import { rateLimit, audit } from './admin.js';
 import { billingEnforced, entitlementsFor } from './billing.js';
 import { shareableProfile, isPrivateProfile } from '../shared/sync-policy.js';
 import { ageProfile } from '../shared/age-guard.js';
+import { cleanDisplayText } from './security.js';
 
 export const INVITE_TTL = 7 * 24 * 60 * 60 * 1000;
 export const MAX_MEMBERS = 8;
@@ -85,6 +86,37 @@ function newCode() {
 const showCode = (c) => c.match(/.{1,4}/g).join('-');
 const parse = (v) => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
 const fail = (res, status, error, extra = {}) => res.status(status).json({ error, ...extra });
+
+const PLANET_KEYS = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+const intIn = (v, min, max) => (Number.isInteger(v) && v >= min && v <= max ? v : null);
+/** A written kattam: only the known fields with in-range numbers (nothing else from the sender survives). */
+function cleanKattam(k) {
+  if (!k || typeof k !== 'object' || Array.isArray(k)) return undefined;
+  const planets = {};
+  for (const p of PLANET_KEYS) { const v = intIn(k.planets?.[p], 0, 11); if (v !== null) planets[p] = v; }
+  const b = k.balance && typeof k.balance === 'object' ? { years: intIn(k.balance.years, 0, 20), months: intIn(k.balance.months, 0, 12) } : null;
+  return { star: intIn(k.star, 0, 26), pada: intIn(k.pada, 1, 4) ?? 1, lagna: intIn(k.lagna, 0, 11), planets, balance: b && b.years !== null ? { years: b.years, months: b.months ?? 0 } : null };
+}
+/**
+ * Server-side check of a shared copy before another member's phone receives it: display strings are neutralised
+ * (no markup can travel between accounts), format fields must match their formats, numbers must be in range.
+ */
+export function cleanShareCopy(c) {
+  if (!c) return null;
+  const out = { id: String(c.id).replace(/[^\w.:-]/g, '').slice(0, 64), date: c.date };
+  if (!out.id) return null;
+  for (const k of ['name', 'nameTa', 'place']) if (typeof c[k] === 'string' && c[k].trim()) out[k] = cleanDisplayText(c[k], 120);
+  if (!out.name) return null;
+  for (const k of ['relation', 'gender', 'timeCertainty', 'dstChoice']) if (typeof c[k] === 'string' && /^[a-z][a-z_-]{0,29}$/.test(c[k])) out[k] = c[k];
+  if (['ta', 'en', 'auto'].includes(c.nameDisplay)) out.nameDisplay = c.nameDisplay;
+  if (typeof c.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(c.time)) out.time = c.time;
+  if (typeof c.zone === 'string' && /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(c.zone) && c.zone.length <= 40) out.zone = c.zone;
+  const num = (k, min, max) => { if (typeof c[k] === 'number' && Number.isFinite(c[k]) && c[k] >= min && c[k] <= max) out[k] = c[k]; };
+  num('lat', -90, 90); num('lon', -180, 180); num('tz', -12, 14); num('timeWindowMin', 0, 720);
+  const k = cleanKattam(c.kattam);
+  if (k) out.kattam = k;
+  return out;
+}
 
 /** Family-plan check used when billing is enforced (read-only use of server/billing.js). */
 export function hasFamilyEntitlement(user) {
@@ -225,7 +257,7 @@ export function familyRouter() {
     const user = req.familyUser;
     if (membership(user.id)) return fail(res, 409, 'You are already in a family group');
     if (billingEnforced() && !hasFamilyEntitlement(user)) return fail(res, 402, 'Family sharing is part of the Family plan', { upgrade: true });
-    const name = String(req.body?.name || '').trim().slice(0, 60) || null;
+    const name = cleanDisplayText(req.body?.name || '', 60) || null;
     const id = newId();
     const t = now();
     db().prepare('INSERT INTO family_groups (id, owner_user_id, name, created_at) VALUES (?, ?, ?, ?)').run(id, user.id, name, t);
@@ -323,7 +355,7 @@ export function familyRouter() {
     if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return fail(res, 400, 'profile is required');
     if (isPrivateProfile(profile)) return fail(res, 403, 'Private profiles stay on your phone and cannot be shared');
     if (profile.shared) return fail(res, 403, 'A profile shared with you cannot be shared again');
-    const copy = shareableProfile(profile);
+    const copy = cleanShareCopy(shareableProfile(profile));
     if (!copy) return fail(res, 400, 'This profile needs a name and birth date to share');
     const json = JSON.stringify(copy);
     if (Buffer.byteLength(json) > 16 * 1024) return fail(res, 413, 'profile too large');
@@ -367,7 +399,7 @@ export function familyRouter() {
     const profile = req.body?.profile;
     if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return fail(res, 400, 'profile is required');
     if (s.owner_user_id === user.id && isPrivateProfile(profile)) return fail(res, 403, 'Private profiles cannot be shared — revoke the share instead');
-    const copy = shareableProfile({ ...profile, id: s.profile_id, private: undefined, shared: undefined });
+    const copy = cleanShareCopy(shareableProfile({ ...profile, id: s.profile_id, private: undefined, shared: undefined }));
     if (!copy) return fail(res, 400, 'This profile needs a name and birth date');
     const json = JSON.stringify(copy);
     if (Buffer.byteLength(json) > 16 * 1024) return fail(res, 413, 'profile too large');

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { birthChart, panchang } from '../shared/astro.js';
 import { CATEGORIES, evaluatePrasna, getCategory } from '../shared/prasna.js';
 import { searchLocalPlaces, searchOnline } from './places.js';
-import { aiEnabled, buildContext, generateReply, runTask } from './ai.js';
+import { aiEnabled, buildContext, generateReply, runTask, ruleBasedReply } from './ai.js';
 import { authRouter, currentUser } from './auth.js';
 import { weatherRouter } from './weather.js';
 import { pushRouter, startPushScheduler } from './push.js';
@@ -21,6 +21,8 @@ import { isValidZone, zonedToUtc } from '../shared/datetime.js';
 import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
 import { findMuhurtham } from '../shared/special.js';
 import { AI_TASKS, DEADLINE_FIRST } from '../shared/narrator.js';
+import { securityHeaders, httpsRedirect, sameOriginWrites, productionConfig } from './security.js';
+import { hit } from './admin.js';
 import { evaluatePolicy, templateAnswer, deadlineNote, publicPolicy, audit, buildEvidence, publicEvidence, templateText, traceFor } from './policy/index.js';
 import { policyRouter } from './policy/routes.js';
 
@@ -32,6 +34,26 @@ function aiRateLimited(ip, max = Number(process.env.AI_RATE_LIMIT) || 40, window
   hits.push(now);
   aiHits.set(ip, hits);
   return hits.length > max;
+}
+
+/**
+ * Durable daily AI caps (SQLite, shared by every process): per signed-in person, per anonymous IP, per IP overall,
+ * and an optional global ceiling (AI_DAILY_LIMIT_GLOBAL) that protects the monthly API budget. Counted only when
+ * the model would really be called. Returns true when this call must not use the model.
+ */
+function aiDailyCapped(req, user) {
+  if (!aiEnabled() || process.env.RATE_LIMITS === 'off') return false;
+  const DAY = 24 * 3600000;
+  const lim = (k, d) => { const n = Number(process.env[k]); return Number.isFinite(n) && n >= 0 ? n : d; };
+  const checks = [
+    user ? [`aiday:u:${user.id}`, lim('AI_DAILY_LIMIT_USER', 200)] : [`aiday:anon:${req.ip}`, lim('AI_DAILY_LIMIT_ANON', 100)],
+    [`aiday:ip:${req.ip}`, lim('AI_DAILY_LIMIT_IP', 500)],
+  ];
+  const global = lim('AI_DAILY_LIMIT_GLOBAL', 0);
+  if (global > 0) checks.push(['aiday:global', global]);
+  if (checks.some(([key, max]) => hit(key, DAY, { peek: true }) >= max)) return true;
+  for (const [key] of checks) hit(key, DAY);
+  return false;
 }
 
 function openStream(res) {
@@ -89,17 +111,25 @@ function parseBirth(b) {
 
 export function createApp() {
   const app = express();
+  app.disable('x-powered-by');
   if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
+  // Security headers (CSP, HSTS on HTTPS, Permissions-Policy, no-store for /api), optional HTTPS redirect and a
+  // same-origin check for state-changing API calls (server/security.js).
+  app.use(securityHeaders({ publicDir: path.join(root, 'public') }));
+  app.use(httpsRedirect());
+  app.use(sameOriginWrites());
   app.use('/api/billing/stripe/webhook', express.raw({ type: '*/*', limit: '256kb' })); // Stripe signs the raw bytes
   app.use('/api/billing/razorpay/webhook', express.raw({ type: '*/*', limit: '256kb' })); // Razorpay signs the raw bytes
   app.use('/api/me/data', express.json({ limit: '256kb' })); // saved family profiles can be larger
   app.use(express.json({ limit: '64kb' }));
-  // Basic security headers and per-IP rate limits (in-memory; use a shared store with several instances).
-  app.use((_req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin'); res.setHeader('X-Frame-Options', 'SAMEORIGIN'); next(); });
+  // Per-IP rate limits (SQLite-backed: shared by processes on the same database).
   if (process.env.RATE_LIMITS !== 'off') {
     app.use(['/api/chart', '/api/places', '/api/weather', '/api/panchang', '/api/calendar'], rateLimit({ windowMs: 60000, max: Number(process.env.RATE_READ_PER_MIN) || 120 }));
     const writes = rateLimit({ windowMs: 10 * 60000, max: Number(process.env.RATE_WRITE_PER_10MIN) || 30 });
     app.use(['/api/store/orders', '/api/requests', '/api/billing/redeem', '/api/billing/checkout', '/api/billing/restore'], (req, res, next) => (req.method === 'POST' ? writes(req, res, next) : next()));
+    // Anonymous writes (device ids can be rotated freely): a per-IP ceiling against database spam.
+    const anonWrites = rateLimit({ windowMs: 10 * 60000, max: Number(process.env.RATE_ANON_WRITE_PER_10MIN) || 60 });
+    app.use(['/api/feedback', '/api/push/subscribe', '/api/push/test', '/api/priests/register'], (req, res, next) => (req.method === 'POST' ? anonWrites(req, res, next) : next()));
   }
   app.put('/api/me/data', familyProfileGuard); // BILLING_ENFORCE: account backup keeps the plan's profile count
   app.use('/api', authRouter());
@@ -198,7 +228,9 @@ export function createApp() {
 
     const send = wantsStream ? openStream(res) : null;
     send?.('evaluation', summary); // deterministic engine output — safe to show before the explanation
-    const reply = await generateReply({
+    // Cost guard: over the per-IP burst limit or a daily cap, the rule-based answer is used (no model call).
+    const capped = aiEnabled() && (aiRateLimited(req.ip) || aiDailyCapped(req, user));
+    const reply = capped ? { text: ruleBasedReply(ctx, evaluation, lang), source: 'rules', validation: { status: 'not_run', errors: ['rate_limited'] } } : await generateReply({
       ctx, evaluation, lang, decision, evidence, practicalNote: note,
       onUsage: (u) => recordAiCost({ userId: user?.id || null, task: 'ask', model: u.model, usage: u }),
     });
@@ -267,7 +299,7 @@ export function createApp() {
    */
   app.post('/api/ai/:task', async (req, res) => {
     const { task } = req.params;
-    if (!AI_TASKS[task]) throw new BadRequest('Unknown task');
+    if (!Object.hasOwn(AI_TASKS, task)) throw new BadRequest('Unknown task');
     const { context = {}, messages = [], lang = 'en', fallbackText = '' } = req.body || {};
     if (JSON.stringify(context).length > 20000) throw new BadRequest('Context too large');
     if (!Array.isArray(messages) || messages.length > 24) throw new BadRequest('Invalid messages');
@@ -300,6 +332,7 @@ export function createApp() {
 
     if (process.env.AI_REQUIRE_LOGIN === '1' && !user) return res.status(401).json({ error: 'Please sign in to use the AI Jothidar' });
     if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many questions — please wait a few minutes' });
+    if (aiDailyCapped(req, user)) return res.status(429).json({ error: 'Daily limit for detailed answers reached — built-in guidance keeps working' });
     const metered = billingEnforced();
     const quota = metered ? checkAiQuota(req) : null;
     if (quota && !quota.allowed) {
@@ -350,9 +383,9 @@ export function createApp() {
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
     if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Request too large' });
-    if (err instanceof BadRequest || err.type === 'entity.parse.failed') {
-      return res.status(400).json({ error: err.message });
-    }
+    if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON body' }); // never echo the body back
+    if (err instanceof BadRequest) return res.status(400).json({ error: err.message });
+    if (err.status >= 400 && err.status < 500 && err.expose) return res.status(err.status).json({ error: 'Bad request' });
     console.error(err);
     res.status(500).json({ error: 'Internal error' });
   });
@@ -360,6 +393,13 @@ export function createApp() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { errors, warnings } = productionConfig();
+  for (const w of warnings) console.warn(`⚠️  ${w}`);
+  if (errors.length) {
+    for (const e of errors) console.error(`✖ ${e}`);
+    console.error('Refusing to start in production with an unsafe configuration (docs/SECURITY-REVIEW.md).');
+    process.exit(1);
+  }
   const port = Number(process.env.PORT) || 3000;
   createApp().listen(port, '0.0.0.0', () => {
     console.log(`🪔 ${BRAND.name} running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);

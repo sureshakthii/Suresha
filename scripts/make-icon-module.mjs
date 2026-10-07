@@ -19,7 +19,7 @@ const CONCEPTS = {
   vratham: 'sparkles', life: 'telescope', chat: 'message-circle', ask: 'circle-help',
   couple: 'heart-handshake', porutham: 'heart', gunamilan: 'calculator', partners: 'handshake',
   vargas: 'grid-3x3', numerology: 'hash', muhurtham: 'calendar-check', calendar: 'calendar-days',
-  analysis: 'scroll-text', relations: 'users', parigaram: 'flame-kindling', temples: 'landmark',
+  analysis: 'scroll-text', dosham: 'shield-check', relations: 'users', parigaram: 'flame-kindling', temples: 'landmark',
   mantras: 'music', weather: 'cloud-sun', reminders: 'alarm-clock', names: 'baby', thivasam: 'hand-heart',
   starbday: 'cake', ruthu: 'flower-2', live: 'moon-star', about: 'info', more: 'menu', vehicle: 'car',
   plans: 'crown', family: 'users-round', settings: 'settings', share: 'share-2', print: 'printer',
@@ -37,7 +37,7 @@ const GROUPS = {
   daily: ['panchangam', 'calendar', 'muhurtham', 'vratham', 'live', 'weather', 'reminders', 'templeplan'],
   personal: ['roadmap', 'health', 'guide', 'life', 'analysis', 'vargas', 'numerology', 'peyarchi', 'starbday', 'family'],
   match: ['couple', 'porutham', 'gunamilan', 'partners', 'relations', 'matching'],
-  spiritual: ['parigaram', 'mantras', 'temples', 'thivasam', 'names', 'ruthu'],
+  spiritual: ['dosham', 'parigaram', 'mantras', 'temples', 'thivasam', 'names', 'ruthu'],
   services: ['seva', 'priests', 'store', 'packages', 'plans', 'invite'],
   help: ['chat', 'ask', 'about', 'feedback', 'legal', 'admin', 'safeguards'],
 };

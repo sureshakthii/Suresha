@@ -3,6 +3,7 @@
 //   • Nothing is uploaded unless the person's "Back up family profiles" consent is on (Privacy & data).
 //   • A profile marked private (🔒) never leaves this phone, even with backup on.
 //   • Saved goals (shared/goals.js) ride along only with the same consent, and never a goal of a private profile.
+//   • The diary (shared/journal.js) needs the backup consent AND its own switch (consent.journal), off by default.
 
 /** Goals that may leave the phone: never a goal of a private profile, never one marked private. */
 export function shareableGoals(goals, privateIds = new Set()) {
@@ -15,7 +16,7 @@ export const isPrivateProfile = (m) => Boolean(m && m.private);
 /**
  * The data to upload, or null when nothing may be uploaded.
  * @param {{family?: object[], activeId?: string|null, ancestors?: object[], goals?: {goals: object[], deleted?: string[]}|null}} local
- * @param {{backup?: boolean}} consent
+ * @param {{backup?: boolean, journal?: boolean}} consent
  */
 export function backupPayload(local, consent) {
   if (!consent || consent.backup !== true) return null;
@@ -27,7 +28,21 @@ export function backupPayload(local, consent) {
     const privateIds = new Set((Array.isArray(local?.family) ? local.family : []).filter(isPrivateProfile).map((m) => m.id));
     out.goals = { v: 1, goals: shareableGoals(local.goals.goals, privateIds), deleted: Array.isArray(local.goals.deleted) ? local.goals.deleted.slice(-200) : [] };
   }
+  // Thunai diary (shared/journal.js): private on the phone by default. It rides along only when the backup consent
+  // AND the separate diary switch are both on — never an entry of a private profile or one marked private.
+  if (consent.journal === true && local?.journal && Array.isArray(local.journal.entries)) {
+    const privateIds = new Set((Array.isArray(local?.family) ? local.family : []).filter(isPrivateProfile).map((m) => m.id));
+    out.journal = shareableJournal(local.journal, privateIds);
+  }
   return out;
+}
+
+/** Diary entries that may leave the phone (newest 300, notes capped) — never private ones or a private profile's. */
+export function shareableJournal(journal, privateIds = new Set()) {
+  const entries = (Array.isArray(journal?.entries) ? journal.entries : [])
+    .filter((e) => e && !e.private && !(e.personId && privateIds.has(e.personId)))
+    .slice(-300).map((e) => ({ ...e, note: typeof e.note === 'string' ? e.note.slice(0, 600) : '' }));
+  return { v: 1, entries, deleted: Array.isArray(journal?.deleted) ? journal.deleted.slice(-200) : [], days: Array.isArray(journal?.days) ? journal.days.slice(-400) : [] };
 }
 
 /**

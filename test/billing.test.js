@@ -84,7 +84,7 @@ test('plans in INR (default) and USD', async () => {
   const usd = await (await req('GET', '/api/billing/plans?currency=USD')).json();
   assert.equal(usd.currency, 'USD');
   assert.equal(usd.plans.find((p) => p.id === 'personal_month').amount, 4.99);
-  assert.deepEqual(usd.plans.find((p) => p.id === 'personal_year').price, { INR: 1999, USD: 49 });
+  assert.deepEqual(usd.plans.find((p) => p.id === 'personal_year').price, { INR: 1999, AED: 179, USD: 49 });
   assert.equal((await req('GET', '/api/billing/plans?currency=EUR')).status, 400);
 });
 
@@ -180,7 +180,7 @@ test('Stripe checkout session (USD) is created with the right form fields', asyn
     call = { url, opts };
     return new Response(JSON.stringify({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/pay/cs_test_1' }), { status: 200 });
   });
-  const res = await req('POST', '/api/billing/checkout', { plan: 'family_month', currency: 'USD' }, as(chitra));
+  const res = await req('POST', '/api/billing/checkout', { plan: 'family_month', country: 'US', currency: 'USD' }, as(chitra));
   assert.equal(res.status, 200);
   const out = await res.json();
   assert.deepEqual(out, { subscriptionId: out.subscriptionId, gateway: 'stripe', url: 'https://checkout.stripe.com/c/pay/cs_test_1' });

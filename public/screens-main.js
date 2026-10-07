@@ -5,6 +5,7 @@ import { buildContext, ruleBasedReply } from './shared/narrator.js';
 import { tamilDay } from './shared/tamilcal.js';
 import { grahaStrength, dailyParigaram, NAVAGRAHA } from './shared/remedies.js';
 import { doshams } from './shared/porutham.js';
+import { diagnoseDoshams, primarySthalam } from './shared/dosham.js';
 import { nameLetters } from './shared/special.js';
 import { timeReliability } from './shared/birthtime.js';
 import {
@@ -32,6 +33,7 @@ import { ageProfile, suggestionsFor, categoryAllowed, childSafe } from './shared
 import { compatCardHtml, bindCompatCard } from './compat-card.js';
 import { weekCardHtml, fillWeekCard } from './screens-week.js';
 import { goalsCardHtml } from './screens-goals.js';
+import { growHomeHtml } from './screens-journal.js'; // morning brief + diary / delight cards (also registers diary & dailyset)
 
 /** Age profile of a family member (calendar age today at the selected place) — the top-most filter on every card. */
 export const ageOf = (m) => ageProfile(m, { tz: state.loc?.tz });
@@ -258,6 +260,7 @@ function renderHome(sec) {
     ${whoChips(m)}
     ${searchPill()}
     <div class="dsk-cols home-dash"><div class="dsk-col">
+    ${growHomeHtml(m, snap, loc, td)}
     ${todayPlanCard(m, snap, loc, td)}
     ${timeStrip(td, snap, loc)}
     ${weekCardHtml()}
@@ -411,7 +414,14 @@ function parigaramCard(snap) {
   // Faith and age first: another faith gets every-faith practices, a child gets child-safe ones.
   const person = m && m.relation !== 'organization' ? m : null;
   const items = dailyParigaram({ weekday: snap.weekday.index, chart: person && chartOf(person), snapshot: snap, faith: person ? faithOf(person) : 'hindu', profile: person ? ageOf(person) : null, now: new Date() }).slice(0, 2);
+  // An adult with doshams: the dosham-based parigara sthalam first (shared/dosham.js), then today's practices.
+  let ds = null;
+  try {
+    const prof = person ? ageOf(person) : null;
+    if (person && prof && !prof.minor && !prof.unknown) ds = primarySthalam(diagnoseDoshams(chartOf(person), { minor: prof.minor, age: prof.age }), { faith: faithOf(person) });
+  } catch (e) { console.warn('dosham', e); }
   return `<div class="card glass" data-go="parigaram"><div class="card-title"><span>🪔 ${L('Today\'s parigaram', 'இன்றைய பரிகாரம்')}${m ? ` · ${esc(displayName(m))}` : ''}</span><span class="link-btn">${L('All', 'அனைத்தும்')} ›</span></div>
+    ${ds ? `<div class="pari-row dz-today"><span class="pg">🛕</span><div><b>${esc(bi(ds.item.name))} — ${esc(bi(ds.sthalam.name))}</b><p class="small">${esc(bi(ds.sthalam.why))}${ds.day ? ` · 📅 ${esc(bi(ds.day))}` : ''}</p></div></div>` : ''}
     ${items.map((i) => `<div class="pari-row"><span class="pg" style="color:${COLOR[i.planet]}">${GLYPH[i.planet]}</span><div><b>${esc(bi(i.reason))}</b><p>${esc(bi(i.free))}</p></div></div>`).join('')}</div>`;
 }
 

@@ -29,6 +29,7 @@ import { askThunai, askSuggestions, childGeneralAnswer, LIMITED_LABEL } from './
 import { ageProfile, isAdult, MATCH_ADULTS_NOTE } from './shared/age-guard.js';
 import { dailyReview } from './shared/daily.js';
 import { hymnText } from './hymn-links.js';
+import { diagnoseDoshams, nivarthiPlan } from './shared/dosham.js';
 import { clarityPrompt } from './growth.js';
 
 const wait = () => new Promise((r) => setTimeout(r, 40));
@@ -376,7 +377,7 @@ function renderParigaram(sec) {
       <p class="mantra">📿 ${hymnText(bi(n.mantra))} <button class="link-btn say" data-say="${esc(mantraOnly(n.mantra))}" aria-label="Read aloud">🔊</button></p>
       <p class="muted small">💎 ${L('Gemstone', 'ரத்தினம்')}: ${esc(bi(n.gem))} — ${L('wear only after a careful personal consultation; it is never required.', 'கவனமான தனிப்பட்ட ஆலோசனைக்குப் பின் மட்டும் அணியவும்; இது கட்டாயமல்ல.')}</p></details>`;
   };
-  const rec = c && hindu ? sthalamPicks(c, weak) : [];
+  const rec = c && hindu ? sthalamPicks(c, weak, prof) : [];
   const cards = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'].map((k) => card(k, hindu && weak.includes(k))).join('');
   sec.innerHTML = `${subHeader(L('Parigaram', 'பரிகாரம்'), hindu ? L('Simple, free remedies first — for peace, health and prosperity', 'எளிய இலவச பரிகாரங்கள் முதலில் — அமைதி, ஆரோக்கியம், செல்வத்திற்கு') : L('Simple practices that fit every faith — prayer in your own way, charity, discipline and service', 'எல்லா நம்பிக்கைக்கும் பொருந்தும் எளிய வழிகள் — உங்கள் வழியில் பிரார்த்தனை, தானம், ஒழுக்கம், சேவை'))}
     ${rec.length ? sthalamCard(rec, m) : ''}
@@ -402,20 +403,29 @@ function renderParigaram(sec) {
 }
 
 // Recommended parigara sthalam(s) from the running Dasa / Bhukti lords and the weakest planet.
-function sthalamPicks(c, weak) {
+// When the person (an adult) has doshams, the dosham-based sthalam comes first (shared/dosham.js).
+function sthalamPicks(c, weak, prof = null) {
   const now = new Date();
   const md = c.dasa?.current?.lord, ad = c.dasa?.currentBhukti?.lord;
   const picks = [];
+  if (prof && !prof.minor) {
+    const diag = diagnoseDoshams(c, { now, minor: prof.minor, age: prof.age });
+    for (const it of diag.items.filter((x) => !x.current).slice(0, 2)) {
+      const st = nivarthiPlan(it, { faith: 'hindu' }).sthalams.find((x) => !picks.some((p) => p.temple.id === x.id));
+      const t = st && TEMPLES.find((x) => x.id === st.id);
+      if (t) picks.push({ planet: t.planet || null, dosham: it.kind, why: L(`For ${it.name.en} — ${it.condition.en}`, `${it.name.ta} நிவர்த்திக்கு — ${it.condition.ta}`), temple: t });
+    }
+  }
   const add = (planet, why) => {
     if (!planet || picks.some((p) => p.planet === planet)) return;
     const t = TEMPLES.find((x) => x.planet === planet);
+    if (t && picks.some((p) => p.temple.id === t.id)) return;
     if (t) picks.push({ planet, why, temple: t });
   };
   add(md, L(`Your running ${planet(md)} Dasa`, `நடப்பு ${planet(md)} தசை`));
   add(ad, L(`Your running ${planet(ad)} Bhukti`, `நடப்பு ${planet(ad)} புக்தி`));
   add(weak[0], L(`${planet(weak[0])} needs support in your chart`, `உங்கள் ஜாதகத்தில் ${planet(weak[0])} பலம் பெற`));
-  void now;
-  return picks.slice(0, 3);
+  return picks.slice(0, 4);
 }
 const planet = (k) => (k ? planetName(k) : '');
 const DAY_OF = { Sun: 0, Moon: 1, Mars: 2, Mercury: 3, Jupiter: 4, Venus: 5, Saturn: 6, Rahu: 6, Ketu: 2 };

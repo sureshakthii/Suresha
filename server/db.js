@@ -38,8 +38,11 @@ const SCHEMA = `
 export function getDb() {
   if (db) return db;
   const file = process.env.DB_PATH || 'data/kaippesi.db';
-  if (file !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
+  if (file !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true, mode: 0o700 });
   db = new DatabaseSync(file);
+  // Personal data (birth details of families and children): the database is readable by the service user only.
+  // SQLite creates the -wal / -shm files with the same permissions as the database file.
+  if (file !== ':memory:') { try { fs.chmodSync(file, 0o600); } catch { /* not the owner (e.g. a mounted volume) */ } }
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   db.exec(SCHEMA);
   return db;

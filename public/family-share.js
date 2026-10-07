@@ -4,7 +4,7 @@
 import {
   state, $, $$, L, esc, api, STATIC, store, go, toast, saveFamily, displayName, nameInLang,
 } from './core.js';
-import { canShareProfile, shareableProfile, mergeSharedProfiles } from './shared/sync-policy.js';
+import { canShareProfile, shareableProfile, mergeSharedProfiles, SHARE_FIELDS } from './shared/sync-policy.js';
 
 const JOIN_KEY = 'kj_join_code';
 const SEEN_KEY = 'kj_share_seen'; // shareId -> updatedAt of the last copy this phone applied or pushed
@@ -24,6 +24,22 @@ export const pendingJoinCode = () => store.get(JOIN_KEY, null);
 
 let last = null; // the latest GET /api/family overview
 let syncing = null;
+
+// Profiles from other accounts are data, never markup: only the share fields are kept and HTML-significant
+// characters in their text become look-alikes, so a name can never inject HTML into any screen of this app.
+const NEUTRAL = { '<': '‹', '>': '›', '"': '”', "'": '’', '`': 'ʼ' };
+const neutral = (v) => (typeof v === 'string' ? v.replace(/[<>"'`]/g, (c) => NEUTRAL[c]) : v);
+export function cleanIncoming(p) {
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
+  const out = {};
+  for (const k of SHARE_FIELDS) {
+    if (!Object.hasOwn(p, k)) continue;
+    if (k === 'kattam') { if (p.kattam && typeof p.kattam === 'object' && !Array.isArray(p.kattam)) out.kattam = JSON.parse(JSON.stringify(p.kattam)); continue; }
+    if (typeof p[k] === 'string' || typeof p[k] === 'number') out[k] = neutral(p[k]);
+  }
+  return out;
+}
+const cleanReceived = (list) => (Array.isArray(list) ? list : []).map((s) => ({ ...s, by: s.by && { ...s.by, name: neutral(s.by.name) }, profile: cleanIncoming(s.profile) })).filter((s) => s.profile);
 
 const sameCopy = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
 
@@ -59,7 +75,7 @@ async function doSync() {
       continue;
     }
     if (s.editedByOther && s.updatedAt > (seen[s.id] || 0) && s.profile) {
-      Object.assign(local, s.profile, { id: local.id }); // a family member with edit permission changed it
+      Object.assign(local, cleanIncoming(s.profile), { id: local.id }); // a family member with edit permission changed it
       seen[s.id] = s.updatedAt; changed = true;
     } else if (!sameCopy(shareableProfile(local), s.profile)) {
       try { const r = await api(`/api/family/shares/${s.id}/profile`, { method: 'PUT', body: { profile: local } }); seen[s.id] = r.share.updatedAt; } catch { /* next time */ }
@@ -67,7 +83,7 @@ async function doSync() {
   }
   store.set(SEEN_KEY, seen);
   const before = JSON.stringify(state.family.filter((m) => m.shared));
-  state.family = mergeSharedProfiles(state.family, ov.sharedWithMe || []);
+  state.family = mergeSharedProfiles(state.family, cleanReceived(ov.sharedWithMe));
   if (changed || before !== JSON.stringify(state.family.filter((m) => m.shared))) { fixActive(); saveFamily(); }
   try { ov = await api('/api/family'); } catch { /* keep the first answer */ }
   last = ov;

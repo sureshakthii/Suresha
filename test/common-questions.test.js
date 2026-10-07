@@ -117,6 +117,11 @@ const CHECKS = {
   steps_first: (a) => /first thing to do|முதலில் செய்ய வேண்டியது/.test(first(a)),
   decision: (a) => /decision|decide|முடிவு|now rather than later|இப்போதே|a little later|சற்றுப் பொறுத்து|between the two|இரண்டில்|leans|சாய்கிறது|supports both|இரண்டையும் ஆதரிக்கிறது/i.test(first(a)),
   status_label: (a) => /^(Now: |இப்போதைய நிலை: )/m.test(first(a)),
+  // Dosham & nivarthi engine (shared/dosham.js): a delay answer names the doshams for that area (or says none),
+  // a parigaram / kovil question names the sthalam, and every plan is framed as belief, not a guarantee.
+  dosham_area: (a) => /dosh|தோஷ/i.test(sec(a, 'dosham')),
+  nivarthi_sthalam: (a) => /sthalam|temple|kovil|koil|தலம்|கோவில்/i.test(sec(a, 'remedy', 'dosham')),
+  belief_framing: has(/not a guarantee|உத்தரவாதம் அல்ல/i),
   calibrated: (a) => /support|ஆதரவு|step by step|படிப்படியாக|supportive timing|சாதகமான காலத்தை/i.test(first(a)) && /not a promise|உறுதிமொழி அல்ல|never a yes or no|தீர்மானிப்பதில்லை/i.test(first(a)),
 };
 const first = (a) => ((a.sections || []).find((s) => s.key === 'answer')?.lines || []).join('\n');

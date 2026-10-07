@@ -14,6 +14,8 @@ import { REPORT_YEARS, horizonLabel } from './shared/report-horizon.js';
 import * as HEALTH from './shared/health.js';
 import { ingresses } from './shared/peyarchi.js';
 import { doshams } from './shared/porutham.js';
+import { diagnoseDoshams, doshamsForArea, nivarthiPlan, FRAMING, DOSHAM_KINDS } from './shared/dosham.js';
+const DOSHAM_DOCTOR = DOSHAM_KINDS.putra.doctor;
 import { nameLetters } from './shared/special.js';
 import { isHinduFaith, universalPractice, faithBlessing } from './shared/faith.js';
 import { ageProfile, topicAllowed, ageGuardAnswer, guardAnswer, suggestionsFor, facilitationCheck, policyAnswer, childGeneralAnswer, LIMITED_LABEL, LIMITS_LINE } from './shared/age-guard.js';
@@ -999,59 +1001,164 @@ function saniAnswer({ question, chart, rel, lang, name, life, now }) {
   return done(guardAnswer(out, profile, lang), lang, rel);
 }
 
-/** Chevvai (Mars) and Rahu–Ketu dosham from the chart, explained calmly; disputed labels are named as disputed. */
+// ------------------------------------------------------------------ doshams & nivarthi (shared/dosham.js)
+/** The dosham diagnosis for the open chart (an unknown birth time drops the Lagna, as everywhere in Ask). */
+function doshamDiag(chart, rel, life, now) {
+  const c = rel?.lagna === false && chart.planets.Lagna ? { ...chart, planets: Object.fromEntries(Object.entries(chart.planets).filter(([k]) => k !== 'Lagna')) } : chart;
+  const prof = ageProfile(life.birthDate || chart, { now, tz: chart.tz });
+  return diagnoseDoshams(c, { now, minor: prof.minor, age: prof.age });
+}
+const SEV_WORD = { mild: T('mild', 'லேசானது'), moderate: T('moderate', 'மிதமானது'), strong: T('strong', 'வலுவானது') };
+/** One dosham in a line: name — condition (strength, active now) — "traditional; some astrologers differ". */
+function doshamLine(it, lang) {
+  const L = say(lang);
+  const act = it.timing?.activeNow ? L(', active now', ', இப்போது நடப்பில்') : '';
+  return L(`${it.name.en} — ${it.condition.en} (${SEV_WORD[it.severity].en}${act})${it.disputed ? ' — traditional; some astrologers differ' : ''}.`,
+    `${it.name.ta} — ${it.condition.ta} (${SEV_WORD[it.severity].ta}${act})${it.disputed ? ' — மரபு வழக்கு; சில ஜோதிடர்கள் ஏற்பதில்லை' : ''}.`);
+}
+/** The nivarthi plan for one dosham as answer lines: sthalam(s) with the reason, day, period, home practice. */
+function nivarthiLines(it, faith, lang) {
+  const L = say(lang);
+  const p = nivarthiPlan(it, { faith });
+  const out = [];
+  if (isHinduFaith(faith)) {
+    const [s1, s2] = p.sthalams;
+    if (s1) out.push(L(`Parigara sthalam for ${it.name.en}: ${s1.name.en} (${s1.town}) — ${s1.why.en} ${s1.todo.en}`, `${it.name.ta} நிவர்த்திக்குப் பரிகாரத் தலம்: ${s1.name.ta} — ${s1.why.ta} ${s1.todo.ta}`));
+    if (s2) out.push(L(`Also traditional: ${s2.name.en} — ${s2.why.en}`, `மேலும் மரபு: ${s2.name.ta} — ${s2.why.ta}`));
+    if (p.day) out.push(L(`Best day / time: ${p.day.en}. Best period: ${p.period.en}`, `சிறந்த நாள் / நேரம்: ${p.day.ta}. சிறந்த காலம்: ${p.period.ta}`));
+    if (p.home[0]) out.push(L(`At home (free): ${p.home[0].text.en}`, `வீட்டில் (இலவசம்): ${p.home[0].text.ta}`));
+  } else {
+    for (const u of p.universal.slice(0, 2)) out.push(pick(u, lang));
+    out.push(L(`Best period: ${p.period.en}`, `சிறந்த காலம்: ${p.period.ta}`));
+    out.push(pick(p.blessing, lang));
+  }
+  if (p.doctor) out.push(pick(p.doctor, lang));
+  return out;
+}
+const DOSHAM_AREA = { marriage: 'marriage', second_marriage: 'marriage', child: 'children', job: 'career', career: 'career', job_change: 'career', business: 'career' };
+const WORK_DELAY = /late|delay|thalli|தள்ளி|தாமத|kidaikk?ala|kedaikk?ala|varala|innum|இன்னும்|dosh|தோஷ|thadai|தடை|கிடைக்கவில்லை|கிடைக்கல/i;
+const DELAY_WORD = /late|delay|thalli|தள்ளி|தாமத|thaamath|thamath|kidaikk?ala|kedaikk?ala|nadakk?ala|varala|innum|இன்னும்|\byen\b|\bwhy\b|ஏன்|dosh|தோஷ|thadai|தடை/i;
+/**
+ * "Why is my marriage delayed?" / "kulanthai yen late?" / "velai yen kidaikkala?": the doshams tradition links with
+ * that area, with the nivarthi plan for the most important one (sthalam, day, period), placed after the answer.
+ */
+function withAreaDoshams(a, { topic, chart, rel, life, lang, now, faith }) {
+  const area = DOSHAM_AREA[topic];
+  if (!area || !a?.sections) return a;
+  const L = say(lang);
+  let diag;
+  try { diag = doshamDiag(chart, rel, life, now); } catch { return a; }
+  if (!diag.available || diag.minor) return a;
+  const its = doshamsForArea(diag, area === 'career' ? 'job' : area === 'children' ? 'child' : area).slice(0, 3);
+  const areaWord = { marriage: T('marriage', 'திருமண'), children: T('children', 'குழந்தை பாக்கிய'), career: T('work', 'வேலை') }[area];
+  // Compact: the doshams in one line each, then ONE nivarthi line (sthalam + day), then the belief framing.
+  const PREF = { children: ['putra'], marriage: ['kalathra', 'rahuketu', 'chevvai'], career: [] }[area];
+  const target = its.find((it) => PREF.includes(it.kind)) || its[0];
+  const nv = target ? nivarthiLines(target, faith, lang) : [];
+  const lines = its.length
+    ? [L(`Doshams tradition links with ${areaWord.en} delay in your chart (${pick(FRAMING.notCurse, 'en').toLowerCase().replace(/\.$/, '')}):`, `உங்கள் ஜாதகத்தில் ${areaWord.ta}த் தாமதத்துடன் மரபு இணைக்கும் தோஷங்கள் (${pick(FRAMING.notCurse, 'ta').replace(/\.$/, '')}):`), ...its.map((it) => doshamLine(it, lang)), `${nv[0] || ''}${nv[2] ? ` ${nv[2]}` : ''}`.trim(), ...(nv.find((l) => l === pick(DOSHAM_DOCTOR, lang)) ? [pick(DOSHAM_DOCTOR, lang)] : []), pick(FRAMING.belief, lang)].filter(Boolean)
+    : [L(`No traditional dosham in your chart is linked to ${areaWord.en} by the common rules — the timing comes from the running periods and transits above.`, `பொதுவிதிப்படி ${areaWord.ta}த்துடன் தொடர்புடைய மரபு தோஷம் உங்கள் ஜாதகத்தில் இல்லை — காலம் மேலே உள்ள தசை, கோசாரத்திலிருந்தே.`)];
+  const at = Math.max(1, a.sections.findIndex((s) => s.key === 'answer') + 1);
+  const sections = [...a.sections];
+  sections.splice(at, 0, { key: 'dosham', title: L('Doshams & nivarthi (traditional)', 'தோஷங்கள் & நிவர்த்தி (மரபு)'), lines });
+  const actions = [...(a.actions || [])];
+  if (its.length && !actions.some((x) => x.go === 'dosham')) actions.push({ go: 'dosham', label: L('Doshams & remedies', 'தோஷங்கள் & நிவர்த்தி') });
+  return { ...a, sections, actions, text: textOf(sections) };
+}
+
+/** "Enna dosham irukku?" / "Rahu dosham parigaram kovil" — every traditional dosham in the chart, the one asked
+ * about first, and its nivarthi plan (sthalam, day, period, free home practice). No fear, never a promise. */
 function doshamAnswer({ question, chart, rel, lang, name, life, now }) {
   const L = say(lang);
   if (!chart) return null;
   const profile = ageProfile(life.birthDate || chart, { now, tz: chart.tz });
-  // Dosham is read only for marriage matching after 18 — a child hears nothing frightening.
+  // Dosham is read only for adults — a child hears nothing frightening.
   const faith = faithFor(life.faith, question);
   if (!profile.adult && !profile.organization) return done({ ...ageGuardAnswer({ topic: 'porutham', profile, lang, name, question, faith }), topic: 'dosham' }, lang, rel);
   const subj = subjectOf(question);
   const planets = rel?.lagna === false ? Object.fromEntries(Object.entries(chart.planets).filter(([k]) => k !== 'Lagna')) : chart.planets;
   let d = null;
   try { d = doshams(planets); } catch { d = null; }
+  let diag = null;
+  try { diag = doshamDiag(chart, rel, life, now); } catch (e) { console.warn('dosham', e); }
+  const items = diag?.items || [];
   const answer = [];
   if (subj && ['child', 'grandchild'].includes(subj.kind)) answer.push(L(`For ${subj.en}, dosham is read from their own horoscope — add them in Family and ask again. Here is how it is read, using your chart as the example.`, `${subj.ta} பற்றி தோஷம் அவர்களின் சொந்த ஜாதகத்திலிருந்தே பார்க்கப்படும் — குடும்பம் பகுதியில் சேர்த்து மீண்டும் கேளுங்கள். எப்படிப் பார்க்கப்படுகிறது என்பதற்கு உங்கள் ஜாதகம் உதாரணமாக:`));
   const qd = normQ(question);
-  const askedLabel = /kaa?la ?sarpa|kalasarpa|காலசர்ப்ப/.test(qd) ? T('Kala Sarpa', 'காலசர்ப்ப') : /naga|நாக/.test(qd) ? T('Naga', 'நாக') : /pithru|pitru|பித்ரு/.test(qd) ? T('Pithru', 'பித்ரு') : /puthira|புத்திர/.test(qd) ? T('Puthira', 'புத்திர') : null;
-  const askedRK = /rahu|ketu|ராகு|கேது/.test(qd);
-  const remedyAsked = /parigar|pariharam|parihar|parikaram|remed|பரிகார|enna (seiy|pann)|என்ன செய்/.test(qd);
+  const ASKED = [
+    [/kaa?la ?sarpa|kalasarpa|காலசர்ப்ப|கால சர்ப்ப/, 'kalasarpa', T('Kala Sarpa', 'கால சர்ப்ப')], [/naga|நாக/, 'naga', T('Naga', 'நாக')], [/pithru|pitru|பித்ரு/, 'pitru', T('Pithru', 'பித்ரு')],
+    [/puthira|putra|santhana|புத்திர|சந்தான/, 'putra', T('Putra', 'புத்திர')], [/kalathra|களத்திர/, 'kalathra', T('Kalathra', 'களத்திர')], [/guru ?chandala|சண்டாள/, 'guruchandala', T('Guru Chandala', 'குரு சண்டாள')],
+    [/sani|shani|saturn|சனி/, 'sani', T('Sani', 'சனி')], [/rahu|ketu|sarpa|ராகு|கேது|சர்ப்ப/, 'rahuketu', T('Rahu–Ketu', 'ராகு–கேது')], [/chevvai|sevvai|mangal|manglik|செவ்வாய்/, 'chevvai', T('Chevvai', 'செவ்வாய்')],
+  ];
+  const asked = ASKED.find(([re]) => re.test(qd));
+  const askedKinds = asked ? (asked[1] === 'sani' ? ['sani', 'sanisevvai', 'shrapit', 'sanitransit'] : asked[1] === 'rahuketu' ? ['rahuketu', 'kalasarpa', 'naga', 'grahana'] : [asked[1]]) : [];
+  const remedyAsked = /parigar|pariharam|parihar|parikaram|remed|பரிகார|nivar|நிவர்த்தி|kovil|koil|temple|கோவில்|enna (seiy|pann)|என்ன செய்/.test(qd);
   const lead0 = answer.length;
+  const askedItem = items.find((it) => askedKinds.includes(it.kind));
+  if (asked && !['chevvai', 'rahuketu'].includes(asked[1])) {
+    answer.push(askedItem ? L(`${asked[2].en} dosham, which you asked about: by the traditional rule it is present in your chart — ${doshamLine(askedItem, 'en')}`, `நீங்கள் கேட்ட ${asked[2].ta} தோஷம்: மரபு விதிப்படி உங்கள் ஜாதகத்தில் உண்டு — ${doshamLine(askedItem, 'ta')}`)
+      : L(`${asked[2].en} dosham, which you asked about: by the traditional rule Thunai uses, it is not present in your chart${diag?.hasLagna === false && ['putra', 'kalathra', 'naga'].includes(asked[1]) ? ' (this one needs the birth time)' : ''}.`, `நீங்கள் கேட்ட ${asked[2].ta} தோஷம்: துணை பயன்படுத்தும் மரபு விதிப்படி உங்கள் ஜாதகத்தில் இல்லை${diag?.hasLagna === false && ['putra', 'kalathra', 'naga'].includes(asked[1]) ? ' (இதற்குப் பிறந்த நேரம் தேவை)' : ''}.`));
+    if (['kalasarpa', 'naga', 'pitru', 'guruchandala'].includes(asked[1])) answer.push(L('This label is traditional; some astrologers differ on it, and many people told they have it live full family lives.', 'இது மரபு வழக்குப் பெயர்; சில ஜோதிடர்கள் இதை ஏற்பதில்லை; இது இருப்பதாகச் சொல்லப்பட்ட பலர் நிறைவான குடும்ப வாழ்க்கை வாழ்கின்றனர்.'));
+  }
   const cv = d?.chevvai;
+  const cvLines = [];
   if (cv) {
     const refs = [cv.fromLagna && L(`${ordEn(cv.fromLagna)} from Lagna`, `லக்னத்திலிருந்து ${cv.fromLagna}-ம் இடம்`), cv.fromMoon && L(`${ordEn(cv.fromMoon)} from the Moon`, `சந்திரனிலிருந்து ${cv.fromMoon}-ம் இடம்`)].filter(Boolean).join(L(' and ', ', '));
-    answer.push(cv.present
+    cvLines.push(cv.present
       ? L(`Chevvai (Mars) dosham: yes, by the common rule — Mars is ${refs}, and the rule counts the 2nd, 4th, 7th, 8th and 12th.${cv.exceptions?.length ? ` ${cv.exceptions.length} traditional exception(s) also apply in your chart.` : ''}`, `செவ்வாய் தோஷம்: பொதுவிதிப்படி உண்டு — செவ்வாய் ${refs}; இந்த விதி 2, 4, 7, 8, 12-ம் இடங்களை எண்ணும்.${cv.exceptions?.length ? ` உங்கள் ஜாதகத்தில் ${cv.exceptions.length} மரபு விலக்கும் உள்ளது.` : ''}`)
       : L(`Chevvai (Mars) dosham: no — Mars is ${refs}, which the common rule (2nd, 4th, 7th, 8th, 12th) does not count.`, `செவ்வாய் தோஷம்: இல்லை — செவ்வாய் ${refs}; பொதுவிதி (2, 4, 7, 8, 12) இதை எண்ணுவதில்லை.`));
   }
   const rk = d?.rahuKetu;
+  const rkLines = [];
   if (rk && rk.present !== null) {
     const rh = rk.rahuHouse ?? rk.references?.moon?.rahuHouse;
-    answer.push(rk.present
+    rkLines.push(rk.present
       ? L(`Rahu–Ketu dosham: present by the common rule (Rahu ${ordEn(rh)}).`, `ராகு–கேது தோஷம்: பொதுவிதிப்படி உண்டு (ராகு ${rh}-ம் இடத்தில்).`)
       : L(`Rahu–Ketu dosham: not present by the common rule (Rahu ${ordEn(rh)}).`, `ராகு–கேது தோஷம்: பொதுவிதிப்படி இல்லை (ராகு ${rh}-ம் இடத்தில்).`));
+  } else if (rk && rk.present === null) rkLines.push(L('Rahu–Ketu dosham is counted from the Lagna, which needs the birth time.', 'ராகு–கேது தோஷம் லக்னத்திலிருந்து எண்ணப்படும்; அதற்குப் பிறந்த நேரம் தேவை.'));
+  answer.push(...(asked?.[1] === 'rahuketu' ? [...rkLines, ...cvLines] : [...cvLines, ...rkLines]));
+  // The other traditional doshams in the chart (most important first; lighter ones only counted).
+  const others = items.filter((it) => !['chevvai', 'rahuketu'].includes(it.kind) && it !== askedItem);
+  const mainOthers = others.filter((it) => it.severity !== 'mild').slice(0, 3);
+  if (mainOthers.length) answer.push(L('Other doshams tradition reads in your chart:', 'உங்கள் ஜாதகத்தில் மரபு காணும் மற்ற தோஷங்கள்:'), ...mainOthers.map((it) => doshamLine(it, lang)));
+  const lighter = others.length - mainOthers.length;
+  if (lighter > 0) answer.push(L(`${lighter} lighter note(s) are listed on the Doshams & remedies screen.`, `மேலும் ${lighter} லேசான குறிப்பு(கள்) "தோஷங்கள் & நிவர்த்தி" பக்கத்தில் உள்ளன.`));
+  void lead0;
+  // The plan: the dosham asked about, else the most important one.
+  const target = askedItem || (asked?.[1] === 'rahuketu' ? items.find((it) => it.kind === 'rahuketu') : asked?.[1] === 'chevvai' ? items.find((it) => it.kind === 'chevvai') : null) || items.find((it) => !it.current) || items[0];
+  const timingLine = target?.timing?.text ? [`${pick(target.name, lang)}: ${pick(target.timing.text, lang)}`] : [];
+  const calm = [L('A dosham is not a curse — there is a nivarthi, and no need to fear it. Chevvai dosham is common in many charts; in marriage matching it is compared like with like (dosha samyam), so a good match is always possible.', 'தோஷம் சாபம் அல்ல — நிவர்த்தி உண்டு; பயப்பட வேண்டாம். செவ்வாய் தோஷம் பலருக்கும் உண்டு. திருமணப் பொருத்தத்தில் இது ஒரே வகையுடன் ஒப்பிடப்படுகிறது (தோஷ சாம்யம்); எனவே நல்ல பொருத்தம் எப்போதும் சாத்தியம்.'),
+    L('You do not need any costly pooja, homam or gemstone; a simple free practice is enough, and temple poojas only through the official temple counter.', 'விலையுயர்ந்த பூஜை, ஹோமம், ரத்தினம் எதுவும் தேவையில்லை; இலவச எளிய வழிபாடே போதும்; கோவில் பூஜை அதிகாரப்பூர்வ கோவில் கவுண்டரில் மட்டும்.')];
+  const rem = target ? nivarthiLines(target, faith, lang)
+    : isHinduFaith(faith) ? [L('If you wish: on Tuesdays light a lamp for Lord Murugan and recite Kanda Sashti Kavasam — free and simple.', 'விரும்பினால்: செவ்வாய்தோறும் முருகனுக்குத் தீபம் ஏற்றி கந்த சஷ்டி கவசம் சொல்லுங்கள் — இலவசம், எளிது.')]
+      : [pick(universalPractice('Mars'), lang), pick(faithBlessing(faith) || faithBlessing('other'), lang)];
+  rem.push(pick(FRAMING.belief, lang));
+  // "Which dosham is delaying my marriage / child / job?": the doshams tradition links with that area, in their own section.
+  const areaTopic = detectTopics(question).find((t) => DOSHAM_AREA[t]);
+  let areaSec = null;
+  if (areaTopic && diag?.available && !diag.minor) {
+    const area = DOSHAM_AREA[areaTopic];
+    const its = doshamsForArea(diag, area === 'career' ? 'job' : area === 'children' ? 'child' : area).slice(0, 3);
+    const w = { marriage: T('marriage', 'திருமண'), children: T('children', 'குழந்தை பாக்கிய'), career: T('work', 'வேலை') }[area];
+    areaSec = { key: 'dosham', title: L('Doshams linked to this (traditional)', 'இதனுடன் தொடர்புடைய தோஷங்கள் (மரபு)'), lines: its.length
+      ? [L(`Doshams tradition links with ${w.en} delay in your chart:`, `உங்கள் ஜாதகத்தில் ${w.ta}த் தாமதத்துடன் மரபு இணைக்கும் தோஷங்கள்:`), ...its.map((it) => doshamLine(it, lang)), ...(its[0].areas.includes('children') ? [pick(DOSHAM_DOCTOR, lang)] : [])]
+      : [L(`No traditional dosham in your chart is linked to ${w.en} by the common rules — the timing comes from the running periods and transits.`, `பொதுவிதிப்படி ${w.ta}த்துடன் தொடர்புடைய மரபு தோஷம் உங்கள் ஜாதகத்தில் இல்லை — காலம் நடப்புத் தசை, கோசாரத்திலிருந்தே.`)] };
   }
-  if (askedRK && answer.length - lead0 === 2) answer.splice(lead0, 2, answer[lead0 + 1], answer[lead0]); // the dosham asked about comes first
-  if (askedLabel) {
-    answer.splice(lead0, 0, L(`${askedLabel.en} dosham, which you asked about, is a label on which traditions disagree (as are Kala Sarpa, Naga, Pithru and Puthira dosham), so Thunai does not mark it from a chart. Many people are told they have it — they live full family lives. What your chart does show by the common rules:`, `நீங்கள் கேட்ட ${askedLabel.ta} தோஷம் — காலசர்ப்ப, நாக, பித்ரு, புத்திர தோஷம் போல — மரபுகள் ஒத்துப்போகாத பெயர்; எனவே துணை ஜாதகத்திலிருந்து அதைக் குறிப்பதில்லை. இது இருப்பதாகச் சொல்லப்பட்ட பலர் நிறைவான குடும்ப வாழ்க்கை வாழ்கின்றனர். பொதுவிதிப்படி உங்கள் ஜாதகம் காட்டுவது:`));
-  }
-  const calm = [L('A dosham is not a curse and there is no need to fear it — Chevvai dosham is common in many charts. In marriage matching it is compared like with like (dosha samyam), so a good match is always possible.', 'தோஷம் சாபம் அல்ல; பயப்பட வேண்டாம் — செவ்வாய் தோஷம் பலருக்கும் உண்டு. திருமணப் பொருத்தத்தில் இது ஒரே வகையுடன் ஒப்பிடப்படுகிறது (தோஷ சாம்யம்); எனவே நல்ல பொருத்தம் எப்போதும் சாத்தியம்.'),
-    L('You do not need any costly pooja, homam or gemstone; a simple free practice is enough if you wish.', 'விலையுயர்ந்த பூஜை, ஹோமம், ரத்தினம் எதுவும் தேவையில்லை; விரும்பினால் இலவச எளிய வழிபாடே போதும்.')];
-  const rem = isHinduFaith(faith)
-    ? [L('If you wish: on Tuesdays light a lamp for Lord Murugan and recite Kanda Sashti Kavasam — free and simple.', 'விரும்பினால்: செவ்வாய்தோறும் முருகனுக்குத் தீபம் ஏற்றி கந்த சஷ்டி கவசம் சொல்லுங்கள் — இலவசம், எளிது.')]
-    : [pick(universalPractice('Mars'), lang), pick(faithBlessing(faith) || faithBlessing('other'), lang)];
   const sections = [
     { key: 'answer', title: L('Answer', 'பதில்'), lines: answer.length ? answer : [L('Dosham needs the birth details — add them in Family.', 'தோஷம் பார்க்கப் பிறப்பு விவரம் தேவை — குடும்பம் பகுதியில் சேர்க்கவும்.')] },
+    ...(areaSec ? [areaSec] : []),
     ...(() => {
-      const meanSec = { key: 'dos', title: L('What this means', 'இதன் பொருள்'), lines: isHinduFaith(faith) ? calm : calm.filter((l) => !hinduText(l)).concat([L('You do not need any costly ritual or gemstone.', 'விலையுயர்ந்த சடங்கோ ரத்தினமோ தேவையில்லை.')]) };
-      const remSec = { key: 'remedy', title: remedyAsked ? L('The remedy you asked for (free, optional)', 'நீங்கள் கேட்ட பரிகாரம் (இலவசம், விருப்பம்)') : isHinduFaith(faith) ? L('One simple remedy (free)', 'ஒரு எளிய பரிகாரம் (இலவசம்)') : L('A simple practice for every faith', 'எல்லா நம்பிக்கைக்கும் ஏற்ற எளிய வழி'), lines: rem };
+      const meanSec = { key: 'dos', title: L('What this means', 'இதன் பொருள்'), lines: [...(isHinduFaith(faith) ? calm : calm.filter((l) => !hinduText(l)).concat([L('You do not need any costly ritual or gemstone.', 'விலையுயர்ந்த சடங்கோ ரத்தினமோ தேவையில்லை.')])), ...timingLine] };
+      const remSec = { key: 'remedy', title: remedyAsked ? L('The nivarthi you asked for (free first)', 'நீங்கள் கேட்ட நிவர்த்தி (இலவசம் முதலில்)') : isHinduFaith(faith) ? L('Nivarthi — parigara sthalam & simple practice', 'நிவர்த்தி — பரிகாரத் தலம் & எளிய வழிபாடு') : L('A simple practice for every faith', 'எல்லா நம்பிக்கைக்கும் ஏற்ற எளிய வழி'), lines: rem };
       return remedyAsked ? [remSec, meanSec] : [meanSec, remSec];
     })(),
-    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Shall I check porutham with a proposal’s chart, so both doshams are compared fairly?', 'வரனின் ஜாதகத்துடன் பொருத்தம் பார்க்கட்டுமா — இருவரின் தோஷமும் நியாயமாக ஒப்பிடப்படும்?')] },
-    { key: 'uncertainty', title: pick(LIMITS_TITLE, lang), lines: [rel?.lagna === false ? L('Birth time is not exact, so only the Moon reference is used.', 'பிறந்த நேரம் துல்லியமில்லை; எனவே சந்திர அடிப்படை மட்டும்.') : pick(LIMITS_LINE, lang)] },
+    { key: 'ask', title: pick(ASK_TITLE, lang), lines: [remedyAsked && isHinduFaith(faith) ? L('Shall I plan the parigara yatra — route, day and timings?', 'பரிகார யாத்திரையைத் திட்டமிடட்டுமா — வழி, நாள், நேரம்?') : L('Shall I check porutham with a proposal’s chart, so both doshams are compared fairly?', 'வரனின் ஜாதகத்துடன் பொருத்தம் பார்க்கட்டுமா — இருவரின் தோஷமும் நியாயமாக ஒப்பிடப்படும்?')] },
+    { key: 'uncertainty', title: pick(LIMITS_TITLE, lang), lines: [rel?.lagna === false ? L('Birth time is not exact, so only the Moon-based doshams are read; the Lagna-based ones need the time.', 'பிறந்த நேரம் துல்லியமில்லை; எனவே சந்திர அடிப்படையிலான தோஷங்கள் மட்டும்; லக்ன அடிப்படையிலானவற்றுக்குப் பிறந்த நேரம் தேவை.') : pick(LIMITS_LINE, lang)] },
   ];
-  return done(shell('dosham', question, sections, { actions: [{ go: 'couple', label: L('Bride & groom porutham', 'மணமகன் – மணமகள் பொருத்தம்') }], followups: [L('When will I get married?', 'எனக்கு எப்போது திருமணம் நடக்கும்?'), L('Check porutham with the bride / groom', 'மணமகன் / மணமகள் பொருத்தம் பாருங்கள்'), L('Which planet is weak for me?', 'எந்தக் கிரகம் எனக்குப் பலவீனம்?')] }), lang, rel);
+  const actions = [{ go: 'dosham', label: L('Doshams & remedies', 'தோஷங்கள் & நிவர்த்தி') }, { go: 'couple', label: L('Bride & groom porutham', 'மணமகன் – மணமகள் பொருத்தம்') }];
+  const yatra = target && isHinduFaith(faith) ? nivarthiPlan(target, { faith }).yatra : [];
+  if (yatra.length) actions.splice(1, 0, { go: 'journey', param: { temples: yatra }, label: L('Plan the parigara yatra', 'பரிகார யாத்திரை திட்டம்') });
+  return done(shell('dosham', question, sections, { actions, followups: [L('When will I get married?', 'எனக்கு எப்போது திருமணம் நடக்கும்?'), L('Check porutham with the bride / groom', 'மணமகன் / மணமகள் பொருத்தம் பாருங்கள்'), L('Which planet is weak for me?', 'எந்தக் கிரகம் எனக்குப் பலவீனம்?')] }), lang, rel);
 }
 
 /** Baby name letters (namakshara) from the birth star and pada. */
@@ -1256,7 +1363,12 @@ export function askThunai({ text, chart = null, rel = null, facts = null, life =
     return finish(g, 'general_kb');
   }
   // A family word in a ritual question ("appa ku tharpanam eppo") does not make it a chart question.
-  if (general && (!personal || !(topic && LIFE_TOPICS.has(topic)) || (topic === 'family' && matchKB(text)))) return finish(generalAnswer(text, { ...gopts, auto: true }), 'general_kb');
+  if (general && (!personal || !(topic && LIFE_TOPICS.has(topic)) || (topic === 'family' && matchKB(text)))) {
+    const g = generalAnswer(text, { ...gopts, auto: true });
+    // A dosham / nivarthi question the general notes cannot answer ("is a big pooja needed for dosha nivarthi?") is
+    // answered from the person's own chart by the dosham engine instead of an honest "not in my notes".
+    if (!(g.honest && topic === 'dosham' && chart)) return finish(g, 'general_kb');
+  }
   // A short follow-up with no topic of its own ("which month is best?", "eppo?", "why?") continues the topic of the
   // person's previous question in this chat (the follow-up chips are worded this way too).
   if (!topic && turns?.length && chart && FOLLOW_CUE.test(q0) && q0.split(' ').length <= 10 && !identityQuestion(text) && !MONTH_Q.test(q0) && !TODAY_PALAN.test(q0) && !GURU_Q.test(q0) && !DELAY_Q.test(q0) && !YEAR_Q.test(q0) && classify(text).intent === 'general' && !whichKind(null, text, qt)) {
@@ -1337,6 +1449,9 @@ export function askThunai({ text, chart = null, rel = null, facts = null, life =
       const qtx = wk === 'prayer' ? { ...qt, type: 'how' } : qt;
       let a = topicAnswer({ topic, question: text, chart, rel: rel || {}, lang, name, life: life2, today, turns, speaker, now, subject: subj, qt: qtx });
       if (a && doshamToo && a.sections?.[0]?.key === 'answer') a = withDoshamNote(a, doshamAnswer({ question: text, chart, rel, lang, name, life: life2, now }));
+      // Delay / dosham questions on marriage, children and work also name the doshams for that area (work: only when the
+      // delay or dosham is in the words — "why no promotion" stays a plain career reading).
+      if (a && !prof.minor && !subj && DOSHAM_AREA[topic] && ((qt.type === 'why' && DOSHAM_AREA[topic] !== 'career') || (DOSHAM_AREA[topic] === 'career' ? WORK_DELAY : DELAY_WORD).test(q0))) a = withAreaDoshams(a, { topic, chart, rel, life: life2, lang, now, faith });
       if (a && topic === 'job_change' && /retire|\bvrs\b|ஓய்வு/.test(q0)) a = { ...a, sections: a.sections.map((sx, i) => (i === 0 && sx.key === 'answer' ? { ...sx, lines: [say(lang)('Retiring is a decision of health, savings and family more than of the stars — talk it over with your family and check your pension and savings first. The chart only shows when a change is supported:', 'ஓய்வு பெறுவது கிரகங்களை விட உடல்நலம், சேமிப்பு, குடும்பம் சார்ந்த முடிவு — குடும்பத்துடன் பேசி, ஓய்வூதியம், சேமிப்பை முதலில் பாருங்கள். மாற்றத்துக்கு ஆதரவான காலத்தை மட்டுமே ஜாதகம் காட்டும்:'), ...sx.lines] } : sx)) };
       if (a && topic === 'child' && HOW_MANY_KIDS.test(q0)) a = { ...a, sections: a.sections.map((sx, i) => (i === 0 && sx.key === 'answer' ? { ...sx, lines: [say(lang)('A horoscope cannot tell how many children someone will have, and Thunai never counts them. What tradition reads is the supportive time for children:', 'எத்தனை குழந்தைகள் என்பதை ஜாதகம் சொல்ல முடியாது; துணை அதை எண்ணிச் சொல்வதில்லை. மரபு பார்ப்பது குழந்தை பாக்கியத்துக்கான சாதகமான காலத்தை மட்டுமே:'), ...sx.lines.filter((l) => l !== pick(EMPATHY.child, lang))] } : sx)) };
       if (a && topic === 'harmony' && LEAVE_Q.test(q0) && !DIVORCE.test(q0)) a = { ...a, sections: a.sections.map((sx, i) => (i === 0 && sx.key === 'answer' ? { ...sx, lines: leaveLines(lang, name) } : sx)) };

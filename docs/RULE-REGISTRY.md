@@ -260,3 +260,54 @@ Badhaka scheme, and the 12-Lagna functional table in `shared/rules/roles.js` (`F
 | `dosha.shrapit` | Saturn and Rahu in the same sign. | — | ☐ approve ☐ correct: |
 | `dosha.punarphoo` | Flag `conjunction` (default): Saturn and Moon in the same sign. Flag `mutualAspect` (off): Saturn and Moon in mutual aspect. | — | ☐ approve ☐ correct: |
 | `dosha.grahana` | Flag `sun`: Sun in the same sign as Rahu or Ketu. Flag `moon`: Moon in the same sign as Rahu or Ketu. Sign-sharing only — no eclipse geometry is computed and none is implied. | — | ☐ approve ☐ correct: |
+
+## Dosham & Nivarthi rules (shared/dosham.js) — status: proposed, need astrologer sign-off
+
+Owner requirement (Oct 2026): the app must name the doshams a senior jothidar would read — including the ones that
+delay marriage, children and work — and give a nivarthi plan (parigara sthalam, day / time, best period, free home
+practice, charity, what not to do). `shared/dosham.js` composes these from the registry rules above (Chevvai and
+Rahu–Ketu exactly as `dosha.chevvai` / `dosha.rahuketu` evaluate them; Kala Sarpa, Shrapit and Grahana re-use the
+disputed predicates; Kemadruma re-uses `yoga.kemadruma`) plus the composite rules below. **Every rule is AI-drafted and
+`proposed`; none is approved.** Severity is a count of traditional factors (never the word "severe"): 1 = mild,
+2 = moderate, 3+ = strong, each listed cancellation lowering it by one step. Combustion uses the profile orbs
+(Mercury 14° / 12° retrograde, Venus 10° / 8°, Jupiter 11°, Mars 17°, Saturn 15°, Moon 12°) and states the orb used.
+
+**Policy change to review.** The registry keeps the contested labels (Kala Sarpa, Pitru, Shrapit, Grahana) at
+`status: disputed` and `remedyPolicy: none` for reports and matching. The dosham engine now SHOWS them (owner decision),
+always marked "traditional; some astrologers differ", always mild unless several factors combine, and pairs them only
+with free practice and a parigara sthalam framed as belief — never a paid remedy. The reviewer must confirm or reverse this.
+
+Base rates (300 random Chennai charts, 1950–2005, as of 7 Oct 2026; recorded by test/dosham.test.js on 30 charts):
+average 4.3 items per chart, 1.5 moderate-or-strong, 0.3 strong; Chevvai 64% (the registry rule with Lagna + Moon
+references), Putra 47%, Kalathra 44%, Sani transit 44% (Ezharai / Ashtama / Ardhashtama), combustion 44%,
+Rahu–Ketu 34%, Pitru 30%, Sani 26%, Lagna lord in 6/8/12 25%, Sani–Sevvai 22%, Grahana 17%, Naga 14%, Guru Chandala 8%,
+Shrapit 7%, Kala Sarpa 4%, Kemadruma (uncancelled) 2%. The UI shows mild ones as "lighter notes".
+
+| Rule id | Predicate (plain words) | Needs Lagna | Contested | Sign-off |
+|---|---|---|---|---|
+| `dosham.rahuketu` | Rahu or Ketu in the 1st/7th or 2nd/8th from Lagna (exactly the registry rule dosha.rahuketu, Lagna reference); a node in the 5th is a Putra-dosham factor. Base: moderate. Softened by Jupiter aspecting/joining the node, or the node in Rishabam/Mithunam/Kanni/Kumbam (Rahu) or Vrischikam/Dhanusu (Ketu). | yes | — | ☐ approve ☐ correct: |
+| `dosham.kalasarpa` | All seven planets on one side of the Rahu–Ketu axis by longitude (registry predicate dosha.kalasarpa). Rahu→Ketu side: Kala Sarpa; Ketu→Rahu side: Kala Amirtha. Always mild; marked traditional/disputed. | no | yes | ☐ approve ☐ correct: |
+| `dosham.chevvai` | Exactly the registry rule dosha.chevvai (Mars in 2/4/7/8/12 from Lagna and/or Moon, profile references). Severity: one reference mild, both moderate, +1 for Mars in the 7th/8th from Lagna; each registry exception that holds lowers it one step and is listed as a cancellation (exceptions are not auto-applied, so presence matches the registry). | no | — | ☐ approve ☐ correct: |
+| `dosham.sani` | Saturn in the 1st, 5th or 7th from Lagna (not already reported as Sani–Sevvai in that house). 7th: moderate; 1st/5th: mild; debilitated +1; own/exalted −1; Jupiter aspect −1. | yes | — | ☐ approve ☐ correct: |
+| `dosham.sanisevvai` | Saturn and Mars in the same sign (moderate) or in mutual aspect (mild); +1 when they occupy the Lagna, 5th or 7th; Jupiter aspecting the conjunction −1. | no | — | ☐ approve ☐ correct: |
+| `dosham.lagnalord` | Lagna lord in the 6th, 8th or 12th from Lagna: moderate; +1 debilitated, +1 combust (profile orb); −1 own or exalted sign. | yes | — | ☐ approve ☐ correct: |
+| `dosham.combust` | Combustion (profile orbs: Mercury 14°/12° retro, Venus 10°/8° retro, Jupiter 11°, Mars 17°, Saturn 15°, Moon 12°) of the Lagna lord, 5th lord, 7th lord, Venus or Jupiter (Mercury only when it is one of those lords). Within half the orb: moderate, else mild; Mercury always mild (tradition treats Budha moudyam lightly). Folded into the Lagna-lord item when that lord is also in a dusthana. | no | — | ☐ approve ☐ correct: |
+| `dosham.putra` | Factors: Saturn/Mars/Rahu/Ketu in the 5th; 5th lord in 6/8/12; 5th lord joined by Saturn/Mars/Rahu/Ketu; Jupiter debilitated, combust or in 6/8/12; Jupiter with Rahu/Ketu; +1 when the 5th lord is afflicted and the Lagna lord is in a dusthana. Cancellations: Jupiter aspects the 5th or the 5th lord; 5th lord own/exalted; Jupiter or Venus in the 5th. Present when at least one PRIMARY factor (anything but Jupiter's house or Jupiter with a node) holds and ≥1 factor remains after cancellations. | yes | — | ☐ approve ☐ correct: |
+| `dosham.kalathra` | Factors: Saturn or the Sun in the 7th; 7th lord in 6/8/12; 7th lord joined by Saturn/Mars/Rahu/Ketu, combust or debilitated; Venus debilitated, combust or with Saturn/Rahu/Ketu; the 7th aspected by both Saturn and Mars. Cancellations: Jupiter aspects the 7th or 7th lord; 7th lord or Venus own/exalted. Present when at least one PRIMARY factor holds (Venus with Saturn/Rahu/Ketu and the double aspect are supporting only) and ≥1 factor remains after cancellations. (Chevvai and Rahu–Ketu in the 7th are reported as their own doshams.) | yes | — | ☐ approve ☐ correct: |
+| `dosham.pitru` | Sun in the same sign as Rahu, Ketu or Saturn; or (with Lagna) Rahu/Ketu in the 9th while the 9th lord is in 6/8/12 or joined by Saturn/Mars/Rahu/Ketu. Marked traditional/disputed. | no | yes | ☐ approve ☐ correct: |
+| `dosham.guruchandala` | Jupiter and Rahu in the same sign. Own/exalted Jupiter −1. Marked traditional/disputed. | no | yes | ☐ approve ☐ correct: |
+| `dosham.shrapit` | Saturn and Rahu in the same sign (registry predicate dosha.shrapit); +1 in the Lagna or 7th. Marked traditional/disputed. | no | yes | ☐ approve ☐ correct: |
+| `dosham.grahana` | Sun or Moon in the same sign as Rahu or Ketu (registry predicate dosha.grahana; sign placement only, never an eclipse). The Sun case is folded into Pitru when that is reported. Marked traditional/disputed. | no | yes | ☐ approve ☐ correct: |
+| `dosham.kemadruma` | Registry rule yoga.kemadruma present and none of its cancellation conditions satisfied. Mild. | no | — | ☐ approve ☐ correct: |
+| `dosham.naga` | Rahu or Ketu in the 1st, 2nd, 5th, 7th or 8th from Lagna AND in the same sign as the Moon or Venus. Mild; +1 in the 7th. Marked traditional/disputed. | yes | yes | ☐ approve ☐ correct: |
+| `dosham.sanitransit` | Transit Saturn 12th/1st/2nd (Ezharai), 8th (Ashtama) or 4th (Ardhashtama) from the natal Moon (analysis.transitStatus). Janma (1st) and Ashtama moderate, others mild. Ends when Saturn leaves the stretch. | no | — | ☐ approve ☐ correct: |
+
+Parigara sthalam associations (shared/dosham-data.js) also need review: Rahu–Ketu → Sri Kalahasti, Thirunageswaram,
+Keezhaperumpallam; Kala Sarpa → Sri Kalahasti, Thirupampuram; Naga → Nagercoil Nagaraja, Thirupampuram, Thirunageswaram;
+Chevvai → Vaitheeswaran Kovil (+ Thirumanancheri for marriage); Sani → Thirunallar (Kuchanur for transit); Putra →
+Thirukarugavur Garbharakshambigai, Rameswaram, Alangudi; Kalathra → Thirumanancheri, Srinivasa Mangapuram (Kalyana
+Venkateswara), Thiruvidanthai; Pitru → Rameswaram, Thilatharpanapuri, Thiruvallur Veeraraghava (Amavasai); Grahana →
+Sri Kalahasti; Kemadruma → Thingalur; each planet → its Navagraha sthalam. Five temples were added for this
+(thirukarugavur, thirupampuram, nagercoil_nagaraja, thilatharpanapuri, thiruvallur_veeraraghava): coordinates from public
+listings (Thilatharpanapuri approximate, placed at nearby Koothanur), opening hours NOT on file (shown as "please check
+with the temple"), legends phrased as tradition; all need verification through HR&CE / the temple office.

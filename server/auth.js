@@ -4,9 +4,13 @@ import express from 'express';
 import nodemailer from 'nodemailer';
 import { getDb } from './db.js';
 import { familyExport, deleteFamilyData } from './family.js';
+import { hit } from './admin.js';
+import { cleanDisplayText } from './security.js';
 
 const OTP_TTL = 5 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
+const OTP_FAILS_PER_ID_PER_DAY = 20; // across re-sent codes: caps guessing at ~0.002% a day per account
+const OTP_FAILS_PER_IP = 30; // wrong codes per IP per 15 minutes, across all numbers / emails
 const SENDS_PER_ID = 5;
 const SENDS_PER_IP = 30;
 const HOUR = 60 * 60 * 1000;
@@ -17,7 +21,6 @@ const DATA_MAX = 200 * 1024;
 const FB = 'https://graph.facebook.com/v19.0';
 
 let secret = null;
-const ipHits = new Map(); // ip -> { count, start }
 let mailer = null;
 
 const env = (k) => (process.env[k] || '').trim();
@@ -56,9 +59,13 @@ function smsProvider() {
 const emailProvider = () => (env('SMTP_URL') && env('MAIL_FROM') ? 'smtp' : null);
 const providerFor = (channel) => (channel === 'sms' ? smsProvider() : emailProvider());
 
-/** Dev mode: forced by AUTH_DEV_MODE=1, or automatic outside production when the channel has no provider. */
+/**
+ * Dev mode (the code is returned on screen): forced by AUTH_DEV_MODE=1, or automatic when the channel has no
+ * provider — and NEVER in production (NODE_ENV=production), whatever AUTH_DEV_MODE says.
+ */
 function devModeFor(channel) {
-  return env('AUTH_DEV_MODE') === '1' || (!isProd() && !providerFor(channel));
+  if (isProd()) return false;
+  return env('AUTH_DEV_MODE') === '1' || !providerFor(channel);
 }
 
 function providers() {
@@ -153,7 +160,7 @@ function parseCookies(req) {
 }
 
 function setCookie(req, res, name, value, { maxAge, path = '/' } = {}) {
-  const secure = env('PUBLIC_URL').startsWith('https') || req.secure;
+  const secure = isProd() || env('PUBLIC_URL').startsWith('https') || req.secure;
   const parts = [`${name}=${encodeURIComponent(value)}`, `Path=${path}`, 'HttpOnly', 'SameSite=Lax', `Max-Age=${Math.floor(maxAge / 1000)}`];
   if (secure) parts.push('Secure');
   res.append('Set-Cookie', parts.join('; '));
@@ -178,8 +185,11 @@ export function currentUser(req) {
 
 function createSession(req, res, userId) {
   const db = getDb();
-  const token = crypto.randomBytes(32).toString('base64url');
+  const token = crypto.randomBytes(32).toString('base64url'); // 256 bits; only its SHA-256 is stored
   db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now());
+  // Rotation: a session token presented with this sign-in (an older or someone else's session) stops working.
+  const old = parseCookies(req)[SESSION_COOKIE];
+  if (old) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256(old));
   db.prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)').run(sha256(token), userId, now() + SESSION_TTL);
   setCookie(req, res, SESSION_COOKIE, token, { maxAge: SESSION_TTL });
 }
@@ -191,13 +201,11 @@ function createUser(fields) {
   return getDb().prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
+/** Code sends per IP per hour (SQLite rate_hits: survives restarts, shared by every process on the database). */
 function ipLimited(ip) {
-  const t = now();
-  if (ipHits.size > 5000) for (const [k, v] of ipHits) if (t - v.start > HOUR) ipHits.delete(k);
-  const e = ipHits.get(ip);
-  if (!e || t - e.start > HOUR) { ipHits.set(ip, { count: 1, start: t }); return false; }
-  if (e.count >= SENDS_PER_IP) return true;
-  e.count++;
+  const key = `otpsend-ip:${ip}`;
+  if (hit(key, HOUR, { peek: true }) >= SENDS_PER_IP) return true;
+  hit(key, HOUR);
   return false;
 }
 
@@ -241,6 +249,8 @@ export function authRouter() {
 
     const db = getDb();
     const t = now();
+    // Retention: a pending code row names a phone number / email; drop rows whose code and send window are both over.
+    db.prepare('DELETE FROM otps WHERE expires_at < ? AND window_start < ?').run(t - HOUR, t - HOUR);
     const row = db.prepare('SELECT sends, window_start FROM otps WHERE identifier = ?').get(id);
     const fresh = !row || t - row.window_start > HOUR;
     const sends = fresh ? 0 : row.sends;
@@ -257,13 +267,13 @@ export function authRouter() {
 
     const masked = channel === 'sms' ? maskPhone(id) : maskEmail(id);
     if (dev) {
-      console.log(`[auth dev] OTP for ${id}: ${code}`);
+      console.log(`[auth dev] OTP for ${masked}: ${code}`); // dev mode never runs in production
       return res.json({ sent: true, channel, to: masked, devCode: code });
     }
     try {
       await (channel === 'sms' ? sendSms(id, code) : sendEmail(id, code));
     } catch (err) {
-      console.error('OTP send failed:', err.message);
+      console.error('OTP send failed:', String(err.message || '').split(':')[0]); // provider + status only (bodies can echo the number)
       return res.status(502).json({ error: 'Could not send the OTP right now. Please try again.' });
     }
     res.json({ sent: true, channel, to: masked });
@@ -275,6 +285,12 @@ export function authRouter() {
     if (target.error) return res.status(400).json({ error: target.error });
     const id = target.id;
     const db = getDb();
+    const ipKey = `otpfail-ip:${req.ip || 'unknown'}`;
+    const idKey = `otpfail-id:${hmac(id)}`; // the number / email itself is never stored in rate_hits
+    if ((process.env.RATE_LIMITS !== 'off' && hit(ipKey, 15 * 60000, { peek: true }) >= OTP_FAILS_PER_IP)
+      || hit(idKey, 24 * HOUR, { peek: true }) >= OTP_FAILS_PER_ID_PER_DAY) {
+      return res.status(429).json({ error: 'Too many wrong codes. Please try again later.' });
+    }
     const row = db.prepare('SELECT * FROM otps WHERE identifier = ?').get(id);
     if (!row || !row.code_hash || row.expires_at <= now()) {
       return res.status(401).json({ error: 'Code expired or not found. Please request a new OTP.' });
@@ -285,12 +301,14 @@ export function authRouter() {
     const clean = String(code ?? '').replace(/\s/g, '');
     if (!/^\d{6}$/.test(clean) || !safeEqual(hmac(`${id}:${clean}`), row.code_hash)) {
       db.prepare('UPDATE otps SET attempts = attempts + 1 WHERE identifier = ?').run(id);
+      hit(ipKey, 15 * 60000);
+      hit(idKey, 24 * HOUR);
       return res.status(401).json({ error: 'Incorrect code' });
     }
     db.prepare('DELETE FROM otps WHERE identifier = ?').run(id);
 
     const col = channel === 'sms' ? 'phone' : 'email';
-    const cleanName = typeof name === 'string' ? name.trim().slice(0, 80) : '';
+    const cleanName = typeof name === 'string' ? cleanDisplayText(name, 80) : ''; // shown to family members
     let user = db.prepare(`SELECT * FROM users WHERE ${col} = ?`).get(id);
     const isNew = !user; // lets the app count sign-up vs log-in (analytics, only with the person's consent)
     if (!user) user = createUser({ [col]: id, name: cleanName });
@@ -357,6 +375,15 @@ export function authRouter() {
     if (token) getDb().prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256(token));
     setCookie(req, res, SESSION_COOKIE, '', { maxAge: 0 });
     res.json({ ok: true });
+  });
+
+  // Sign out everywhere: every session of this account ends (e.g. a lost phone).
+  r.post('/auth/logout-all', (req, res) => {
+    const user = currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const { changes } = getDb().prepare('DELETE FROM sessions WHERE user_id = ?').run(user.id);
+    setCookie(req, res, SESSION_COOKIE, '', { maxAge: 0 });
+    res.json({ ok: true, sessionsEnded: changes });
   });
 
   r.get('/me/data', (req, res) => {
@@ -429,6 +456,7 @@ export function authRouter() {
         .map((p) => ({ id: p.id, service: endpointHost(p.endpoint), prefs: parse(p.prefs), createdAt: p.created_at })), // keys and the endpoint URL are secrets
       analyticsEvents: tryAll('SELECT type, screen, feature, platform, app_version, created_at FROM events WHERE user_id = ? ORDER BY created_at'),
       family: (() => { try { return familyExport(user.id); } catch { return null; } })(), // memberships, invites, shares (no code hashes)
+      accountActivity: tryAll('SELECT at, action, target FROM audit_log WHERE actor = ? ORDER BY id', `user:${user.id}`), // own cancellations / refund requests
       pendingSignInCodes: tryAll('SELECT identifier, expires_at FROM otps WHERE identifier IN (?, ?)', account?.phone || '', account?.email || ''), // code hashes withheld
     });
   });
@@ -467,6 +495,8 @@ export function authRouter() {
     run("UPDATE store_orders SET address = '{}', user_id = 'deleted' WHERE user_id = ?");
     run("UPDATE service_requests SET contact_phone = '', notes = '', user_id = 'deleted' WHERE user_id = ?");
     run("UPDATE subscriptions SET user_id = 'deleted' WHERE user_id = ?");
+    run("UPDATE audit_log SET actor = 'user:deleted', ip = NULL WHERE actor = ?", `user:${user.id}`);
+    run('DELETE FROM rate_hits WHERE key LIKE ?', `%:${user.id}`); // per-person limiter counters (family, AI) name the account
     run('DELETE FROM users WHERE id = ?');
     setCookie(req, res, SESSION_COOKIE, '', { maxAge: 0 });
     res.json({ ok: true, deleted: true });

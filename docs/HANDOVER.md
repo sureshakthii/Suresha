@@ -52,7 +52,7 @@ Full steps are in [`DEPLOY.md`](DEPLOY.md) (Render blueprint, Docker, own domain
    - `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`
 3. For Ask Thunai, set `ANTHROPIC_API_KEY`. Optional: `AI_MODEL` (default `claude-opus-5-5`) and `AI_TIMEOUT_MS` (default 45000). Without a key the app answers from reviewed templates only, and says so.
 4. Login providers: an SMS provider (Twilio or MSG91 with DLT template), SMTP for email, and Facebook if used.
-5. Payments: set `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. For USD, also set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
+5. Payments — exactly three currencies, chosen from the residence country: India → ₹ INR (Razorpay: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`), United Arab Emirates → AED and every other country → $ USD (Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`; webhook events `checkout.session.completed` and `charge.refunded`). Prices: `PRICE_{INR,AED,USD}_*` (defaults and AED mapping in [`COSTING.md`](COSTING.md); Stripe AED checklist in [`DEPLOY.md`](DEPLOY.md)).
 6. Check `GET /api/health` → `{"ok":true}`, then run the click-through below.
 7. Keep a single server instance until session memory for the AI policy moves to a shared store. It currently lives in one process.
 8. Back up `/data` daily and test a restore before the pilot.

@@ -15,6 +15,8 @@ const EFFORT = process.env.AI_EFFORT || 'low';
 const USE_FALLBACKS = process.env.AI_FALLBACKS !== 'off';
 const STRUCTURED = process.env.AI_STRUCTURED !== 'off';
 export const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 45000;
+/** Output ceiling per call (cost bound). The answer contract is short; thinking shares this budget. */
+export const AI_MAX_TOKENS = Math.min(32000, Math.max(1024, Number(process.env.AI_MAX_TOKENS) || 16000));
 
 export const aiEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 
@@ -27,7 +29,7 @@ class AiTimeout extends Error {}
 async function callModel({ system, messages, timeoutMs = AI_TIMEOUT_MS, onUsage }) {
   const params = {
     model: AI_MODEL,
-    max_tokens: 16000,
+    max_tokens: AI_MAX_TOKENS,
     thinking: { type: 'adaptive' },
     output_config: { effort: EFFORT, ...(STRUCTURED ? { format: { type: 'json_schema', schema: ANSWER_SCHEMA } } : {}) },
     system,

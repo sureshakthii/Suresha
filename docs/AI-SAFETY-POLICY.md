@@ -324,6 +324,33 @@ Policy decisions taken here (need review — see §9):
   discipline (shared/faith.js).
 * **Health of a parent or spouse**: the treating doctors guide recovery; no period-based reading is attached.
 
+## 12. Dosham & remedy framing (shared/dosham.js — owner requirement, Oct 2026)
+
+The dosham engine names the traditional doshams in a chart (Rahu–Ketu, Kala Sarpa, Chevvai, Sani, Sani–Sevvai, Lagna
+lord / 5th / 7th lord in 6-8-12, combustion, Putra, Kalathra, Pitru, Guru Chandala, Shrapit, Grahana, Kemadruma, Naga,
+Sani transit), which life areas tradition reads them as delaying, whether the running Dasa / Bhukti activates them and
+when they ease, and a Nivarthi plan. Shown on Full Jathaga Analysis ("Doshams & remedies"), the `dosham` screen
+("நிபுணர் பார்வை"), Ask Thunai (dosham questions and "why is my marriage / child / work delayed"), the Parigaram screen
+and the Today parigaram card. Rules, enforced in code and by test/dosham.test.js:
+
+* **No fear.** Every view opens with "தோஷம் சாபம் அல்ல — நிவர்த்தி உண்டு / A dosham is not a curse — there is a
+  nivarthi". Severity words are mild / moderate / strong (லேசானது / மிதமானது / வலுவானது) — never "severe" or கடுமை.
+  A delay is always "a delay, not a denial"; nothing says "you will never…".
+* **Belief, not a guarantee.** Every plan ends with "பரிகாரம் செய்தவர்கள் பலர் நல்ல மாற்றம் கண்டதாக மரபு சொல்கிறது —
+  இது நம்பிக்கை சார்ந்தது, உத்தரவாதம் அல்ல". No outcome is promised for any remedy.
+* **Free first.** Home practice (lamp, hymn from shared/hymns.js, charity) comes first; temple poojas only through
+  official temple counters; "no costly pooja / homam sold with a guarantee", "no gemstone without a careful second
+  opinion — not needed for nivarthi", "do not stop practical effort, medical care or official steps".
+* **Medical.** Any dosham touching children adds "consult a fertility specialist together, as a couple"; no disease,
+  fertility verdict or lifespan statement is ever made (the existing prohibited-output scan runs on every string).
+* **Contested labels** (Kala Sarpa, Naga, Pitru, Guru Chandala, Shrapit, Grahana) are always marked "traditional; some
+  astrologers differ" and default to mild. This relaxes the earlier rule that contested labels are never paired with a
+  remedy: they are now paired with free practice and a sthalam framed as belief. Needs reviewer confirmation (§9).
+* **Age.** Under 18: no dosham list — only a short prayer-and-habits note (shared/faith.js CHILD_PRACTICE).
+* **Birth time unknown:** only Moon / planet-based doshams; the Lagna-based ones are named as needing the time.
+* **Faith.** Another faith (or none) gets own-faith practice per planet, charity and the avoid-list; Hindu sthalams appear
+  only inside a closed "optional, for information" panel.
+
 ## Configuration
 
 `AI_TIMEOUT_MS` (default 45000), `AI_STRUCTURED` (`off` disables the JSON schema output format; the validator

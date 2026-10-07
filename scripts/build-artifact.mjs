@@ -3,7 +3,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const out = 'dist/artifact';
+// KJ_OUT picks the folder, so a review copy can be built next to the test copy.
+const out = process.env.KJ_OUT || 'dist/artifact';
 const AE = 'https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/esm/astronomy.js';
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(path.join(out, 'shared'), { recursive: true });
@@ -39,7 +40,7 @@ const css = fs.readFileSync('public/styles.css', 'utf8');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('</body>'))
   .replace('<script type="module" src="/app.js"></script>', `<script>window.KJ_STATIC = true; window.KJ_BUILD = '${(process.env.GITHUB_RUN_NUMBER ? `build ${process.env.GITHUB_RUN_NUMBER} · ` : '')}${new Date().toISOString().slice(0, 10)}${REVIEW ? ' · review' : ''}';${REVIEW ? ` window.KJ_REVIEW = ${JSON.stringify(REVIEW)};` : ''}</script>\n  ${REVIEW ? '<script src="review-lock.js"></script>\n  ' : ''}<script type="module" src="app.js"></script>`);
 const fonts = `<style>\n${fs.readFileSync('public/fonts.css', 'utf8')}</style>`;
-const page = `<title>துணை · THUNAI</title>
+const page = `<title>${REVIEW ? "துணை · THUNAI Review" : "துணை · THUNAI"}</title>
 ${fonts}
 <style>
 :root { color-scheme: dark; }

@@ -14,12 +14,12 @@ const SHELL = [
   '/shared/temple-info.js', '/shared/roadmap.js', '/shared/varga.js', '/shared/ashtakoota.js', '/shared/numerology.js',
   '/shared/peyarchi.js', '/shared/health.js', '/shared/brand.js', '/shared/sync-policy.js', '/shared/plan-gates.js', '/shared/birthtime.js', '/shared/guidance.js', '/shared/journey.js',
   '/shared/version.js', '/shared/temple-verified.js', '/shared/kattam.js', '/shared/daily.js', '/shared/today-plan.js', '/shared/faith.js',
-  '/today-lines.js', '/ask-thunai.js', '/shared/weather.js', '/shared/station.js', '/shared/love.js', '/shared/datetime.js', '/shared/age-guard.js', '/shared/themes.js', '/shared/report-horizon.js', '/shared/written-date.js', '/shared/horoscope-parse.js', '/ocr-import.js',
+  '/today-lines.js', '/ask-thunai.js', '/shared/written-palan.js', '/shared/weather.js', '/shared/station.js', '/shared/love.js', '/shared/datetime.js', '/shared/age-guard.js', '/shared/themes.js', '/shared/report-horizon.js', '/shared/written-date.js', '/shared/horoscope-parse.js', '/ocr-import.js',
   '/shared/rules/core.js', '/shared/rules/profiles.js', '/shared/rules/registry.js', '/shared/rules/chevvai.js', '/shared/rules/roles.js',
   '/shared/rules/yogas.js', '/shared/rules/disputed.js', '/shared/rules/define.js', '/vendor/astronomy-engine.js', '/icon.svg',
   '/phone-input.js', '/family-share.js', '/shared/countries.js', '/shared/country-data.js', '/shared/world-places.js', '/shared/currency.js',
   '/temple-search.js', '/desktop-nav.js', '/compat-card.js', '/shared/compat.js', '/residence-ui.js', '/shared/residence.js', '/shared/airports.js',
-  '/logo.svg', '/manifest.webmanifest'];
+  '/shared/family-delete.js', '/logo.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

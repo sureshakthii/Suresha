@@ -136,7 +136,7 @@ async function buy(plan, currency, scope) {
       }).open();
       return;
     }
-    toast(L('Online payment is not available yet — nothing has been charged.', 'ஆன்லைன் கட்டணம் இன்னும் இல்லை — எதுவும் வசூலிக்கப்படவில்லை.'), 5000);
+    toast(L('Online payment is not available yet — nothing has been charged.', 'இணையவழிக் கட்டணம் இன்னும் இல்லை — எதுவும் வசூலிக்கப்படவில்லை.'), 5000);
   } catch (e) { toast(e.message); }
 }
 

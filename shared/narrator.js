@@ -39,8 +39,8 @@ export const DEADLINE_FIRST = {
 };
 const DEADLINE_LINE = {
   medical: ['🩺 Practical first: follow your doctor\'s advice and any date they have set. Never delay hospital care, surgery or medicines for a timing score or Rahu Kalam.', '🩺 நடைமுறை முதலில்: மருத்துவரின் ஆலோசனையையும் அவர் குறித்த தேதியையும் பின்பற்றுங்கள். நேர மதிப்பெண் அல்லது ராகு காலத்துக்காக மருத்துவச் சிகிச்சை, அறுவை சிகிச்சை, மருந்துகளைத் தள்ளிப்போடாதீர்கள்.'],
-  legal: ['⚖️ Practical first: court dates, filing deadlines and your lawyer\'s advice come first. Never miss a hearing or deadline because of a timing score.', '⚖️ நடைமுறை முதலில்: நீதிமன்றத் தேதிகள், கெடுக்கள், வழக்கறிஞர் ஆலோசனையே முதன்மை. நேர மதிப்பெண்ணுக்காக விசாரணையையோ கெடுவையோ தவறவிடாதீர்கள்.'],
-  contract: ['📜 Practical first: if the agreement has a real deadline, meet it; read it carefully and take professional advice. The timing below is optional.', '📜 நடைமுறை முதலில்: ஒப்பந்தத்துக்கு உண்மையான கெடு இருந்தால் அதைத் தவறவிடாதீர்கள்; கவனமாகப் படித்து நிபுணர் ஆலோசனை பெறுங்கள். கீழே உள்ள நேரம் விருப்பத்துக்குரியது மட்டுமே.'],
+  legal: ['⚖️ Practical first: court dates, filing deadlines and your lawyer\'s advice come first. Never miss a hearing or deadline because of a timing score.', '⚖️ நடைமுறை முதலில்: நீதிமன்றத் தேதிகள், காலக்கெடுகள், வழக்கறிஞர் ஆலோசனையே முதன்மை. நேர மதிப்பெண்ணுக்காக விசாரணையையோ காலக்கெடுவையோ தவறவிடாதீர்கள்.'],
+  contract: ['📜 Practical first: if the agreement has a real deadline, meet it; read it carefully and take professional advice. The timing below is optional.', '📜 நடைமுறை முதலில்: ஒப்பந்தத்துக்கு உண்மையான காலக்கெடு இருந்தால் அதைத் தவறவிடாதீர்கள்; கவனமாகப் படித்து நிபுணர் ஆலோசனை பெறுங்கள். கீழே உள்ள நேரம் விருப்பத்துக்குரியது மட்டுமே.'],
   payment: ['💳 Practical first: pay necessary dues, EMIs and payments on time. Never delay a required payment because of a timing score.', '💳 நடைமுறை முதலில்: தேவையான கட்டணங்கள், EMI-களை உரிய நேரத்தில் செலுத்துங்கள். நேர மதிப்பெண்ணுக்காகக் கட்டாயக் கட்டணத்தைத் தாமதப்படுத்தாதீர்கள்.'],
 };
 
@@ -113,10 +113,10 @@ export function ruleBasedReply(ctx, evaluation, lang) {
   // Deadline-first: hospital, court, contract and payment matters never hear "wait for a better time".
   const deadline = DEADLINE_FIRST[ctx.categoryId] || (evaluation.practicalFirst ? 'engine' : null);
   const head = {
-    DO: ta ? '✅ ஆம் — தாராளமாக செய்யலாம்.' : '✅ Yes — this is a favourable time. Go ahead.',
+    DO: ta ? '✅ ஆம் — தாராளமாகச் செய்யலாம்.' : '✅ Yes — this is a favourable time. Go ahead.',
     CAUTION: ta ? '⚠️ கவனத்துடன் செய்யலாம்.' : '⚠️ Mixed signals — proceed with care.',
     AVOID: deadline
-      ? (ta ? '🔸 பாரம்பரியப்படி இந்த நேரம் பலவீனம் — ஆனால் உங்கள் உண்மையான கெடுவே முதன்மை.' : '🔸 By tradition this hour is weaker — but your real deadline comes first.')
+      ? (ta ? '🔸 பாரம்பரியப்படி இந்த நேரம் பலவீனம் — ஆனால் உங்கள் உண்மையான காலக்கெடுவே முதன்மை.' : '🔸 By tradition this hour is weaker — but your real deadline comes first.')
       : (ta ? '⏳ சிறந்த நேரம் விரைவில் வருகிறது — அப்போது தொடங்குவது பாரம்பரியப்படி அதிக சாதகமாகக் கருதப்படும்.' : '⏳ A better time is coming soon — tradition considers starting then more favourable.'),
   }[evaluation.verdict];
   const top = [...evaluation.factors].sort((a, b) => (b.points > 0) - (a.points > 0) || Math.abs(b.points) - Math.abs(a.points)).slice(0, 4);
@@ -128,7 +128,7 @@ export function ruleBasedReply(ctx, evaluation, lang) {
   }
   out.push(head, ...lines);
   if (evaluation.verdict !== 'DO' && ctx.bestUpcomingWindows.length) {
-    const label = deadline ? (ta ? '🕰️ விருப்பமானால், கெடுவுக்கு முன் வசதியான நேரம்' : '🕰️ Optional, only if it fits your deadline') : (ta ? '🕰️ சிறந்த நேரம்' : '🕰️ Best upcoming time');
+    const label = deadline ? (ta ? '🕰️ விருப்பமானால், காலக்கெடுவுக்கு முன் வசதியான நேரம்' : '🕰️ Optional, only if it fits your deadline') : (ta ? '🕰️ சிறந்த நேரம்' : '🕰️ Best upcoming time');
     out.push(`${label}: ${ctx.bestUpcomingWindows[0]}`);
   }
   out.push(ta ? '🪔 பரிகாரம்: விநாயகரை வணங்கி, நெய் தீபம் ஏற்றி தொடங்கவும்.' : '🪔 Remedy: offer a short prayer to Lord Ganesha and light a ghee lamp before you begin.');

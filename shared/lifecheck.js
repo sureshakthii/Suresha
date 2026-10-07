@@ -156,7 +156,7 @@ export function deepMarriageChecks(bride, groom, weddingDate = new Date()) {
       const b = houses.bride[i], g = houses.groom[i];
       return {
         id: `h${c.house}`, name: T(c.en, c.ta), ok: b.level !== 'care' && g.level !== 'care',
-        note: T(`Bride ${b.score}, groom ${g.score}`, `மணப்பெண் ${b.score}, மணமகன் ${g.score}`),
+        note: T(`Bride ${b.score}, groom ${g.score}`, `மணமகள் ${b.score}, மணமகன் ${g.score}`),
       };
     })),
   ];

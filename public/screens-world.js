@@ -10,6 +10,7 @@ import { familyRelations } from './shared/relations.js';
 import { fullAnalysis, BHAVAS } from './shared/analysis.js';
 import { REPORT_YEARS, horizonLabel, withinHorizon, HORIZON_LINES } from './shared/report-horizon.js';
 import { ageProfile, topicAllowed, adultText, childSafe } from './shared/age-guard.js';
+import { writtenPalan, palanFollowups, bhavaMeaning, scoreTag, yogaPeriodsByPlanet } from './shared/written-palan.js';
 import { locName, zoneDiffText, countryOfLoc } from './shared/residence.js';
 import { moneyRange, currencyForCountry } from './shared/currency.js';
 import { PACKAGES, PACKAGE_INCLUDES, packageRoute } from './shared/packages.js';
@@ -351,7 +352,7 @@ async function renderStore(sec, params = {}) {
 
 function checkoutForm(sec) {
   const box = $('#checkoutBox');
-  if (STATIC) { box.innerHTML = needsServerCard(L('Secure checkout with UPI, cards and net banking.', 'UPI, கார்டு, நெட் பேங்கிங் மூலம் பாதுகாப்பான கட்டணம்.')); box.scrollIntoView({ behavior: 'smooth' }); return; }
+  if (STATIC) { box.innerHTML = needsServerCard(L('Secure checkout with UPI, cards and net banking.', 'UPI, அட்டை, இணைய வங்கி மூலம் பாதுகாப்பான கட்டணம்.')); box.scrollIntoView({ behavior: 'smooth' }); return; }
   if (!state.user) { toast(L('Please sign in to place an order', 'ஆர்டர் செய்ய உள்நுழையவும்')); go('login'); return; }
   const a = store.get('kj_address', {});
   box.innerHTML = `<form class="card glass" id="addrForm"><div class="card-title">📦 ${L('Delivery address', 'விநியோக முகவரி')}</div>
@@ -369,7 +370,7 @@ function checkoutForm(sec) {
     try {
       const r = await api('/api/store/orders', { method: 'POST', body: { items: Object.entries(cart).map(([id, qty]) => ({ id, qty })), address } });
       if (r.payment?.gateway === 'razorpay') await payWithRazorpay(r);
-      else box.innerHTML = `<div class="card glass"><b>✅ ${L('Order received', 'ஆர்டர் பெறப்பட்டது')} · ${inr(r.order.total)}</b><p class="small">${L('Online payment is being set up; our team will contact you to confirm.', 'ஆன்லைன் கட்டணம் அமைக்கப்படுகிறது; உறுதிப்படுத்த எங்கள் குழு தொடர்பு கொள்ளும்.')}</p></div>`;
+      else box.innerHTML = `<div class="card glass"><b>✅ ${L('Order received', 'ஆர்டர் பெறப்பட்டது')} · ${inr(r.order.total)}</b><p class="small">${L('Online payment is being set up; our team will contact you to confirm.', 'இணையவழிக் கட்டணம் அமைக்கப்படுகிறது; உறுதிப்படுத்த எங்கள் குழு தொடர்பு கொள்ளும்.')}</p></div>`;
       for (const k of Object.keys(cart)) delete cart[k];
       saveCart();
     } catch (err) { $('#ordErr').textContent = err.message; }
@@ -651,6 +652,8 @@ registerScreen('relations', { render: renderRelations, parent: 'home', needsLoc:
 const cleanDesc = (d) => ({ en: String(d.en).replace(/\s*[—-]\s*(traditional (view|belief)|for reflection[^.]*)\.?$/i, '').replace(/Traditional cancellation also present:/, 'Also present:'),
   ta: String(d.ta).replace(/\s*—\s*பாரம்பரியக் கருத்து\.?$/, '').replace('பாரம்பரிய நிவர்த்தியும் உண்டு:', 'உடன் உள்ளது:') });
 const yr = (d) => new Date(d).getUTCFullYear();
+/** Planet name before தசை / புக்தி in Tamil: சூரிய தசை, சந்திர தசை, சுக்கிர புக்தி. */
+const dasaName = (k) => (state.lang === 'ta' ? ({ Sun: 'சூரிய', Moon: 'சந்திர', Venus: 'சுக்கிர' }[k] || planetName(k)) : planetName(k));
 /** Upcoming / running Mahadasa periods of a planet (max two), e.g. "Jupiter Dasa 2019–2035 (now)" — those that
  * overlap the analysis report horizon (next REPORT_YEARS.analysis years, stated in the card header). No age cutoff. */
 const AN_YEARS = REPORT_YEARS.analysis;
@@ -660,16 +663,25 @@ function lordPeriods(lord, c) {
   const ps = withinHorizon(all.filter((p) => p.lord === lord), { from: now, years: AN_YEARS }).slice(0, 2);
   const cur = all.find((p) => new Date(p.start) <= now && now < new Date(p.end));
   const bh = cur && cur.lord !== lord ? cur.bhuktis?.find((b) => b.lord === lord && new Date(b.end) > now) : null;
-  const parts = ps.map((p) => `${planetName(lord)} ${L('Dasa', 'தசை')} ${yr(p.start)}–${yr(p.end)}${new Date(p.start) <= now ? ` (${L('now', 'நடப்பு')})` : ''}`);
-  if (bh) parts.unshift(`${planetName(cur.lord)} ${L('Dasa', 'தசை')} / ${planetName(lord)} ${L('Bhukti', 'புக்தி')} ${fmtIsoDate(new Date(bh.start).toISOString().slice(0, 10))} – ${fmtIsoDate(new Date(bh.end).toISOString().slice(0, 10))}`);
+  const parts = ps.map((p) => `${dasaName(lord)} ${L('Dasa', 'தசை')} ${yr(p.start)}–${yr(p.end)}${new Date(p.start) <= now ? ` (${L('now', 'நடப்பு')})` : ''}`);
+  if (bh) parts.unshift(`${dasaName(cur.lord)} ${L('Dasa', 'தசை')} / ${dasaName(lord)} ${L('Bhukti', 'புக்தி')} ${fmtIsoDate(new Date(bh.start).toISOString().slice(0, 10))} – ${fmtIsoDate(new Date(bh.end).toISOString().slice(0, 10))}`);
   return parts;
 }
-/** "Gives results in" line for a yoga: its periods inside the analysis horizon. Gentle line when none falls in it. */
+/** "Gives results in" line for a yoga, per planet that forms it (Budha-Aditya: Sun and Mercury; Vimala: the 12th
+ * lord): its Maha Dasa inside the analysis horizon, else its Bhuktis in the running / next Maha Dasa. */
 function yogaPeriods(y, c) {
   const now = new Date();
-  const ds = withinHorizon(y.periods?.dasas || [], { from: now, years: AN_YEARS }).slice(0, 2);
-  if (!ds.length) return `<p class="small">⏳ ${esc(bi(HORIZON_LINES.periods(AN_YEARS)))}</p>`;
-  return `<p class="small">⏳ ${L('Gives results in', 'பலன் தரும் காலம்')}: ${ds.map((p) => `${esc(planetName(p.lord))} ${L('Dasa', 'தசை')} ${yr(p.start)}–${yr(p.end)}${new Date(p.start) <= now ? ` (${L('now', 'நடப்பு')})` : ''}`).join(' · ')}</p>`;
+  const ym = (d) => fmtIsoDate(new Date(d).toISOString().slice(0, 10));
+  const per = yogaPeriodsByPlanet(y, c, { now, years: AN_YEARS });
+  const parts = per.map((p) => {
+    const ms = p.maha.map((d) => `${dasaName(p.lord)} ${L('Dasa', 'தசை')} ${yr(d.start)}–${yr(d.end)}${d.now ? ` (${L('now', 'நடப்பு')})` : ''}`);
+    const bs = p.maha.some((d) => d.now) ? [] : p.bhukti.slice(0, 1).map((b) => `${dasaName(b.md)} ${L('Dasa', 'தசை')} / ${dasaName(p.lord)} ${L('Bhukti', 'புக்தி')} ${ym(b.start)} – ${ym(b.end)}${b.now ? ` (${L('now', 'நடப்பு')})` : ''}`);
+    const list = [...bs, ...ms]; // the sooner Bhukti first, then the Maha Dasa
+    return list.length ? `<b>${esc(planetName(p.lord))}</b>: ${esc(list.join(' · '))}` : '';
+  }).filter(Boolean);
+  if (!parts.length) return `<p class="small">⏳ ${esc(bi(HORIZON_LINES.periods(AN_YEARS)))}</p>`;
+  const who = per.length ? `<p class="small muted">🪐 ${per.length > 1 ? L('Formed by', 'யோகம் தரும் கிரகங்கள்') : L('Formed by', 'யோகம் தரும் கிரகம்')}: ${per.map((p) => esc(planetName(p.lord))).join(', ')}</p>` : '';
+  return `${who}<p class="small">⏳ ${L('Gives results in', 'பலன் தரும் காலம்')} — ${parts.join('<br>')}</p>`;
 }
 /** Badhakathipathi and Marakathipathi from houseRoles(chart) — a plain result with periods and a free parigaram. */
 function rolesCard(r, c) {
@@ -684,6 +696,23 @@ function rolesCard(r, c) {
     ${marakas.map((k) => row(k, `${L('Marakathipathi', 'மாரகாதிபதி')}: ${esc(planetName(k))} · ${L(`lord of the ${[2, 7].filter((h) => (h === 2 ? mk.second.lord : mk.seventh.lord) === k).join(' & ')} house`, `${[2, 7].filter((h) => (h === 2 ? mk.second.lord : mk.seventh.lord) === k).join(', ')}-ம் வீட்டு அதிபதி`)}`,
     esc(L('Lord of the 2nd / 7th house from the Lagna. In the tradition these are the Maraka houses; the line below lists when this planet\'s periods run.', 'லக்னத்திலிருந்து 2 / 7-ம் வீட்டு அதிபதி. மரபில் இவை மாரக ஸ்தானங்கள்; இந்தக் கிரகத்தின் காலங்கள் கீழே உள்ளன.')))).join('')}
   </div>`;
+}
+
+/** The written palan card: who you are, now, next and each life area — on-device text (shared/written-palan.js). */
+function palanCard(p, c, asks) {
+  const para = (lines) => (lines.length ? `<p>${lines.map((l) => esc(L(l.en, l.ta))).join(' ')}</p>` : '');
+  const sec = (s) => {
+    const chip = s.stability?.length ? stabilityChip(c, ...s.stability) : '';
+    let body = (s.paras || [s.lines]).map(para).join('');
+    if (s.windows?.length) body += `<div class="palan-win"><b>${esc(L(s.windowsTitle.en, s.windowsTitle.ta))}</b><ul>${s.windows.map((w) => `<li>${esc(L(w.en, w.ta))}</li>`).join('')}</ul></div>`;
+    if (s.items?.length) body += s.items.map((it) => `<div class="palan-area"><b>${esc(L(it.title.en, it.title.ta))}</b>${para(it.lines)}</div>`).join('');
+    return `<section class="palan-sec"><h3 class="palan-h">${esc(L(s.title.en, s.title.ta))}${chip}</h3>${body}</section>`;
+  };
+  return `<div class="card glass palan" id="anPalan"><div class="card-title"><span>📜 ${esc(L(p.title.en, p.title.ta))}</span><button class="link-btn" id="palanSpeak" aria-label="${esc(L('Read aloud', 'சத்தமாக வாசி'))}">🔊</button></div>
+    <span class="pill horizon-label">${esc(bi(p.horizon))}</span>
+    ${p.sections.map(sec).join('')}
+    ${asks.length ? `<div class="palan-ask"><b class="small">${L('Ask Thunai more', 'துணையிடம் மேலும் கேளுங்கள்')}</b><div class="palan-chips">${asks.map((q) => `<button class="chip-btn" data-palan-ask="${esc(L(q.en, q.ta))}">💬 ${esc(L(q.en, q.ta))}</button>`).join('')}</div></div>` : ''}
+    <p class="muted small">${esc(L(p.note.en, p.note.ta))}</p></div>`;
 }
 
 function renderAnalysis(sec) {
@@ -711,10 +740,15 @@ function renderAnalysis(sec) {
     const lagnaOk = hasLagna(c);
     const st = c.stability;
     const houseChip = (b) => (st ? stabilityChip(c, 'lagna', ...b.occupants.map((o) => `house:${o}`)) : '');
+    // Married when the profile says so, or it is the spouse / the self of a family that has a spouse profile.
+    const married = m.maritalStatus === 'married' || m.relation === 'spouse' || (m.relation === 'self' && state.family.some((x) => x.relation === 'spouse')) ? 'married' : (m.maritalStatus || null);
+    const palan = writtenPalan(c, { profile: prof, analysis: a0, tz, maritalStatus: married });
+    const asks = palanFollowups(palan, { maritalStatus: married });
     $('#anBody').innerHTML = `
       ${lagnaOk ? '' : needsTimeNote({ en: 'The 12 houses, Badhakathipathi and Marakathipathi are counted from the Lagna.', ta: '12 பாவங்கள், பாதகாதிபதி, மாரகாதிபதி லக்னத்திலிருந்து கணக்கிடப்படுகின்றன.' })}
       ${lagnaOk && st?.timePrecision === 'approximate' ? `<div class="note-box small" role="note">🕰️ ${L(`Birth time approximate (±${Math.round(st.windowMinutes)} min): items marked`, `பிறந்த நேரம் தோராயம் (±${Math.round(st.windowMinutes)} நிமி): குறிக்கப்பட்டவை`)} ${stabilityChip(c)} ${L('can change within that window.', 'அந்த இடைவெளிக்குள் மாறலாம்.')}
         <div>${L('Lagna', 'லக்னம்')}: <b>${esc(rasiName(c.lagna.rasi))}</b> ${stabilityChip(c, 'lagna')} · ${L('Navamsa Lagna', 'நவாம்ச லக்னம்')} ${stabilityChip(c, 'navamsaLagna') || `<span class="tag good">${L('stable', 'நிலையானது')}</span>`} · ${L('Birth star', 'நட்சத்திரம்')} ${stabilityChip(c, 'moonNakshatra', 'moonPada') || `<span class="tag good">${L('stable', 'நிலையானது')}</span>`}</div></div>` : ''}
+      ${palanCard(palan, c, asks)}
       <div class="card glass"><div class="card-title">🌟 ${L('Life areas', 'வாழ்க்கைத் துறைகள்')}</div>
         ${a.areas.some((x) => x.id !== 'health') ? '' : `<p class="small muted needs-time">${L('Life-area scores are read from the houses, which need the birth time.', 'வாழ்க்கைத் துறை மதிப்பீடுகள் பாவங்களிலிருந்து; அதற்குப் பிறந்த நேரம் தேவை.')}</p>`}
         ${a.areas.filter((x) => x.id !== 'health').map((x) => `<div class="gb-row static"><span class="gb-name">${esc(L(x.en, x.ta))}</span>${bar(x.score, lvl(x.score))}<span class="tag ${x.level === 'strong' ? 'good' : x.level === 'steady' ? 'warn' : 'bad'}">${x.level === 'strong' ? L('Strong', 'பலம்') : x.level === 'steady' ? L('Steady', 'நிலையானது') : L('Needs care', 'கவனம் தேவை')}</span></div>`).join('')}</div>
@@ -727,14 +761,17 @@ function renderAnalysis(sec) {
       ${a.dasaOutlook ? `<div class="card glass"><div class="card-title">⏳ ${L('Dasa outlook', 'தசா பலன்')}${stabilityChip(c, 'moonNakshatra', 'moonPada')}</div><p>${esc(L(a.dasaOutlook.en, a.dasaOutlook.ta))}</p></div>` : ''}
       <div class="card glass"><div class="card-title">🏛️ ${L('The 12 houses (Bhavas)', '12 பாவங்கள்')}</div>
         ${a.bhavas.length ? '' : `<p class="small muted">${L('Needs the birth time — houses are counted from the Lagna.', 'பிறந்த நேரம் தேவை — பாவங்கள் லக்னத்திலிருந்து கணக்கிடப்படுகின்றன.')}</p>`}
-        ${a.bhavas.map((b) => `<details class="bhava"><summary><span class="bh-n">${b.house}</span> <span class="bh-a">${esc(bi(b.area))}</span>${houseChip(b)}${bar(b.score, lvl(b.score))}</summary>
+        ${a.bhavas.map((b) => { const tg = scoreTag(b.score); const mean = bhavaMeaning(b, { minor: prof.minor || prof.unknown }); return `<details class="bhava bh-rich"><summary><span class="bh-n">${b.house}</span><span class="bh-a">${esc(bi(b.area))}${houseChip(b)}</span><span class="tag ${tg.cls}">${esc(L(tg.en, tg.ta))}</span>
+          <span class="bh-mean">${esc(L(mean.en, mean.ta))}</span>${bar(b.score, lvl(b.score))}</summary>
           <div class="small"><p>${L('Sign', 'ராசி')}: ${esc(rasiName(b.rasi))} · ${L('Lord', 'அதிபதி')}: ${GLYPH[b.lord]} ${esc(planetName(b.lord))} → ${L('house', 'பாவம்')} ${b.lordHouse}</p>
           ${b.occupants.length ? `<p>${L('Planets here', 'இங்குள்ள கிரகங்கள்')}: ${b.occupants.map((o) => `${GLYPH[o]} ${esc(planetName(o))}`).join(', ')}</p>` : ''}
           ${b.aspects.length ? `<p>${L('Aspected by', 'பார்வை')}: ${b.aspects.map((o) => esc(planetName(o))).join(', ')}</p>` : ''}
-          ${b.notes.map((n) => `<p>• ${esc(bi(n))}</p>`).join('')}</div></details>`).join('')}</div>
+          ${b.notes.map((n) => `<p>• ${esc(bi(n))}</p>`).join('')}</div></details>`; }).join('')}</div>
       <button class="btn-gold" id="anRead">📜 ${L('Detailed explanation', 'விரிவான விளக்கம்')}</button>
       <div class="card glass" id="anAi" hidden><div class="card-title"><span>📜 ${L('Your reading', 'உங்கள் பலன்')}</span><button class="link-btn" id="anSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="anText"></div></div>
       ${copyright()}`;
+    $$('[data-palan-ask]', sec).forEach((b) => b.addEventListener('click', () => go('chat', { q: b.dataset.palanAsk })));
+    $('#palanSpeak')?.addEventListener('click', () => speak($('#anPalan').innerText.replace(/🔊|💬/g, '')));
     $('#anRead').addEventListener('click', async () => {
       $('#anAi').hidden = false;
       const out = $('#anText');

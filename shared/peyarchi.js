@@ -150,7 +150,7 @@ const TEXTS = {
     ['Guru in the 11th brings gains from all sides: income rises, friends help and heartfelt wishes are fulfilled.',
       'பதினொன்றாம் இட குரு: எல்லாப் பக்கங்களிலிருந்தும் லாபம். வருமானம் உயரும், நண்பர்கள் உதவுவார்கள், மனதின் ஆசைகள் நிறைவேறும்.'],
     ['Guru in the 12th: expenses rise, mostly for good causes — temples, travel and children\'s needs. Plan a budget and make time for rest and sleep.',
-      'பன்னிரண்டாம் இட குரு: செலவுகள் கூடும் — பெரும்பாலும் கோயில், பயணம், குழந்தைகளின் தேவை போன்ற நல்ல காரியங்களுக்கே. செலவுத் திட்டம் வகுத்து, போதிய ஓய்வும் தூக்கமும் எடுங்கள்.'],
+      'பன்னிரண்டாம் இட குரு: செலவுகள் கூடும் — பெரும்பாலும் கோவில், பயணம், குழந்தைகளின் தேவை போன்ற நல்ல காரியங்களுக்கே. செலவுத் திட்டம் வகுத்து, போதிய ஓய்வும் தூக்கமும் எடுங்கள்.'],
   ],
   Saturn: [
     ['Janma Sani (middle of Ezharai Sani): work feels heavy and results come slowly. Stay calm and disciplined with health and money — the patience you build now becomes lasting strength.',
@@ -222,7 +222,7 @@ const TEXTS = {
     ['Ketu in the 8th: take care while travelling and with small health issues; interest in spiritual learning deepens.',
       'எட்டாம் இட கேது: பயணத்திலும் சிறு உடல் உபாதைகளிலும் கவனம் தேவை; ஆன்மிகத் தேடலில் ஆர்வம் ஆழமாகும்.'],
     ['Ketu in the 9th: visit temples and seek elders\' blessings; luck grows through charity and good deeds.',
-      'ஒன்பதாம் இட கேது: கோயில்களுக்குச் சென்று பெரியோரின் ஆசி பெறுங்கள்; தர்மச் செயல்களால் அதிர்ஷ்டம் கூடும்.'],
+      'ஒன்பதாம் இட கேது: கோவில்களுக்குச் சென்று பெரியோரின் ஆசி பெறுங்கள்; தர்மச் செயல்களால் அதிர்ஷ்டம் கூடும்.'],
     ['Ketu in the 10th: do your duty without waiting for praise; changes at work turn out well with patience.',
       'பத்தாம் இட கேது: பாராட்டை எதிர்பார்க்காமல் கடமையைச் செய்யுங்கள்; பணியிட மாற்றங்கள் பொறுமையால் நன்மையாக முடியும்.'],
     ['Ketu in the 11th brings gains, fulfils wishes and gives support from friends.',

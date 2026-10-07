@@ -169,10 +169,10 @@ export const ASYMMETRIC_FACTORS = {
 const EXPERT_QUESTIONS = [
   T('Which tradition profile and exceptions should apply to Rajju and Vedhai for this pair?', 'இந்த இணைக்கு ரஜ்ஜு, வேதைக்கு எந்த மரபு, எந்த விதிவிலக்குகள் பொருந்தும்?'),
   T('Are both birth times reliable enough for Lagna-based Chevvai and Rahu–Ketu observations?', 'லக்னம் சார்ந்த செவ்வாய், ராகு–கேது கணிப்புக்கு இருவரின் பிறந்த நேரமும் போதுமான துல்லியமா?'),
-  T('Which dosha samyam rules does your tradition use, and why?', 'உங்கள் மரபு எந்த தோஷ சாம்ய விதிகளைப் பயன்படுத்துகிறது, ஏன்?'),
+  T('Which dosha samyam rules does your tradition use, and why?', 'உங்கள் மரபு எந்தத் தோஷ சாம்ய விதிகளைப் பயன்படுத்துகிறது, ஏன்?'),
 ];
 // Tradition-specific remarriage questions stay out of the app until an expert approves them (owner §6).
-const REMARRIAGE_EXPERT_Q = T('If your tradition treats remarriage differently, which houses and reference points does it use, and from which cited school?', 'உங்கள் மரபு மறுமணத்தை வேறுவிதமாகப் பார்க்கிறது என்றால், எந்த பாவங்கள், எந்தக் குறிப்புப் புள்ளிகள், எந்த ஆதாரபூர்வ பள்ளியிலிருந்து?');
+const REMARRIAGE_EXPERT_Q = T('If your tradition treats remarriage differently, which houses and reference points does it use, and from which cited school?', 'உங்கள் மரபு மறுமணத்தை வேறுவிதமாகப் பார்க்கிறது என்றால், எந்தப் பாவங்கள், எந்தக் குறிப்புப் புள்ளிகள், எந்த ஆதாரபூர்வ பள்ளியிலிருந்து?');
 
 const RECOMMENDATION = T('Talk these factors through together; the decision rests with the two of you and your families.',
   'இந்தக் காரணிகளைச் சேர்ந்து பேசுங்கள்; முடிவு நீங்கள் இருவரும் உங்கள் குடும்பங்களும் எடுப்பது.');

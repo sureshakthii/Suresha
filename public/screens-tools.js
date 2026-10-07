@@ -111,7 +111,7 @@ function renderCalDay(d, c) {
   $('#calDay').innerHTML = `<div class="card glass">
     <div class="card-title"><span>${fmtIsoDate(d.date)} · ${esc(bi(d.weekday))}</span><span class="pill">${esc(ta() ? `${d.tamil.monthTa} ${d.tamil.day}` : `${d.tamil.monthEn} ${d.tamil.day}`)}</span></div>
     ${d.festivals.length || d.muhurthaDay ? `<div class="fest-row">${d.festivals.map((f) => `<span class="fest ${f.kind}">${f.kind === 'festival' ? '🎉' : '🪔'} ${esc(bi(f))}</span>`).join('')}${d.muhurthaDay ? `<span class="fest muhurtham">💐 ${L('Subha Muhurtha day', 'சுப முகூர்த்த நாள்')}</span>` : ''}</div>` : ''}
-    ${cs ? `<p class="tag bad block">⚠️ ${L(`Chandrashtamam for ${c.name}`, `${c.name} அவர்களுக்கு சந்திராஷ்டமம்`)}</p>` : ''}
+    ${cs ? `<p class="tag bad block">⚠️ ${L(`Chandrashtamam for ${c.name}`, `${c.name} அவர்களுக்குச் சந்திராஷ்டமம்`)}</p>` : ''}
     <dl class="kv">
       <dt>${L('Sunrise / Sunset', 'உதயம் / அஸ்தமனம்')}</dt><dd>${fmtTime(d.sunrise, loc.tz)} / ${fmtTime(d.sunset, loc.tz)}</dd>
       <dt>${L('Tithi', 'திதி')}</dt><dd>${esc(ta() ? d.tithi.ta : `${d.paksha} ${d.tithi.name}`)} ${L('till', 'வரை')} ${fmtTime(d.tithi.endsAt, loc.tz)}</dd>
@@ -547,7 +547,7 @@ function renderStarBday(sec) {
           <p class="small muted">📐 ${esc(bi(x.basis))}</p>
           ${starNote(x.day)}
           ${x.thousandthFullMoon ? `<div class="small muted">🌕 ${L('1000th full moon', '1000-வது பௌர்ணமி')}: ${fmtIsoDate(new Date(x.thousandthFullMoon.getTime() + loc.tz * 3600000).toISOString().slice(0, 10))}</div>` : ''}
-          <p class="small">${L('Traditionally celebrated at Thirukadaiyur Abhirami–Amritaghateswarar temple or at home with homam.', 'பாரம்பரியமாக திருக்கடையூர் அபிராமி–அமிர்தகடேஸ்வரர் கோவிலில் அல்லது வீட்டில் ஹோமத்துடன் கொண்டாடப்படும்.')}</p>
+          <p class="small">${L('Traditionally celebrated at Thirukadaiyur Abhirami–Amritaghateswarar temple or at home with homam.', 'பாரம்பரியமாகத் திருக்கடையூர் அபிராமி–அமிர்தகடேஸ்வரர் கோவிலில் அல்லது வீட்டில் ஹோமத்துடன் கொண்டாடப்படும்.')}</p>
           <div class="btn-row"><button class="chip-btn" data-go="packages" data-param='{"id":"thirukadaiyur"}'>🧳 ${L('Package', 'பேக்கேஜ்')}</button><button class="chip-btn" data-go="seva" data-param='{"service":"homam"}'>🔥 ${L('Book priest', 'புரோகிதர்')}</button></div></div>`).join('')).join('')}`);
     }
   }, 40);
@@ -565,7 +565,7 @@ const SUGGEST = [
   ['Help our family choose a good date', 'எங்கள் குடும்பத்திற்கு ஏற்ற நாளைத் தேர்வு செய்ய உதவுங்கள்'],
   ['Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'],
   ['When will I get married?', 'எனக்கு எப்போது திருமணம் நடக்கும்?'],
-  ['Which planet is weak for me, and what simple practice can I do?', 'எந்த கிரகம் எனக்குப் பலவீனம்? என்ன எளிய வழிபாடு செய்யலாம்?'],
+  ['Which planet is weak for me, and what simple practice can I do?', 'எந்தக் கிரகம் எனக்குப் பலவீனம்? என்ன எளிய வழிபாடு செய்யலாம்?'],
   ['What is a good time today for important work?', 'இன்று முக்கிய வேலைக்கு நல்ல நேரம் எது?'],
 ];
 
@@ -642,7 +642,7 @@ function renderChat(sec, params = {}) {
   if (chat.memberId !== (m?.id || null)) { chat.messages = []; chat.memberId = m?.id || null; }
   sec.innerHTML = `<div class="chat-main"><div class="seg ask-switch" role="tablist"><button class="sel" role="tab" aria-selected="true">💬 ${L('Ask Thunai', 'துணையிடம் கேள்')}</button><button role="tab" aria-selected="false" data-go="ask">🔮 ${L('Is now a good time? (Prasnam)', 'இப்போது செய்யலாமா? (பிரசன்னம்)')}</button></div>
     <div class="chat-head card glass"><div class="avatar big">🪔</div><div><b>${esc(assistantName())}</b>
-      <div class="muted small">${m ? L(`Using ${displayName(m)}'s chart${m.private ? ' · private profile — this chat stays on this phone' : ''}`, `${displayName(m)} அவர்களின் ஜாதகப்படி${m.private ? ' · தனிப்பட்ட சுயவிவரம் — இந்த உரையாடல் இந்தக் கைப்பேசியிலேயே' : ''}`) : L('Add birth details for personal answers', 'தனிப்பட்ட பதில்களுக்கு பிறப்பு விவரம் சேர்க்கவும்')}</div></div></div>
+      <div class="muted small">${m ? L(`Using ${displayName(m)}'s chart${m.private ? ' · private profile — this chat stays on this phone' : ''}`, `${displayName(m)} அவர்களின் ஜாதகப்படி${m.private ? ' · தனிப்பட்ட சுயவிவரம் — இந்த உரையாடல் இந்தக் கைப்பேசியிலேயே' : ''}`) : L('Add birth details for personal answers', 'தனிப்பட்ட பதில்களுக்குப் பிறப்பு விவரம் சேர்க்கவும்')}</div></div></div>
     <div id="chatLog" class="chat-log" aria-live="polite">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask anything — in Tamil, English or Tanglish. Answers come in English (change language with the தமிழ் button).', 'வணக்கம்! தமிழ், ஆங்கிலம், தங்கிலீஷ் — எப்படியும் கேளுங்கள். பதில் தமிழில் வரும்.')}</div>`}</div>
     <div class="suggest-row">${suggestionsFor(ageOf(m), SUGGEST).map((x) => `<button class="sg">${esc(bi(x))}</button>`).join('')}</div>
     <form id="chatForm" class="chat-form"><button type="button" id="micBtn" class="mic" aria-label="${L('Speak', 'பேசுங்கள்')}">🎙️</button>

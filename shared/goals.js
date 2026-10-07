@@ -68,7 +68,7 @@ export const TEMPLATES = Object.freeze([
       T('Make a study timetable', 'படிப்பு அட்டவணை தயாரியுங்கள்'),
       T('Finish the syllabus once', 'பாடத்திட்டத்தை ஒருமுறை முடியுங்கள்'),
       T('Practise old question papers', 'பழைய வினாத்தாள்களைப் பயிற்சி செய்யுங்கள்'),
-      T('Keep documents and hall ticket ready', 'ஆவணங்கள், நுழைவுச் சீட்டை தயாராக வையுங்கள்'),
+      T('Keep documents and hall ticket ready', 'ஆவணங்கள், நுழைவுச் சீட்டைத் தயாராக வையுங்கள்'),
     ] },
   { id: 'house', icon: '🏡', topic: 'property', question: 'house', ...T('House / property', 'வீடு / சொத்து'),
     links: ['muhurtham', 'ask', 'chat'],
@@ -98,9 +98,9 @@ export const templateById = (id) => TEMPLATES.find((t) => t.id === id) || TEMPLA
 export const HEALTH_NOTE = T('Daily habits only — not medical advice. Follow your doctor for any treatment.',
   'தினசரிப் பழக்கங்கள் மட்டும் — மருத்துவ ஆலோசனை அல்ல. சிகிச்சைக்கு உங்கள் மருத்துவரைப் பின்பற்றுங்கள்.');
 export const OPTIONAL_PERIODS_NOTE = T('Optional — traditional good periods from the birth chart. Your real deadline always comes first; nothing here moves it.',
-  'விருப்பம் மட்டும் — பிறப்பு ஜாதகப்படி பாரம்பரிய நல்ல காலங்கள். உங்கள் உண்மையான கெடுவே முதன்மை; இது அதை மாற்றாது.');
+  'விருப்பம் மட்டும் — பிறப்பு ஜாதகப்படி பாரம்பரிய நல்ல காலங்கள். உங்கள் உண்மையான காலக்கெடுவே முதன்மை; இது அதை மாற்றாது.');
 export const PERIODS_BASIS = T('Basis: Vimshottari dasa–bhukti of the birth chart and Jupiter/Saturn transits, only within your deadline.',
-  'அடிப்படை: பிறப்பு ஜாதகத்தின் விம்சோத்தரி தசா–புக்தி, குரு/சனி கோசாரம் — உங்கள் கெடுவுக்குள் மட்டும்.');
+  'அடிப்படை: பிறப்பு ஜாதகத்தின் விம்சோத்தரி தசா–புக்தி, குரு/சனி கோசாரம் — உங்கள் காலக்கெடுவுக்குள் மட்டும்.');
 
 // ---------------------------------------------------------------- dates
 const toIso = (ms) => new Date(ms).toISOString().slice(0, 10);
@@ -115,11 +115,11 @@ export function daysLeft(goal, today) {
 /** A plain, pressure-free line about the deadline. */
 export function deadlineText(goal, today) {
   const n = daysLeft(goal, today);
-  if (n == null) return T('No deadline set', 'கெடு வைக்கவில்லை');
-  if (n > 1) return T(`${n} days to your deadline`, `உங்கள் கெடுவுக்கு ${n} நாட்கள்`);
-  if (n === 1) return T('Deadline tomorrow', 'கெடு நாளை');
-  if (n === 0) return T('Deadline today', 'கெடு இன்று');
-  return T('The deadline date has passed — you can change it', 'கெடு தேதி கடந்துவிட்டது — நீங்கள் மாற்றலாம்');
+  if (n == null) return T('No deadline set', 'காலக்கெடு வைக்கவில்லை');
+  if (n > 1) return T(`${n} days to your deadline`, `உங்கள் காலக்கெடுவுக்கு ${n} நாட்கள்`);
+  if (n === 1) return T('Deadline tomorrow', 'காலக்கெடு நாளை');
+  if (n === 0) return T('Deadline today', 'காலக்கெடு இன்று');
+  return T('The deadline date has passed — you can change it', 'காலக்கெடு தேதி கடந்துவிட்டது — நீங்கள் மாற்றலாம்');
 }
 
 // ---------------------------------------------------------------- stored state
@@ -153,7 +153,7 @@ export function validateGoal(input = {}, { profile = null, today = null, editing
   const tpl = templateById(input.template);
   if (!clean(input.title, 120)) errs.push({ field: 'title', ...T('Please give the goal a short name', 'இலக்குக்கு ஒரு சிறு பெயர் தாருங்கள்') });
   if (input.deadline != null && input.deadline !== '' && !ISO.test(String(input.deadline))) errs.push({ field: 'deadline', ...T('Please choose a valid date', 'சரியான தேதியைத் தேர்ந்தெடுங்கள்') });
-  else if (input.deadline && today && !editing && input.deadline < today) errs.push({ field: 'deadline', ...T('The deadline cannot be in the past', 'கெடு கடந்த தேதியாக இருக்க முடியாது') });
+  else if (input.deadline && today && !editing && input.deadline < today) errs.push({ field: 'deadline', ...T('The deadline cannot be in the past', 'காலக்கெடு கடந்த தேதியாக இருக்க முடியாது') });
   if (!templateAllowed(tpl.id, profile)) {
     errs.push({ field: 'person', ...T(`${tpl.en} is only for people aged 18 and over (with a date of birth saved).`, `${tpl.ta} 18 வயதுக்கு மேற்பட்டவர்களுக்கு மட்டும் (பிறந்த தேதி சேமித்திருக்க வேண்டும்).`) });
   }
@@ -301,7 +301,7 @@ export function weekSteps(state, { lang = 'ta', profileOf = null } = {}) {
       if (st.done || !st.date) continue;
       out.push({ id: st.id, goalId: g.id, title: st.title, date: st.date, time: st.time, type: st.kind === 'deadline' ? 'deadline' : 'flexible', topic: tpl.topic, goalTitle: g.title });
     }
-    if (g.deadline) out.push({ id: 'deadline', goalId: g.id, title: `${g.title} — ${lang === 'en' ? 'deadline' : 'கெடு'}`, date: g.deadline, time: null, type: 'deadline', topic: tpl.topic, goalTitle: g.title });
+    if (g.deadline) out.push({ id: 'deadline', goalId: g.id, title: `${g.title} — ${lang === 'en' ? 'deadline' : 'காலக்கெடு'}`, date: g.deadline, time: null, type: 'deadline', topic: tpl.topic, goalTitle: g.title });
   }
   return out;
 }
@@ -339,7 +339,7 @@ export function goodPeriods(goal, chart, { now = new Date(), tz = 5.5, profile =
 export function askText(goal, lang = 'ta') {
   const ns = nextStep(goal);
   if (lang === 'en') return `I am working on my goal "${goal.title}"${goal.deadline ? ` with a deadline of ${goal.deadline}` : ''}.${ns ? ` My next step is "${ns.title}".` : ''} What practical things should I keep in mind?`;
-  return `என் இலக்கு "${goal.title}"${goal.deadline ? `, கெடு ${goal.deadline}` : ''}.${ns ? ` அடுத்த படி "${ns.title}".` : ''} நடைமுறையில் எதைக் கவனிக்க வேண்டும்?`;
+  return `என் இலக்கு "${goal.title}"${goal.deadline ? `, காலக்கெடு ${goal.deadline}` : ''}.${ns ? ` அடுத்த படி "${ns.title}".` : ''} நடைமுறையில் எதைக் கவனிக்க வேண்டும்?`;
 }
 
 // ---------------------------------------------------------------- backup helpers (used by shared/sync-policy.js)

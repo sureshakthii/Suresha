@@ -426,12 +426,12 @@ export const HORAI_METHODS = Object.freeze({
   'tamil-60': {
     id: 'tamil-60',
     en: 'Tamil Horai — fixed 60-minute periods from sunrise',
-    ta: 'தமிழ் ஹோரை — சூரிய உதயம் முதல் 60 நிமிட ஹோரைகள்',
+    ta: 'தமிழ் ஓரை — சூரிய உதயம் முதல் 60 நிமிட ஓரைகள்',
   },
   'planetary-unequal': {
     id: 'planetary-unequal',
     en: 'Planetary hours — 12 equal parts of daytime and 12 of night-time',
-    ta: 'கிரக ஹோரை — பகல் 12 பங்கு, இரவு 12 பங்கு (சம மற்ற நேரம்)',
+    ta: 'கிரக ஓரை — பகல் 12 பங்கு, இரவு 12 பங்கு (சம மற்ற நேரம்)',
   },
 });
 

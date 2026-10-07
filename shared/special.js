@@ -380,7 +380,7 @@ function muhurthamReasons(peak, cat, nPersons) {
   if (nPersons) {
     const weak = peak.personNotes.length;
     out.push(weak
-      ? { en: 'Some members have a weak Tara — pray before starting', ta: 'சிலருக்கு தாரை பலம் குறைவு — வழிபட்டுத் தொடங்கவும்' }
+      ? { en: 'Some members have a weak Tara — pray before starting', ta: 'சிலருக்குத் தாரை பலம் குறைவு — வழிபட்டுத் தொடங்கவும்' }
       : { en: 'No Chandrashtamam and good Tara for everyone selected', ta: 'தேர்ந்தெடுத்த அனைவருக்கும் சந்திராஷ்டமம் இல்லை, தாரை பலம் உண்டு' });
   }
   return out;

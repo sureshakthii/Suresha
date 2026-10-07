@@ -92,7 +92,7 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
     const n = NAVAGRAHA[planet];
     if (planet === 'Rahu' && snap?.rahuKalam) {
       horai = { planet, start: snap.rahuKalam.start, end: snap.rahuKalam.end, weeks: 9,
-        text: hindu ? T('During Rahu Kalam light a lamp for Goddess Durga — Rahu’s pressure eases.', 'ராகு காலத்தில் துர்கைக்கு தீபம் — ராகுவின் அழுத்தம் குறையும்.') : T('Use this time for quiet prayer in your own faith and help someone in need.', 'இந்த நேரத்தில் உங்கள் நம்பிக்கைப்படி அமைதியான பிரார்த்தனை; தேவையுள்ளோருக்கு உதவி.') };
+        text: hindu ? T('During Rahu Kalam light a lamp for Goddess Durga — Rahu’s pressure eases.', 'ராகு காலத்தில் துர்கைக்குத் தீபம் — ராகுவின் அழுத்தம் குறையும்.') : T('Use this time for quiet prayer in your own faith and help someone in need.', 'இந்த நேரத்தில் உங்கள் நம்பிக்கைப்படி அமைதியான பிரார்த்தனை; தேவையுள்ளோருக்கு உதவி.') };
     } else if (planet === 'Ketu') {
       horai = { planet, start: snap?.sunrise, end: snap?.sunrise ? new Date(new Date(snap.sunrise).getTime() + 7200000) : null, weeks: 9,
         text: hindu ? T('Early morning: pray to Vinayagar before any work — Ketu’s confusion clears.', 'அதிகாலை: எந்த வேலைக்கும் முன் விநாயகர் வழிபாடு — கேதுவின் குழப்பம் நீங்கும்.') : T('Early morning: a few minutes of silent prayer or meditation.', 'அதிகாலை: சில நிமிட அமைதியான பிரார்த்தனை / தியானம்.') };

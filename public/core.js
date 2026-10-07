@@ -143,7 +143,7 @@ export function stabilityChip(c, ...keys) {
   return `<span class="badge est stab-chip" title="${esc(L(`Changes within ±${w} minutes of the entered time`, `உள்ளிட்ட நேரத்திலிருந்து ±${w} நிமிடத்திற்குள் மாறுகிறது`))}">${L(`may change within your ±${w} min`, `மாறக்கூடியது · ±${w} நிமி`)}</span>`;
 }
 /** "Needs birth time" note for Lagna- / house-based sections when the time is unknown (Moon-based results shown). */
-export const needsTimeNote = (what = null) => `<p class="note-box unv small needs-time" role="note">🕰️ ${what ? `${esc(L(what.en, what.ta))} ` : ''}${L('Needs the birth time — shown from the Moon sign (Chandra Lagnam) instead.', 'பிறந்த நேரம் தேவை — பதிலாக சந்திர ராசியிலிருந்து (சந்திர லக்னம்) காட்டப்படுகிறது.')}</p>`;
+export const needsTimeNote = (what = null) => `<p class="note-box unv small needs-time" role="note">🕰️ ${what ? `${esc(L(what.en, what.ta))} ` : ''}${L('Needs the birth time — shown from the Moon sign (Chandra Lagnam) instead.', 'பிறந்த நேரம் தேவை — பதிலாகச் சந்திர ராசியிலிருந்து (சந்திர லக்னம்) காட்டப்படுகிறது.')}</p>`;
 /**
  * Birth facts for an AI context: never the unknown-time placeholder (12:00) and never a Lagna that is not known.
  * Returns { birth: 'YYYY-MM-DD HH:MM:SS place' | 'YYYY-MM-DD (birth time unknown) place', lagna: name | null, birthTime }.

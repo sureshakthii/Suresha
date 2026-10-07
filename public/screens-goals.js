@@ -109,7 +109,7 @@ function listHtml(s) {
   const canAdd = !goalGate(s).locked && canAddGoal(s);
   const act = s.goals.filter((g) => g.status !== 'done');
   const done = s.goals.filter((g) => g.status === 'done');
-  return `${subHeader(L('My goals', 'என் இலக்குகள்'), L('One place for a goal you are working on — your deadline, your limits and the next practical step. Astrology is only an optional extra.', 'நீங்கள் முயலும் இலக்குக்கு ஓர் இடம் — உங்கள் கெடு, வரம்புகள், அடுத்த நடைமுறைப் படி. ஜோதிடம் விருப்பத் துணை மட்டுமே.'))}
+  return `${subHeader(L('My goals', 'என் இலக்குகள்'), L('One place for a goal you are working on — your deadline, your limits and the next practical step. Astrology is only an optional extra.', 'நீங்கள் முயலும் இலக்குக்கு ஓர் இடம் — உங்கள் காலக்கெடு, வரம்புகள், அடுத்த நடைமுறைப் படி. ஜோதிடம் விருப்பத் துணை மட்டுமே.'))}
     <div class="dsk-cols"><div class="dsk-col">
     ${act.length ? `<section class="card glass" aria-labelledby="goalListT"><div class="card-title"><span id="goalListT">${L('Active goals', 'நடப்பு இலக்குகள்')}</span></div><ul class="goal-list">${act.map(goalRow).join('')}</ul></section>` : ''}
     ${done.length ? `<details class="card glass goal-done"><summary>${L('Achieved', 'நிறைவேறியவை')} (${done.length})</summary><ul class="goal-list">${done.map(goalRow).join('')}</ul></details>` : ''}
@@ -141,8 +141,8 @@ function formHtml(g, tplId) {
         <select id="gPerson">${allowed.map((m) => `<option value="${esc(m.id)}"${m.id === sel ? ' selected' : ''}>${esc(displayName(m))}</option>`).join('')}${tpl.topic ? '' : `<option value=""${!sel ? ' selected' : ''}>${L('Family / general', 'குடும்பம் / பொது')}</option>`}</select></label>
       ${tpl.topic && allowed.length < people().length ? `<p class="small muted">${L('Only adults (18+) are listed for this goal.', 'இந்த இலக்குக்குப் பெரியவர்கள் (18+) மட்டும் காட்டப்படுகின்றனர்.')}</p>` : ''}
       <label>${L('Goal name', 'இலக்கின் பெயர்')}<input id="gTitle" maxlength="120" required value="${esc(title)}"></label>
-      <label>${L('Deadline (optional)', 'கெடு (விருப்பம்)')}<input id="gDeadline" type="date" ${g ? '' : `min="${today()}"`} value="${esc(g?.deadline || '')}"></label>
-      <p class="small muted">${L('Your real deadline always comes first — nothing in the app moves it.', 'உங்கள் உண்மையான கெடுவே முதன்மை — செயலியில் எதுவும் அதை மாற்றாது.')}</p>
+      <label>${L('Deadline (optional)', 'காலக்கெடு (விருப்பம்)')}<input id="gDeadline" type="date" ${g ? '' : `min="${today()}"`} value="${esc(g?.deadline || '')}"></label>
+      <p class="small muted">${L('Your real deadline always comes first — nothing in the app moves it.', 'உங்கள் உண்மையான காலக்கெடுவே முதன்மை — செயலியில் எதுவும் அதை மாற்றாது.')}</p>
       <label>${L('Constraints (optional)', 'வரம்புகள் (விருப்பம்)')}<textarea id="gCons" rows="2" maxlength="500" placeholder="${esc(L('e.g. budget, location, dates to avoid', 'எ.கா. பட்ஜெட், இடம், தவிர்க்க வேண்டிய தேதிகள்'))}">${esc(g?.constraints || '')}</textarea></label>
       <label>${L('Notes (optional)', 'குறிப்புகள் (விருப்பம்)')}<textarea id="gNotes" rows="2" maxlength="500">${esc(g?.notes || '')}</textarea></label>
       <label class="adult-confirm"><input type="checkbox" id="gWeekly"${fu.weekly ? ' checked' : ''}> ${L('Weekly review prompt', 'வாராந்திர மீளாய்வு நினைவு')}</label>
@@ -173,7 +173,7 @@ function stepForm(g, st = null) {
     <label>${st ? L('Step', 'படி') : L('Add a step', 'படி சேர்')}<input id="${p}StTitle" maxlength="120" value="${esc(st?.title || '')}" placeholder="${esc(L('e.g. Call the mandapam', 'எ.கா. மண்டபத்தை அழைக்கவும்'))}"></label>
     <div class="row2"><label>${L('Date (optional)', 'தேதி (விருப்பம்)')}<input id="${p}StDate" type="date" ${g.deadline ? `max="${esc(g.deadline)}"` : ''} value="${esc(st?.date || '')}"></label>
       <label>${L('Time (optional)', 'நேரம் (விருப்பம்)')}<input id="${p}StTime" type="time" value="${esc(st?.time || '')}"></label></div>
-    <label class="adult-confirm small"><input type="checkbox" id="${p}StFixed"${st?.kind === 'deadline' ? ' checked' : ''}> ${L('This date is a real deadline (kept fixed in the weekly plan)', 'இந்தத் தேதி உண்மையான கெடு (வாரத் திட்டத்தில் நிலையாக இருக்கும்)')}</label>
+    <label class="adult-confirm small"><input type="checkbox" id="${p}StFixed"${st?.kind === 'deadline' ? ' checked' : ''}> ${L('This date is a real deadline (kept fixed in the weekly plan)', 'இந்தத் தேதி உண்மையான காலக்கெடு (வாரத் திட்டத்தில் நிலையாக இருக்கும்)')}</label>
     <div class="btn-row"><button class="${st ? 'btn-gold' : 'chip-btn'}" type="submit">${st ? L('Save', 'சேமி') : `➕ ${L('Add step', 'படி சேர்')}`}</button>${st ? `<button type="button" class="chip-btn" data-scancel>${L('Cancel', 'ரத்து')}</button>` : ''}</div>
   </form>`;
 }
@@ -181,15 +181,15 @@ function stepForm(g, st = null) {
 function periodsHtml(g) {
   const p = view.periods;
   if (!p || p.id !== g.id) {
-    return `<button type="button" class="chip-btn" id="gPeriods">🌿 ${L('Show good periods before your deadline (optional)', 'கெடுவுக்கு முன் நல்ல காலங்கள் (விருப்பம்)')}</button>`;
+    return `<button type="button" class="chip-btn" id="gPeriods">🌿 ${L('Show good periods before your deadline (optional)', 'காலக்கெடுவுக்கு முன் நல்ல காலங்கள் (விருப்பம்)')}</button>`;
   }
   const r = p.res;
   const reason = {
-    'no-deadline': L('Set a deadline to see optional good periods within it.', 'கெடு வைத்தால் அதற்குள் உள்ள விருப்ப நல்ல காலங்களைக் காணலாம்.'),
+    'no-deadline': L('Set a deadline to see optional good periods within it.', 'காலக்கெடு வைத்தால் அதற்குள் உள்ள விருப்ப நல்ல காலங்களைக் காணலாம்.'),
     'no-chart': L('Add the birth details of the person to see this.', 'இதற்கு அவரின் பிறப்பு விவரங்களைச் சேர்க்கவும்.'),
     'needs-birth-time': L('This needs a known birth time. Your plan works just as well without it.', 'இதற்குப் பிறந்த நேரம் தேவை. அது இல்லாமலும் உங்கள் திட்டம் நன்றாக இயங்கும்.'),
-    'none-before-deadline': L('No traditionally favoured period falls before your deadline — that is fine. Go by your deadline and the practical steps.', 'உங்கள் கெடுவுக்கு முன் பாரம்பரிய நல்ல காலம் எதுவும் இல்லை — பரவாயில்லை. உங்கள் கெடுவையும் நடைமுறைப் படிகளையும் பின்பற்றுங்கள்.'),
-    past: L('The deadline has passed — change it to see this.', 'கெடு கடந்துவிட்டது — இதைக் காண அதை மாற்றுங்கள்.'),
+    'none-before-deadline': L('No traditionally favoured period falls before your deadline — that is fine. Go by your deadline and the practical steps.', 'உங்கள் காலக்கெடுவுக்கு முன் பாரம்பரிய நல்ல காலம் எதுவும் இல்லை — பரவாயில்லை. உங்கள் காலக்கெடுவையும் நடைமுறைப் படிகளையும் பின்பற்றுங்கள்.'),
+    past: L('The deadline has passed — change it to see this.', 'காலக்கெடு கடந்துவிட்டது — இதைக் காண அதை மாற்றுங்கள்.'),
     age: L('Not shown for this person.', 'இவருக்குக் காட்டப்படாது.'),
   }[r.reason] || '';
   return `<p class="small"><span class="tag warn">${L('Optional', 'விருப்பம்')}</span> ${esc(bi(r.note))}</p>
@@ -218,7 +218,7 @@ function detailHtml(g) {
   const due = reviewDue(g, today());
   return `${subHeader(`${tpl.icon} ${esc(g.title)}`, `${who ? `${esc(who)} · ` : ''}${esc(bi(tpl))}`, 'goals')}
     <div class="dsk-cols"><div class="dsk-col">
-    <section class="card glass goal-head" aria-label="${esc(L('Deadline and progress', 'கெடு, முன்னேற்றம்'))}">
+    <section class="card glass goal-head" aria-label="${esc(L('Deadline and progress', 'காலக்கெடு, முன்னேற்றம்'))}">
       <p class="goal-dl"><b>${esc(bi(deadlineText(g, today())))}</b>${g.deadline ? ` <span class="small muted">(${esc(fmtIsoDate(g.deadline))})</span>` : ''}</p>
       ${n != null && n >= 0 ? `<p class="small muted">${L('Take it one step at a time.', 'ஒவ்வொரு படியாகச் செல்லுங்கள்.')}</p>` : ''}
       ${progressBar(pc)}<p class="small muted">${pc}% ${L('done', 'முடிந்தது')} · ${g.steps.filter((x) => x.done).length}/${g.steps.length} ${L('steps', 'படிகள்')}</p>
@@ -238,7 +238,7 @@ function detailHtml(g) {
         <button type="button" class="chip-btn" id="gReviewed">✓ ${L('Reviewed this week', 'இந்த வாரம் பார்த்தேன்')}</button></div>`
     : `<p class="small muted">${L('Weekly review is off. Turn it on in Edit.', 'வார மீளாய்வு அணைக்கப்பட்டுள்ளது. திருத்து-வில் இயக்கலாம்.')}</p>`}
     </section>
-    ${tpl.question ? `<section class="card glass goal-opt" aria-labelledby="gOptT"><div class="card-title"><span id="gOptT">🌿 ${L('Good periods before your deadline', 'கெடுவுக்கு முன் நல்ல காலங்கள்')}</span><span class="tag warn">${L('optional', 'விருப்பம்')}</span></div>
+    ${tpl.question ? `<section class="card glass goal-opt" aria-labelledby="gOptT"><div class="card-title"><span id="gOptT">🌿 ${L('Good periods before your deadline', 'காலக்கெடுவுக்கு முன் நல்ல காலங்கள்')}</span><span class="tag warn">${L('optional', 'விருப்பம்')}</span></div>
       <div id="gPeriodsBox">${periodsHtml(g)}</div></section>` : ''}
     <section class="card glass" aria-labelledby="gToolsT"><div class="card-title"><span id="gToolsT">🧭 ${L('Helpful tools', 'உதவும் கருவிகள்')}</span></div>
       <div class="btn-row goal-links">${links.map((id) => (id === 'chat'
@@ -328,7 +328,7 @@ function wire(sec) {
     const step = { title: $(`#${p}StTitle`, f).value, date: $(`#${p}StDate`, f).value || null, time: $(`#${p}StTime`, f).value || null, kind: $(`#${p}StFixed`, f).checked ? 'deadline' : 'flexible' };
     if (!step.title.trim()) { toast(L('Please write the step', 'படியை எழுதுங்கள்')); $(`#${p}StTitle`, f).focus(); return; }
     const g = loadGoals().goals.find((x) => x.id === id);
-    if (afterDeadline(g, step)) { toast(L('That date is after your deadline — the deadline comes first.', 'அந்தத் தேதி உங்கள் கெடுவுக்குப் பின் — கெடுவே முதன்மை.')); return; }
+    if (afterDeadline(g, step)) { toast(L('That date is after your deadline — the deadline comes first.', 'அந்தத் தேதி உங்கள் காலக்கெடுவுக்குப் பின் — காலக்கெடுவே முதன்மை.')); return; }
     if (f.dataset.stepform) { view.stepEdit = null; apply(editStep(loadGoals(), id, f.dataset.stepform, step), L('Updated', 'திருத்தப்பட்டது')); } else apply(addStep(loadGoals(), id, step), L('Added', 'சேர்க்கப்பட்டது'));
   }));
   $('#gReviewed', sec)?.addEventListener('click', () => apply(markReviewed(loadGoals(), id), L('Noted — see you next week', 'குறித்துக்கொண்டோம் — அடுத்த வாரம் சந்திப்போம்')));

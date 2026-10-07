@@ -101,7 +101,7 @@ const RAW = {
   chidambaram: {
     s: B('Nataraja\'s cosmic dance in the golden hall; the Chidambara Rahasyam of space.', 'பொன்னம்பலத்தில் நடராஜரின் ஆனந்தத் தாண்டவம்; சிதம்பர ரகசியம்.'),
     p: B('Wisdom, arts, dance and liberation.', 'ஞானம், கலை, நடனம், முக்தி.'),
-    v: B('Shiva danced here for the sages Patanjali and Vyaghrapada. The Chola kings covered the hall with gold.', 'பதஞ்சலி, வியாக்ரபாதர் முனிவர்களுக்காக சிவன் இங்கு நடனம் ஆடினார். சோழ மன்னர்கள் சபைக்குப் பொன் வேய்ந்தனர்.'),
+    v: B('Shiva danced here for the sages Patanjali and Vyaghrapada. The Chola kings covered the hall with gold.', 'பதஞ்சலி, வியாக்ரபாதர் முனிவர்களுக்காகச் சிவன் இங்கு நடனம் ஆடினார். சோழ மன்னர்கள் சபைக்குப் பொன் வேய்ந்தனர்.'),
     r: ['Chidambaram', 'சிதம்பரம்', 1.5], t: tm([['6:00', '12:00'], ['17:00', '22:00']]),
     f: B('Margazhi Arudra Darisanam and Aani Thirumanjanam', 'மார்கழி ஆருத்ரா தரிசனம், ஆனித் திருமஞ்சனம்'),
   },
@@ -122,7 +122,7 @@ const RAW = {
   thiruvanaikaval: {
     s: B('Water lingam (Appu) with a spring that keeps the sanctum moist.', 'கருவறையில் எப்போதும் நீர் ஊறும் அப்பு லிங்கம்.'),
     p: B('Knowledge, health and relief from sins.', 'கல்வி, உடல்நலம், பாவ நிவர்த்தி.'),
-    v: B('Parvati as Akilandeswari worshipped a lingam made of Cauvery water under a jambu (naaval) tree. An elephant and a spider also worshipped here.', 'அகிலாண்டேஸ்வரியாக பார்வதி நாவல் மரத்தடியில் காவிரி நீரால் லிங்கம் அமைத்து வழிபட்டாள். யானையும் சிலந்தியும் வழிபட்ட தலம்.'),
+    v: B('Parvati as Akilandeswari worshipped a lingam made of Cauvery water under a jambu (naaval) tree. An elephant and a spider also worshipped here.', 'அகிலாண்டேஸ்வரியாகப் பார்வதி நாவல் மரத்தடியில் காவிரி நீரால் லிங்கம் அமைத்து வழிபட்டாள். யானையும் சிலந்தியும் வழிபட்ட தலம்.'),
     r: ['Srirangam', 'ஸ்ரீரங்கம்', 3], t: tm([['6:00', '13:00'], ['15:00', '21:00']]),
     f: B('Panguni Brahmotsavam', 'பங்குனிப் பிரம்மோற்சவம்'),
   },
@@ -304,14 +304,14 @@ const RAW = {
   tirumala: {
     s: B('One of the most visited shrines in the world; famous laddu prasadam.', 'உலகில் அதிகம் பேர் வழிபடும் தலங்களில் ஒன்று; லட்டு பிரசாதம்.'),
     p: B('Wealth, removal of debts and wishes granted; hair offering.', 'செல்வம், கடன் நீக்கம், வேண்டுதல் நிறைவேற்றம்; முடி காணிக்கை.'),
-    v: B('Vishnu came to the Seven Hills as Srinivasa and married Padmavathi. He is said to repay the wedding loan from Kubera with devotees\' offerings.', 'விஷ்ணு சீனிவாசராக ஏழுமலைக்கு வந்து பத்மாவதியை மணந்தார்; குபேரனிடம் பெற்ற கடனை பக்தர் காணிக்கையால் செலுத்துவதாக ஐதீகம்.'),
+    v: B('Vishnu came to the Seven Hills as Srinivasa and married Padmavathi. He is said to repay the wedding loan from Kubera with devotees\' offerings.', 'விஷ்ணு சீனிவாசராக ஏழுமலைக்கு வந்து பத்மாவதியை மணந்தார்; குபேரனிடம் பெற்ற கடனைப் பக்தர் காணிக்கையால் செலுத்துவதாக ஐதீகம்.'),
     r: ['Tirupati', 'திருப்பதி', 22], t: tm([['3:00', '23:30']], 'darshan slots vary; book on the official TTD site', 'தரிசன நேரம் மாறும்; அதிகாரப்பூர்வ தேவஸ்தான இணையதளத்தில் முன்பதிவு'),
     f: B('Brahmotsavam (Purattasi) and Vaikunta Ekadasi', 'புரட்டாசி பிரம்மோற்சவம், வைகுண்ட ஏகாதசி'),
   },
   guruvayur: {
     s: B('Child Krishna worshipped with elaborate rituals; Thulabharam and first-rice feeding.', 'குழந்தைக் கண்ணன் வழிபாடு; துலாபாரம், அன்னப்பிராசனம்.'),
     p: B('Child welfare, health and marriage.', 'குழந்தை நலன், உடல்நலம், திருமணம்.'),
-    v: B('The idol worshipped by Krishna\'s parents was installed here by Guru (Brihaspati) and Vayu, hence Guruvayur. Narayana Bhattathiri composed the Narayaneeyam here.', 'கண்ணனின் பெற்றோர் வழிபட்ட விக்கிரகத்தை குருவும் வாயுவும் இங்கு நிறுவினர்; எனவே குருவாயூர். நாராயண பட்டதிரி நாராயணீயம் இயற்றிய தலம்.'),
+    v: B('The idol worshipped by Krishna\'s parents was installed here by Guru (Brihaspati) and Vayu, hence Guruvayur. Narayana Bhattathiri composed the Narayaneeyam here.', 'கண்ணனின் பெற்றோர் வழிபட்ட விக்கிரகத்தைக் குருவும் வாயுவும் இங்கு நிறுவினர்; எனவே குருவாயூர். நாராயண பட்டதிரி நாராயணீயம் இயற்றிய தலம்.'),
     r: ['Guruvayur', 'குருவாயூர்', 1], t: tm([['3:00', '12:30'], ['16:30', '21:15']], 'dress code applies', 'உடைக் கட்டுப்பாடு உண்டு'),
     f: B('Ekadasi (Vrischikam) and Ulsavam', 'குருவாயூர் ஏகாதசி, உற்சவம்'),
   },
@@ -337,9 +337,9 @@ const RAW = {
     f: B('Panguni Uthiram and Pournami days', 'பங்குனி உத்திரம், பௌர்ணமி நாட்கள்'),
   },
   vaitheeswaran: {
-    s: B('Shiva as the divine physician; Mars (Angarakan) shrine; famous nadi astrologers in town.', 'மருத்துவராக சிவன்; அங்காரகன் சன்னிதி; ஊரில் நாடி ஜோதிடம் பிரசித்தம்.'),
+    s: B('Shiva as the divine physician; Mars (Angarakan) shrine; famous nadi astrologers in town.', 'மருத்துவராகச் சிவன்; அங்காரகன் சன்னிதி; ஊரில் நாடி ஜோதிடம் பிரசித்தம்.'),
     p: B('Cure of diseases, Mars (sevvai) dosha relief.', 'நோய் தீர்தல், செவ்வாய் தோஷ நிவர்த்தி.'),
-    v: B('Shiva came as Vaidyanathar with Thaiyalnayaki carrying healing oil to cure devotees. Mars was cured of leprosy here.', 'தைலம் ஏந்திய தையல்நாயகியுடன் வைத்தியநாதராக சிவன் நோய் தீர்த்தார். அங்காரகன் தொழுநோய் நீங்கப்பெற்ற தலம்.'),
+    v: B('Shiva came as Vaidyanathar with Thaiyalnayaki carrying healing oil to cure devotees. Mars was cured of leprosy here.', 'தைலம் ஏந்திய தையல்நாயகியுடன் வைத்தியநாதராகச் சிவன் நோய் தீர்த்தார். அங்காரகன் தொழுநோய் நீங்கப்பெற்ற தலம்.'),
     r: ['Vaitheeswaran Kovil', 'வைத்தீஸ்வரன் கோவில்', 1], t: tm([['6:00', '13:00'], ['16:00', '21:00']]),
     f: B('Thai and Panguni Brahmotsavam; Tuesdays', 'தை, பங்குனி பிரம்மோற்சவம்; செவ்வாய்க்கிழமைகள்'),
   },
@@ -388,7 +388,7 @@ const RAW = {
   thirumanancheri: {
     s: B('Shiva and Parvati are seen in their wedding form; garland prayer for marriage.', 'சிவனும் பார்வதியும் திருமணக் கோலத்தில்; திருமண மாலை வேண்டுதல்.'),
     p: B('Removal of marriage delays; couples return to give thanks.', 'திருமணத் தடை நீக்கம்; மணமான பின் நன்றி செலுத்த மீண்டும் வருகை.'),
-    v: B('Shiva married Parvati here after she was freed from a curse; the town is named for the wedding (thirumanam).', 'சாப விமோசனம் பெற்ற பார்வதியை சிவன் இங்கு மணந்தார்; ஊரின் பெயரே திருமணத்தைக் குறிக்கிறது.'),
+    v: B('Shiva married Parvati here after she was freed from a curse; the town is named for the wedding (thirumanam).', 'சாப விமோசனம் பெற்ற பார்வதியைச் சிவன் இங்கு மணந்தார்; ஊரின் பெயரே திருமணத்தைக் குறிக்கிறது.'),
     r: ['Kuthalam', 'குத்தாலம்', 6], t: tm([['6:00', '13:00'], ['15:30', '20:00']]),
     f: B('Chithirai Thirukalyanam', 'சித்திரைத் திருக்கல்யாணம்'),
   },
@@ -554,7 +554,7 @@ const RAW = {
     f: B('Karthigai Brahmotsavam (Panchami Theertham)', 'கார்த்திகைப் பிரம்மோற்சவம் (பஞ்சமி தீர்த்தம்)'),
   },
   chottanikkara: {
-    s: B('Bhagavathy worshipped as Saraswati in the morning, Lakshmi at noon and Durga in the evening.', 'காலையில் சரஸ்வதி, மதியம் லட்சுமி, மாலை துர்க்கையாக பகவதி வழிபாடு.'),
+    s: B('Bhagavathy worshipped as Saraswati in the morning, Lakshmi at noon and Durga in the evening.', 'காலையில் சரஸ்வதி, மதியம் லட்சுமி, மாலை துர்க்கையாகப் பகவதி வழிபாடு.'),
     p: B('Relief from mental illness and evil influences.', 'மன நோய், தீய சக்தி பாதிப்பு நீக்கம்.'),
     v: B('The lower shrine of Keezhkavu Bhagavathy is believed to free devotees from mental afflictions; a nail-studded tree there carries their offerings.', 'கீழ்க்காவு பகவதி சன்னிதி மனப் பாதிப்புகளை நீக்குவதாக நம்பிக்கை; அங்குள்ள மரத்தில் ஆணி அடிக்கும் வழக்கம்.'),
     r: ['Ernakulam Junction', 'எர்ணாகுளம் சந்திப்பு', 17], t: tm([['4:00', '12:00'], ['16:00', '20:30']]),

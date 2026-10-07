@@ -44,7 +44,7 @@ export function compatCardHtml(m, { open = false, uncertain = false, idPrefix = 
   const preview = first?.stars.length ? first.stars.slice(0, 3).map((x) => bi(x)).join(' · ') : r.planets.planets.map((p) => bi(p.name)).join(' · ');
   return `<section class="card glass compat-card" aria-labelledby="${idPrefix}Title">
     <details class="cp-det"${open ? ' open' : ''}><summary>
-      <span class="cp-head"><span id="${idPrefix}Title" class="cp-title">🤝 ${L('People who suit you', 'உங்களுக்கு சாதகமானவர்கள்')}</span>
+      <span class="cp-head"><span id="${idPrefix}Title" class="cp-title">🤝 ${L('People who suit you', 'உங்களுக்குச் சாதகமானவர்கள்')}</span>
         <span class="cp-prev">⭐ ${esc(bi(r.person.star))} · ${esc(bi(r.person.rasi))} → ${esc(preview)}</span></span>
       <span class="cp-more" aria-hidden="true">›</span></summary>
       <p class="small muted cp-lead">${esc(displayName(m))} — ${L('from the birth star and rasi (Tara bala, rasi friendship', 'பிறந்த நட்சத்திரம், ராசிப்படி (தாரா பலம், ராசி நட்பு')}${r.adult ? L(', 10 poruthams)', ', 10 பொருத்தம்)') : ')'}.</p>

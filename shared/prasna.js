@@ -29,7 +29,7 @@ export const CATEGORIES = [
     goodDays: [3, 4, 5], badDays: [2],
   },
   {
-    id: 'bride_groom', icon: '💍', en: 'Bride / Groom Seeing', ta: 'பெண் / மாப்பிள்ளை பார்த்தல்',
+    id: 'bride_groom', icon: '💍', en: 'Bride / Groom Seeing', ta: 'மணமகள் / மணமகன் பார்த்தல்',
     goodHora: ['Venus', 'Jupiter', 'Moon', 'Mercury'], badHora: ['Saturn', 'Mars', 'Sun'],
     goodNak: ['mridu', 'dhruva', 'kshipra'], badNak: ['ugra', 'tikshna'],
     goodDays: [1, 3, 4, 5], badDays: [2, 6], auspicious: true,
@@ -238,7 +238,7 @@ export const CATEGORIES = [
     goodDays: [3, 4, 5], badDays: [2, 6],
   },
   {
-    id: 'bank_account', icon: '🏦', en: 'Opening a Bank Account', ta: 'வங்கிக் கணக்கு தொடங்குதல்',
+    id: 'bank_account', icon: '🏦', en: 'Opening a Bank Account', ta: 'வங்கிக் கணக்குத் தொடங்குதல்',
     goodHora: ['Jupiter', 'Mercury', 'Venus', 'Moon'], badHora: ['Saturn', 'Mars'],
     goodNak: ['dhruva', 'kshipra', 'chara', 'mridu'], badNak: ['ugra'],
     goodDays: [1, 3, 4, 5], badDays: [2, 6],

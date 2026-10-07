@@ -43,7 +43,7 @@ const COMPOUND_GROUPS = [
   [[14, 23, 32, 41, 50], T('Communication, trade and helpful contacts bring success.', 'தொடர்பு, வணிகம், உதவும் நட்புகள் வெற்றி தரும்.')],
   [[15, 24, 33, 42, 51], T('Charm, love and support from people in power.', 'கவர்ச்சி, அன்பு, அதிகாரத்தில் உள்ளோரின் ஆதரவு.')],
   [[16, 25, 34, 43, 52], T('Strength through experience — think before big moves.', 'அனுபவத்தால் வலிமை — பெரிய முடிவுகளுக்கு முன் சிந்தியுங்கள்.')],
-  [[17, 26, 35, 44], T('Steady effort brings a lasting name; choose partners wisely.', 'நிலையான உழைப்பு நிலைத்த பெயர் தரும்; கூட்டாளிகளை கவனமாகத் தேர்ந்தெடுங்கள்.')],
+  [[17, 26, 35, 44], T('Steady effort brings a lasting name; choose partners wisely.', 'நிலையான உழைப்பு நிலைத்த பெயர் தரும்; கூட்டாளிகளைக் கவனமாகத் தேர்ந்தெடுங்கள்.')],
   [[18, 27, 36, 45], T('Creative authority and courage; stay calm in disputes.', 'படைப்பாற்றல், அதிகாரம், தைரியம்; வாக்குவாதங்களில் அமைதி காக்கவும்.')],
   [[21], T('Victory and advancement after effort — the crown number.', 'முயற்சிக்குப் பின் வெற்றியும் உயர்வும் — கிரீட எண்.')],
   [[28, 37, 46], T('Ambition, friendship and good progress with planning.', 'லட்சியம், நட்பு, திட்டமிடலுடன் நல்ல முன்னேற்றம்.')],

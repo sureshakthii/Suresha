@@ -149,9 +149,9 @@ Profiles: `parashari-tamil-default` and `parashari-tamil-review` (the same, with
 | `role.yogakaraka` | Yogakaraka | role | lagna | proposed | to be cited by reviewer | — |
 | `yoga.raja` | Raja Yoga (kendra–trikona lords) | yoga | lagna | proposed | to be cited by reviewer | conjunction |
 | `yoga.dhana` | Dhana Yoga (wealth lords) | yoga | lagna | proposed | to be cited by reviewer | conjunction |
-| `yoga.viparita.harsha` | Harsha Yoga (Viparita Raja) | yoga | lagna | proposed | Phaladeepika (Mantreswara) | — |
-| `yoga.viparita.sarala` | Sarala Yoga (Viparita Raja) | yoga | lagna | proposed | Phaladeepika (Mantreswara) | — |
-| `yoga.viparita.vimala` | Vimala Yoga (Viparita Raja) | yoga | lagna | proposed | Phaladeepika (Mantreswara) | — |
+| `yoga.viparita.harsha` | Harsha Yoga (Viparita Raja Yoga) | yoga | lagna | proposed | Phaladeepika (Mantreswara) | — |
+| `yoga.viparita.sarala` | Sarala Yoga (Viparita Raja Yoga) | yoga | lagna | proposed | Phaladeepika (Mantreswara) | — |
+| `yoga.viparita.vimala` | Vimala Yoga (Viparita Raja Yoga) | yoga | lagna | proposed | Phaladeepika (Mantreswara) | — |
 | `yoga.adhi` | Adhi Yoga | yoga | moon | proposed | Brihat Parashara Hora Shastra; Phaladeepika (Mantreswara) | full, partial |
 | `yoga.neechabhanga.sun` | Neecha Bhanga — Sun (cancellation of debilitation) | yoga | lagna | proposed | Brihat Parashara Hora Shastra; Phaladeepika (Mantreswara) | — |
 | `yoga.neechabhanga.moon` | Neecha Bhanga — Moon (cancellation of debilitation) | yoga | lagna | proposed | Brihat Parashara Hora Shastra; Phaladeepika (Mantreswara) | — |

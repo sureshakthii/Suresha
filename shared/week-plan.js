@@ -24,7 +24,7 @@ const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
 /** The kinds of task a person can add. Appointments and deadlines are fixed; only flexible tasks get suggestions. */
 export const TASK_TYPES = Object.freeze([
   { id: 'appointment', fixed: true, icon: '📌', ...T('Fixed appointment', 'நிலையான சந்திப்பு') },
-  { id: 'deadline', fixed: true, icon: '⏳', ...T('Real deadline', 'உண்மையான கெடு') },
+  { id: 'deadline', fixed: true, icon: '⏳', ...T('Real deadline', 'உண்மையான காலக்கெடு') },
   { id: 'flexible', fixed: false, icon: '🌿', ...T('Flexible task', 'நெகிழ்வான வேலை') },
 ]);
 const TYPE_IDS = new Set(TASK_TYPES.map((t) => t.id));
@@ -35,7 +35,7 @@ export const OBSERVANCES = VRATHAM_TYPES;
 const OBS_IDS = new Set(OBSERVANCES.map((o) => o.id));
 
 export const OPTIONAL_NOTE = T('Optional — only a traditional good time. Your fixed appointments and deadlines always come first.',
-  'விருப்பம் மட்டும் — பாரம்பரிய நல்ல நேரம். உங்கள் நிலையான சந்திப்புகளும் கெடுக்களும் எப்போதும் முதன்மை.');
+  'விருப்பம் மட்டும் — பாரம்பரிய நல்ல நேரம். உங்கள் நிலையான சந்திப்புகளும் காலக்கெடுகளும் எப்போதும் முதன்மை.');
 
 // ---------------------------------------------------------------- dates
 export const addDaysIso = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
@@ -337,7 +337,7 @@ export function weekText(week, { lang = 'ta', includeFamily = false, title = nul
   const lines = [title || (lang === 'ta' ? 'இந்த வாரத் திட்டம்' : "This week's plan")];
   for (const d of week.days) {
     const rows = [];
-    for (const x of d.fixed) rows.push(`  ${x.type === 'deadline' ? '⏳' : '📌'} ${x.time ? `${x.time} ` : ''}${x.title}${x.type === 'deadline' ? (lang === 'ta' ? ' (கெடு)' : ' (deadline)') : ''}`);
+    for (const x of d.fixed) rows.push(`  ${x.type === 'deadline' ? '⏳' : '📌'} ${x.time ? `${x.time} ` : ''}${x.title}${x.type === 'deadline' ? (lang === 'ta' ? ' (காலக்கெடு)' : ' (deadline)') : ''}`);
     if (includeFamily) for (const x of d.family) rows.push(`  👪 ${tx(x.title)}`);
     for (const x of d.observances) rows.push(`  ${x.icon} ${tx(x.title)}`);
     for (const x of d.optional) rows.push(`  🌿 ${x.title}${x.windows[0] ? ` — ${lang === 'ta' ? 'விருப்ப நேரம்' : 'optional good time'} ${x.windows[0].from}–${x.windows[0].to}` : ''}`);

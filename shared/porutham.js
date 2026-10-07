@@ -152,7 +152,7 @@ export function matchPorutham(girl, boy) {
   // 6. Rasi
   const rc = count(girl.rasi, boy.rasi, 12);
   const rasi = [2, 6, 8, 12].includes(rc) ? BAD : [5, 9].includes(rc) ? MID : GOOD;
-  push('rasi', 'Rasi Porutham', 'ராசிப் பொருத்தம்', rasi, { en: `Groom's rasi is ${rc} from bride's`, ta: `பெண் ராசியிலிருந்து மாப்பிள்ளை ராசி ${rc}` }, 'high');
+  push('rasi', 'Rasi Porutham', 'ராசிப் பொருத்தம்', rasi, { en: `Groom's rasi is ${rc} from bride's`, ta: `மணமகள் ராசியிலிருந்து மணமகன் ராசி ${rc}` }, 'high');
 
   // 7. Rasi Athipathi
   const gl = RASIS[girl.rasi].lord, bl = RASIS[boy.rasi].lord;
@@ -255,7 +255,7 @@ export function doshaSamyam(girlD, boyD) {
     const comparison = mixed ? T(`${base.en} One birth time is unknown, so both are compared by the Moon reference only.`, `${base.ta} ஒருவரின் பிறந்த நேரம் தெரியாததால் இருவரும் சந்திர அடிப்படையில் மட்டும் ஒப்பிடப்படுகின்றனர்.`) : base;
     if (g == null || b == null) continue; // reference unavailable (no Lagna) — not compared, not a concern
     if (g && b) notes.push({ key, status: 'both', ok: true, comparison, en: `${d.en}: present in both — samyam (balanced)`, ta: `${d.ta}: இருவருக்கும் உள்ளது — சமம்` });
-    else if (g || b) notes.push({ key, status: 'one', ok: false, comparison, side: g ? 'first' : 'second', en: `${d.en}: present only for the ${g ? 'bride' : 'groom'} — it is common and not a cause for fear`, ta: `${d.ta}: ${g ? 'பெண்ணுக்கு' : 'மாப்பிள்ளைக்கு'} மட்டும் உள்ளது — இது பொதுவானது, பயம் வேண்டாம்` });
+    else if (g || b) notes.push({ key, status: 'one', ok: false, comparison, side: g ? 'first' : 'second', en: `${d.en}: present only for the ${g ? 'bride' : 'groom'} — it is common and not a cause for fear`, ta: `${d.ta}: ${g ? 'மணமகளுக்கு' : 'மணமகனுக்கு'} மட்டும் உள்ளது — இது பொதுவானது, பயம் வேண்டாம்` });
     else notes.push({ key, status: 'none', ok: true, comparison, en: `${d.en}: none`, ta: `${d.ta}: இல்லை` });
   }
   return notes;

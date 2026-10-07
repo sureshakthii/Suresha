@@ -115,12 +115,12 @@ export async function mountSharedFamily(box, { onChange } = {}) {
   css();
   if (STATIC) {
     box.innerHTML = `<div class="card glass fs-card" role="status"><h3>👨‍👩‍👧 ${L('Shared family', 'பகிர்ந்த குடும்பம்')}</h3>
-      <p class="small">${L('Family sharing needs the Thunai server — opening soon.', 'குடும்பப் பகிர்வுக்கு துணை சேவையகம் தேவை — விரைவில் தொடங்கும்.')}</p>${BOUNDARY()}</div>`;
+      <p class="small">${L('Family sharing needs the Thunai server — opening soon.', 'குடும்பப் பகிர்வுக்குத் துணை சேவையகம் தேவை — விரைவில் தொடங்கும்.')}</p>${BOUNDARY()}</div>`;
     return;
   }
   if (!state.user) {
     box.innerHTML = `<div class="card glass fs-card"><h3>👨‍👩‍👧 ${L('Shared family', 'பகிர்ந்த குடும்பம்')}</h3>
-      <p class="small">${L('Sign in to share chosen profiles with family members on their own phones.', 'தேர்ந்த சுயவிவரங்களை குடும்பத்தினரின் கைப்பேசிகளுடன் பகிர உள்நுழையவும்.')}</p>
+      <p class="small">${L('Sign in to share chosen profiles with family members on their own phones.', 'தேர்ந்த சுயவிவரங்களைக் குடும்பத்தினரின் கைப்பேசிகளுடன் பகிர உள்நுழையவும்.')}</p>
       <button class="chip-btn" data-go="login">${L('Sign in', 'உள்நுழை')}</button>${BOUNDARY()}</div>`;
     return;
   }
@@ -209,7 +209,7 @@ function render(box, ov, onChange) {
     try {
       const inv = await api(`/api/family/groups/${g.id}/invites`, { method: 'POST' });
       const out = $('#fsInviteOut', box);
-      out.innerHTML = `<p class="small">${L('Give this one-time code to an adult family member. It works once and expires in 7 days.', 'இந்த ஒருமுறைக் குறியீட்டை குடும்பப் பெரியவருக்குக் கொடுங்கள். ஒருமுறை மட்டும், 7 நாட்களில் காலாவதியாகும்.')}</p>
+      out.innerHTML = `<p class="small">${L('Give this one-time code to an adult family member. It works once and expires in 7 days.', 'இந்த ஒருமுறைக் குறியீட்டைக் குடும்பப் பெரியவருக்குக் கொடுங்கள். ஒருமுறை மட்டும், 7 நாட்களில் காலாவதியாகும்.')}</p>
         <div class="fs-code" id="fsCodeOut">${esc(inv.code)}</div><div class="fs-link">${esc(inv.link)}</div>
         <div class="fs-actions"><button class="chip-btn" id="fsCopy">${L('Copy link', 'இணைப்பை நகலெடு')}</button>${navigator.share ? `<button class="chip-btn" id="fsShare">${L('Share', 'பகிர்')}</button>` : ''}</div>`;
       const text = L(`Join our family on Thunai: ${inv.link} (code ${inv.code})`, `துணையில் எங்கள் குடும்பத்தில் சேருங்கள்: ${inv.link} (குறியீடு ${inv.code})`);
@@ -273,7 +273,7 @@ function bindJoin(box, refresh) {
 
 /** A compact line for the Family hub: shared-family status. */
 export function sharedHubLine() {
-  if (STATIC) return `<p class="small muted">👨‍👩‍👧 ${L('Family sharing needs the Thunai server — opening soon.', 'குடும்பப் பகிர்வுக்கு துணை சேவையகம் தேவை — விரைவில் தொடங்கும்.')}</p>`;
+  if (STATIC) return `<p class="small muted">👨‍👩‍👧 ${L('Family sharing needs the Thunai server — opening soon.', 'குடும்பப் பகிர்வுக்குத் துணை சேவையகம் தேவை — விரைவில் தொடங்கும்.')}</p>`;
   const n = state.family.filter((m) => m.shared).length;
   return `<button class="link-btn" data-go="family">👨‍👩‍👧 ${L('Shared family', 'பகிர்ந்த குடும்பம்')}${n ? ` · ${n} ${L('shared with you', 'உங்களுக்குப் பகிரப்பட்டவை')}` : ''}</button>`;
 }

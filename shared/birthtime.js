@@ -71,7 +71,7 @@ export function timeReliability(m) {
   const dasa = nakshatra && dasaShiftDays <= 31;
   const notes = [];
   const w = m.timeWindowMin || 60;
-  if (certainty === 'unknown') notes.push({ en: 'Lagnam, houses and house-based readings need the birth time, so they are not shown; readings use the Moon sign instead.', ta: 'லக்னம், பாவங்கள், பாவ அடிப்படையிலான பலன்களுக்குப் பிறந்த நேரம் தேவை; எனவே காட்டப்படவில்லை — பதிலாக சந்திர ராசிப்படி.' });
+  if (certainty === 'unknown') notes.push({ en: 'Lagnam, houses and house-based readings need the birth time, so they are not shown; readings use the Moon sign instead.', ta: 'லக்னம், பாவங்கள், பாவ அடிப்படையிலான பலன்களுக்குப் பிறந்த நேரம் தேவை; எனவே காட்டப்படவில்லை — பதிலாகச் சந்திர ராசிப்படி.' });
   else if (!lagna) notes.push({ en: `The Lagnam can change within your ±${w} min, so it is marked “may change”; treat the Lagna and house readings as tentative.`, ta: `உங்கள் ±${w} நிமிடத்திற்குள் லக்னம் மாறக்கூடும்; அதனால் “மாறக்கூடியது” எனக் குறிக்கப்பட்டுள்ளது — லக்ன, பாவப் பலன்களைத் தற்காலிகமாகக் கொள்ளவும்.` });
   if (certainty !== 'unknown' && !navamsa) notes.push({ en: `The Navamsa and other divisional charts change within your ±${w} min — they are marked “may change”; Sookshma dasa lords and D60 are approximate.`, ta: `உங்கள் ±${w} நிமிடத்திற்குள் நவாம்சம், வர்க்கச் சக்கரங்கள் மாறுகின்றன — “மாறக்கூடியது” எனக் குறிக்கப்பட்டுள்ளன; சூட்சும தசை, D60 தோராயமானவை.` });
   if (!rasi) notes.push({ en: 'The Moon changes sign during this window — even the Rasi is uncertain.', ta: 'இந்த நேரத்திற்குள் சந்திரன் ராசி மாறுகிறது — ராசியும் உறுதியில்லை.' });

@@ -78,7 +78,7 @@ export const REVIEWED_TEXT = {
 /** Visible label on every offline / rule-based answer. */
 export const LIMITED_LABEL = T('Limited offline guidance', 'சுருக்க வழிகாட்டல் (இணையமின்றி)');
 /** One short limits line kept on every offline answer. */
-export const LIMITS_LINE = T('This is traditional guidance about tendencies, not a certainty — real-world advice and deadlines come first.', 'இது போக்குகள் பற்றிய பாரம்பரிய வழிகாட்டல் மட்டுமே, உறுதியல்ல — நடைமுறை ஆலோசனையும் உண்மையான கெடுக்களும் முதன்மை.');
+export const LIMITS_LINE = T('This is traditional guidance about tendencies, not a certainty — real-world advice and deadlines come first.', 'இது போக்குகள் பற்றிய பாரம்பரிய வழிகாட்டல் மட்டுமே, உறுதியல்ல — நடைமுறை ஆலோசனையும் உண்மையான காலக்கெடுகளும் முதன்மை.');
 
 // ------------------------------------------------------------------ age of the chart owner
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -286,7 +286,7 @@ function bandLines(topic, profile, name) {
     focus: [T('A steady study timetable with short breaks — revise the hardest subject in the morning', 'சிறு இடைவேளையுடன் சீரான படிப்பு அட்டவணை — கடினமான பாடத்தைக் காலையில் படியுங்கள்'),
       T('Notice what you enjoy and do well — that is your aptitude, and it guides the study choice', 'எதை விரும்பி நன்றாகச் செய்கிறீர்கள் என்று கவனியுங்கள் — அதுவே உங்கள் திறமை; படிப்புத் தேர்வுக்கு அதுவே வழிகாட்டி'),
       T('Sleep 8 hours, move every day, and talk to a trusted adult when stressed', '8 மணி நேர உறக்கம், தினசரி உடற்பயிற்சி; மன அழுத்தம் வந்தால் நம்பிக்கையான பெரியவரிடம் பேசுங்கள்')],
-    prayer: T('Before exams, pray to Saraswathi and Hayagreevar; light a lamp on Thursdays for Dakshinamurthy.', 'தேர்வுக்கு முன் சரஸ்வதி, ஹயக்ரீவர் வழிபாடு; வியாழன்தோறும் தட்சிணாமூர்த்திக்கு தீபம்.'),
+    prayer: T('Before exams, pray to Saraswathi and Hayagreevar; light a lamp on Thursdays for Dakshinamurthy.', 'தேர்வுக்கு முன் சரஸ்வதி, ஹயக்ரீவர் வழிபாடு; வியாழன்தோறும் தட்சிணாமூர்த்திக்குத் தீபம்.'),
     extra: null,
   };
 }
@@ -301,7 +301,7 @@ export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', questio
   const sections = [];
   if (profile?.band === 'unknown') {
     sections.push({ key: 'answer', title: L(T('Answer', 'பதில்')), lines: [L(T(`A reading about ${topicName(topic).en} needs the person's date of birth. Please add the birth date in Family — until then I can share general guidance: today's good times, temples and simple prayers.`,
-      `${topicName(topic).ta} பற்றிய பலனுக்கு பிறந்த தேதி தேவை. குடும்பம் பகுதியில் பிறந்த தேதியைச் சேர்க்கவும் — அதுவரை பொதுவான வழிகாட்டல் தருகிறேன்: இன்றைய நல்ல நேரம், கோவில், எளிய பிரார்த்தனை.`))] });
+      `${topicName(topic).ta} பற்றிய பலனுக்குப் பிறந்த தேதி தேவை. குடும்பம் பகுதியில் பிறந்த தேதியைச் சேர்க்கவும் — அதுவரை பொதுவான வழிகாட்டல் தருகிறேன்: இன்றைய நல்ல நேரம், கோவில், எளிய பிரார்த்தனை.`))] });
     return { intent: 'age_guard', ageGuard: { band: 'unknown', topic }, topic, question, sections, meter: null, actions: [{ go: 'family', label: L(T('Add birth date', 'பிறந்த தேதி சேர்')) }], followups: suggestionsFor(profile).slice(0, 3).map(L), text: textOf(sections) };
   }
   const b = bandLines(topic, profile, name);

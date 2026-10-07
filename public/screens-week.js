@@ -78,7 +78,7 @@ export function weekCardHtml() {
   return `<section class="card glass week-card" id="homeWeek" aria-labelledby="wkCardT">
     <div class="card-title"><span id="wkCardT">${icon('calendar', { size: 18 })} ${L('This week', 'இந்த வாரம்')}</span></div>
     <div class="wk-next" id="wkNext"><p class="small muted">…</p></div>
-    <button class="link-btn wk-open" data-go="week">${L('Open weekly plan', 'வாரத் திட்டத்தைத் திற')} ›</button>
+    <button class="link-btn wk-open" data-go="week">${L('Open weekly plan', 'வாரத் திட்டத்தைத் திறக்க')} ›</button>
   </section>`;
 }
 export function fillWeekCard(root = document) {
@@ -91,7 +91,7 @@ export function fillWeekCard(root = document) {
     const wd = (iso) => day(iso).toLocaleDateString(ta() ? 'ta-IN' : 'en-IN', { weekday: 'short', timeZone: 'UTC' });
     box.innerHTML = items.length ? `<ul class="wk-list">${items.map((x) => `<li class="wk-li wk-${x.kind}"><span class="wk-when">${esc(wd(x.date))}${x.time || x.at ? ` · ${esc(hm(x.at, x.time))}` : ''}</span>
         <span class="wk-what">${kindIcon(x)} ${esc(tx(x.title))}${x.kind === 'optional' ? ` <span class="tag warn">${L('optional', 'விருப்பம்')}</span>` : ''}</span></li>`).join('')}</ul>`
-      : `<p class="small muted">${L('Add your appointments, deadlines and the observances you follow — one short plan for the week.', 'சந்திப்புகள், கெடுக்கள், நீங்கள் கடைப்பிடிக்கும் விரதங்கள் — வாரத்துக்கு ஒரு சிறிய திட்டம்.')}</p>`;
+      : `<p class="small muted">${L('Add your appointments, deadlines and the observances you follow — one short plan for the week.', 'சந்திப்புகள், காலக்கெடுகள், நீங்கள் கடைப்பிடிக்கும் விரதங்கள் — வாரத்துக்கு ஒரு சிறிய திட்டம்.')}</p>`;
   }, 30);
 }
 function kindIcon(x) {
@@ -121,7 +121,7 @@ function formHtml(t) {
 }
 const TYPE_HELP = {
   appointment: () => L('Kept exactly at the date and time you give — never moved.', 'நீங்கள் தரும் தேதி, நேரத்திலேயே — ஒருபோதும் மாற்றப்படாது.'),
-  deadline: () => L('A real deadline is shown as fixed. Astrology never pushes it later.', 'உண்மையான கெடு நிலையாகக் காட்டப்படும். ஜோதிடம் அதைத் தள்ளிப்போடாது.'),
+  deadline: () => L('A real deadline is shown as fixed. Astrology never pushes it later.', 'உண்மையான காலக்கெடு நிலையாகக் காட்டப்படும். ஜோதிடம் அதைத் தள்ளிப்போடாது.'),
   flexible: () => L('We suggest an optional good time for it, avoiding Rahu Kalam and Yamagandam. You decide.', 'ராகு காலம், எமகண்டம் தவிர்த்து விருப்ப நல்ல நேரம் தருவோம். முடிவு உங்களுடையது.'),
 };
 
@@ -140,7 +140,7 @@ function rowHtml(x) {
   let tag = '';
   if (x.kind === 'fixed') {
     when = x.time ? hm(x.at, x.time) : (x.type === 'deadline' ? L('by end of day', 'நாள் முடிவுக்குள்') : L('any time', 'எந்நேரமும்'));
-    tag = `<span class="tag ${x.type === 'deadline' ? 'bad' : 'good'}">${x.type === 'deadline' ? L('Deadline · fixed', 'கெடு · நிலையானது') : L('Fixed', 'நிலையானது')}</span>`;
+    tag = `<span class="tag ${x.type === 'deadline' ? 'bad' : 'good'}">${x.type === 'deadline' ? L('Deadline · fixed', 'காலக்கெடு · நிலையானது') : L('Fixed', 'நிலையானது')}</span>`;
   } else if (x.kind === 'family' && x.time) when = hm(x.at, x.time);
   let extra = '';
   if (x.kind === 'optional') {
@@ -176,7 +176,7 @@ function render(sec) {
   const t = editing ? plan.tasks.find((x) => x.id === editing) : null;
   if (editing && !t) editing = null;
   const saved = Boolean(plan.consent);
-  sec.innerHTML = `${subHeader(L('This week’s plan', 'இந்த வாரத் திட்டம்'), L('Your appointments and deadlines stay fixed. Family events and the observances you chose are added. Good times are only optional suggestions.', 'உங்கள் சந்திப்புகளும் கெடுக்களும் நிலையானவை. குடும்ப நிகழ்வுகளும் நீங்கள் தேர்ந்த விரதங்களும் சேர்க்கப்படும். நல்ல நேரம் விருப்ப ஆலோசனை மட்டுமே.'))}
+  sec.innerHTML = `${subHeader(L('This week’s plan', 'இந்த வாரத் திட்டம்'), L('Your appointments and deadlines stay fixed. Family events and the observances you chose are added. Good times are only optional suggestions.', 'உங்கள் சந்திப்புகளும் காலக்கெடுகளும் நிலையானவை. குடும்ப நிகழ்வுகளும் நீங்கள் தேர்ந்த விரதங்களும் சேர்க்கப்படும். நல்ல நேரம் விருப்ப ஆலோசனை மட்டுமே.'))}
     <div class="dsk-cols"><div class="dsk-col">
     ${formHtml(t)}
     <section class="card glass wk-obs" aria-labelledby="wkObsT"><div class="card-title"><span id="wkObsT">🙏 ${L('Observances I follow', 'நான் கடைப்பிடிப்பவை')}</span></div>
@@ -233,7 +233,7 @@ function wire(sec) {
     e.preventDefault();
     const task = { title: $('#wkTitle', sec).value, type: $('input[name="wkType"]:checked', sec)?.value || 'appointment', date: ($('input[name="wkType"]:checked', sec)?.value === 'flexible' && $('#wkAny', sec).checked) ? null : ($('#wkDate', sec).value || null), time: $('#wkTime', sec).value || null };
     if (!task.title.trim()) { toast(L('Please write what it is', 'என்ன என்று எழுதுங்கள்')); $('#wkTitle', sec).focus(); return; }
-    if (isFixedType(task.type) && !task.date) { toast(L('An appointment or deadline needs its date', 'சந்திப்பு / கெடுவுக்குத் தேதி தேவை')); $('#wkDate', sec).focus(); return; }
+    if (isFixedType(task.type) && !task.date) { toast(L('An appointment or deadline needs its date', 'சந்திப்பு / காலக்கெடுவுக்குத் தேதி தேவை')); $('#wkDate', sec).focus(); return; }
     const p = loadPlan();
     keep(editing ? editTask(p, editing, task) : addTask(p, task));
     toast(editing ? L('Updated', 'திருத்தப்பட்டது') : L('Added', 'சேர்க்கப்பட்டது'));

@@ -78,7 +78,7 @@ function practical(t, { travelMode, oneWayHours, weather }) {
   return {
     hours: item(facts.hours.value || T('Opening hours not on file', 'திறப்பு நேரம் பதிவில் இல்லை'), hoursSrc, facts.hours.prov),
     crowds: item(info?.festival ? T(`Festival periods (expect crowds): ${info.festival.en}`, `திருவிழாக் காலம் (கூட்டம் இருக்கலாம்): ${info.festival.ta}`) : T('Festival calendar not on file', 'திருவிழா அட்டவணை பதிவில் இல்லை'), HRCE, prov('estimated')),
-    route: item(T(`About ${Math.round(oneWayHours * 10) / 10} h each way by ${travelMode} (straight-line estimate)`, `ஒரு வழிக்கு சுமார் ${Math.round(oneWayHours * 10) / 10} மணி நேரம் (தோராயக் கணக்கு)`), { id: 'estimate', title: T('Distance estimate (not live traffic)', 'தூர மதிப்பீடு (நேரலைப் போக்குவரத்து அல்ல)') }, prov('estimated'), { url: links.directions }),
+    route: item(T(`About ${Math.round(oneWayHours * 10) / 10} h each way by ${travelMode} (straight-line estimate)`, `ஒரு வழிக்குச் சுமார் ${Math.round(oneWayHours * 10) / 10} மணி நேரம் (தோராயக் கணக்கு)`), { id: 'estimate', title: T('Distance estimate (not live traffic)', 'தூர மதிப்பீடு (நேரலைப் போக்குவரத்து அல்ல)') }, prov('estimated'), { url: links.directions }),
     accommodation: item(T('Search stays near the temple', 'கோவில் அருகே தங்குமிடம் தேடுக'), { id: 'maps_search', title: T('Map search (unverified listings)', 'வரைபடத் தேடல் (சரிபார்க்கப்படாதவை)') }, undefined, { url: links.hotels }),
     accessibility: item(facts.accessibility.value || T('Steps, queues and wheelchair access not verified', 'படிகள், வரிசை, சக்கர நாற்காலி வசதி சரிபார்க்கப்படவில்லை'), HRCE, facts.accessibility.prov),
     weather: weather?.[t.id]?.checkedAt

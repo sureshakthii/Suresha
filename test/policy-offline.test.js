@@ -183,7 +183,7 @@ test('court topic: deadline-first note leads, and nothing suggests waiting past 
   for (const lang of ['en', 'ta']) {
     const a = topicAnswer({ topic: 'court', question: 'court case jeyikkuma', chart: ADULT, lang, life: {}, now: NOW });
     assert.match(a.sections[0].lines[0], lang === 'ta' ? /நடைமுறை முதலில்/ : /Practical first/);
-    assert.match(a.text, lang === 'ta' ? /விசாரணையையோ சட்டக் கெடுவையோ ஒருபோதும் தவறவிடாதீர்கள்/ : /Never miss or postpone a hearing/);
+    assert.match(a.text, lang === 'ta' ? /விசாரணையையோ சட்டக் காலக்கெடுவையோ ஒருபோதும் தவறவிடாதீர்கள்/ : /Never miss or postpone a hearing/);
     assert.doesNotMatch(a.text, /Good date for the hearing|விசாரணைக்கு நல்ல நாள்/);
     assert.equal(a.deadlineFirst, true);
   }

@@ -206,8 +206,8 @@ export function marriageReport(bride, groom, { weddingDate = new Date(), years =
   const strengths = mana.areas.filter((x) => x.score >= 66).map((x) => x.name);
   const challenges = mana.areas.filter((x) => x.score < 50).map((x) => x.name);
   const remedies = [
-    T('Visit Thirumanancheri or your Kula Deivam together after the wedding.', 'திருமணத்திற்குப் பின் திருமணஞ்சேரி அல்லது குலதெய்வக் கோவிலுக்கு சேர்ந்து செல்லுங்கள்.'),
-    T('Light a lamp together every Friday evening for Mahalakshmi — for harmony and prosperity.', 'ஒவ்வொரு வெள்ளி மாலையும் சேர்ந்து மகாலட்சுமிக்கு தீபம் — ஒற்றுமைக்கும் செல்வத்திற்கும்.'),
+    T('Visit Thirumanancheri or your Kula Deivam together after the wedding.', 'திருமணத்திற்குப் பின் திருமணஞ்சேரி அல்லது குலதெய்வக் கோவிலுக்குச் சேர்ந்து செல்லுங்கள்.'),
+    T('Light a lamp together every Friday evening for Mahalakshmi — for harmony and prosperity.', 'ஒவ்வொரு வெள்ளி மாலையும் சேர்ந்து மகாலட்சுமிக்குத் தீபம் — ஒற்றுமைக்கும் செல்வத்திற்கும்.'),
     ...(careYears.length ? [T('In care years: daily 10 minutes of talking without phones, and joint decisions only after a night\'s sleep.', 'கவனக் காலங்களில்: தினமும் 10 நிமிடம் கைப்பேசி இல்லாமல் பேசுங்கள்; பெரிய முடிவுகளை ஒரு இரவு கழித்து எடுங்கள்.')] : []),
     ...(!dB.chevvai.present !== !dG.chevvai.present ? [T('Optional, if your tradition suggests it: Murugan worship together on Tuesdays.', 'விருப்பமெனில், உங்கள் மரபு சொன்னால்: செவ்வாய்தோறும் சேர்ந்து முருகன் வழிபாடு.')] : []),
   ];

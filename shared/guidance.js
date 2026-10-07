@@ -48,7 +48,7 @@ const RULES = [
   ['dates', /housewarming|griha|graha ?pravesam|grahapravesam|muhurt|mugurt|auspicious date|good date|good day|choose a (good )?(date|day)|wedding date|which date|naming ceremony|nalla naal|naal paar|pudhu veedu|கிரகப்பிரவேச|முகூர்த்த|நல்ல நாள்|தேதி தேர்வு|சுப நாள்|புதுமனை|நாளைத் தேர்வு|ஏற்ற நாள்|நாள் தேர்வு/i],
   ['vehicle', /\bcar\b|bike|vehicle|scooter|registration|number plate|\bcolou?r\b|\bvandi\b|vaaganam|vaganam|கார்|வாகன|பைக்|ஸ்கூட்டர்|நிறம்|பதிவு எண்/i],
   ['dasa', /dasa|dasha|dhasa|thasai|dasai|bhukti|bukthi|bhukthi|\bputhi\b|\bbuthi\b|antar|mahadasha|current period|my period|nadapp?u ?kaa?lam|kaa?lath|tharpoth?aiya|தசை|தசா|புக்தி|நடப்பு காலம்|தற்போதைய காலம்|தற்போதைய காலத்தை/i],
-  ['weak', /weak planet|which planet|planet.*weak|remed|parigar|pariharam|parikaram|dosh|graham (balam|weak)|kiragam|பலவீன|பரிகார|எந்த கிரகம்|தோஷ/i],
+  ['weak', /weak planet|which planet|planet.*weak|remed|parigar|pariharam|parikaram|dosh|graham (balam|weak)|kiragam|பலவீன|பரிகார|எந்தக்? கிரகம்|தோஷ/i],
   ['kuladeivam', /kula ?deiv|family deity|kuladeivam|kula ?dheivam|குலதெய்வ|குல தெய்வ/i],
   ['love', /\blove\b|crush|girlfriend|boyfriend|relationship|propos|kaa?dhal|kadal vazh|lover|காதல்/i],
   ['festival', /festival|vizhaa?|pandigai|pandikai|viratham|vratham|ekadasi|pradosh|amavas|pournami|விழா|பண்டிகை|விரத|ஏகாதசி|பிரதோஷ|அமாவாசை|பௌர்ணமி/i],
@@ -498,7 +498,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       }
       add('answer', list.length ? L(`Next festivals and viratha days: ${list.slice(0, 3).join('; ')}.`, `அடுத்த விழாக்கள், விரத நாட்கள்: ${list.slice(0, 3).join('; ')}.`) : L('No major festival in the next 30 days.', 'அடுத்த 30 நாட்களில் பெரிய விழா இல்லை.'));
       if (list.length > 3) add('facts', ...list.slice(3));
-      add('next', L('Open the Tamil calendar for the full list with timings, and set a reminder.', 'நேரத்துடன் முழுப் பட்டியலுக்கு தமிழ் நாட்காட்டியைத் திறந்து நினைவூட்டல் அமையுங்கள்.'));
+      add('next', L('Open the Tamil calendar for the full list with timings, and set a reminder.', 'நேரத்துடன் முழுப் பட்டியலுக்குத் தமிழ் நாட்காட்டியைத் திறந்து நினைவூட்டல் அமையுங்கள்.'));
       actions.push({ go: 'vratham', label: L('Viratha days', 'விரத நாட்கள்') }, { go: 'calendar', label: L('Tamil calendar', 'தமிழ் நாட்காட்டி') });
       break;
     }

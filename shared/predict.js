@@ -14,9 +14,9 @@ const houseOf = (lagna, rasi) => ((rasi - lagna + 12) % 12) + 1;
 
 export const QUESTIONS = [
   { id: 'marriage', icon: '💐', en: 'When will marriage happen?', ta: 'திருமணம் எப்போது?', houses: [2, 7, 11], negate: [1, 6, 10], key: 7, karakas: ['Venus', 'Jupiter'], ageMin: 20, ageMax: 50,
-    remedy: { en: 'Pray to Lord Murugan and Valli–Deivanai on Tuesdays; girls may chant the Katyayani mantra, boys light a lamp for Mahalakshmi on Fridays.', ta: 'செவ்வாய்தோறும் வள்ளி–தெய்வானை சமேத முருகனை வழிபடவும்; பெண்கள் காத்யாயனி மந்திரம், ஆண்கள் வெள்ளிதோறும் மகாலட்சுமிக்கு தீபம்.' } },
-  { id: 'partner', icon: '👰', en: 'Will we find the right bride / groom soon?', ta: 'பெண் / மாப்பிள்ளை கிடைப்பார்களா?', houses: [2, 7, 11], negate: [1, 6, 10], key: 7, karakas: ['Venus', 'Jupiter'], ageMin: 20, ageMax: 50,
-    remedy: { en: 'Visit Thirumanancheri (Kalyanasundareswarar) and offer garlands; keep a positive, open search.', ta: 'திருமணஞ்சேரி கல்யாணசுந்தரேஸ்வரரை தரிசித்து மாலை சாற்றவும்; நம்பிக்கையுடன் தேடலைத் தொடரவும்.' } },
+    remedy: { en: 'Pray to Lord Murugan and Valli–Deivanai on Tuesdays; girls may chant the Katyayani mantra, boys light a lamp for Mahalakshmi on Fridays.', ta: 'செவ்வாய்தோறும் வள்ளி–தெய்வானை சமேத முருகனை வழிபடவும்; பெண்கள் காத்யாயனி மந்திரம், ஆண்கள் வெள்ளிதோறும் மகாலட்சுமிக்குத் தீபம்.' } },
+  { id: 'partner', icon: '👰', en: 'Will we find the right bride / groom soon?', ta: 'மணமகள் / மணமகன் கிடைப்பார்களா?', houses: [2, 7, 11], negate: [1, 6, 10], key: 7, karakas: ['Venus', 'Jupiter'], ageMin: 20, ageMax: 50,
+    remedy: { en: 'Visit Thirumanancheri (Kalyanasundareswarar) and offer garlands; keep a positive, open search.', ta: 'திருமணஞ்சேரி கல்யாணசுந்தரேஸ்வரரைத் தரிசித்து மாலை சாற்றவும்; நம்பிக்கையுடன் தேடலைத் தொடரவும்.' } },
   { id: 'job', icon: '💼', en: 'When will I get a job?', ta: 'வேலை எப்போது கிடைக்கும்?', houses: [2, 6, 10, 11], negate: [5, 8, 12], key: 10, karakas: ['Saturn', 'Sun'], ageMin: 17, ageMax: 65,
     remedy: { en: 'Offer water to the rising Sun daily and light a sesame-oil lamp on Saturdays; help a worker or elder each week.', ta: 'தினமும் உதய சூரியனுக்கு அர்க்யம், சனிக்கிழமை நல்லெண்ணெய் தீபம்; வாரம் ஒருமுறை உழைப்பாளர்/முதியோருக்கு உதவி.' } },
   { id: 'career', icon: '📈', en: 'Career growth & promotion', ta: 'தொழில் வெற்றி & பதவி உயர்வு', houses: [2, 10, 11], negate: [5, 8, 12], key: 10, karakas: ['Sun', 'Saturn', 'Jupiter'], ageMin: 18, ageMax: 75,
@@ -28,9 +28,9 @@ export const QUESTIONS = [
   { id: 'visa', icon: '✈️', en: 'Foreign travel / work visa', ta: 'வெளிநாட்டுப் பயணம் / வேலை விசா', houses: [3, 9, 12], negate: [4, 8], key: 9, karakas: ['Rahu', 'Moon'], ageMin: 16, ageMax: 120,
     remedy: { en: 'Pray to Lord Anjaneya before travel and chant "Sri Rama Jaya Rama" on the way.', ta: 'பயணத்திற்கு முன் ஆஞ்சநேயர் வழிபாடு; வழியில் "ஸ்ரீ ராம ஜெய ராம" ஜபம்.' } },
   { id: 'house', icon: '🏡', en: 'When can I buy my own house?', ta: 'சொந்த வீடு எப்போது?', houses: [4, 11, 2], negate: [3, 12], key: 4, karakas: ['Mars', 'Venus'], ageMin: 21, ageMax: 120,
-    remedy: { en: 'Pray to Lord Murugan on Tuesdays and offer red flowers; Bhoomi Devi worship before buying land.', ta: 'செவ்வாய்தோறும் முருகனுக்கு சிவப்பு மலர்; நிலம் வாங்கும் முன் பூமாதேவி வழிபாடு.' } },
+    remedy: { en: 'Pray to Lord Murugan on Tuesdays and offer red flowers; Bhoomi Devi worship before buying land.', ta: 'செவ்வாய்தோறும் முருகனுக்குச் சிவப்பு மலர்; நிலம் வாங்கும் முன் பூமாதேவி வழிபாடு.' } },
   { id: 'vehicle', icon: '🚗', en: 'When can I buy a vehicle (bike / car)?', ta: 'வாகனம் (பைக் / கார்) எப்போது வாங்கலாம்?', houses: [4, 11, 2], negate: [3, 8, 12], key: 4, karakas: ['Venus', 'Mars'], ageMin: 16, ageMax: 85,
-    remedy: { en: 'Light a lamp for Mahalakshmi on Fridays; take the first drive to a Vinayagar temple, break a coconut and crush lemons under the wheels as per tradition. Always wear a helmet / seat belt and follow road safety.', ta: 'வெள்ளிதோறும் மகாலட்சுமிக்கு தீபம்; முதல் பயணம் விநாயகர் கோவிலுக்கு — தேங்காய் உடைத்து, சக்கரங்களின் கீழ் எலுமிச்சை வைத்து ஓட்டுவது மரபு. எப்போதும் தலைக்கவசம் / இருக்கைப் பட்டை அணிந்து சாலை விதிகளைப் பின்பற்றவும்.' } },
+    remedy: { en: 'Light a lamp for Mahalakshmi on Fridays; take the first drive to a Vinayagar temple, break a coconut and crush lemons under the wheels as per tradition. Always wear a helmet / seat belt and follow road safety.', ta: 'வெள்ளிதோறும் மகாலட்சுமிக்குத் தீபம்; முதல் பயணம் விநாயகர் கோவிலுக்கு — தேங்காய் உடைத்து, சக்கரங்களின் கீழ் எலுமிச்சை வைத்து ஓட்டுவது மரபு. எப்போதும் தலைக்கவசம் / இருக்கைப் பட்டை அணிந்து சாலை விதிகளைப் பின்பற்றவும்.' } },
   { id: 'child', icon: '👶', en: 'When will we be blessed with a child?', ta: 'குழந்தை பாக்கியம் எப்போது?', houses: [2, 5, 11], negate: [1, 4, 10], key: 5, karakas: ['Jupiter'], ageMin: 20, ageMax: 50, sensitive: 'reproductive',
     remedy: { en: 'Optional prayer: the Santhana Gopala mantra; visit Garbharakshambigai Temple (Thirukkarukavur). Follow your doctor\'s guidance first.', ta: 'சந்தான கோபால மந்திரம்; திருக்கருகாவூர் கர்ப்பரக்ஷாம்பிகை தரிசனம். மருத்துவர் ஆலோசனையே முதன்மை.' } },
   { id: 'education', icon: '🎓', en: 'Higher studies / study abroad', ta: 'உயர்கல்வி / வெளிநாட்டுப் படிப்பு', houses: [4, 9, 11], negate: [3, 8], key: 9, karakas: ['Mercury', 'Jupiter'], ageMin: 15, ageMax: 45,
@@ -67,7 +67,7 @@ export function questionFor(q, gender) {
   if (q.id === 'marriage' && (f || m)) {
     remedy = f
       ? { en: 'Pray to Lord Murugan with Valli–Deivanai on Tuesdays; the Katyayani mantra is a traditional prayer for a good groom.', ta: 'செவ்வாய்தோறும் வள்ளி–தெய்வானை சமேத முருகனை வழிபடுங்கள்; நல்ல மணமகன் அமைய காத்யாயனி மந்திரம் மரபு வழிபாடு.' }
-      : { en: 'Pray to Lord Murugan with Valli–Deivanai on Tuesdays and light a lamp for Mahalakshmi on Fridays — a traditional prayer for a good bride.', ta: 'செவ்வாய்தோறும் வள்ளி–தெய்வானை சமேத முருகனை வழிபடுங்கள்; வெள்ளிதோறும் மகாலட்சுமிக்கு தீபம் — நல்ல மணமகள் அமைய மரபு வழிபாடு.' };
+      : { en: 'Pray to Lord Murugan with Valli–Deivanai on Tuesdays and light a lamp for Mahalakshmi on Fridays — a traditional prayer for a good bride.', ta: 'செவ்வாய்தோறும் வள்ளி–தெய்வானை சமேத முருகனை வழிபடுங்கள்; வெள்ளிதோறும் மகாலட்சுமிக்குத் தீபம் — நல்ல மணமகள் அமைய மரபு வழிபாடு.' };
   }
   return { en, ta, remedy };
 }
@@ -301,7 +301,7 @@ export function kulaDeivam(chart, { recorded = null, now = new Date() } = {}) {
     deity: suggestion.deity, // deprecated alias — display as a suggestion only
     guidance: {
       en: 'Your Kula Deivam is your family\'s own tradition — ask the elders of your family and record it here. A chart cannot tell you who it is. If your family does not know, the 9th-house method offers an optional deity form for prayer. Many families visit once a year, for example on Panguni Uthiram, Maasi Magam or Aadi Fridays.',
-      ta: 'குலதெய்வம் உங்கள் குடும்பத்தின் சொந்த மரபு — குடும்பப் பெரியோரிடம் கேட்டு இங்கே பதிவு செய்யுங்கள். ஜாதகத்தால் அதைச் சொல்ல முடியாது. குடும்பத்திற்குத் தெரியாவிட்டால், 9-ம் பாவ முறை வழிபாட்டிற்கு ஒரு விருப்பத் தெய்வ வடிவைப் பரிந்துரைக்கிறது. பல குடும்பங்கள் ஆண்டுக்கு ஒருமுறை, உதாரணமாக பங்குனி உத்திரம், மாசி மகம், ஆடி வெள்ளியில் வழிபடுகின்றன.',
+      ta: 'குலதெய்வம் உங்கள் குடும்பத்தின் சொந்த மரபு — குடும்பப் பெரியோரிடம் கேட்டு இங்கே பதிவு செய்யுங்கள். ஜாதகத்தால் அதைச் சொல்ல முடியாது. குடும்பத்திற்குத் தெரியாவிட்டால், 9-ம் பாவ முறை வழிபாட்டிற்கு ஒரு விருப்பத் தெய்வ வடிவைப் பரிந்துரைக்கிறது. பல குடும்பங்கள் ஆண்டுக்கு ஒருமுறை, உதாரணமாகப் பங்குனி உத்திரம், மாசி மகம், ஆடி வெள்ளியில் வழிபடுகின்றன.',
     },
     periods,
   };

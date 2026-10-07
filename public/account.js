@@ -10,12 +10,13 @@ import { locationSettingsHtml, bindLocationSettings } from './residence-ui.js';
 import {
   state, $, $$, L, ta, esc, bi, api, STATIC, store, go, registerScreen, subHeader, saveFamily, saveSettings, setLoc,
   toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright, BRAND, supportCard,
-  placeName, mergeAccountFamily,
+  placeName, mergeAccountFamily, backupConsent,
 } from './core.js';
 import { track } from './growth.js';
 import { syncShares, pendingJoinCode, mountSharedFamily, pushSharedEdit } from './family-share.js';
 import { mergeGoals } from './shared/goals.js';
 import { isPrivateProfile } from './shared/sync-policy.js';
+import { canDeleteMember, deleteMember, undoDelete } from './shared/family-delete.js';
 
 startPhoneInputs(); // every mobile-number field in the app gets the country-code picker
 
@@ -83,7 +84,7 @@ function renderLogin(sec) {
   } else if (login.step === 'otp') {
     body = `<form id="otpForm"><p class="center">${L('Enter the 6-digit code sent to', '6 இலக்க குறியீடு அனுப்பப்பட்டது')} <b>${esc(login.masked || login.to)}</b></p>
         <div class="otp-boxes">${[0, 1, 2, 3, 4, 5].map((i) => `<input class="otp" inputmode="numeric" maxlength="1" aria-label="Digit ${i + 1}" data-i="${i}">`).join('')}</div>
-        ${login.devCode ? `<p class="demo-note">🧪 ${STATIC ? L('Demo mode — no SMS is sent.', 'டெமோ — SMS அனுப்பப்படாது.') : L('Test mode — SMS provider not configured.', 'சோதனை முறை — SMS சேவை அமைக்கப்படவில்லை.')} ${L('Your code', 'உங்கள் குறியீடு')}: <b>${esc(login.devCode)}</b></p>` : ''}
+        ${login.devCode ? `<p class="demo-note">🧪 ${STATIC ? L('Demo mode — no SMS is sent.', 'மாதிரி முறை — SMS அனுப்பப்படாது.') : L('Test mode — SMS provider not configured.', 'சோதனை முறை — SMS சேவை அமைக்கப்படவில்லை.')} ${L('Your code', 'உங்கள் குறியீடு')}: <b>${esc(login.devCode)}</b></p>` : ''}
         <label>${L('Your name (for new accounts)', 'உங்கள் பெயர் (புதிய கணக்கிற்கு)')}<input id="loginName" maxlength="60" autocomplete="name"></label>
         <button class="btn-gold" id="verifyOtp">${L('Verify & sign in', 'சரிபார்த்து உள்நுழை')}</button>
         <button type="button" class="link-btn center-block" id="resend" disabled>${L('Resend code', 'மீண்டும் அனுப்பு')}</button>
@@ -316,7 +317,7 @@ function memberForm(m, first) {
     <p class="small muted zone-note" id="zoneNote"></p>
     <div class="note-box dst-box" id="dstBox" role="note" hidden></div>
     <button class="btn-gold" type="submit">✨ ${first ? L('Create my Jathagam', 'என் ஜாதகம் உருவாக்கு') : L('Save', 'சேமி')}</button>
-    ${m.id && state.family.length > 1 ? `<button type="button" class="link-btn danger center-block" id="delMember">${L('Delete this person', 'இவரை நீக்கு')}</button>` : ''}
+    ${m.id && !m.shared ? `<button type="button" class="link-btn danger center-block" id="delMember">${L('Delete this person', 'இவரை நீக்கு')}</button>` : ''}
     <p class="err" id="formErr"></p></form>`;
 }
 
@@ -382,11 +383,7 @@ function renderFamily(sec, params = {}) {
       if (v === 'unknown') f.elements.time.value = '';
       showZone();
     });
-    $('#delMember')?.addEventListener('click', () => {
-      state.family = state.family.filter((x) => x.id !== editing.id);
-      if (state.activeId === editing.id) state.activeId = state.family[0]?.id || null;
-      editing = null; saveFamily(); go('family');
-    });
+    $('#delMember')?.addEventListener('click', () => askDelete(editing.id));
     return;
   }
   sec.innerHTML = `${subHeader(L('Family profiles', 'குடும்ப சுயவிவரங்கள்'), L('Everyone\'s charts in one place', 'அனைவரின் ஜாதகமும் ஒரே இடத்தில்'), 'familyhub')}
@@ -397,12 +394,15 @@ function renderFamily(sec, params = {}) {
         <div class="muted small">${esc(m.date)} · ${certaintyOf(m) === 'unknown' ? L('time unknown', 'நேரம் தெரியாது') : `${esc(m.time.slice(0, 5))}${certaintyOf(m) === 'approx' ? ` (± ${m.timeWindowMin || 60} ${L('min', 'நிமி')})` : ''}`} · ${esc(placeName(m.place))}</div>
         <div class="small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}${certaintyOf(m) === 'exact' ? ` · ${L('Lagnam', 'லக்னம்')} ${esc(rasiName(c.lagna.rasi))}` : ''}</div></div>
       <div class="fam-actions">${m.id === state.activeId ? `<span class="tag good">${L('Active', 'தேர்வு')}</span>` : `<button class="chip-btn" data-use="${esc(m.id)}">${L('Use', 'தேர்வு')}</button>`}
-        ${!m.shared || m.shared.permission === 'edit' ? `<button class="link-btn" data-edit="${esc(m.id)}">${L('Edit', 'திருத்து')}</button>` : ''}</div></div>`; }).join('')}
+        <div class="fam-row-btns">${!m.shared || m.shared.permission === 'edit' ? `<button class="link-btn" data-edit="${esc(m.id)}">${L('Edit', 'திருத்து')}</button>` : ''}
+        ${m.shared ? '' : `<button type="button" class="fam-del" data-del="${esc(m.id)}" aria-label="${esc(L(`Delete ${displayName(m)}`, `${displayName(m)} நீக்கு`))}" title="${esc(L('Delete', 'நீக்கு'))}">${TRASH}</button>`}</div></div></div>`; }).join('')}
     <button class="btn-gold" id="addMember">➕ ${L('Add family member', 'குடும்ப உறுப்பினர் சேர்')}</button>
     ${state.user ? '' : `<p class="muted small center">${L('Sign in to back up your family and use it on other phones.', 'குடும்ப விவரங்களைப் பாதுகாக்க, பிற கைப்பேசிகளில் பயன்படுத்த உள்நுழையவும்.')}</p>`}`;
   $$('[data-use]', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.use; saveFamily(); renderFamily(sec); }));
   $$('[data-edit]', sec).forEach((b) => b.addEventListener('click', () => { const mm = state.family.find((x) => x.id === b.dataset.edit); go(mm?.kattam ? 'kattam' : 'family', { edit: b.dataset.edit }); }));
   $('#addMember').addEventListener('click', () => go('family', { add: true }));
+  famDelCss();
+  $$('[data-del]', sec).forEach((b) => b.addEventListener('click', () => askDelete(b.dataset.del, b)));
   // Shared family: syncs on open; the list is re-drawn (keeping this card) when shared profiles arrive or go.
   if (keepShareBox) { sec.append(keepShareBox); keepShareBox = null; return; }
   sec.insertAdjacentHTML('beforeend', '<div id="sharedFamily"></div>');
@@ -410,6 +410,145 @@ function renderFamily(sec, params = {}) {
   mountSharedFamily(box, { onChange: () => { if (state.view === 'family' && !editing && sec.contains(box)) { keepShareBox = box; renderFamily(sec); } } });
 }
 let keepShareBox = null;
+
+// ---------------------------------------------------------------- delete a person (shared/family-delete.js)
+const TRASH = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+const UNDO_MS = 8000;
+let pendingUndo = null; // { snapshot, timer } while the Undo toast is showing
+
+function famDelCss() {
+  if (document.getElementById('famDelCss')) return;
+  const st = document.createElement('style');
+  st.id = 'famDelCss';
+  st.textContent = `
+.fam-row-btns { display: flex; align-items: center; gap: 6px; }
+.fam-actions .chip-btn, .fam-actions .link-btn { min-height: 44px; }
+.fam-del { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--glass-b); background: transparent; color: var(--muted); cursor: pointer; padding: 0; }
+.fam-del:hover, .fam-del:focus-visible { color: #e0565b; border-color: #e0565b; }
+@media (max-width: 560px) {
+  .fam-card { flex-wrap: wrap; }
+  .fam-card > .fam-actions { flex: 1 0 100%; flex-direction: row; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 8px; border-top: 1px solid rgba(var(--ink-rgb, 0, 0, 0), .08); }
+}
+.fam-del-card { text-align: start; }
+.fam-del-card h2 { margin: 0; font-size: 18px; }
+.fam-del-card ul { margin: 0; padding-inline-start: 20px; display: grid; gap: 6px; }
+.fam-del-btns { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
+.fam-del-btns button { min-height: 44px; min-width: 96px; }
+.btn-danger { background: #c62f3b; color: #fff; border: 0; border-radius: 999px; padding: 10px 18px; font: inherit; font-weight: 700; cursor: pointer; }
+#undoToast { position: fixed; left: 16px; right: 16px; margin: 0 auto; width: fit-content; max-width: 520px; bottom: calc(var(--tab-h, 64px) + 24px + env(safe-area-inset-bottom)); z-index: 55; display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 18px; border-radius: 999px; background: var(--surface-strong); border: 1px solid var(--gold); color: var(--gold2); font-size: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+#undoToast span { min-width: 0; overflow-wrap: anywhere; }
+#undoToast button { min-height: 44px; white-space: nowrap; padding: 0 16px; border-radius: 999px; border: 1px solid var(--gold); background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; flex: none; }
+[data-theme="light"] #undoToast { background: #1d1530; color: #fff; border-color: #1d1530; }
+[data-theme="light"] #undoToast button { border-color: rgba(255, 255, 255, .6); }`;
+  document.head.append(st);
+}
+
+function closeDelModal(box, back) {
+  box.remove();
+  document.body.classList.remove('modal-open');
+  if (back && document.contains(back)) back.focus();
+}
+
+/** Ask before deleting: say exactly what is removed. The last person cannot be deleted (edit or add instead). */
+function askDelete(id, back = null) {
+  famDelCss();
+  const m = state.family.find((x) => x.id === id);
+  if (!m) return;
+  const name = displayName(m);
+  const check = canDeleteMember(state.family, id);
+  const box = document.createElement('div');
+  box.className = 'modal';
+  let body;
+  if (!check.ok && check.reason === 'last') {
+    body = `<h2 id="famDelT">${esc(L(`${name} is the only person here`, `இங்கு ${name} மட்டுமே உள்ளார்`))}</h2>
+      <p>${L('There must be at least one person to show a chart. Add another person first, then delete this one — or just edit these details.', 'ஜாதகம் காட்ட குறைந்தது ஒருவர் வேண்டும். முதலில் இன்னொருவரைச் சேர்த்து, பிறகு இவரை நீக்குங்கள் — அல்லது இந்த விவரங்களைத் திருத்துங்கள்.')}</p>
+      <div class="fam-del-btns"><button type="button" class="chip-btn" data-x="cancel">${L('Close', 'மூடு')}</button>
+        <button type="button" class="chip-btn" data-x="edit">${L('Edit details', 'விவரம் திருத்து')}</button>
+        <button type="button" class="btn-gold" data-x="add">➕ ${L('Add a person', 'ஒருவரைச் சேர்')}</button></div>`;
+  } else if (!check.ok) {
+    return;
+  } else {
+    const dry = deleteMember({ family: state.family, activeId: state.activeId, goals: store.get('kj_goals', null), plans: store.get('kj_plans', null) }, id);
+    const next = state.family.find((x) => x.id === dry.activeId);
+    const goalsN = dry.removed.goalIds.length;
+    const backedUp = state.user && !STATIC && backupConsent() && !isPrivateProfile(m);
+    const lines = [
+      L('Their birth details and chart are removed from this phone.', 'இவரின் பிறப்பு விவரங்களும் ஜாதகமும் இந்தக் கைப்பேசியிலிருந்து நீக்கப்படும்.'),
+      goalsN ? L(`Their ${goalsN === 1 ? 'goal' : `${goalsN} goals`} on this phone ${goalsN === 1 ? 'is' : 'are'} removed too.`, `இவரின் ${goalsN} இலக்கு${goalsN === 1 ? '' : 'கள்'} நீக்கப்படும்.`) : '',
+      backedUp ? L('Also removed from your account backup.', 'உங்கள் கணக்குக் காப்புப்பிரதியிலிருந்தும் நீக்கப்படும்.')
+        : state.user && !STATIC && !isPrivateProfile(m) ? L('Backup is off, so an older copy in your account is not changed.', 'காப்புப்பிரதி அணைக்கப்பட்டுள்ளது; கணக்கில் உள்ள பழைய நகல் மாறாது.') : '',
+      state.user && !STATIC ? L('Any family links sharing this chart are stopped.', 'இந்த ஜாதகத்தைப் பகிரும் குடும்ப இணைப்புகள் நிறுத்தப்படும்.') : '',
+      m.id === state.activeId && next ? L(`${displayName(next)} becomes the selected person.`, `${displayName(next)} தேர்வு செய்யப்படுவார்.`) : '',
+    ].filter(Boolean);
+    body = `<h2 id="famDelT">${esc(L(`Delete ${name}?`, `${name} — நீக்கவா?`))}</h2>
+      <ul>${lines.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+      <p class="small muted">${L('You can undo this for a few seconds.', 'சில விநாடிகளுக்குள் இதைத் திரும்பப் பெறலாம்.')}</p>
+      <div class="fam-del-btns"><button type="button" class="chip-btn" data-x="cancel">${L('Cancel', 'ரத்து')}</button>
+        <button type="button" class="btn-danger" data-x="delete">${L('Delete', 'நீக்கு')}</button></div>`;
+  }
+  box.innerHTML = `<div class="modal-card fam-del-card" role="dialog" aria-modal="true" aria-labelledby="famDelT">${body}</div>`;
+  document.body.append(box);
+  document.body.classList.add('modal-open');
+  const close = () => closeDelModal(box, back);
+  box.addEventListener('click', (e) => { if (e.target === box) close(); });
+  box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
+  $$('[data-x]', box).forEach((b) => b.addEventListener('click', () => {
+    const x = b.dataset.x;
+    closeDelModal(box, x === 'cancel' ? back : null);
+    if (x === 'delete') doDelete(id);
+    else if (x === 'edit') go(m.kattam ? 'kattam' : 'family', { edit: id });
+    else if (x === 'add') go('family', { add: true });
+  }));
+  $('[data-x="cancel"]', box)?.focus();
+}
+
+function finishPendingUndo() {
+  if (!pendingUndo) return;
+  clearTimeout(pendingUndo.timer);
+  pendingUndo = null;
+  document.getElementById('undoToast')?.remove();
+  if (state.user) syncShares(); // the undo window is over: stop shared family links of deleted people
+}
+
+function doDelete(id) {
+  finishPendingUndo(); // an earlier delete is final once another starts
+  const snapshot = { family: state.family.slice(), activeId: state.activeId, goals: store.get('kj_goals', null), plans: store.get('kj_plans', null) };
+  const r = deleteMember(snapshot, id);
+  if (!r.ok) return;
+  state.family = r.family;
+  state.activeId = r.activeId;
+  if (r.goals !== snapshot.goals) store.set('kj_goals', r.goals);
+  if (r.plans !== snapshot.plans) store.set('kj_plans', r.plans);
+  editing = null;
+  saveFamily();
+  go('family');
+  showUndo(displayName(r.removed.member), snapshot);
+}
+
+function showUndo(name, snapshot) {
+  famDelCss();
+  document.getElementById('undoToast')?.remove();
+  const el = document.createElement('div');
+  el.id = 'undoToast';
+  el.setAttribute('role', 'status');
+  el.innerHTML = `<span>${esc(L(`${name} deleted`, `${name} நீக்கப்பட்டார்`))}</span><button type="button" id="undoDel">${L('Undo', 'திரும்பப் பெறு')}</button>`;
+  document.body.append(el);
+  pendingUndo = { snapshot, timer: setTimeout(finishPendingUndo, UNDO_MS) };
+  $('#undoDel', el).addEventListener('click', () => {
+    if (!pendingUndo) return;
+    clearTimeout(pendingUndo.timer);
+    const back = undoDelete(pendingUndo.snapshot);
+    pendingUndo = null;
+    el.remove();
+    state.family = back.family;
+    state.activeId = back.activeId;
+    if (back.goals == null) store.del('kj_goals'); else store.set('kj_goals', back.goals);
+    if (back.plans == null) store.del('kj_plans'); else store.set('kj_plans', back.plans);
+    saveFamily();
+    if (state.view === 'family') go('family');
+    toast(L(`${name} is back`, `${name} மீண்டும் சேர்க்கப்பட்டார்`));
+  });
+}
 
 function saveMember(f) {
   const timeCertainty = f.elements.timeCertainty.value || 'exact';

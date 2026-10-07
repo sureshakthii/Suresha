@@ -53,7 +53,7 @@ const gajakesari = defineRule({
     if (ctx.houseOf('Jupiter', 'moon') === 1) m.push({ factor: 'same_sign', effect: 'note', text: T('Jupiter and Moon share the same sign', 'குருவும் சந்திரனும் ஒரே ராசியில்') });
     return m;
   },
-  explanation: T('Jupiter in a kendra from the Moon: traditionally linked with respect, wisdom and lasting reputation.', 'சந்திரனுக்கு கேந்திரத்தில் குரு: மதிப்பு, ஞானம், நிலையான புகழ் — பாரம்பரியக் கருத்து.'),
+  explanation: T('Jupiter in a kendra from the Moon: traditionally linked with respect, wisdom and lasting reputation.', 'சந்திரனுக்குக் கேந்திரத்தில் குரு: மதிப்பு, ஞானம், நிலையான புகழ் — பாரம்பரியக் கருத்து.'),
 });
 
 const budhaditya = defineRule({
@@ -260,7 +260,7 @@ const flankFacts = (f, refEn, refTa) => [
 
 const KEMA_CANCEL = [
   { id: 'conjunct_moon', text: T('A planet (Mars–Saturn) in the same sign as the Moon', 'சந்திரனுடன் ஒரு கிரகம் (செவ்வாய்–சனி) சேர்க்கை'), test: (ctx) => TARA.filter((k) => ctx.conj(k, 'Moon')) },
-  { id: 'kendra_from_moon', text: T('A planet (Mars–Saturn) in a kendra (4/7/10) from the Moon', 'சந்திரனுக்கு கேந்திரத்தில் (4/7/10) ஒரு கிரகம்'), test: (ctx) => TARA.filter((k) => [4, 7, 10].includes(ctx.houseOf(k, 'moon'))) },
+  { id: 'kendra_from_moon', text: T('A planet (Mars–Saturn) in a kendra (4/7/10) from the Moon', 'சந்திரனுக்குக் கேந்திரத்தில் (4/7/10) ஒரு கிரகம்'), test: (ctx) => TARA.filter((k) => [4, 7, 10].includes(ctx.houseOf(k, 'moon'))) },
   { id: 'moon_kendra_from_lagna', text: T('The Moon in a kendra from Lagna', 'லக்னத்திற்கு கேந்திரத்தில் சந்திரன்'), test: (ctx) => (ctx.hasLagna && KENDRA.includes(ctx.houseOf('Moon', 'lagna')) ? ['Moon'] : []) },
   { id: 'jupiter_aspects_moon', text: T('Jupiter aspects the Moon', 'குரு சந்திரனைப் பார்க்கிறார்'), test: (ctx) => (ctx.aspects('Jupiter', 'Moon') ? ['Jupiter'] : []) },
 ];
@@ -291,10 +291,10 @@ const kemadruma = defineRule({
 
 const NB_COND = {
   dispositor_kendra_lagna: T('Lord of the debilitation sign is in a kendra from Lagna', 'நீச வீட்டு அதிபதி லக்னத்திற்கு கேந்திரத்தில்'),
-  dispositor_kendra_moon: T('Lord of the debilitation sign is in a kendra from the Moon', 'நீச வீட்டு அதிபதி சந்திரனுக்கு கேந்திரத்தில்'),
+  dispositor_kendra_moon: T('Lord of the debilitation sign is in a kendra from the Moon', 'நீச வீட்டு அதிபதி சந்திரனுக்குக் கேந்திரத்தில்'),
   exalt_lord_kendra_lagna: T('Lord of the planet\'s exaltation sign is in a kendra from Lagna', 'உச்ச வீட்டு அதிபதி லக்னத்திற்கு கேந்திரத்தில்'),
-  exalt_lord_kendra_moon: T('Lord of the planet\'s exaltation sign is in a kendra from the Moon', 'உச்ச வீட்டு அதிபதி சந்திரனுக்கு கேந்திரத்தில்'),
-  exalting_planet_kendra: T('The planet exalted in this sign is in a kendra from Lagna or Moon', 'இந்த ராசியில் உச்சம் பெறும் கிரகம் லக்னம்/சந்திரனுக்கு கேந்திரத்தில்'),
+  exalt_lord_kendra_moon: T('Lord of the planet\'s exaltation sign is in a kendra from the Moon', 'உச்ச வீட்டு அதிபதி சந்திரனுக்குக் கேந்திரத்தில்'),
+  exalting_planet_kendra: T('The planet exalted in this sign is in a kendra from Lagna or Moon', 'இந்த ராசியில் உச்சம் பெறும் கிரகம் லக்னம்/சந்திரனுக்குக் கேந்திரத்தில்'),
   aspected_by_dispositor: T('The debilitated planet is aspected by the lord of its sign', 'நீச கிரகத்தை அதன் வீட்டு அதிபதி பார்க்கிறார்'),
   conjunct_dispositor: T('The debilitated planet is with the lord of its sign', 'நீச கிரகம் அதன் வீட்டு அதிபதியுடன்'),
   dispositor_exalt_lord_mutual_kendra: T('Lords of the debilitation and exaltation signs are in mutual kendras', 'நீச வீட்டு அதிபதியும் உச்ச வீட்டு அதிபதியும் பரஸ்பர கேந்திரத்தில்'),
@@ -347,7 +347,7 @@ const neechabhanga = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Sat
 const VIPARITA = [[6, 'harsha', 'Harsha', 'ஹர்ஷ'], [8, 'sarala', 'Sarala', 'சரள'], [12, 'vimala', 'Vimala', 'விமல']];
 const viparita = VIPARITA.map(([h, id, en, ta]) => defineRule({
   id: `yoga.viparita.${id}`, legacyId: id,
-  name: T(`${en} Yoga (Viparita Raja)`, `${ta} யோகம் (விபரீத ராஜ)`),
+  name: T(`${en} Yoga (Viparita Raja Yoga)`, `${ta} யோகம் (விபரீத ராஜ யோகம்)`),
   kind: 'yoga', reference: 'lagna', houses: DUSTHANA, relation: REL.placement,
   source: { ...PHALA6 },
   predicateText: `The lord of the ${ord(h)} house (from Lagna) is placed in the 6th, 8th or 12th house.`,

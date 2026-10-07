@@ -4,6 +4,7 @@
 // clear, positive actions — with the reason for each. Built only from engine facts; runs on device and server.
 import { PLANETS } from './astro.js';
 import { NAVAGRAHA, grahaStrength } from './remedies.js';
+import { isHinduFaith, universalPractice, CHILD_PRACTICE } from './faith.js';
 
 const T = (en, ta) => ({ en, ta });
 
@@ -20,7 +21,7 @@ const SACRED = [
   { re: /Pournami/, icon: '🌕', deity: T('Goddess Ambal', 'அம்பாள்'), planets: ['Moon', 'Venus'],
     act: T('Full moon: Ambal worship or girivalam; a calm mind brings good results today.', 'பௌர்ணமி: அம்பாள் வழிபாடு அல்லது கிரிவலம்; அமைதியான மனம் நல்ல பலன் தரும்.') },
   { re: /Chathurthi/, icon: '🐘', deity: T('Lord Vinayagar', 'விநாயகர்'), planets: ['Ketu', 'Mercury'],
-    act: T('Fast till moonrise if you can; offer arugampul to Vinayagar — obstacles ease.', 'முடிந்தால் சந்திர உதயம் வரை விரதம்; விநாயகருக்கு அருகம்புல் — தடைகள் நீங்கும்.'), food: true },
+    act: T('Fast till moonrise if you can; offer arugampul to Vinayagar, traditionally for easing obstacles.', 'முடிந்தால் சந்திர உதயம் வரை விரதம்; தடைகள் நீங்க விநாயகருக்கு அருகம்புல் — மரபு வழிபாடு.'), food: true },
   { re: /Sivarathri/, icon: '🔱', deity: T('Lord Shiva', 'சிவபெருமான்'), planets: ['Saturn', 'Moon'],
     act: T('Night worship of Shiva; chant “Om Namah Shivaya” 108 times.', 'இரவு சிவ வழிபாடு; “ஓம் நமசிவாய” 108 முறை.') },
   { re: /Karthigai/, icon: '🪔', deity: T('Lord Murugan', 'முருகப் பெருமான்'), planets: ['Mars', 'Sun'],
@@ -52,7 +53,7 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
   const md = per?.lord;
   const ad = per?.bhuktis?.find((b) => new Date(b.start) <= now && now < new Date(b.end))?.lord;
   const lords = [md, ad].filter(Boolean);
-  const hindu = faith === 'hindu';
+  const hindu = isHinduFaith(faith);
 
   // Saturn's transit from the birth Moon: Ezharai (12th, 1st, 2nd) or Ashtama (8th).
   let saniNote = null;
@@ -77,6 +78,10 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
       : saturnHit ? T(`${saniNote.en} — very helpful today`, `${saniNote.ta} — இன்று மிக உதவும்`) : null;
     let act = s.act;
     if (s.food && age < 14) act = T(`${s.deity.en}: a simple prayer is enough — children need not fast.`, `${s.deity.ta}: எளிய பிரார்த்தனை போதும் — குழந்தைகள் விரதம் இருக்க வேண்டியதில்லை.`);
+    // Fasting is never required: elders get a prayer-first line; everyone else is reminded that health comes first.
+    else if (s.food && age >= 60) act = T(`${s.deity.en}: a simple prayer is enough — fast only if your health allows and your doctor agrees.`, `${s.deity.ta}: எளிய பிரார்த்தனை போதும் — உடல்நலம் அனுமதித்து, மருத்துவர் ஒப்புக்கொண்டால் மட்டும் விரதம்.`);
+    else if (s.food && age < 18) act = T(`${act.en} (Fasting is optional — a light meal is fine, and skip it if you feel unwell.)`, `${act.ta} (விரதம் விருப்பம் மட்டுமே — எளிய உணவு போதும்; உடல்நலம் சரியில்லை என்றால் தவிர்க்கவும்.)`);
+    else if (s.food) act = T(`${act.en} (Fasting is optional — skip it if you are unwell, pregnant or on medication.)`, `${act.ta} (விரதம் விருப்பம் மட்டுமே — உடல்நலக் குறைவு, கர்ப்பம், மருந்து உட்கொள்ளும் நிலையில் தவிர்க்கவும்.)`);
     items.push({
       icon: s.icon, personal: !!why,
       title: T(`Today is ${fe.en}${why ? ` — ${why.en}` : ''}`, `இன்று ${fe.ta}${why ? ` — ${why.ta}` : ''}`),
@@ -92,16 +97,17 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
     const n = NAVAGRAHA[planet];
     if (planet === 'Rahu' && snap?.rahuKalam) {
       horai = { planet, start: snap.rahuKalam.start, end: snap.rahuKalam.end, weeks: 9,
-        text: hindu ? T('During Rahu Kalam light a lamp for Goddess Durga — Rahu’s pressure eases.', 'ராகு காலத்தில் துர்கைக்குத் தீபம் — ராகுவின் அழுத்தம் குறையும்.') : T('Use this time for quiet prayer in your own faith and help someone in need.', 'இந்த நேரத்தில் உங்கள் நம்பிக்கைப்படி அமைதியான பிரார்த்தனை; தேவையுள்ளோருக்கு உதவி.') };
+        text: hindu ? T('During Rahu Kalam light a lamp for Goddess Durga — the traditional practice for Rahu.', 'ராகு காலத்தில் துர்க்கைக்குத் தீபம் — ராகுவுக்கான மரபு வழிபாடு.') : T('Use this time for quiet prayer in your own faith and help someone in need.', 'இந்த நேரத்தில் உங்கள் நம்பிக்கைப்படி அமைதியான பிரார்த்தனை; தேவையுள்ளோருக்கு உதவி.') };
     } else if (planet === 'Ketu') {
       horai = { planet, start: snap?.sunrise, end: snap?.sunrise ? new Date(new Date(snap.sunrise).getTime() + 7200000) : null, weeks: 9,
-        text: hindu ? T('Early morning: pray to Vinayagar before any work — Ketu’s confusion clears.', 'அதிகாலை: எந்த வேலைக்கும் முன் விநாயகர் வழிபாடு — கேதுவின் குழப்பம் நீங்கும்.') : T('Early morning: a few minutes of silent prayer or meditation.', 'அதிகாலை: சில நிமிட அமைதியான பிரார்த்தனை / தியானம்.') };
+        text: hindu ? T('Early morning: pray to Vinayagar before any work — the traditional practice for Ketu, for a clear mind.', 'அதிகாலை: எந்த வேலைக்கும் முன் விநாயகர் வழிபாடு — தெளிவான மனதுக்குக் கேதுவின் மரபு வழிபாடு.') : T('Early morning: a few minutes of silent prayer or meditation.', 'அதிகாலை: சில நிமிட அமைதியான பிரார்த்தனை / தியானம்.') };
     } else {
       const slot = (snap?.horai || []).find((h) => h.lord === planet && new Date(h.end) > now) || (snap?.horai || []).find((h) => h.lord === planet);
       if (slot) {
         const minor = age < 18;
         horai = { planet, start: slot.start, end: slot.end, weeks: 9,
-          text: !hindu ? T(`In ${planet} hour, take up one good act for ${n.governs.en.split(',')[0].toLowerCase()}.`, `${PLANETS[planet].ta} ஓரையில் ${n.governs.ta.split(',')[0]} நலனுக்காக ஒரு நல்ல செயல் செய்யுங்கள்.`)
+          // Other faiths: one practice that fits every faith (never a deity puja); a child gets a child-safe one.
+          text: !hindu ? (minor ? T(`In ${planet} hour: ${CHILD_PRACTICE.en[0].toLowerCase()}${CHILD_PRACTICE.en.slice(1)}`, `${PLANETS[planet].ta} ஓரையில்: ${CHILD_PRACTICE.ta}`) : T(`In ${planet} hour: ${universalPractice(planet).en}`, `${PLANETS[planet].ta} ஓரையில்: ${universalPractice(planet).ta}`))
             : minor ? T(`In ${planet} hour, study the hardest subject — and pray to Saraswathi before starting.`, `${PLANETS[planet].ta} ஓரையில் கடினமான பாடத்தைப் படியுங்கள் — தொடங்கும் முன் சரஸ்வதி வழிபாடு.`)
               : T(`In ${planet} hour, pray to ${n.deity.en} and chant ${n.mantra.en}.`, `${PLANETS[planet].ta} ஓரையில் ${n.deity.ta} வழிபாடு; ${n.mantra.ta}.`) };
       }
@@ -114,9 +120,9 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
   }
 
   // 3. Saturn transit relief on Saturdays (when no sacred day already covered it).
-  if (saniNote && hindu && now.getDay() === 6 && !items.some((i) => /Sani|சனி/.test(i.title.en + i.title.ta))) {
+  if (saniNote && hindu && (snap?.weekday?.index ?? now.getDay()) === 6 && !items.some((i) => /Sani|சனி/.test(i.title.en + i.title.ta))) {
     items.push({ icon: '🪐', personal: true, title: T(`Saturday — ${saniNote.en}`, `சனிக்கிழமை — ${saniNote.ta}`),
-      text: T('Light a sesame-oil lamp, pray to Lord Venkatachalapathi or Anjaneyar, and help an elderly person.', 'நல்லெண்ணெய் தீபம்; வெங்கடாசலபதி / ஆஞ்சநேயர் வழிபாடு; ஒரு முதியவருக்கு உதவி.') });
+      text: T('Light a sesame-oil lamp, pray to Saneeswarar (or Venkatachalapathi / Anjaneyar, as your family does), and help an elderly person.', 'நல்லெண்ணெய் தீபம்; சனீஸ்வரர் வழிபாடு (அல்லது குடும்ப வழக்கப்படி வெங்கடாசலபதி / ஆஞ்சநேயர்); ஒரு முதியவருக்கு உதவி.') });
   }
   return { energy, items, horai, saniNote };
 }

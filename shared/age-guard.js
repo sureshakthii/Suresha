@@ -14,6 +14,7 @@
 // The band rules and the reviewed child / teen wording live HERE and are re-used by the server policy
 // (server/policy/age-policy.js and templates.js import them), so the phone and the server never disagree.
 import { ageOn, ageBand } from './datetime.js';
+import { isHinduFaith, CHILD_PRACTICE } from './faith.js';
 
 export const AGE_GUARD_VERSION = 'age-guard-1.0.0';
 export const ADULT_AGE = 18;
@@ -226,12 +227,12 @@ const ADULT_RE = new RegExp([
   'marri', 'marry', 'wedding', 'spouse', 'husband', 'wife', 'bride', 'groom', 'alliance', 'romance', 'romantic', '\\blove\\b', 'partner',
   'porutham', 'matching', 'dosha samyam', 'chevvai dosh', 'mangal dosh', 'manglik', 'kuja dosh', 'conceiv', 'pregnan', 'childbirth', 'child blessing', 'santhana',
   'career', '\\bjob', 'promotion', 'salary', 'profession', 'business', 'venture', '\\btrade', '\\bdeal', 'contract', 'signature', 'invest',
-  'money', 'wealth', 'income', 'earning', 'finance', 'financial', 'loan', 'debt', 'lending', '\\bemi\\b', 'savings', 'property', '\\bland\\b',
+  'money', 'wealth', 'income', '\\bearning', 'finance', 'financial', 'loan', 'debt', 'lending', '\\bemi\\b', 'savings', 'property', '\\bland\\b',
   'house purchase', 'vehicle', 'court', 'litigation', 'lawsuit', 'legal', 'badhaka', 'maraka', 'second union', 'speculat', 'gambl',
   // Tamil
-  'திருமண', 'கல்யாண', 'மணமக', 'வரன்', 'மாப்பிள்ளை', 'காதல்', 'கணவன்', 'மனைவி', 'வாழ்க்கைத் துணை', 'துணையின்', 'தம்பதி', 'பொருத்தம்',
+  'திருமண', 'கல்யாண', 'மணமக', '(?<![\\u0B80-\\u0BFF])வரன்', 'மாப்பிள்ளை', 'காதல்', 'கணவன்', 'மனைவி', 'வாழ்க்கைத் துணை', 'துணையின்', 'தம்பதி', 'பொருத்தம்',
   'தோஷ சாம்ய', 'செவ்வாய் தோஷ', 'குழந்தை பாக்கிய', 'குழந்தைப் பேறு', 'சந்தான', 'கர்ப்ப', 'தொழில', 'வேலை', 'பதவி', 'சம்பள', 'வியாபார',
-  'வணிக', 'கூட்டுத் தொழில்', 'கூட்டாளி', 'ஒப்பந்த', 'கையெழுத்து', 'முதலீ', 'பணம்', 'பணமு', 'பணத்', 'பணவரவு', 'பண வரவு', 'செல்வ', 'வருமான', 'கடன்', 'சொத்து', 'நிலம்',
+  'வணிக', 'கூட்டுத் தொழில்', 'கூட்டாளி', 'ஒப்பந்த', 'கையெழுத்து', 'முதலீ', '(?<![\\u0B80-\\u0BFF])பணம்', '(?<![\\u0B80-\\u0BFF])பணமு', '(?<![\\u0B80-\\u0BFF])பணத்', '(?<![\\u0B80-\\u0BFF])பணவரவு', 'பண வரவு', 'செல்வ', 'வருமான', 'கடன்', 'சொத்து', 'நிலம்',
   'வாகன', 'வழக்கு', 'நீதிமன்ற', 'பாதக', 'மாரக', 'ஊக வணிக', 'லாபம்',
 ].join('|'), 'i');
 
@@ -291,11 +292,14 @@ function bandLines(topic, profile, name) {
   };
 }
 
+/** Another faith (or none): the band's prayer line becomes one that fits every family's faith. */
+const faithLines = (b, faith) => (isHinduFaith(faith) ? b : { ...b, prayer: CHILD_PRACTICE });
+
 /**
  * The warm, age-appropriate reply used INSTEAD of a prediction when a minor's chart (or an unknown age) is asked
  * about an adult topic. Same shape the chat bubble renders — and deliberately no meter, no periods, no percentage.
  */
-export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', question = '', label = null }) {
+export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', question = '', label = null, faith = 'hindu' }) {
   if (label?.en && label?.ta) TOPIC_LABEL.set(topic, label);
   const L = (o) => say(o, lang);
   const sections = [];
@@ -304,7 +308,7 @@ export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', questio
       `${topicName(topic).ta} பற்றிய பலனுக்குப் பிறந்த தேதி தேவை. குடும்பம் பகுதியில் பிறந்த தேதியைச் சேர்க்கவும் — அதுவரை பொதுவான வழிகாட்டல் தருகிறேன்: இன்றைய நல்ல நேரம், கோவில், எளிய பிரார்த்தனை.`))] });
     return { intent: 'age_guard', ageGuard: { band: 'unknown', topic }, topic, question, sections, meter: null, actions: [{ go: 'family', label: L(T('Add birth date', 'பிறந்த தேதி சேர்')) }], followups: suggestionsFor(profile).slice(0, 3).map(L), text: textOf(sections) };
   }
-  const b = bandLines(topic, profile, name);
+  const b = faithLines(bandLines(topic, profile, name), faith);
   sections.push({ key: 'answer', title: L(T('Answer', 'பதில்')), lines: [L(b.answer)] });
   if (b.extra) sections.push({ key: 'note', title: L(T('Remember', 'நினைவில் கொள்ளுங்கள்')), lines: [L(b.extra)] });
   sections.push({ key: 'dos', title: L(profile.band === '0-5' ? T('For parents now', 'பெற்றோருக்கு இப்போது') : T('Focus on now', 'இப்போது கவனம் செலுத்த')), lines: b.focus.map(L) });
@@ -320,9 +324,10 @@ export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', questio
  * today's deity and a simple prayer, the band's everyday focus, and age-appropriate follow-ups.
  * deity: optional { god: {en,ta}, mantra: {en,ta} } (shared/daily.js dailyReview().deity).
  */
-export function childGeneralAnswer({ profile, lang = 'ta', name = '', deity = null, question = '' }) {
+export function childGeneralAnswer({ profile, lang = 'ta', name = '', deity = null, question = '', faith = 'hindu' }) {
   const L = (o) => say(o, lang);
-  const b = bandLines('general', profile, name);
+  const b = faithLines(bandLines('general', profile, name), faith);
+  if (!isHinduFaith(faith)) deity = null; // no Hindu deity prayer for a child of another faith
   const q = String(question || '');
   const lines = [];
   if (/online|internet|phone|social|இணைய|கைப்பேசி/i.test(q)) {

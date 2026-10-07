@@ -194,8 +194,8 @@ test('daily review: chandrashtamam, tara and chandra balam, do/don\'t, god of th
   assert.match(pr.lines[0].ta, /போற்றி/);
   const ch = nextChandrashtamam(chart.janmaRasi.index, now);
   assert.ok(ch.end > ch.start && (ch.end - ch.start) / 3600000 > 40 && (ch.end - ch.start) / 3600000 < 66);
-  // Answers close with the prayer for the person's Dasa and Bhukti deities
-  assert.match(ask('How is my career this year?').text, /Sivane Potri/);
+  // Answers close with the prayer for the person's Dasa and Bhukti deities (one primary deity per planet: Sun → Surya, shared/remedies.js PRIMARY)
+  assert.match(ask('How is my career this year?').text, /Surya Bhagavane Potri/);
 });
 
 test('love match: five neutral traditional affinity notes — no percentage, no tier', async () => {

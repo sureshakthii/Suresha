@@ -90,20 +90,24 @@ test('permission: saving another adult or sharing a pair result needs "I have th
   assert.ok(share.indexOf("!$('#lvPerm')?.checked") >= 0 && share.indexOf("!$('#lvPerm')?.checked") < share.indexOf('navigator.share'));
 });
 
-test('health screens: no eat / avoid, body-part warnings or injury lines; wellbeing + optional reflection', () => {
+// The full Jathagam health guide screen (public/screens-health.js) carries traditional body areas and food tips for
+// adults again (owner request, Oct 2026; test/health-guide.test.js). The Today card and Ask Thunai keep the rule:
+// no eat / avoid lists, body-part warnings or injury lines of their own — Today shows only the one-line
+// healthNowHtml() summary, which links to the full guide.
+test('health screens: no eat / avoid, body-part warnings or injury lines on Today / Ask; the guide carries the doctor line', () => {
   const card = between(src('public/screens-main.js'), 'function healthTodayCard(', '\n}\n');
   const screen = src('public/screens-health.js');
   const ask = between(src('public/ask-thunai.js'), '  health: {', '  education: {');
-  for (const [id, s] of [['today', card], ['screen', screen], ['ask', ask]]) {
+  for (const [id, s] of [['today', card], ['ask', ask]]) {
     assert.doesNotMatch(s, /\.diet\b|bodyAreas|Eat|Avoid|சாப்பிடலாம்|தவிர்க்கவும்|Care for|injur|காயம்|eat and avoid/, id);
   }
-  for (const s of [card, screen]) {
-    assert.match(s, /wellbeing|reviewLabel/);
-    assert.match(s, /reflection|r\.label/);
-  }
+  assert.match(card, /wellbeing|reviewLabel/);
+  assert.match(card, /reflection|r\.label/);
+  assert.match(card, /healthNowHtml\(m[,)]/);
   assert.match(screen, /reviewLabel/);
-  assert.match(screen, /not health advice|r\.note/);
-  assert.doesNotMatch(src('shared/health.js'), /PLANET_DIET|DOSHA_DIET|buildDiet/);
+  assert.match(screen, /h\.disclaimer/);
+  assert.match(screen, /trad\(/);
+  assert.doesNotMatch(screen, /injur|காயம்/);
   assert.doesNotMatch(between(src('shared/guidance.js'), "case 'health': {", "case 'emotional': {"), /\.diet|bodyAreas|hg\.months|Eat more|Fasting day/);
 });
 

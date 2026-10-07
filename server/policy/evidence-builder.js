@@ -1,9 +1,10 @@
 // Evidence builder (Brief §6, §22 step 7): only deterministic code issues chart facts. Each fact gets a stable
 // id that the model must cite. We send the MINIMUM to the AI provider — no names, no exact birthplace,
 // no coordinates, no family/relationship details unless the task needs them.
-import { detectYogas } from '../../shared/analysis.js';
+import { detectYogas, transitStatus } from '../../shared/analysis.js';
+import { runningDasa } from '../../shared/daily.js';
 
-export const EVIDENCE_VERSION = 'evidence-1.0.0';
+export const EVIDENCE_VERSION = 'evidence-1.1.0';
 
 const MAX_FACTS = 160;
 const MAX_TEXT = 220;
@@ -20,7 +21,7 @@ const iso = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : typeof d 
 const clip = (s) => String(s).replace(/\s+/g, ' ').slice(0, MAX_TEXT);
 
 /** Facts from a server-computed birth chart (shared/astro.js birthChart). */
-export function evidenceFromChart(chart, { includeYogas = true } = {}) {
+export function evidenceFromChart(chart, { includeYogas = true, now = new Date() } = {}) {
   const facts = [];
   if (!chart) return facts;
   const add = (id, text, rule) => facts.push({ id, text: clip(text), source: 'engine', rule });
@@ -34,11 +35,31 @@ export function evidenceFromChart(chart, { includeYogas = true } = {}) {
     add(`D1.planet.${k}`, `${k} in ${p.rasiName} ${p.dms || ''}, ${p.nakshatraName || ''}${house ? `, house ${house} from Lagna` : ''}${p.retrograde && !['Rahu', 'Ketu'].includes(k) ? ' (retrograde)' : ''}`, 'astro.birthChart');
   }
   const d = chart.dasa;
-  if (d?.current) add('DASA.current', `${d.current.lord} Mahadasa ${iso(d.current.start)} to ${iso(d.current.end)}`, 'astro.vimshottari');
-  if (d?.currentBhukti) add('DASA.bhukti', `${d.currentBhukti.lord} Bhukti until ${iso(d.currentBhukti.end)}`, 'astro.vimshottari');
+  // The Dasa–Bhukti running TODAY (the same rule as Today / analysis / palan), not at chart-compute time.
+  const run = d ? runningDasa(chart, now) : { md: null, ad: null };
+  if (run.md) add('DASA.current', `${run.md.lord} Mahadasa ${iso(run.md.start)} to ${iso(run.md.end)}`, 'astro.vimshottari');
+  if (run.ad) add('DASA.bhukti', `${run.ad.lord} Bhukti until ${iso(run.ad.end)}`, 'astro.vimshottari');
   if (Array.isArray(d?.periods)) {
-    d.periods.filter((p) => p.start > new Date()).slice(0, 2).forEach((p, i) => add(`DASA.next.${i}`, `${p.lord} Mahadasa from ${iso(p.start)}`, 'astro.vimshottari'));
+    d.periods.filter((p) => p.start > now).slice(0, 2).forEach((p, i) => add(`DASA.next.${i}`, `${p.lord} Mahadasa from ${iso(p.start)}`, 'astro.vimshottari'));
+    // The dated Dasa–Bhukti timeline for the next 10 years, so "when" questions are answered from engine dates only.
+    const end = new Date(now.getTime() + 10 * 365.25 * 86400000);
+    let n = 0;
+    for (const md of d.periods) {
+      if (md.end < now || md.start > end) continue;
+      for (const ad of md.bhuktis || []) {
+        if (ad.end < now || ad.start > end || n >= 24) continue;
+        add(`DASA.timeline.${n}`, `${md.lord} Mahadasa / ${ad.lord} Bhukti ${iso(ad.start > now ? ad.start : now)} to ${iso(ad.end)}`, 'astro.vimshottari');
+        n++;
+      }
+    }
   }
+  // Saturn / Jupiter transit from the Moon sign (Ezharai / Ashtama Sani, Guru Balam) with the sign dates.
+  try {
+    const tr = transitStatus(chart, now);
+    add('TRANSIT.saturn', `Saturn transits house ${tr.saturnFromMoon} from the Moon sign, in this sign ${iso(tr.satSpan.from)} to ${iso(tr.satSpan.to)}`, 'analysis.transitStatus');
+    add('TRANSIT.jupiter', `Jupiter transits house ${tr.jupiterFromMoon} from the Moon sign, in this sign ${iso(tr.jupSpan.from)} to ${iso(tr.jupSpan.to)}`, 'analysis.transitStatus');
+    for (const st of tr.status) add(`TRANSIT.${st.id}`, st.en, `analysis.transitStatus:${st.id}`);
+  } catch { /* ephemeris unavailable — omit, never guess */ }
   if (includeYogas) {
     try {
       for (const y of detectYogas(chart)) add(`YOGA.${y.id}`, `${y.name.en} (rule ${y.id}): ${y.desc.en}`, `analysis.detectYogas:${y.id}`);

@@ -712,7 +712,7 @@ details.tl-year > div { margin-top: 6px; }
 .rp.bad { border-color: rgba(var(--bad-rgb), .5); }
 .rp.mine { outline: 2px solid var(--gold); }
 .vibe { position: relative; overflow: hidden; padding: 16px; border-radius: var(--radius); margin-bottom: 14px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--vc) 45%, #1a0b40), #120733 70%); border: 1px solid rgba(var(--ink-rgb), .18); }
+  background: linear-gradient(135deg, color-mix(in srgb, var(--vc) 35%, #1a0b40), #120733 70%); /* 35%: light text stays ≥ 4.5:1 even on a white/yellow day colour */ border: 1px solid rgba(var(--ink-rgb), .18); }
 .vibe-top { display: flex; justify-content: space-between; align-items: center; }
 .vibe-word { font-size: 24px; font-weight: 800; margin: 6px 0 10px; }
 .vibe-bar { height: 10px; border-radius: 99px; background: rgba(var(--ink-rgb), .12); overflow: hidden; }
@@ -1270,8 +1270,9 @@ body.large .sub-head { top: calc(var(--top-h, 64px) / 1.15); }
 .guide-form .mic, .chat-form:has(#tripText) .mic { margin-right: auto; }
 @media (max-width: 340px) { .sub-head { margin-left: -10px; margin-right: -10px; padding-left: 10px; padding-right: 10px; } }
 
-/* Day mode: the Tamil-date card and its tiles use the day palette (no dark navy tiles on cream) */
-[data-theme="light"] .hero, [data-theme="light"] .vibe {
+/* Day mode: the Tamil-date card and its tiles use the day palette (no dark navy tiles on cream).
+   The vibe card keeps its night gradient, so it keeps the night (light-text) palette too — see "Contrast" at the end. */
+[data-theme="light"] .hero {
   --scheme: light; --text: #241a2b; --muted: #6b5d70; --gold: #8a5300; --gold2: #7a1f3d;
   --glass: #ffffff; --glass-b: rgba(122, 31, 61, .14); --ink-rgb: 36, 26, 43; --gold-rgb: 138, 83, 0;
   --good: #1b7f3b; --warn: #a15c00; --bad: #b42318; --good-text: #14532d; --bad-text: #7f1d1d; --saffron-text: #9a3412;
@@ -2476,3 +2477,27 @@ fieldset.name-show .seg-opt { border: 1px solid var(--glass-b); border-radius: 9
 fieldset.name-show .seg-opt:has(input:checked) { border-color: var(--gold); background: rgba(var(--gold-rgb), .14); font-weight: 600; }
 fieldset.name-show .seg-opt input { accent-color: var(--btn-gold, var(--gold)); }
 #namePreview { margin: 4px 0 0; overflow-wrap: anywhere; }
+
+/* ---- Contrast: dark "cosmic" islands (vibe card, live wheel, .cosmic) keep light text in both themes ----
+   The later light-theme token blocks re-set --brand / --gold2 to maroon, which leaked into these night-sky cards. */
+[data-theme="light"] .cosmic, [data-theme="light"] .vibe, [data-theme="light"] .wheel-card {
+  --brand: #f7d9a6; --gold2: #f7d9a6; --gold: #f5c26b; --text: #fbf7ff; --muted: #d6cbef; --shadow-rgb: 0, 0, 0;
+  color: var(--text);
+}
+.vibe, [data-theme] .vibe { --muted: #e9e2fa; }
+.vibe .mini-label, .vibe .muted { color: var(--muted); }
+.vibe-grid > div { color: var(--text); }
+[data-theme="light"] .vibe .link-btn, [data-theme="light"] .wheel-card .link-btn, [data-theme="light"] .cosmic .link-btn,
+[data-theme="light"] .vibe .chip-btn, [data-theme="light"] .wheel-card .chip-btn, [data-theme="light"] .cosmic .chip-btn {
+  background: rgba(255, 255, 255, .1); color: var(--gold2); border-color: rgba(245, 194, 107, .35);
+}
+/* South-Indian chart sign names: solid muted ink (the old 70–80% alpha fell just under 4.5:1) */
+.si-cell .sn, [data-theme="light"] .si-cell .sn { color: var(--muted); }
+/* Past horai: keep them visibly "done" with a dashed outline instead of 45% opacity, so the text stays readable */
+.hora-item.past { opacity: 1; background: transparent; border: 1px dashed rgba(var(--ink-rgb), .16); }
+.hora-item.past, .hora-item.past b { color: var(--muted) !important; }
+/* LIVE badge: bright red only on the night-sky cards; a deeper red on white cards */
+[data-theme="light"] .live-dot { color: #b42318; }
+[data-theme="light"] .wheel-card .live-dot, [data-theme="light"] .cosmic .live-dot, [data-theme="light"] .vibe .live-dot { color: #ff8a8a; }
+/* Light-theme planet inks a step darker so they pass 4.5:1 on tinted tiles (lagna cell, hora chips) */
+[data-theme="light"] { --pl-Mars: #b91c1c; --pl-Mercury: #166534; --pl-Jupiter: #8a5300; }

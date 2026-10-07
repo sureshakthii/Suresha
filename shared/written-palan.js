@@ -10,7 +10,9 @@
 // Pure module — shared by the browser and Node tests.
 import { RASIS, NAKSHATRAS, PLANETS } from './astro.js';
 import { grahaStrength } from './remedies.js';
-import { transitStatus } from './analysis.js';
+import { transitStatus, dasaTone } from './analysis.js';
+import { runningDasa } from './daily.js';
+import { isHinduFaith } from './faith.js';
 import { REPORT_YEARS, horizonEnd, horizonLabel, HORIZON_LINES } from './report-horizon.js';
 import { topicAllowed, adultText } from './age-guard.js';
 
@@ -144,8 +146,20 @@ export const PALAN_AREAS = [
   { id: 'property', houses: [4, 11, 2], negate: [3, 12], karakas: ['Mars', 'Venus'], name: T('Home, land & vehicles', 'வீடு, நிலம், வாகனம்'),
     for: T('buying a home, land or a vehicle', 'வீடு, நிலம், வாகனம் வாங்குவதற்கு'), tip: T('Check documents carefully and decide within your means.', 'ஆவணங்களைக் கவனமாகச் சரிபார்த்து, உங்கள் சக்திக்கு ஏற்ப முடிவெடுங்கள்.') },
   { id: 'spiritual', houses: [9, 12, 5], negate: [], karakas: ['Jupiter', 'Ketu'], name: T('Spiritual life', 'ஆன்மீக வாழ்க்கை'),
-    for: T('spiritual growth and pilgrimage', 'ஆன்மீக முன்னேற்றத்திற்கும் தீர்த்த யாத்திரைக்கும்'), tip: T('A simple daily prayer and an occasional temple visit keep the mind clear.', 'தினசரி ஒரு எளிய வழிபாடும் அவ்வப்போது கோவில் தரிசனமும் மனதைத் தெளிவாக்கும்.') },
+    for: T('spiritual growth and pilgrimage', 'ஆன்மீக முன்னேற்றத்திற்கும் தீர்த்த யாத்திரைக்கும்'), tip: T('A simple daily prayer and an occasional temple visit keep the mind clear.', 'தினசரி ஒரு எளிய வழிபாடும் அவ்வப்போது கோவில் தரிசனமும் மனதைத் தெளிவாக்கும்.'),
+    tipAllFaiths: T('A simple daily prayer in your own faith and quiet time for reflection keep the mind clear.', 'உங்கள் நம்பிக்கைப்படி தினசரி ஒரு எளிய பிரார்த்தனையும் அமைதியான சிந்தனை நேரமும் மனதைத் தெளிவாக்கும்.'),
+    forAllFaiths: T('spiritual growth and reflection', 'ஆன்மீக முன்னேற்றத்திற்கும் அமைதியான சிந்தனைக்கும்') },
 ];
+
+// 60 and over: the same houses and windows, worded for the stage of life — family (not marriage efforts), work as
+// purpose and service (not job hunting). A separated / widowed person who chose to ask about remarriage
+// (opts.remarriage) keeps the marriage wording.
+const SENIOR = {
+  career: { name: T('Work & purpose', 'பணி & பயனுள்ள செயல்பாடு'), for: T('meaningful work, service and sharing your experience', 'பயனுள்ள பணி, சேவை, அனுபவத்தைப் பகிர்வதற்கு'),
+    tip: T('Share your experience, guide younger people and keep a gentle, regular routine.', 'உங்கள் அனுபவத்தைப் பகிர்ந்து இளையோருக்கு வழிகாட்டுங்கள்; மென்மையான, சீரான அன்றாட ஒழுங்கைப் பேணுங்கள்.') },
+  marriage: { name: T('Family life', 'குடும்ப வாழ்க்கை'), for: T('family harmony and good family events', 'குடும்ப ஒற்றுமைக்கும் நல்ல குடும்ப நிகழ்வுகளுக்கும்') },
+  education: { name: T('Learning', 'கற்றல்'), for: T('learning and new interests', 'கற்றலுக்கும் புதிய ஆர்வங்களுக்கும்') },
+};
 
 // ------------------------------------------------------------------ helpers
 const toDate = (x) => (x instanceof Date ? x : new Date(x));
@@ -291,10 +305,12 @@ const PROMISE = {
  *               tz, maritalStatus: 'married' | other }
  * @returns { title, horizon, mode: 'adult'|'minor', moonOnly, sections: [{ id, title, lines: [{en,ta}], stability, items? }] }
  */
-export function writtenPalan(chart, { now = new Date(), profile = null, years = REPORT_YEARS.analysis, analysis = null, tz = null, maritalStatus = null } = {}) {
+export function writtenPalan(chart, { now = new Date(), profile = null, years = REPORT_YEARS.analysis, analysis = null, tz = null, maritalStatus = null, faith = 'hindu', remarriage = false } = {}) {
+  const hindu = isHinduFaith(faith);
   const zone = tz ?? (Number.isFinite(Number(chart.tz)) ? Number(chart.tz) : 5.5);
   const prof = profile || { band: 'adult', adult: true, minor: false };
   const adult = !!(prof.adult || prof.organization);
+  const senior = adult && Number(prof.age) >= 60 && !remarriage;
   const P = chart.planets;
   const hasLagna = !!P.Lagna;
   const ref = hasLagna ? P.Lagna.rasi : P.Moon.rasi;
@@ -330,11 +346,15 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
   sections.push({ id: 'who', title: T('Who you are', 'நீங்கள் யார்'), lines: safe(who), stability: hasLagna ? ['lagna', 'moonNakshatra', 'moonPada'] : ['moonNakshatra', 'moonPada'] });
 
   // ---- Now
-  const md = chart.dasa?.current ? (chart.dasa.periods || []).find((p) => p.lord === chart.dasa.current.lord && toDate(p.start).getTime() === toDate(chart.dasa.current.start).getTime()) || chart.dasa.current : null;
-  const ad = chart.dasa?.currentBhukti || md?.bhuktis?.find((b) => toDate(b.start) <= now && now < toDate(b.end)) || null;
+  // The periods running at `now` — the same lookup as Today, the analysis card and the road map.
+  const { md, ad } = runningDasa(chart, now);
   const nowLines = [];
   const transit = analysis?.transit || transitStatus(chart, now);
-  const areas = PALAN_AREAS.filter((a) => topicAllowed(a.id, prof));
+  const areas = PALAN_AREAS.filter((a) => topicAllowed(a.id, prof)).map((a) => {
+    let x = senior && SENIOR[a.id] ? { ...a, ...SENIOR[a.id] } : a;
+    if (!hindu && x.tipAllFaiths) x = { ...x, tip: x.tipAllFaiths, for: x.forAllFaiths };
+    return x;
+  });
   if (md) {
     nowLines.push(T(`You are now in ${md.lord} Maha Dasa (${yspan(md.start, md.end, zone)})${ad ? `, in its ${ad.lord} Bhukti (${span(ad.start, ad.end, zone).en})` : ''}.`,
       `இப்போது ${pAdj(md.lord)} மகா தசை (${yspan(md.start, md.end, zone)}) நடக்கிறது${ad ? `; அதில் ${pAdj(ad.lord)} புக்தி (${span(ad.start, ad.end, zone).ta})` : ''}.`));
@@ -348,7 +368,7 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
       const roleTa = `${ruled.length ? `${ruled.join(', ')}-ம் ${ruled.length > 1 ? 'வீடுகளுக்கு' : 'வீட்டுக்கு'} அதிபதி; ` : ''}${occH}-ம் வீட்டில் இருக்கிறார்`;
       nowLines.push(T(`${pre.en}${k} ${roleEn}, so this period brings forward ${listEn(focus.map((h) => HOUSE[h].en))}.`,
         `${pre.ta}${pTa(k)} ${roleTa}. எனவே இந்தத் தசை ${listTa(focus.map((h) => HOUSE[h].ta))} ஆகியவற்றை முன்னிறுத்தும்.`));
-      const good = (sMap[k] ?? 50) >= 55 && !DUSTHANA.includes(occH);
+      const good = dasaTone(chart, k, sMap).good; // the same rule as the analysis card and the road map
       nowLines.push(good
         ? T(`${k} is well placed for you — a supportive period to build on ${pd(k).en}.`, `${pTa(k)} உங்களுக்கு நல்ல நிலையில் உள்ளார் — ${pd(k).ta} ஆகியவற்றில் வளர்ச்சிக்குப் பயன்படுத்த வேண்டிய ஆதரவான காலம்.`)
         : T(`${k}'s period rewards patience and steady effort; ${pd(k).en} are the themes to work on.`, `${pAdj(k)} தசையில் பொறுமையும் தொடர் முயற்சியும் பலன் தரும்; ${pd(k).ta} — இவையே கவனிக்க வேண்டியவை.`));
@@ -383,7 +403,8 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
     nowLines.push(satGood ? T('Saturn\'s transit is favourable — a regular study habit pays off well.', 'சனியின் கோசாரம் சாதகம் — தொடர்ந்து படிக்கும் பழக்கத்திற்கு நல்ல பலன்.')
       : T('Saturn\'s transit teaches patience — keep studies, sleep and prayer steady and this passes gently.', 'சனியின் கோசாரம் பொறுமையைக் கற்றுத்தரும் — படிப்பு, உறக்கம், வழிபாட்டைச் சீராக வைத்தால் இது மென்மையாகக் கடக்கும்.'));
     nowLines.push(guru ? T('Jupiter supports studies and good habits now (Guru Balam).', 'குரு பலம் உண்டு — கல்விக்கும் நல்ல பழக்கங்களுக்கும் சாதகமான காலம்.')
-      : T('For Jupiter\'s grace, a lamp for Dakshinamurthy on Thursdays and a daily study routine help.', 'குருவின் அருளுக்கு வியாழன்தோறும் தட்சிணாமூர்த்திக்குத் தீபம்; படிப்பில் தினசரி ஒழுங்கு நன்று.'));
+      : hindu ? T('For Jupiter\'s grace, a lamp for Dakshinamurthy on Thursdays and a daily study routine help.', 'குருவின் அருளுக்கு வியாழன்தோறும் தட்சிணாமூர்த்திக்குத் தீபம்; படிப்பில் தினசரி ஒழுங்கு நன்று.')
+        : T('Respect for teachers, a short prayer in your family\'s own way and a daily study routine help.', 'ஆசிரியர்களுக்கு மரியாதை, குடும்ப வழக்கப்படி சிறு பிரார்த்தனை, படிப்பில் தினசரி ஒழுங்கு நன்று.'));
   }
   nowLines.push(adult ? T('For wellbeing in any period: enough sleep, a daily walk and a calm routine are your best support.', 'எந்தக் காலத்திலும் நலமாக இருக்க: போதுமான உறக்கம், தினசரி நடை, அமைதியான அன்றாட ஒழுங்கு — இவையே சிறந்த துணை.')
     : T('Outdoor play, a fixed bedtime and time with family keep a child happy in every period.', 'வெளியில் விளையாட்டு, நேரத்திற்கு உறக்கம், குடும்பத்துடன் நேரம் — எந்தக் காலத்திலும் குழந்தையை மகிழ்ச்சியாக வைக்கும்.'));
@@ -431,7 +452,7 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
     const lines = [];
     const lvl = promiseOf(a.id);
     if (lvl && PROMISE[lvl]) lines.push(PROMISE[lvl]);
-    const forTxt = a.id === 'marriage' && maritalStatus === 'married' ? a.forMarried : a.for;
+    const forTxt = a.id === 'marriage' && maritalStatus === 'married' && !senior ? a.forMarried : a.for;
     const cur = w.current;
     if (cur) {
       const nm = T(`${cur.md} Dasa – ${cur.ad} Bhukti`, `${pAdj(cur.md)} தசை – ${pAdj(cur.ad)} புக்தி`);
@@ -458,7 +479,8 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
 
   return {
     title: T('Your chart reading — now and ahead', 'உங்கள் ஜாதகப் பலன் — இப்போதும் வரும் காலமும்'),
-    horizon: horizonLabel(years), years, mode: adult ? 'adult' : 'minor', moonOnly: !hasLagna,
+    horizon: horizonLabel(years), years, mode: adult ? 'adult' : 'minor', moonOnly: !hasLagna, senior, faith: hindu ? 'hindu' : faith,
+    running: md ? { md: md.lord, ad: ad?.lord || null, mdStart: toDate(md.start), mdEnd: toDate(md.end), adStart: ad ? toDate(ad.start) : null, adEnd: ad ? toDate(ad.end) : null } : null,
     sections,
     note: T('Read on your phone from your chart\'s dasa, houses and transits. These are the tendencies tradition reads — not certainties; your effort and choices matter most.',
       'உங்கள் ஜாதகத்தின் தசை, பாவம், கோசாரம் ஆகியவற்றிலிருந்து உங்கள் கைப்பேசியிலேயே கணிக்கப்பட்டது. இவை மரபு காட்டும் போக்குகள் — முடிவான தீர்ப்புகள் அல்ல; உங்கள் முயற்சியும் தேர்வுகளுமே முதன்மை.'),
@@ -479,6 +501,14 @@ export function palanLines(p) {
 /** Follow-up questions for Ask Thunai (adult only; a minor gets none here — the chat offers age-safe chips). */
 export function palanFollowups(p, { maritalStatus = null } = {}) {
   if (p.mode !== 'adult') return [];
+  if (p.senior) {
+    return [
+      T('How is family harmony in this period?', 'இந்தக் காலத்தில் குடும்ப ஒற்றுமை எப்படி?'),
+      T('What does this dasa bring for my peace of mind?', 'இந்தத் தசை மன அமைதிக்கு என்ன தரும்?'),
+      T('Which days suit family functions this year?', 'இந்த ஆண்டு குடும்ப விழாக்களுக்கு ஏற்ற நாட்கள் எவை?'),
+      T('Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'),
+    ];
+  }
   const q = [
     T('How is my career in this dasa?', 'இந்தத் தசையில் தொழில் எப்படி?'),
     maritalStatus === 'married' ? T('How is family harmony in this period?', 'இந்தக் காலத்தில் குடும்ப ஒற்றுமை எப்படி?') : T('When is a good time for marriage?', 'திருமண காலம் எப்போது?'),

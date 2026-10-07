@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import { birthChart } from '../shared/astro.js';
 import { healthGuide } from '../shared/health.js';
 
@@ -62,24 +61,30 @@ test('health guide: general wellbeing and an optional traditional reflection, cl
     assert.equal(r.practices[0].planet, h.period.md.lord);
     assert.ok(r.healing.some((x) => /Dhanvantari/.test(x.en)));
     assert.ok(/Tryambakam/.test(r.mantra.en));
-    assert.ok(/not medical advice/.test(h.disclaimer.en) && /not health advice/.test(h.disclaimer.en) && h.disclaimer.ta);
+    assert.ok(/not medical advice/.test(h.disclaimer.en) && /not a diagnosis/.test(h.disclaimer.en) && /நோய் கண்டறிதல் அல்ல/.test(h.disclaimer.ta));
   }
 });
 
-test('health guide: no food rules, body-part warnings, injuries or period verdicts from dasa / transits', () => {
+// The Jathagam health guide was restored for adults at the owner's request (Oct 2026): body areas, food tips and the
+// period outlook are traditional indications for adults only (test/health-guide.test.js). Children still get none,
+// and the spiritual reflection (shown on Today and in Ask Thunai) still carries no food, body or injury wording.
+test('health guide: children get no food rules, body-part warnings or period verdicts; the reflection stays spiritual', () => {
+  const c = healthGuide(child, { now });
+  for (const gone of ['diet', 'bodyAreas', 'months', 'constitution', 'outlook', 'upcoming', 'now']) assert.equal(c[gone], null, gone);
+  assert.equal(c.minor, true);
   for (const chart of [adult, elder, child]) {
     const h = healthGuide(chart, { now });
-    for (const gone of ['diet', 'bodyAreas', 'months', 'constitution']) assert.equal(h[gone], undefined, gone);
-    assert.equal(h.period.level, undefined);
-    assert.equal(h.flags.dietFromAstrology, false);
-    assert.equal(h.flags.bodyPartWarningsFromAstrology, false);
-    const all = JSON.stringify({ reflection: h.reflection, period: h.period, habits: h.wellbeing.habits, remedies: h.remedies });
+    const all = JSON.stringify({ reflection: h.reflection, habits: h.wellbeing.habits });
     assert.doesNotMatch(all, /\b(eat|avoid|injur(y|ies)|fasting|diet)\b/i);
     assert.doesNotMatch(all, /உண்ண|தவிர்க்க|காயம்|விரதம்/);
     for (const g of [...h.reflection.gochara, ...h.reflection.practices.map((x) => x.lamp)]) assert.doesNotMatch(g.en, /joint|chest|heat|food|sleep|BP|blood/i);
   }
-  const src = fs.readFileSync(new URL('../shared/health.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(src, /PLANET_DIET|DOSHA_DIET|buildDiet|bodyAreas\(/);
+  const a = healthGuide(adult, { now });
+  assert.equal(a.minor, false);
+  assert.ok(a.diet.favour.length && a.bodyAreas.items.length && a.months.items.length === 12 && a.outlook.ad);
+  assert.equal(a.flags.lifespanInference, false);
+  assert.equal(a.flags.diseaseInference, false);
+  assert.equal(a.flags.canDriveTreatment, false);
 });
 
 test('health guide: every Tamil string is pure Tamil (no Latin letters)', () => {

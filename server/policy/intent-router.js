@@ -9,15 +9,15 @@
 import { normalizeText, wordsToDigits, extractAges, decodeEmbedded, TB } from './lexicon.js';
 import { INTENT_PATTERNS } from '../../shared/age-guard.js';
 
-export const ROUTER_VERSION = 'router-1.0.0';
+export const ROUTER_VERSION = 'router-1.1.0';
 
 // Each rule: list of RegExps (tested on normalised text, numbers already converted to digits).
 const T = (src) => new RegExp(src, 'u'); // Tamil-script patterns (no \b for Tamil)
 const R = {
   selfHarm: [
     /\b(kill(ing)? my ?self|(want|wish|need) (someone )?to kill me|suicid\w*|end(ing)? (my life|it all|my ?self)|(don'?t|do not|dont) (want|wish) to (live|be alive|exist|wake up)|(want|wanna|wish) to die|wanna die|i'?m going to (die|end it)|wish i (was|were) dead|better off dead|no (reason|point) (to|in) liv\w*|take my (own )?life|hurt(ing)? my ?self|self[- ]?harm|cut(ting)? (my ?self|my wrists?)|not worth living|life is (not worth|meaningless)|can'?t go on|give up on life)\b/,
-    T('தற்கொலை|சாக வேண்டும்|சாகணும்|சாகப் போகிறேன்|சாக போறேன்|உயிரை மாய்த்|வாழ விருப்பம் இல்லை|வாழ விரும்பவில்லை|வாழப் ?பிடிக்க(வில்லை|ல)|இறந்து போக வேண்டும்|செத்துப் ?போக|சாவதே மேல்|உயிர் வாழ (விருப்பம்|பிடிக்க)'),
-    /\b(saaga?num|saganum|saaga poren|sethu poga(num|ren|poren)|sethudalam|sethuduven|th?ar?kolai|thatkolai|vaa?zha (pidikala|pidikkala|virupam illa|venam)|uyir vaa?zha|saavu (than|dhaan) nall?adhu)\b/,
+    T('தற்கொலை|சாக வேண்டும்|சாகணும்|சாகப் போகிறேன்|சாக போறேன்|உயிரை மாய்த்|வாழ விருப்பம் இல்லை|வாழ விரும்பவில்லை|வாழப் ?பிடிக்க(வில்லை|ல)|இறந்து போக வேண்டும்|செத்துப் ?போக|சாவதே மேல்|உயிர் வாழ (விருப்பம்|பிடிக்க)|வாழவே பிடிக்க|வாழ விருப்பமில்லை|சாகலாம்|உயிரை விட'),
+    /\b(saaga?num|saganum|saaga poren|sethu poga(num|ren|poren)|sethudalam|sethuduven|th?ar?kolai|thatkolai|vaa?zha (pidikala|pidikkala|virupam illa|venam)|sethudal?aam|uyir vaa?zha|saavu (than|dhaan) nall?adhu|saaga?num pola)\b/,
   ],
   distress: [
     /\b(hopeless|depress(ed|ion)|can'?t cope|cannot cope|so alone|nobody cares|no one cares|crying every day|worthless|my chart is (bad|cursed|terrible))\b/,
@@ -31,8 +31,8 @@ const R = {
   ],
   abuse: [
     /\b(touch(es|ed|ing)? me (inappropriately|wrongly|there|in private|in a bad way|without)|touch(es|ed)? my (private|body)|molest\w*|rape[ds]?|raping|sexual(ly)? (abus|assault|harass)\w*|abus(e|ed|es|ing) me|harass(es|ed|ing)? me|bad touch|forced me to|forces me to|makes me (touch|undress|watch)|send(s)? me (nudes?|naked)|ask(s|ed|ing)? (me )?for (my )?(nudes?|naked|private) (photos?|pics?|videos?)?|blackmail\w*|threaten(s|ed|ing)? to (share|leak|post) my|beat(s|ing)? me|hit(s|ting)? me|my (father|mother|uncle|step ?father|teacher|coach|brother|husband|boss) (hurts|beats|hits|touches) me)\b/,
-    T('தவறாகத் ?தொடு|தகாத முறையில்|பாலியல் (தொல்லை|வன்கொடுமை|துன்புறுத்தல்)|துன்புறுத்து|என்னை அடிக்கிற|மிரட்டு|நிர்வாணப் ?படம்|அந்தரங்க (படம்|புகைப்படம்)'),
-    /\b(thappa thod(ura|raa?n|uraa?n)|thappana edathula thod|bad touch|mirattu?(raa?n|raa?|raanga)|photo anupa sol(ra|raa?n)|thollai pann(ura|raa?n)|adikk?(raa?n|uraa?n|raanga|ranga))\b/,
+    T('வரதட்சணை|சித்திரவதை|அடிக்கிறா|தவறாக நடந்து|தவறாகத் ?தொடு|தகாத முறையில்|பாலியல் (தொல்லை|வன்கொடுமை|துன்புறுத்தல்)|துன்புறுத்து|என்னை அடிக்கிற|மிரட்டு|நிர்வாணப் ?படம்|அந்தரங்க (படம்|புகைப்படம்)'),
+    /\b(thappa thod(ura|raa?n|uraa?n)|thappana edathula thod|bad touch|mirattu?(raa?n|raa?|raanga)|photo anupa sol(ra|raa?n)|thollai pann(ura|raa?n)|adikk?(raa?n|uraa?n|raanga|ranga|iraa?ru|iraar|iraan|uraa?ru|raa?ru|iraanga|uraanga)|thappa nadandh?u\w*|thappa nadakk?\w*|varadh?a?tchanai|varathatchanai|dowry|torture\w*|domestic violence)\b/,
   ],
   coercion: [
     /\b(forc(e|es|ing|ed) (me )?(to|into) (marry|marriage|sex|meet)|forced marriage|forcing me|pressur(e|es|ing|ed) (me )?(to|into)|won'?t let me (leave|go|study|talk)|make me marry|marry me off|against my will|they will disown me if)\b/,
@@ -89,14 +89,13 @@ const R = {
   ],
   deathPrediction: [
     /\b(when (will|would|do) (i|he|she|they|my \w+) die|when (i|he|she|my \w+) will die|when (am|is) (i|he|she|my \w+) going to die|how long (will|would) (i|he|she|they|my \w+) live|life ?span|longevity|age (of|at) death|date of (my |his |her )?death|death (date|time|year)|year of death|will (i|he|she|my \w+) die|die (soon|early|young)|how many (more )?years (will|do) (i|he|she|my \w+) (have|live)|ayul|aayul|ayush ?bhava|maraka)\b/,
-    T('ஆயுள்|மரணம்|இறப்பு|எப்போது (இறப்ப|சாவ)|எவ்வளவு காலம் வாழ்|மாரக'),
-    /\b(maranam|eppo saav|eppo sethu|evlo (naal|varusham) vaazh|aayusu)\b/,
+    T('ஆயுள்|மரணம்|இறப்பு|எப்போது (இறப்ப|சாவ)|எவ்வளவு காலம் வாழ்|மாரக|வயது வரை வாழ|எவ்வளவு நாள் வாழ|உயிருக்கு ஆபத்து'),
+    /\b(maranam|eppo saav|eppo sethu|evlo (naal|varusham) (vaa?zh|iru)\w*|evvalavu naal (vaa?zh|iru)\w*|aayusu|danger to (my|his|her|our) life|life danger)\b/,
   ],
   diseasePrediction: [
     /\b(will|would|am|is|could|chance|risk|which|what|predict)\b[^.?!]{0,35}\b(cancer|diabetes|disease|illness|heart (attack|disease|problem)|kidney (failure|disease)|infertil\w*|tumou?r|paralysis|dementia|sugar (problem|disease)|mental illness)\b/,
-    /\b(can|will) (i|she|he|we|my \w+) (have|get|conceive) (children|kids|a baby|babies|pregnant)\b/,
-    T('நோய் வருமா|புற்றுநோய்|சர்க்கரை நோய் வருமா|குழந்தை பாக்கியம்|மலட்டு|குழந்தை பிறக்குமா'),
-    /\b(noi varuma|cancer varuma|sugar varuma|kuzhand?hai (bhagyam|baakiyam|porakkuma|pirakkuma))\b/,
+    T('நோய் வருமா|புற்றுநோய்|சர்க்கரை நோய் வருமா|மலட்டு'),
+    /\b(noi varuma|cancer varuma|sugar varuma|(bp|sugar|cancer|heart attack|stroke|kidney|noi|vyadhi)\b[^.?!]{0,25}\bvaru(ma|mo|madha)\b)/,
   ],
   accidentPrediction: [
     /\b(accident|crash|mishap)\b[^.?!]{0,40}\b(date|when|which day|will (it )?happen|predict|chance|kandam|time)\b/,
@@ -121,6 +120,7 @@ const R = {
     T('(ரத்தினம்|கல்|பூஜை|ஹோமம்|யந்திரம்|பரிகாரம்).*(கட்டாயம்|வாங்க வேண்டுமா|செய்ய வேண்டுமா)'),
   ],
   romance: [
+    /\blove (set|success|aa?gu\w*|pann\w*|set aa?gu\w*)\b/,
     /\b(fall(ing)? in love|in love|for love|find (my )?(true )?love|love life|love (life|marriage|affair|proposal|success|failure|match|her|him|someone|a girl|a boy|this girl|this boy)|(my|her|his|true|first) love|crush|romance|romantic|relationship|dating|date (her|him|someone|a girl|a boy|an? \d{1,2})|girlfriend|boyfriend|gf|bf|propose|kiss\w*|soul ?mate|lover|companion(ship)?|impress (her|him)|attract\w*|flirt\w*|pursue|woo|win (her|him) over|get (her|him) to like)\b/,
     T('காதல்|காதலி|காதலன்|ப்ரபோஸ்|முத்தம்|ஈர்க்க'),
     /\b(kaa?dhal|kaa?thal|love pann\w*|propose pann\w*|lover|correct pann\w*|impress pann\w*)\b/,
@@ -153,6 +153,18 @@ const R = {
   attraction: INTENT_PATTERNS.attraction,
   // 6–12 feelings / bullying / friendship fights → supportive child template ("tell a trusted adult").
   childFeelings: INTENT_PATTERNS.childFeelings,
+  // Children / pregnancy (a timing question, never a fertility verdict): answered with periods + a doctor line.
+  fertility: [
+    /\b(kulanth?h?ai|kulandh?ai|kuzh?andh?ai|kuzhanth?ai|kozhanth?ai|kozhandh?ai|kozhandh?a|santh?h?aa?nam|santhana|garbam|karpam|karbam|pregnan\w*|conceiv\w*|ivf|iui|baby|babies|child|children|kids?|miscarriage|putra|puthira)\b/,
+    T('குழந்தை|கர்ப்ப|மகப்பேறு|சந்தான|புத்திர'),
+  ],
+  // "Boy or girl?" — sex determination is never predicted (and is illegal in India).
+  babySex: [/\b(boy or (a )?girl|girl or (a )?boy|sex of (the|my) baby|gender of (the|my) baby|paiyan (pirapp|porapp)\w*|ponnu (pirapp|porapp)\w*)\b/, T('ஆண் குழந்தை[^?]{0,30}பெண் குழந்தை|ஆணா பெண்ணா')],
+  // A missing PERSON — police first.
+  missingPerson: [
+    /\b(son|daughter|husband|wife|father|mother|child|kid|brother|sister|he|she|magan|magal|ponnu|paiyan|appa|amma|purushan|manaivi)\b[^.?!]{0,60}\b(missing|ran away|run away|not come home|has not (come|returned)|kaa?nom|kaa?nala|kaa?navillai|odi ?poi\w*|veett?uk?ku varala)\b|\b(missing|kaa?nom)\b[^.?!]{0,40}\b(son|daughter|husband|wife|father|mother|child|magan|magal|ponnu|paiyan|appa|amma)\b/,
+    T('(மகன்|மகள்|கணவர்|மனைவி|அப்பா|அம்மா|குழந்தை)[^.?!]{0,60}(காணவில்லை|காணாமல் போ|வீட்டுக்கு வரவில்லை|வீடு திரும்பவில்லை|ஓடிப் ?போ)'),
+  ],
   privateMeeting: [/\b(alone|in private|secretly|without (her|his) parents)\b/, T('தனியாக|ரகசியமாக'), /\b(thaniya|ragasiyama|rahasiyama)\b/],
   meeting: [/\b(meet(ing)?|see (her|him)|visit (her|him)|alone with|in private|hotel|room|take (her|him) out|run away with|elope)\b/, T('சந்திக்க|தனியாக|ஓடிப்போ'), /\b(meet pann\w*|thaniya|odi pog)\b/],
   ambiguousFunk: [/\bfunk\b/],

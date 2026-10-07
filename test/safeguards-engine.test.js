@@ -127,7 +127,9 @@ test('health: wellbeing separated from optional traditional context; no lifespan
   assert.equal(h.stage.source.status, 'needs-medical-review');
   assert.equal(h.traditionalContext.optional, true);
   assert.ok(/not medical advice/.test(h.traditionalContext.label.en));
-  assert.equal(h.bodyAreas, undefined);
+  // Adults get traditional body areas (restored Oct 2026), each with the not-a-diagnosis / see-a-doctor note.
+  assert.equal(h.traditionalContext.adultOnly, true);
+  assert.ok(/not a diagnosis/.test(h.bodyAreas.note.en) && /doctor/.test(h.bodyAreas.note.en));
   assert.equal(h.reflection.notHealthAdvice, true);
   assert.equal(h.vitality.level, 'not-assessed');
   assert.ok(!/protects your health|long life|healing influence/i.test(JSON.stringify(h)));

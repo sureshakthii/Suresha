@@ -5,6 +5,7 @@
 import { birthChart } from './shared/astro.js';
 import { loveMatch } from './shared/love.js';
 import { closingPrayer } from './shared/daily.js';
+import { faithOf, isHinduFaith, faithBlessing } from './shared/faith.js';
 import { state, chartOf, $, L, esc, bi, registerScreen, subHeader, toast, displayName } from './core.js';
 import { personBlock, wirePersonBlocks, forms, adultPool, permissionError, saveWithConsent, permissionCheckbox } from './screens-couple.js';
 import { isAdult } from './shared/age-guard.js';
@@ -24,7 +25,7 @@ function chartFor(slot) {
   const m = { name: f.name.trim(), gender: f.gender, date: f.date, time, place: f.place || '', ...loc };
   if (f.save && !f.consent) throw new Error(permissionError());
   if (f.save && !state.family.some((x) => x.date === m.date && x.name === m.name)) saveWithConsent({ ...m, relation: 'other', timeCertainty: f.time ? 'exact' : 'unknown' });
-  return { chart: birthChart(m), name: displayName(m), gender: m.gender, timeKnown: !!f.time };
+  return { chart: birthChart(m), name: displayName(m), gender: m.gender, timeKnown: !!f.time, faith: faithOf(m) };
 }
 
 function noteRow(n) {
@@ -35,7 +36,9 @@ function noteRow(n) {
 function renderResult() {
   const r = result;
   if (!r) return '';
-  const pr = closingPrayer(r.charts[0]);
+  // Faith: the Hindu closing prayer only for a Hindu first person; otherwise their own blessing (or none).
+  const pr = isHinduFaith(r.faith) ? closingPrayer(r.charts[0]) : null;
+  const bl = isHinduFaith(r.faith) ? null : faithBlessing(r.faith);
   return `<section class="card glass lv-result" aria-live="polite">
       <div class="lv-names">${esc(r.names[0])} <span>💞</span> ${esc(r.names[1])}</div>
       <div class="lv-tier">${esc(bi(r.title))}</div>
@@ -49,7 +52,7 @@ function renderResult() {
       ${r.rajjuOk ? '' : `<p class="small">🗝️ ${L('Rajju / Vedhai — key traditional factors to discuss together if you plan marriage.', 'ரஜ்ஜு / வேதை — திருமணம் என்றால் சேர்ந்து பேச வேண்டிய முக்கிய மரபுக் காரணிகள்.')}</p>`}
       <div class="btn-row"><button class="chip-btn" data-go="couple">💍 ${L('Detailed marriage matching', 'விரிவான திருமணப் பொருத்தம்')}</button></div></section>
     <p class="small muted">${L('Love is built by respect, consent, honesty and time. This reading helps you understand each other — it does not decide anyone’s worth or your future together.', 'காதல் மரியாதை, சம்மதம், நேர்மை, காலம் ஆகியவற்றால் உருவாகிறது. இந்த வாசிப்பு ஒருவரை ஒருவர் புரிந்துகொள்ள உதவும் — யாருடைய மதிப்பையும், உங்கள் எதிர்காலத்தையும் தீர்மானிப்பதில்லை.')}</p>
-    ${pr ? `<div class="dc-prayer">🙏 ${pr.lines.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}
+    ${pr ? `<div class="dc-prayer">🙏 ${pr.lines.map((x) => esc(bi(x))).join(' · ')}</div>` : bl ? `<div class="dc-prayer">${esc(bi(bl))}</div>` : ''}
     <div class="card glass">${permissionCheckbox('lvPerm', L('I have this person’s permission to share this result', 'இவரின் அனுமதி பெற்றுள்ளேன் — இந்த முடிவைப் பகிர'))}
       <button class="btn-gold" id="lvShare">📤 ${L('Share these notes', 'இந்தக் குறிப்புகளைப் பகிர்')}</button></div>`;
 }
@@ -70,7 +73,7 @@ function renderLove(sec) {
         $('#lvOut').innerHTML = `<section class="card glass"><div class="card-title">🌱 ${L('Not for minors', 'சிறு வயதினருக்கு அல்ல')}</div><p>${L('Love and marriage matching is read only when both people are 18 or older. For now, the chart guides studies, health and friendships.', 'காதல் / திருமணப் பொருத்தம் இருவருக்கும் 18 வயது நிறைந்த பிறகே பார்க்கப்படும். இப்போது ஜாதகம் கல்வி, ஆரோக்கியம், நட்புக்கே வழிகாட்டும்.')}</p></section>`;
         return;
       }
-      result = { ...loveMatch(a.chart, b.chart, { genderA: a.gender, genderB: b.gender, names: [a.name, b.name] }), charts: [a.chart, b.chart], approx: !a.timeKnown || !b.timeKnown };
+      result = { ...loveMatch(a.chart, b.chart, { genderA: a.gender, genderB: b.gender, names: [a.name, b.name] }), charts: [a.chart, b.chart], faith: a.faith, approx: !a.timeKnown || !b.timeKnown };
       $('#lvOut').innerHTML = renderResult();
       wireShare();
       $('#lvOut').scrollIntoView({ behavior: 'smooth', block: 'start' });

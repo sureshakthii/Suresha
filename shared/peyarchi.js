@@ -1,6 +1,7 @@
 // Peyarchi Palan (Guru / Sani / Rahu-Ketu transits), monthly & yearly Rasi Palan and the
 // annual Viratha Naatkal list. Sidereal (Lahiri), runs unchanged in Node and the browser.
 import * as A from 'astronomy-engine';
+import { isHinduFaith, universalPractice, TRADITIONAL_OPTIONAL } from './faith.js';
 import { lahiriAyanamsa, norm360, sunSidereal, moonSidereal, RASIS, PLANETS } from './astro.js';
 import { tamilMonth } from './tamilcal.js';
 
@@ -133,7 +134,7 @@ const TEXTS = {
       'இரண்டாம் இட குரு: பணவரவு பெருகும், பேச்சில் இனிமை கூடும், குடும்பத்தில் மகிழ்ச்சி நிறையும். திருமணப் பேச்சுகள் கைகூடும், சேமிப்பு உயரும்.'],
     ['Guru in the 3rd asks for patience: efforts may take a little longer to bear fruit and short trips increase. Avoid hasty job changes and trust steady work.',
       'மூன்றாம் இட குரு: முயற்சிகளுக்குப் பலன் சற்றுத் தாமதமாக வரலாம், சிறு பயணங்கள் கூடும். அவசரமாக வேலை மாற வேண்டாம்; தொடர் உழைப்பை நம்புங்கள்.'],
-    ['Guru in the 4th: give attention to home, mother and peace of mind. House or vehicle plans move slowly but surely; let go of needless worry.',
+    ['Guru in the 4th: give attention to home, mother and peace of mind. House or vehicle plans move slowly and steadily; let go of needless worry.',
       'நான்காம் இட குரு: வீடு, தாய், மன அமைதி மீது கவனம் செலுத்துங்கள். வீடு, வாகனத் திட்டங்கள் மெதுவாக ஆனால் உறுதியாக நகரும்; தேவையற்ற கவலையை விட்டுவிடுங்கள்.'],
     ['Guru in the 5th is a blessing for children, education and new ideas. Good news about children, recognition for your intelligence and deeper devotion.',
       'ஐந்தாம் இட குரு: குழந்தைகள், கல்வி, புதிய சிந்தனைகளுக்கு அருள் நிறைந்த காலம். புத்திர பாக்கியம், அறிவுக்கு அங்கீகாரம், இறை பக்தி பெருகும்.'],
@@ -147,8 +148,8 @@ const TEXTS = {
       'ஒன்பதாம் இட குரு: மிகச் சிறந்த காலம். அதிர்ஷ்டம், தந்தையின் ஆசி, புனிதப் பயணங்கள் கைகூடும்; நீண்ட நாள் ஆசைகள் நிறைவேறும்.'],
     ['Guru in the 10th: workload and responsibilities rise. Stay humble at work and avoid ego clashes with seniors; steady effort keeps your position safe.',
       'பத்தாம் இட குரு: வேலைப்பளுவும் பொறுப்புகளும் கூடும். பணியிடத்தில் பணிவுடன் இருங்கள், மேலதிகாரிகளுடன் கருத்து மோதலைத் தவிருங்கள்; தொடர் முயற்சி பதவியைக் காக்கும்.'],
-    ['Guru in the 11th brings gains from all sides: income rises, friends help and heartfelt wishes are fulfilled.',
-      'பதினொன்றாம் இட குரு: எல்லாப் பக்கங்களிலிருந்தும் லாபம். வருமானம் உயரும், நண்பர்கள் உதவுவார்கள், மனதின் ஆசைகள் நிறைவேறும்.'],
+    ['Guru in the 11th brings gains from all sides: income can rise, friends tend to help and heartfelt wishes have good support.',
+      'பதினொன்றாம் இட குரு: எல்லாப் பக்கங்களிலிருந்தும் லாபம். வருமானம் உயர வாய்ப்பு, நண்பர்கள் உதவக்கூடும், மனதின் ஆசைகளுக்கு நல்ல ஆதரவு.'],
     ['Guru in the 12th: expenses rise, mostly for good causes — temples, travel and children\'s needs. Plan a budget and make time for rest and sleep.',
       'பன்னிரண்டாம் இட குரு: செலவுகள் கூடும் — பெரும்பாலும் கோவில், பயணம், குழந்தைகளின் தேவை போன்ற நல்ல காரியங்களுக்கே. செலவுத் திட்டம் வகுத்து, போதிய ஓய்வும் தூக்கமும் எடுங்கள்.'],
   ],
@@ -163,24 +164,24 @@ const TEXTS = {
       'அர்த்தாஷ்டமச் சனி (நான்காம் இடம்): வீட்டு அமைதியும் தாயின் உடல்நலமும் கவனம் பெற வேண்டும்; வாகனப் பயணத்தில் எச்சரிக்கை தேவை. சொத்து விவகாரங்களில் பொறுமை காத்தால் எல்லாம் சீராகும்.'],
     ['Sani in the 5th: children\'s matters and studies need more attention. Avoid speculation and think twice before big decisions.',
       'ஐந்தாம் இட சனி: குழந்தைகள், கல்வி விஷயங்களில் கூடுதல் கவனம் தேவை. ஊக முதலீடுகளைத் தவிருங்கள்; பெரிய முடிவுகளுக்கு முன் இருமுறை யோசியுங்கள்.'],
-    ['Sani in the 6th clears debts, removes opposition and brings success in jobs and competitive exams. A disciplined routine improves health.',
-      'ஆறாம் இட சனி: கடன்கள் தீரும், எதிர்ப்புகள் விலகும், வேலையிலும் போட்டித் தேர்வுகளிலும் வெற்றி கிடைக்கும். ஒழுங்கான வாழ்க்கை முறையால் உடல்நலம் மேம்படும்.'],
+    ['Sani in the 6th helps you clear debts and face opposition, and supports effort in jobs and competitive exams. A disciplined daily routine is your best support.',
+      'ஆறாம் இட சனி: கடன்களைத் தீர்க்கவும் எதிர்ப்புகளைச் சமாளிக்கவும் உதவும் காலம்; வேலையிலும் போட்டித் தேர்வுகளிலும் முயற்சிக்கு ஆதரவு. ஒழுங்கான அன்றாட வாழ்க்கை முறையே சிறந்த துணை.'],
     ['Kandaka Sani (7th): give extra love and understanding to your spouse and partners. Avoid rushing into new partnerships; travel gives mixed results.',
       'கண்டகச் சனி (ஏழாம் இடம்): வாழ்க்கைத் துணையிடமும் கூட்டாளிகளிடமும் கூடுதல் அன்பும் புரிதலும் காட்டுங்கள். அவசரமாகப் புதிய கூட்டுத் தொழில் வேண்டாம்; பயணங்கள் கலவையான பலன் தரும்.'],
     ['Ashtama Sani (8th): a time to go slow. Avoid bold new ventures, long night journeys and arguments, and look after your health. Sincere prayer and a steady routine carry you safely through.',
       'அஷ்டமச் சனி (எட்டாம் இடம்): நிதானமாகச் செல்ல வேண்டிய காலம். துணிச்சலான புதிய முயற்சிகள், இரவு நெடும்பயணம், வாக்குவாதங்களைத் தவிருங்கள்; உடல்நலத்தைப் பேணுங்கள். மனமார்ந்த வழிபாடும் ஒழுங்கான வாழ்க்கையும் உங்களைப் பாதுகாப்பாகக் கரை சேர்க்கும்.'],
-    ['Sani in the 9th: luck comes through effort; respect elders and your father. Long-distance plans may be delayed, but not denied.',
-      'ஒன்பதாம் இட சனி: உழைப்பின் மூலமே அதிர்ஷ்டம் வரும்; பெரியோரையும் தந்தையையும் மதியுங்கள். தொலைதூரத் திட்டங்கள் தாமதமாகலாம், ஆனால் நிச்சயம் கைகூடும்.'],
+    ['Sani in the 9th: luck comes through effort; respect elders and your father. Long-distance plans may take longer — patient effort keeps them moving.',
+      'ஒன்பதாம் இட சனி: உழைப்பின் வழியே அதிர்ஷ்டத்திற்கு ஆதரவு; பெரியோரையும் தந்தையையும் மதியுங்கள். தொலைதூரத் திட்டங்கள் தாமதமாகலாம் — பொறுமையான முயற்சி அவற்றை முன்னெடுக்கும்.'],
     ['Karma Sani (10th): a heavy workload, but sincere work earns recognition. Avoid shortcuts, and do not leave a job without a firm new offer.',
       'கர்மச் சனி (பத்தாம் இடம்): வேலைப்பளு அதிகம், ஆனால் நேர்மையான உழைப்புக்கு அங்கீகாரம் கிடைக்கும். குறுக்கு வழிகளைத் தவிருங்கள்; உறுதியான புதிய வாய்ப்பின்றி வேலையை விடாதீர்கள்.'],
-    ['Sani in the 11th brings steady income growth, property gains and the fulfilment of long-held goals.',
-      'பதினொன்றாம் இட சனி: வருமானம் நிலையாக உயரும், சொத்து சேரும், நீண்ட நாள் லட்சியங்கள் நிறைவேறும்.'],
+    ['Sani in the 11th supports steady income growth, property plans and progress on long-held goals.',
+      'பதினொன்றாம் இட சனி: வருமானம் நிலையாக உயர ஆதரவு, சொத்துத் திட்டங்களுக்குச் சாதகம், நீண்ட நாள் லட்சியங்களில் முன்னேற்றம்.'],
     ['Viraya Sani (start of Ezharai Sani): expenses and travel increase and sleep may suffer. Save wisely and avoid standing guarantee for others.',
       'விரயச் சனி (ஏழரைச் சனியின் தொடக்கம்): செலவுகளும் பயணங்களும் கூடும், தூக்கம் குறையலாம். கவனமாகச் சேமியுங்கள்; பிறருக்கு ஜாமீன் கையெழுத்து போடுவதைத் தவிருங்கள்.'],
   ],
   Rahu: [
-    ['Rahu in your rasi: the mind may be restless with sudden ideas. Avoid shortcuts, keep a simple diet, and a few minutes of meditation daily brings clarity.',
-      'ஜென்ம ராகு: மனம் அலைபாயும், திடீர் எண்ணங்கள் தோன்றும். குறுக்கு வழிகளைத் தவிர்த்து எளிய உணவு முறையைப் பின்பற்றுங்கள்; தினமும் சில நிமிட தியானம் தெளிவு தரும்.'],
+    ['Rahu in your rasi: the mind may be restless with sudden ideas. Avoid shortcuts, keep a simple daily routine, and a few minutes of meditation daily can bring clarity.',
+      'ஜென்ம ராகு: மனம் அலைபாயும், திடீர் எண்ணங்கள் தோன்றும். குறுக்கு வழிகளைத் தவிர்த்து எளிய அன்றாட ஒழுங்கைப் பின்பற்றுங்கள்; தினமும் சில நிமிட தியானம் தெளிவு தர உதவும்.'],
     ['Rahu in the 2nd: be mindful of your words and family harmony; check documents carefully before money dealings.',
       'இரண்டாம் இட ராகு: பேச்சிலும் குடும்ப ஒற்றுமையிலும் கவனம் தேவை; பணப் பரிவர்த்தனைக்கு முன் ஆவணங்களைக் கவனமாகச் சரிபாருங்கள்.'],
     ['Rahu in the 3rd gives boldness and success in travel, communication and new ventures. Your efforts get noticed.',
@@ -193,8 +194,8 @@ const TEXTS = {
       'ஆறாம் இட ராகு: போட்டிகளில் சிறப்பு, கடன் குறைதல் ஆகியவற்றுடன் பாரம்பரியமாக இணைக்கப்படுகிறது. வழக்கு விவகாரங்களில் வழக்கறிஞர் ஆலோசனையைப் பின்பற்றுங்கள்; பாரம்பரியப்படி இது ஆதரவான காலம்.'],
     ['Rahu in the 7th: give time and trust to your spouse; read agreements carefully before signing.',
       'ஏழாம் இட ராகு: வாழ்க்கைத் துணைக்கு நேரமும் நம்பிக்கையும் கொடுங்கள்; ஒப்பந்தங்களைக் கவனமாகப் படித்த பின்பே கையெழுத்திடுங்கள்.'],
-    ['Rahu in the 8th: avoid bold investments and night travel; regular health check-ups keep you safe.',
-      'எட்டாம் இட ராகு: துணிச்சலான முதலீடுகளையும் இரவுப் பயணங்களையும் தவிருங்கள்; முறையான உடல்நலப் பரிசோதனை பாதுகாப்பு தரும்.'],
+    ['Rahu in the 8th: avoid bold investments and needless night travel; keep up your regular check-ups with your doctor.',
+      'எட்டாம் இட ராகு: துணிச்சலான முதலீடுகளையும் இரவுப் பயணங்களையும் தவிருங்கள்; மருத்துவரிடம் வழக்கமான பரிசோதனைகளைத் தொடருங்கள்.'],
     ['Rahu in the 9th: value elders\' advice; pilgrimages to distant places or abroad may come up.',
       'ஒன்பதாம் இட ராகு: பெரியோரின் அறிவுரையை மதியுங்கள்; தொலைதூர அல்லது வெளிநாட்டுப் புனிதப் பயணங்கள் அமையலாம்.'],
     ['Rahu in the 10th: sudden changes and new roles at work; stay honest and keep away from office politics.',
@@ -207,16 +208,16 @@ const TEXTS = {
   Ketu: [
     ['Ketu in your rasi: you may feel detached or tired at times; look after your health and lean on prayer and spiritual practice.',
       'ஜென்ம கேது: அவ்வப்போது பற்றின்மையும் சோர்வும் தோன்றலாம்; உடல்நலம் பேணி, வழிபாட்டிலும் ஆன்மிகப் பயிற்சியிலும் ஈடுபடுங்கள்.'],
-    ['Ketu in the 2nd: speak gently at home and take care of diet and teeth; money comes through steady effort.',
-      'இரண்டாம் இட கேது: வீட்டில் மென்மையாகப் பேசுங்கள், உணவிலும் பல் நலத்திலும் கவனம் தேவை; தொடர் முயற்சியால் பணம் வரும்.'],
+    ['Ketu in the 2nd: speak gently at home and keep your words kind and your routine regular; money comes through steady effort.',
+      'இரண்டாம் இட கேது: வீட்டில் மென்மையாகப் பேசுங்கள், இனிய சொல்லும் சீரான அன்றாட ஒழுங்கும் நன்று; தொடர் முயற்சியால் பண வரவு.'],
     ['Ketu in the 3rd gives courage, quick success and spiritual strength.',
       'மூன்றாம் இட கேது: தைரியம், விரைவான வெற்றி, ஆன்மிக வலிமை கிடைக்கும்.'],
     ['Ketu in the 4th: your mother\'s health and home comforts need attention; keep the mind calm.',
       'நான்காம் இட கேது: தாயின் உடல்நலம், வீட்டு வசதிகளில் கவனம் தேவை; மனதை அமைதியாக வைத்திருங்கள்.'],
     ['Ketu in the 5th: guide children lovingly; deep study and mantra chanting bring good results.',
       'ஐந்தாம் இட கேது: குழந்தைகளை அன்புடன் வழிநடத்துங்கள்; ஆழ்ந்த படிப்பும் மந்திர ஜபமும் நல்ல பலன் தரும்.'],
-    ['Ketu in the 6th removes obstacles and opposition; health recovers and debts reduce.',
-      'ஆறாம் இட கேது: தடைகளும் எதிர்ப்புகளும் விலகும்; உடல்நலம் தேறும், கடன் குறையும்.'],
+    ['Ketu in the 6th helps you work through obstacles and opposition; a good time to steadily reduce debts.',
+      'ஆறாம் இட கேது: தடைகளையும் எதிர்ப்புகளையும் சமாளிக்க உதவும் காலம்; கடன்களைப் படிப்படியாகக் குறைக்க நல்ல நேரம்.'],
     ['Ketu in the 7th: be patient and affectionate with your spouse; clear up misunderstandings with partners early.',
       'ஏழாம் இட கேது: வாழ்க்கைத் துணையிடம் பொறுமையும் அன்பும் காட்டுங்கள்; கூட்டாளிகளுடனான தவறான புரிதல்களை உடனே தீர்த்துக்கொள்ளுங்கள்.'],
     ['Ketu in the 8th: take care while travelling and with small health issues; interest in spiritual learning deepens.',
@@ -225,8 +226,8 @@ const TEXTS = {
       'ஒன்பதாம் இட கேது: கோவில்களுக்குச் சென்று பெரியோரின் ஆசி பெறுங்கள்; தர்மச் செயல்களால் அதிர்ஷ்டம் கூடும்.'],
     ['Ketu in the 10th: do your duty without waiting for praise; changes at work turn out well with patience.',
       'பத்தாம் இட கேது: பாராட்டை எதிர்பார்க்காமல் கடமையைச் செய்யுங்கள்; பணியிட மாற்றங்கள் பொறுமையால் நன்மையாக முடியும்.'],
-    ['Ketu in the 11th brings gains, fulfils wishes and gives support from friends.',
-      'பதினொன்றாம் இட கேது: லாபம் கிடைக்கும், ஆசைகள் நிறைவேறும், நண்பர்கள் ஆதரவு தருவார்கள்.'],
+    ['Ketu in the 11th supports gains and wishes, with help from friends.',
+      'பதினொன்றாம் இட கேது: லாபத்திற்கும் ஆசைகளுக்கும் ஆதரவு; நண்பர்கள் உதவக்கூடும்.'],
     ['Ketu in the 12th: money goes to pilgrimages and good deeds; prayer brings deep inner peace.',
       'பன்னிரண்டாம் இட கேது: புனிதப் பயணம், நற்காரியங்களுக்குச் செலவு ஆகும்; வழிபாட்டால் ஆழ்ந்த மன அமைதி கிடைக்கும்.'],
   ],
@@ -273,18 +274,29 @@ const pair = ([en, ta]) => ({ en, ta });
 /** House of `transitRasi` counted from `moonRasi` (1..12). */
 export const houseFrom = (moonRasi, transitRasi) => ((transitRasi - moonRasi + 12) % 12) + 1;
 
+// For another faith (or none): the few transit lines that name a Hindu practice say it in a way every faith shares.
+const ALL_FAITHS_TEXT = [
+  ['temples, travel', 'charity, travel'], ['கோவில், பயணம்', 'தானம், பயணம்'],
+  ['mantra chanting', 'prayer in your own faith'], ['மந்திர ஜபமும்', 'உங்கள் நம்பிக்கைப்படி பிரார்த்தனையும்'],
+  ['visit temples and seek', 'visit your own place of worship and seek'], ['கோவில்களுக்குச் சென்று', 'உங்கள் வழிபாட்டுத் தலத்திற்குச் சென்று'],
+];
+const forAllFaiths = (s) => ALL_FAITHS_TEXT.reduce((x, [a, b]) => x.split(a).join(b), s);
+
 /** Classical gochara palan for one slow graha transiting `transitRasi`, for janma rasi `moonRasi`. */
-export function peyarchiPalan(planet, transitRasi, moonRasi) {
+export function peyarchiPalan(planet, transitRasi, moonRasi, { faith = 'hindu', traditional = false } = {}) {
   const house = houseFrom(moonRasi, transitRasi);
   const rule = RULES[planet];
   const level = LEVEL[rule.lv[house - 1]];
   const rem = REMEDIES[planet];
-  const remedy = pair(rem[level] || (level === 'good' ? rem.good : rem.other));
+  const hinduRemedy = pair(rem[level] || (level === 'good' ? rem.good : rem.other));
+  // Faith: another faith (or none) gets a practice for every faith; the Hindu parigaram only on opt-in, optional.
+  const remedy = isHinduFaith(faith) ? hinduRemedy : universalPractice(planet);
   const sp = SPECIAL[planet]?.[house];
   return {
     planet, house, level, score: rule.sc[house - 1],
-    text: pair(TEXTS[planet][house - 1]),
+    text: isHinduFaith(faith) ? pair(TEXTS[planet][house - 1]) : pair(TEXTS[planet][house - 1].map(forAllFaiths)),
     remedy,
+    traditional: !isHinduFaith(faith) && traditional ? { ...hinduRemedy, note: TRADITIONAL_OPTIONAL, optional: true } : null,
     special: sp ? pair(sp) : null,
   };
 }
@@ -315,7 +327,7 @@ const AREA_NOTES = {
   },
   health: {
     good: ['Energy is good — keep up your walk or exercise.', 'உடல் ஆற்றல் நன்றாக இருக்கும் — நடைப்பயிற்சியைத் தொடருங்கள்.'],
-    mixed: ['Mind your rest and diet.', 'ஓய்விலும் உணவிலும் கவனம் செலுத்துங்கள்.'],
+    mixed: ['Mind your rest and keep a regular routine.', 'ஓய்விலும் சீரான அன்றாட ஒழுங்கிலும் கவனம் செலுத்துங்கள்.'],
     care: ['Take extra care of health; do not skip rest or check-ups.', 'உடல்நலத்தில் கூடுதல் கவனம்; ஓய்வையும் பரிசோதனைகளையும் தவறவிடாதீர்கள்.'],
   },
 };

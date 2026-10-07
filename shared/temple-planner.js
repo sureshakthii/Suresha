@@ -34,7 +34,7 @@ export const DEVOTIONAL_ASSOCIATIONS = {
     Jupiter: { tags: ['shiva'], deity: T('Lord Dakshinamurthy', 'தட்சிணாமூர்த்தி') },
     Venus: { tags: ['amman'], deity: T('Goddess Mahalakshmi / Amman', 'மகாலட்சுமி / அம்மன்') },
     Saturn: { tags: ['ayyappa', 'vishnu'], deity: T('Saneeswarar / Sastha', 'சனீஸ்வரர் / சாஸ்தா') },
-    Rahu: { tags: ['amman'], deity: T('Goddess Durga', 'துர்கை') },
+    Rahu: { tags: ['amman'], deity: T('Goddess Durga', 'துர்க்கை') },
     Ketu: { tags: ['vinayagar'], deity: T('Lord Vinayagar', 'விநாயகர்') },
   },
 };

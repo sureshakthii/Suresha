@@ -8,9 +8,11 @@ import { MANTRAS, MANTRA_TAGS } from './shared/mantras.js';
 import { NAVAGRAHA, grahaStrength } from './shared/remedies.js';
 import { familyRelations } from './shared/relations.js';
 import { fullAnalysis, BHAVAS } from './shared/analysis.js';
+import { faithOf } from './shared/faith.js';
 import { REPORT_YEARS, horizonLabel, withinHorizon, HORIZON_LINES } from './shared/report-horizon.js';
 import { ageProfile, topicAllowed, adultText, childSafe } from './shared/age-guard.js';
 import { writtenPalan, palanFollowups, bhavaMeaning, scoreTag, yogaPeriodsByPlanet } from './shared/written-palan.js';
+import { healthNowHtml } from './screens-health.js';
 import { locName, zoneDiffText, countryOfLoc } from './shared/residence.js';
 import { moneyRange, currencyForCountry } from './shared/currency.js';
 import { PACKAGES, PACKAGE_INCLUDES, packageRoute } from './shared/packages.js';
@@ -721,10 +723,12 @@ function renderAnalysis(sec) {
   sec.innerHTML = `${subHeader(L('Full Jathaga Analysis', 'முழு ஜாதக ஆய்வு'), esc(displayName(m)), 'chart')}<div id="anBody">${loader(L('Studying every house and planet…', 'ஒவ்வொரு பாவமும் கிரகமும் ஆராயப்படுகிறது…'))}</div>`;
   setTimeout(() => {
     if (state.view !== 'analysis') return;
-    const a0 = fullAnalysis(c);
     // Age first: a child's analysis shows learning / spiritual areas only — no career, wealth, marriage, children,
     // property scores, no Badhaka / Maraka, and no marriage / money statements in yogas, houses or transits.
     const prof = ageProfile(m, { tz: state.loc?.tz });
+    const faith = faithOf(m);
+    const now = new Date(); // one instant for the analysis card and the written palan (same dasa, same transits)
+    const a0 = fullAnalysis(c, now, { faith, age: prof.age });
     const kidAdvice = { en: 'Keep studies, sleep and prayer steady — this passes gently.', ta: 'படிப்பு, உறக்கம், வழிபாட்டைச் சீராக வைத்தால் இது மென்மையாகக் கடக்கும்.' };
     const a = prof.minor ? {
       ...a0,
@@ -742,13 +746,14 @@ function renderAnalysis(sec) {
     const houseChip = (b) => (st ? stabilityChip(c, 'lagna', ...b.occupants.map((o) => `house:${o}`)) : '');
     // Married when the profile says so, or it is the spouse / the self of a family that has a spouse profile.
     const married = m.maritalStatus === 'married' || m.relation === 'spouse' || (m.relation === 'self' && state.family.some((x) => x.relation === 'spouse')) ? 'married' : (m.maritalStatus || null);
-    const palan = writtenPalan(c, { profile: prof, analysis: a0, tz, maritalStatus: married });
+    const palan = writtenPalan(c, { now, profile: prof, analysis: a0, tz, maritalStatus: married, faith });
     const asks = palanFollowups(palan, { maritalStatus: married });
     $('#anBody').innerHTML = `
       ${lagnaOk ? '' : needsTimeNote({ en: 'The 12 houses, Badhakathipathi and Marakathipathi are counted from the Lagna.', ta: '12 பாவங்கள், பாதகாதிபதி, மாரகாதிபதி லக்னத்திலிருந்து கணக்கிடப்படுகின்றன.' })}
       ${lagnaOk && st?.timePrecision === 'approximate' ? `<div class="note-box small" role="note">🕰️ ${L(`Birth time approximate (±${Math.round(st.windowMinutes)} min): items marked`, `பிறந்த நேரம் தோராயம் (±${Math.round(st.windowMinutes)} நிமி): குறிக்கப்பட்டவை`)} ${stabilityChip(c)} ${L('can change within that window.', 'அந்த இடைவெளிக்குள் மாறலாம்.')}
         <div>${L('Lagna', 'லக்னம்')}: <b>${esc(rasiName(c.lagna.rasi))}</b> ${stabilityChip(c, 'lagna')} · ${L('Navamsa Lagna', 'நவாம்ச லக்னம்')} ${stabilityChip(c, 'navamsaLagna') || `<span class="tag good">${L('stable', 'நிலையானது')}</span>`} · ${L('Birth star', 'நட்சத்திரம்')} ${stabilityChip(c, 'moonNakshatra', 'moonPada') || `<span class="tag good">${L('stable', 'நிலையானது')}</span>`}</div></div>` : ''}
       ${palanCard(palan, c, asks)}
+      ${healthNowHtml(m, { now, chart: c, card: true })}
       <div class="card glass"><div class="card-title">🌟 ${L('Life areas', 'வாழ்க்கைத் துறைகள்')}</div>
         ${a.areas.some((x) => x.id !== 'health') ? '' : `<p class="small muted needs-time">${L('Life-area scores are read from the houses, which need the birth time.', 'வாழ்க்கைத் துறை மதிப்பீடுகள் பாவங்களிலிருந்து; அதற்குப் பிறந்த நேரம் தேவை.')}</p>`}
         ${a.areas.filter((x) => x.id !== 'health').map((x) => `<div class="gb-row static"><span class="gb-name">${esc(L(x.en, x.ta))}</span>${bar(x.score, lvl(x.score))}<span class="tag ${x.level === 'strong' ? 'good' : x.level === 'steady' ? 'warn' : 'bad'}">${x.level === 'strong' ? L('Strong', 'பலம்') : x.level === 'steady' ? L('Steady', 'நிலையானது') : L('Needs care', 'கவனம் தேவை')}</span></div>`).join('')}</div>

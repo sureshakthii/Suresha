@@ -3,7 +3,9 @@
 // the running Dasa–Bhukti and the weekday lord. Runs on device and server.
 import { RASIS, NAKSHATRAS, PLANETS, moonSidereal } from './astro.js';
 import { PLANET_DEITY, DEITY_MANTRA, STAR_DEITY } from './personal.js';
+import { PRIMARY } from './remedies.js';
 import { ageProfile } from './age-guard.js';
+import { isHinduFaith, universalPractice, faithBlessing } from './faith.js';
 
 const T = (en, ta) => ({ en, ta });
 const WEEKDAY_LORD = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
@@ -12,25 +14,15 @@ const WEEKDAY_LORD = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Sat
 export const DAY_DEITY = [
   { god: T('Lord Surya & Lord Shiva', 'சூரிய பகவான் & சிவபெருமான்'), mantra: T('Om Namah Shivaya · Om Suryaya Namaha', 'ஓம் நமசிவாய · ஓம் சூர்யாய நமஹ'), act: T('Offer water to the rising Sun; light a lamp for Shiva.', 'உதய சூரியனுக்கு நீர் அர்ப்பணம்; சிவனுக்குத் தீபம்.') },
   { god: T('Lord Shiva & Goddess Ambal', 'சிவபெருமான் & அம்பாள்'), mantra: T('Om Namah Shivaya · Om Sakthiye Potri', 'ஓம் நமசிவாய · ஓம் சக்தியே போற்றி'), act: T('Offer milk or bilva to Shiva; keep the mind calm.', 'சிவனுக்குப் பால் / வில்வம்; மனதை அமைதியாக வைக்கவும்.') },
-  { god: T('Lord Murugan & Goddess Durga', 'முருகப் பெருமான் & துர்கை அம்மன்'), mantra: T('Om Saravanabhava · Om Durgayai Namaha', 'ஓம் சரவணபவ · ஓம் துர்காயை நமஹ'), act: T('Recite Kanda Sashti Kavasam; light a lamp at Rahu Kalam for Durga.', 'கந்த சஷ்டி கவசம்; ராகு காலத்தில் துர்கைக்குத் தீபம்.') },
+  { god: T('Lord Murugan & Goddess Durga', 'முருகப் பெருமான் & துர்க்கை அம்மன்'), mantra: T('Om Saravanabhava · Om Durgayai Namaha', 'ஓம் சரவணபவ · ஓம் துர்காயை நமஹ'), act: T('Recite Kanda Sashti Kavasam; light a lamp at Rahu Kalam for Durga.', 'கந்த சஷ்டி கவசம்; ராகு காலத்தில் துர்க்கைக்குத் தீபம்.') },
   { god: T('Lord Perumal (Vishnu)', 'பெருமாள் (விஷ்ணு)'), mantra: T('Om Namo Narayanaya', 'ஓம் நமோ நாராயணாய'), act: T('Chant Vishnu Sahasranamam or Narayana nama; offer tulasi.', 'விஷ்ணு சகஸ்ரநாமம் / நாராயண நாமம்; துளசி அர்ப்பணம்.') },
-  { god: T('Lord Dakshinamurthy & Guru', 'தட்சிணாமூர்த்தி & குரு பகவான்'), mantra: T('Om Gurave Namaha · Om Dakshinamurthaye Namaha', 'ஓம் குருவே நமஹ · ஓம் தட்சிணாமூர்த்தயே நமஹ'), act: T('Respect your teachers and elders; offer yellow flowers.', 'ஆசிரியர், பெரியோரை வணங்குங்கள்; மஞ்சள் மலர் அர்ப்பணம்.') },
-  { god: T('Goddess Mahalakshmi & Amman', 'மகாலட்சுமி & அம்மன்'), mantra: T('Om Sri Mahalakshmiyai Namaha · Om Sakthiye Potri', 'ஓம் ஸ்ரீ மகாலட்சுமியை நமஹ · ஓம் சக்தியே போற்றி'), act: T('Light a ghee lamp at dusk; keep the home clean and fragrant.', 'மாலை நெய் தீபம்; வீட்டைச் சுத்தமாக, மணமாக வைக்கவும்.') },
-  { god: T('Lord Venkatachalapathi, Sri Anjaneyar & Saneeswarar', 'வெங்கடாசலபதி, ஸ்ரீ ஆஞ்சநேயர் & சனீஸ்வரர்'), mantra: T('Om Namo Venkatesaya · Sri Rama Jayam', 'ஓம் நமோ வெங்கடேசாய · ஸ்ரீ ராம ஜெயம்'), act: T('Light a sesame-oil lamp; help someone who works hard for little.', 'நல்லெண்ணெய் தீபம்; உழைப்பாளிக்கு உதவுங்கள்.') },
+  { god: T('Lord Dakshinamurthy & Guru', 'தட்சிணாமூர்த்தி & குரு பகவான்'), mantra: T('Om Guruve Namaha · Om Dakshinamurthaye Namaha', 'ஓம் குருவே நமஹ · ஓம் தட்சிணாமூர்த்தயே நமஹ'), act: T('Respect your teachers and elders; offer yellow flowers.', 'ஆசிரியர், பெரியோரை வணங்குங்கள்; மஞ்சள் மலர் அர்ப்பணம்.') },
+  { god: T('Goddess Mahalakshmi & Amman', 'மகாலட்சுமி & அம்மன்'), mantra: T('Om Shri Mahalakshmiyai Namaha · Om Sakthiye Potri', 'ஓம் ஸ்ரீ மகாலட்சுமியை நமஹ · ஓம் சக்தியே போற்றி'), act: T('Light a ghee lamp at dusk; keep the home clean and fragrant.', 'மாலை நெய் தீபம்; வீட்டைச் சுத்தமாக, மணமாக வைக்கவும்.') },
+  { god: T('Lord Venkatachalapathi, Sri Anjaneyar & Saneeswarar', 'வெங்கடாசலபதி, ஸ்ரீ ஆஞ்சநேயர் & சனீஸ்வரர்'), mantra: T('Om Namo Venkatesaya · Sri Rama Jaya Rama Jaya Jaya Rama', 'ஓம் நமோ வெங்கடேசாய · ஸ்ரீ ராம ஜெய ராம ஜெய ஜெய ராம'), act: T('Light a sesame-oil lamp; help someone who works hard for little.', 'நல்லெண்ணெய் தீபம்; உழைப்பாளிக்கு உதவுங்கள்.') },
 ];
 
 /** Praise lines (போற்றி) for each planet's deity, used to close every answer. */
-const POTRI = {
-  Sun: T('Om Namah Shivaya — Sivane Potri', 'ஓம் நமசிவாய — சிவனே போற்றி'),
-  Moon: T('Om Sakthiye Potri — Ambal Thaye Potri', 'ஓம் சக்தியே போற்றி — அம்பாள் தாயே போற்றி'),
-  Mars: T('Om Saravanabhava — Muruga Potri', 'ஓம் சரவணபவ — முருகா போற்றி'),
-  Mercury: T('Om Namo Narayanaya — Perumale Potri', 'ஓம் நமோ நாராயணாய — பெருமாளே போற்றி'),
-  Jupiter: T('Om Gurave Namaha — Dakshinamurthiye Potri', 'ஓம் குருவே நமஹ — தட்சிணாமூர்த்தியே போற்றி'),
-  Venus: T('Om Sri Mahalakshmiyai Namaha — Thaye Potri', 'ஓம் ஸ்ரீ மகாலட்சுமியை நமஹ — தாயே போற்றி'),
-  Saturn: T('Om Namo Venkatesaya — Govinda Potri', 'ஓம் நமோ வெங்கடேசாய — கோவிந்தா போற்றி'),
-  Rahu: T('Om Durgayai Namaha — Durga Thaye Potri', 'ஓம் துர்காயை நமஹ — துர்கை தாயே போற்றி'),
-  Ketu: T('Om Gam Ganapataye Namaha — Vinayaga Potri', 'ஓம் கம் கணபதயே நமஹ — விநாயகா போற்றி'),
-};
+const POTRI = Object.fromEntries(Object.entries(PRIMARY).map(([k, v]) => [k, T(`${v.mantra.en} — ${v.potri.en}`, `${v.mantra.ta} — ${v.potri.ta}`)]));
 
 /**
  * Closing prayer for a person: the deities of the running Dasa lord and Bhukti lord.
@@ -38,12 +30,25 @@ const POTRI = {
  */
 export function closingPrayer(chart, now = new Date()) {
   if (!chart?.dasa) return null;
-  const per = (chart.dasa.periods || []).find((p) => new Date(p.start) <= now && now < new Date(p.end));
-  const md = per?.lord || chart.dasa.current?.lord;
-  const ad = (per?.bhuktis || []).find((b) => new Date(b.start) <= now && now < new Date(b.end))?.lord || chart.dasa.currentBhukti?.lord;
-  const lords = [...new Set([md, ad].filter(Boolean))];
+  const { md: mdP, ad: adP } = runningDasa(chart, now);
+  const lords = [...new Set([mdP?.lord, adP?.lord].filter(Boolean))];
   if (!lords.length) return null;
   return { deities: lords, lines: lords.map((p) => POTRI[p]), deityNames: lords.map((p) => PLANET_DEITY[p]) };
+}
+
+/**
+ * The Maha Dasa and Bhukti running at `now` — the ONE lookup every surface uses (Today, analysis, written palan,
+ * road map, health, parigaram), so the same instant always names the same periods. A chart's own
+ * `dasa.current` is only a fallback: it was fixed when the chart was computed, which may be another day.
+ * Returns { md, ad } (period objects with lord / start / end, or null).
+ */
+export function runningDasa(chart, now = new Date()) {
+  const t = now instanceof Date ? now : new Date(now);
+  const within = (p) => new Date(p.start) <= t && t < new Date(p.end);
+  const periods = chart?.dasa?.periods || [];
+  const md = periods.find(within) || (periods.length ? null : chart?.dasa?.current) || null;
+  const ad = md ? (md.bhuktis || []).find(within) || null : null;
+  return { md, ad };
 }
 
 const TARA = [
@@ -78,7 +83,8 @@ export function nextChandrashtamam(janmaRasi, from = new Date()) {
  * Today's personal review from gochara: Chandra balam, Tara balam, Chandrashtamam, weekday lord vs Dasa,
  * plus do's and don'ts, today's deity and the closing prayer.
  */
-export function dailyReview(chart, snap, now = new Date()) {
+export function dailyReview(chart, snap, now = new Date(), { faith = 'hindu' } = {}) {
+  const hindu = isHinduFaith(faith);
   const wd = snap.weekday.index;
   const dayLord = WEEKDAY_LORD[wd];
   const deity = DAY_DEITY[wd];
@@ -87,7 +93,7 @@ export function dailyReview(chart, snap, now = new Date()) {
   const chandra = ((snap.moonRasi.index - jr + 12) % 12) + 1;
   const taraN = ((snap.nakshatra.index - js + 27) % 27) % 9 + 1;
   const chandrashtamam = chandra === 8;
-  const md = chart.dasa?.current?.lord;
+  const md = runningDasa(chart, now).md?.lord || null;
   let score = 0;
   const why = [];
   if (chandrashtamam) { score -= 3; why.push(T(`Chandrashtamam: today's Moon in ${RASIS[snap.moonRasi.index].en} is 8th from your rasi ${RASIS[jr].en}`, `சந்திராஷ்டமம்: இன்றைய சந்திரன் ${RASIS[snap.moonRasi.index].ta} — உங்கள் ${RASIS[jr].ta} ராசிக்கு 8-ம் இடம்`)); }
@@ -98,7 +104,7 @@ export function dailyReview(chart, snap, now = new Date()) {
   if (TARA_GOOD.has(taraN)) { score += 2; why.push(T(`Tara balam: today's star ${NAKSHATRAS[snap.nakshatra.index].en} is ${taraName.en} tara for you — favourable`, `தாரா பலம்: இன்றைய ${NAKSHATRAS[snap.nakshatra.index].ta} உங்களுக்கு ${taraName.ta} தாரை — சாதகம்`)); }
   else if (TARA_BAD.has(taraN)) { score -= 2; why.push(T(`Today's star ${NAKSHATRAS[snap.nakshatra.index].en} is ${taraName.en} tara for you — avoid new beginnings`, `இன்றைய ${NAKSHATRAS[snap.nakshatra.index].ta} உங்களுக்கு ${taraName.ta} தாரை — புதிய தொடக்கம் தவிர்க்கவும்`)); }
   else why.push(T(`Today's star is your Janma tara — keep the day simple`, `இன்று உங்கள் ஜென்ம தாரை — எளிமையாக நடத்துங்கள்`));
-  if (md && md === dayLord) { score += 1; why.push(T(`Today is ruled by ${dayLord}, your Dasa lord — a good day to pray to ${PLANET_DEITY[md].en}`, `இன்று ${snap.weekday.ta} — ${PLANETS[dayLord].ta}, உங்கள் தசா நாதர்; ${PLANET_DEITY[md].ta} வழிபாட்டுக்கு உகந்த நாள்`)); }
+  if (md && md === dayLord) { score += 1; why.push(hindu ? T(`Today is ruled by ${dayLord}, your Dasa lord — a good day to pray to ${PLANET_DEITY[md].en}`, `இன்று ${snap.weekday.ta} — ${PLANETS[dayLord].ta}, உங்கள் தசா நாதர்; ${PLANET_DEITY[md].ta} வழிபாட்டுக்கு உகந்த நாள்`) : T(`Today is ruled by ${dayLord}, your Dasa lord — a good day for prayer in your own faith`, `இன்று ${snap.weekday.ta} — ${PLANETS[dayLord].ta}, உங்கள் தசா நாதர்; உங்கள் நம்பிக்கைப்படி பிரார்த்தனைக்கு உகந்த நாள்`)); }
 
   const level = chandrashtamam ? 'care' : score >= 3 ? 'great' : score >= 1 ? 'good' : score >= -1 ? 'steady' : 'care';
   const label = { great: T('Excellent day', 'சிறப்பான நாள்'), good: T('Good day', 'நல்ல நாள்'), steady: T('Steady day', 'சுமாரான நாள்'), care: T('Day for care', 'கவனமான நாள்') }[level];
@@ -106,7 +112,7 @@ export function dailyReview(chart, snap, now = new Date()) {
   const dos = [];
   const donts = [];
   if (chandrashtamam) {
-    dos.push(T('Stay patient, speak softly, finish routine work', 'பொறுமை, மென்மையான பேச்சு, வழக்கமான வேலைகளை முடியுங்கள்'), T('Pray to Ambal / Shiva and keep the mind calm', 'அம்பாள் / சிவனை வழிபட்டு மனதை அமைதியாக வைக்கவும்'));
+    dos.push(T('Stay patient, speak softly, finish routine work', 'பொறுமை, மென்மையான பேச்சு, வழக்கமான வேலைகளை முடியுங்கள்'), hindu ? T('Pray to Ambal / Shiva and keep the mind calm', 'அம்பாள் / சிவனை வழிபட்டு மனதை அமைதியாக வைக்கவும்') : T('Take a few quiet minutes of prayer in your own faith and keep the mind calm', 'உங்கள் நம்பிக்கைப்படி சில நிமிட அமைதியான பிரார்த்தனை; மனதை அமைதியாக வைக்கவும்'));
     donts.push(T('No big decisions, signatures or new ventures', 'பெரிய முடிவு, கையெழுத்து, புதிய முயற்சி வேண்டாம்'), T('Avoid arguments and risky travel', 'வாக்குவாதம், அபாயப் பயணம் தவிர்க்கவும்'));
   } else if (level === 'great' || level === 'good') {
     dos.push(T('Start important work, meetings or purchases (outside Rahu Kalam)', 'முக்கிய வேலை, சந்திப்பு, வாங்குதல் தொடங்கலாம் (ராகு காலம் தவிர்த்து)'), T('Reach out to people — your words carry weight today', 'மக்களைத் தொடர்பு கொள்ளுங்கள் — இன்று உங்கள் சொல்லுக்கு மதிப்பு'));
@@ -146,7 +152,13 @@ export function dailyReview(chart, snap, now = new Date()) {
   const cls = NAK_CLASS[snap.nakshatra.index] || 'mishra';
   // Age first (shared/age-guard.js): calendar age of the chart owner; unknown age keeps the general list.
   const childAge = ageProfile(chart, { now }).age ?? 30;
-  if (childAge < 18) {
+  if (childAge < 6) {
+    // 0–5: caregiver-directed only — routine, play, sleep and family time (no lessons, no screens talk to a baby).
+    dos.length = 0; donts.length = 0;
+    dos.push(T('A calm routine for the little one: feeding, play and naps on time', 'குழந்தைக்கு அமைதியான அன்றாட ஒழுங்கு: நேரத்திற்கு உணவு, விளையாட்டு, உறக்கம்'),
+      T('Read a story or sing a song together', 'சேர்ந்து ஒரு கதை வாசியுங்கள் அல்லது ஒரு பாடல் பாடுங்கள்'));
+    donts.push(T('Keep screens away from the little one', 'குழந்தையிடம் திரை / கைப்பேசி வேண்டாம்'), T('Avoid crowded, tiring outings today', 'இன்று கூட்டமான, களைப்பான வெளிப்பயணம் தவிர்க்கவும்'));
+  } else if (childAge < 18) {
     dos.length = 0; donts.length = 0;
     dos.push(STUDY_DO[wd], chandrashtamam ? T('Stay calm and gentle with family today', 'இன்று குடும்பத்தினரிடம் அமைதியாக இருங்கள்') : T('A good day to learn something new', 'புதிதாக ஒன்று கற்க நல்ல நாள்'));
     donts.push(T('No screens late at night', 'இரவு நேரம் கைப்பேசி / திரை வேண்டாம்'), T('Avoid junk food and skipping meals', 'நொறுக்குத் தீனி, உணவைத் தவிர்த்தல் வேண்டாம்'));
@@ -160,7 +172,11 @@ export function dailyReview(chart, snap, now = new Date()) {
   return {
     personal: true, minor: childAge < 18, starNature: cls, level, label, score, chandra, chandrashtamam, tara: { n: taraN, name: taraName }, why, dos, donts,
     deity, dayLord, starDeity: STAR_DEITY[js], dasaDeity: md ? { planet: md, name: PLANET_DEITY[md], mantra: DEITY_MANTRA[md] } : null,
-    prayer: closingPrayer(chart, now),
+    // Faith: a Hindu closing prayer only for Hindus; others get a practice for every faith and their own blessing.
+    faith: hindu ? 'hindu' : faith,
+    prayer: hindu ? closingPrayer(chart, now) : null,
+    practice: hindu ? null : universalPractice(md || dayLord),
+    blessing: hindu ? null : faithBlessing(faith),
     nextChandrashtamam: nextChandrashtamam(jr, now),
   };
 }

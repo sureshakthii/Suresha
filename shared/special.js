@@ -408,6 +408,19 @@ export const MILESTONES = Object.freeze([
   },
 ]);
 
+/**
+ * How the 60th / 70th / 80th is suggested for the person's faith. Hindu: the traditional ceremony (Thirukadaiyur or
+ * at home with homam). Any other faith (or none): a family thanksgiving in their own tradition — the Hindu ceremony
+ * is mentioned only as information, never as something they should do. Never a statement about lifespan.
+ */
+export function milestoneNote(faith = 'hindu') {
+  if (!faith || faith === 'hindu') {
+    return { hindu: true, ...{ en: 'Traditionally celebrated at Thirukadaiyur Abhirami–Amritaghateswarar temple or at home with homam.', ta: 'பாரம்பரியமாகத் திருக்கடையூர் அபிராமி–அமிர்தகடேஸ்வரர் கோவிலில் அல்லது வீட்டில் ஹோமத்துடன் கொண்டாடப்படுகிறது.' } };
+  }
+  return { hindu: false, en: 'A family thanksgiving in your own tradition — prayer, a meal together, gifts to those in need. (In Hindu families this date is marked with a temple ceremony; that is for information only.)',
+    ta: 'உங்கள் மரபுப்படி குடும்ப நன்றி விழா — பிரார்த்தனை, சேர்ந்து உணவு, தேவையுள்ளோருக்கு உதவி. (இந்துக் குடும்பங்களில் இந்த நாள் கோவில் சடங்குடன் கொண்டாடப்படும்; இது தகவலுக்காக மட்டும்.)' };
+}
+
 /** The n-th full moon after an instant (n ≥ 1). */
 export function nthFullMoonAfter(at, n) {
   const sep = (d) => (moonSidereal(d) - sunSidereal(d) + 360) % 360;

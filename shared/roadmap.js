@@ -4,8 +4,10 @@
 // "what to do now" list. Rule-based (KP-style significations + gochara) and written to guide, never to frighten.
 import { planetPositions, PLANETS } from './astro.js';
 import { significations, planetScore, predictEvent } from './predict.js';
-import { NAVAGRAHA } from './remedies.js';
-import { ageProfile, topicAllowed } from './age-guard.js';
+import { remedyFor } from './remedies.js';
+import { ageProfile, topicAllowed, adultText } from './age-guard.js';
+import { dasaTone } from './analysis.js';
+import { isHinduFaith } from './faith.js';
 
 const DAY = 86400000;
 const YEAR = 365.25 * DAY;
@@ -39,16 +41,32 @@ const STAGES = [
   { max: 22, id: 'student', ...T('Learning years', 'கற்கும் பருவம்'),
     goals: [T('Build strong study habits and one skill deeply', 'நல்ல படிப்புப் பழக்கமும் ஒரு திறமையில் ஆழமும்'), T('Choose the field your chart supports (see Career Compass)', 'ஜாதகம் ஆதரிக்கும் துறையைத் தேர்வு (தொழில் திசைகாட்டி பாருங்கள்)'), T('Respect parents and teachers — Guru\'s blessing is the biggest asset', 'பெற்றோர், ஆசிரியரை மதியுங்கள் — குரு அருளே பெரிய சொத்து')] },
   { max: 35, id: 'build', ...T('Building years', 'கட்டியெழுப்பும் பருவம்'),
-    goals: [T('Settle career and income; save 20% of every salary', 'தொழில், வருமானத்தை நிலைப்படுத்துங்கள்; ஒவ்வொரு சம்பளத்திலும் 20% சேமிப்பு'), T('Marriage and family at the right muhurtham', 'சரியான முகூர்த்தத்தில் திருமணமும் குடும்பமும்'), T('Health insurance and a term plan early', 'ஆரோக்கியக் காப்பீடு, ஆயுள் காப்பீடு முன்கூட்டியே')] },
+    goals: [T('Settle career and income; save 20% of every salary', 'தொழில், வருமானத்தை நிலைப்படுத்துங்கள்; ஒவ்வொரு சம்பளத்திலும் 20% சேமிப்பு'), { unmarried: true, ...T('Family life at your own pace — if you choose marriage, a good muhurtham', 'உங்கள் விருப்பப்படி குடும்ப வாழ்க்கை — திருமணம் எனில் நல்ல முகூர்த்தத்தில்') }, { married: true, ...T('Time, care and shared plans with your spouse and family', 'வாழ்க்கைத் துணையுடனும் குடும்பத்துடனும் நேரம், அக்கறை, கூட்டுத் திட்டங்கள்') }, T('Health insurance and a term plan early', 'ஆரோக்கியக் காப்பீடு, ஆயுள் காப்பீடு முன்கூட்டியே')] },
   { max: 50, id: 'grow', ...T('Growing years', 'வளரும் பருவம்'),
-    goals: [T('Own home and steady assets', 'சொந்த வீடும் நிலையான சொத்தும்'), T('Children\'s education fund', 'பிள்ளைகளின் கல்வி நிதி'), T('Lead at work or start the business — in your good periods', 'நல்ல காலத்தில் தலைமைப் பொறுப்பு அல்லது தொழில் தொடக்கம்')] },
+    goals: [T('Own home and steady assets', 'சொந்த வீடும் நிலையான சொத்தும்'), T('An education and future fund for your family', 'குடும்பத்தின் கல்வி, எதிர்காலத்திற்கான நிதி'), T('Lead at work or start the business — in your good periods', 'நல்ல காலத்தில் தலைமைப் பொறுப்பு அல்லது தொழில் தொடக்கம்')] },
   { max: 60, id: 'secure', ...T('Securing years', 'பாதுகாக்கும் பருவம்'),
-    goals: [T('Become debt-free and secure retirement savings', 'கடன் இல்லா நிலை, ஓய்வுக்கால சேமிப்பு'), T('Yearly full health check-up', 'ஆண்டுதோறும் முழு மருத்துவப் பரிசோதனை'), T('Children\'s marriages at the right time', 'பிள்ளைகளின் திருமணம் சரியான நேரத்தில்')] },
+    goals: [T('Become debt-free and secure retirement savings', 'கடன் இல்லா நிலை, ஓய்வுக்கால சேமிப்பு'), T('Yearly full health check-up', 'ஆண்டுதோறும் முழு மருத்துவப் பரிசோதனை'), T('Support the next generation\'s milestones', 'அடுத்த தலைமுறையின் முக்கிய நிகழ்வுகளுக்குத் துணை')] },
   { max: 200, id: 'wisdom', ...T('Years of wisdom', 'ஞானப் பருவம்'),
-    goals: [T('Shashtiabdapoorthi / Sathabhishekam with family', 'குடும்பத்துடன் சஷ்டியப்தபூர்த்தி / சதாபிஷேகம்'), T('Temple yatras, annadhanam and passing on family traditions', 'கோவில் யாத்திரை, அன்னதானம், குடும்பப் பாரம்பரியத்தைக் கடத்துதல்'), T('Gentle exercise, good sleep and joyful company', 'மென்மையான உடற்பயிற்சி, நல்ல உறக்கம், மகிழ்ச்சியான சகவாசம்')] },
+    goals: [{ hindu: true, ...T('Shashtiabdapoorthi / Sathabhishekam with family', 'குடும்பத்துடன் சஷ்டியப்தபூர்த்தி / சதாபிஷேகம்') }, { hindu: true, ...T('Temple yatras, annadhanam and passing on family traditions', 'கோவில் யாத்திரை, அன்னதானம், குடும்பப் பாரம்பரியத்தைக் கடத்துதல்') },
+      { allFaiths: true, ...T('Milestone birthdays (60th, 70th, 80th) with family, in your own tradition', 'உங்கள் மரபுப்படி குடும்பத்துடன் 60, 70, 80-ம் ஆண்டு நிறைவுக் கொண்டாட்டம்') }, { allFaiths: true, ...T('Prayer or pilgrimage in your own faith, sharing food and passing on family traditions', 'உங்கள் நம்பிக்கைப்படி பிரார்த்தனை அல்லது புனிதப் பயணம், அன்னதானம், குடும்பப் பாரம்பரியத்தைக் கடத்துதல்') }, T('Gentle exercise, good sleep and joyful company', 'மென்மையான உடற்பயிற்சி, நல்ல உறக்கம், மகிழ்ச்சியான சகவாசம்')] },
 ];
 
 const ageAt = (chart, d) => (d - chart.utc) / YEAR;
+
+/** A stage's goals for this person: marital status (no marriage push for the married) and faith. */
+function goalsFor(stage, { maritalStatus = null, hindu = true } = {}) {
+  if (!stage) return stage;
+  const married = maritalStatus === 'married';
+  const goals = stage.goals.filter((g) => (g.married ? married : true) && (g.unmarried ? !married : true) && (g.hindu ? hindu : true) && (g.allFaiths ? !hindu : true))
+    .map((g) => T(g.en, g.ta));
+  return { ...stage, goals };
+}
+
+// Notes for a child's period rows: the same transit, without loans / money / career words.
+const CHILD_NOTE = {
+  ezharai: T('Ezharai Sani — steady study habits and patience help most now', 'ஏழரைச் சனி — சீரான படிப்புப் பழக்கமும் பொறுமையும் இப்போது பெரிய உதவி'),
+  ashtama: T('Ashtama Sani — a calm routine, good sleep and family support', 'அஷ்டமச் சனி — அமைதியான அன்றாட ஒழுங்கு, நல்ல உறக்கம், குடும்பத்தின் துணை'),
+};
 
 /** Saturn / Jupiter gochara from the Moon at a date → small score adjustments and notes. */
 function gochara(chart, date) {
@@ -68,7 +86,12 @@ function gochara(chart, date) {
 /**
  * The road map. chart: birthChart output. from: start date. years: how far ahead (default 10).
  */
-export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
+/**
+ * opts: from, years, faith (another faith → practices without Hindu deity / mantra; Hindu entries only via
+ * `traditional`), maritalStatus ('married' | 'single' | 'other'), traditional (opt-in).
+ */
+export function lifeRoadmap(chart, { from = new Date(), years = 10, faith = 'hindu', maritalStatus = null, traditional = false } = {}) {
+  const hindu = isHinduFaith(faith);
   const sig = significations(chart);
   // Report horizon: `years` ahead of `from` (the screen says "Covers the next N years"). No age cutoff.
   const end = new Date(from.getTime() + years * YEAR);
@@ -76,12 +99,15 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
   const senior = age >= 60; // later years: home, health, family and spiritual focus — no new marriage / career pushes
   const profile = ageProfile(chart, { now: from });
   const minor = profile.minor;
-  const AREAS = minor ? CHILD_AREAS : ROAD_AREAS;
-  const stage = minor ? CHILD_STAGES[profile.band] : STAGES.find((s) => age < s.max);
-  const nextStage = minor ? (profile.band === '0-5' ? CHILD_STAGES['6-12'] : profile.band === '6-12' ? CHILD_STAGES['13-17'] : STAGES[0]) : STAGES[STAGES.indexOf(stage) + 1] || null;
+  // 60+: the family area is about family and home — the same houses, without a marriage push.
+  const AREAS = minor ? CHILD_AREAS : senior ? ROAD_AREAS.map((a) => (a.id === 'family' ? { ...a, ...T('Family & home', 'குடும்பம் & வீடு') } : a)) : ROAD_AREAS;
+  const stage = minor ? CHILD_STAGES[profile.band] : goalsFor(STAGES.find((s) => age < s.max), { maritalStatus, hindu });
+  const nextStage = minor ? (profile.band === '0-5' ? CHILD_STAGES['6-12'] : profile.band === '6-12' ? CHILD_STAGES['13-17'] : (() => { const s0 = goalsFor(STAGES[0], { maritalStatus, hindu }); return { ...s0, goals: s0.goals.filter((g) => !adultText(g)) }; })()) : goalsFor(STAGES[STAGES.findIndex((s) => s.id === stage.id) + 1], { maritalStatus, hindu }) || null;
 
   // Every Dasa–Bhukti period ahead, scored per area.
   const periods = [];
+  const toneCache = {};
+  const toneOf = (k) => (toneCache[k] ??= dasaTone(chart, k).good);
   for (const md of chart.dasa.periods) {
     if (md.end < from || md.start > end) continue;
     for (const ad of md.bhuktis) {
@@ -96,11 +122,19 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
       }
       const overall = Math.round(Object.values(scores).reduce((x, y) => x + y, 0) / AREAS.length);
       const ranked = [...AREAS].sort((x, y) => scores[y.id] - scores[x.id]);
+      // One tone rule across surfaces: a Maha Dasa the analysis card calls supportive is never shown as a
+      // "care" period here, and one it calls "growth through effort" is never shown as "good" (shared dasaTone).
+      let level = overall >= 62 ? 'good' : overall >= 50 ? 'steady' : 'care';
+      const mdGood = toneOf(md.lord);
+      if (mdGood && level === 'care') level = 'steady';
+      if (!mdGood && level === 'good') level = 'steady';
+      const notes = minor ? g.notes.map((n) => (adultText(n) ? (CHILD_NOTE[g.sat === 8 ? 'ashtama' : 'ezharai']) : n)) : g.notes;
+      const rem = remedyFor(ad.lord, { faith, traditional, profile });
       periods.push({
         md: md.lord, ad: ad.lord, start: s, end: e, scores, overall,
-        level: overall >= 62 ? 'good' : overall >= 50 ? 'steady' : 'care',
+        level,
         focus: ranked[0].id, careArea: scores[ranked[ranked.length - 1].id] < 50 ? ranked[ranked.length - 1].id : null,
-        notes: g.notes, remedy: { planet: ad.lord, deity: NAVAGRAHA[ad.lord].deity, mantra: NAVAGRAHA[ad.lord].mantra, free: NAVAGRAHA[ad.lord].free },
+        notes, remedy: { planet: ad.lord, deity: rem.deity || null, mantra: rem.mantra || null, free: rem.free, traditional: rem.traditional || null },
         current: from >= ad.start && from < ad.end,
       });
     }
@@ -156,7 +190,7 @@ export function lifeRoadmap(chart, { from = new Date(), years = 10 } = {}) {
     now.push(T('This stage is for peace, health and family: a yearly full check-up, gentle daily walks and good sleep keep you strong.', 'இது அமைதி, ஆரோக்கியம், குடும்பத்திற்கான பருவம்: ஆண்டுதோறும் முழுப் பரிசோதனை, தினசரி மென்மையான நடை, நல்ல உறக்கம் உங்களைப் பலமாக வைக்கும்.'));
     now.push(T('Keep savings simple and safe, and share your family traditions and stories with the next generation.', 'சேமிப்பை எளிமையாகவும் பாதுகாப்பாகவும் வையுங்கள்; குடும்பப் பாரம்பரியங்களையும் அனுபவங்களையும் அடுத்த தலைமுறைக்குப் பகிருங்கள்.'));
   }
-  if (nextGood && !minor && senior) now.push(T(`The ${nextGood.md}–${nextGood.ad} period from ${nextGood.start.toISOString().slice(0, 7)} suits family functions, temple yatras and home comforts.`, `${nextGood.start.toISOString().slice(0, 7)} முதல் ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலம் குடும்ப விழாக்கள், கோவில் யாத்திரை, வீட்டு வசதிகளுக்கு ஏற்றது.`));
+  if (nextGood && !minor && senior) now.push(T(`The ${nextGood.md}–${nextGood.ad} period from ${nextGood.start.toISOString().slice(0, 7)} suits family functions, ${hindu ? 'temple yatras' : 'prayer or pilgrimage in your own faith'} and home comforts.`, `${nextGood.start.toISOString().slice(0, 7)} முதல் ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலம் குடும்ப விழாக்கள், ${hindu ? 'கோவில் யாத்திரை' : 'உங்கள் நம்பிக்கைப்படி பிரார்த்தனை / புனிதப் பயணம்'}, வீட்டு வசதிகளுக்கு ஏற்றது.`));
   if (nextGood && !minor && !senior) now.push(T(`Plan big moves for the ${nextGood.md}–${nextGood.ad} period starting ${nextGood.start.toISOString().slice(0, 7)}.`, `பெரிய முடிவுகளை ${PLANETS[nextGood.md].ta}–${PLANETS[nextGood.ad].ta} காலத்திற்குத் (${nextGood.start.toISOString().slice(0, 7)} முதல்) திட்டமிடுங்கள்.`));
   if (minor) {
     // A child's "what to do now" is about learning, health and family — never money or big decisions.

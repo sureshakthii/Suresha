@@ -1,5 +1,6 @@
 // Life Questions (வாழ்க்கைக் கேள்விகள்): marriage, job, PR / visa, own house, child, court case,
 // husband–wife harmony, Kula Deivam and habits — timed by Dasa–Bhukti and Guru–Sani double transit.
+import { faithOf } from './shared/faith.js';
 import { QUESTIONS, predictEvent, kulaDeivam, habitGuard, careerCompass, questionFor, questionFitsAge } from './shared/predict.js';
 import { REPORT_YEARS, horizonLabel, HORIZON_LINES } from './shared/report-horizon.js';
 import {
@@ -66,8 +67,9 @@ function answer(m, scroll = true) {
 
 function renderPrediction(c, m) {
   const years = REPORT_YEARS.life;
-  const r0 = predictEvent(c, ui.q, { years });
-  const qg = questionFor(r0.question, m.gender);
+  const faith = faithOf(m);
+  const r0 = predictEvent(c, ui.q, { years, faith });
+  const qg = questionFor(r0.question, m.gender, { faith });
   const r = { ...r0, remedy: qg.remedy || r0.remedy };
   const q = { ...r0.question, en: qg.en, ta: qg.ta };
   const best = r.windows[0];
@@ -75,7 +77,7 @@ function renderPrediction(c, m) {
   const headline = noTime
     ? L('This timing reads the houses from the Lagna, which needs the birth time. Add the birth time in the family profile to see the periods.', 'இந்தக் காலக் கணிப்பு லக்னத்திலிருந்து பாவங்களைப் பார்க்கிறது; அதற்குப் பிறந்த நேரம் தேவை. காலங்களைப் பார்க்க குடும்ப சுயவிவரத்தில் பிறந்த நேரத்தைச் சேர்க்கவும்.')
     : !r.windows.length
-    ? L('Steady effort and sincere parigaram open the way — keep going with faith; every Thursday and Friday morning is good for steps on this.', 'தொடர் முயற்சியும் மனமார்ந்த பரிகாரமும் வழி திறக்கும் — நம்பிக்கையுடன் தொடருங்கள்; ஒவ்வொரு வியாழன், வெள்ளி காலையும் இதற்கான முயற்சிக்கு நல்லது.')
+    ? faith !== 'hindu' ? L('Steady effort and sincere prayer in your own way open the way — keep going with hope.', 'தொடர் முயற்சியும் உங்கள் வழியில் மனமார்ந்த பிரார்த்தனையும் வழி திறக்கும் — நம்பிக்கையுடன் தொடருங்கள்.') : L('Steady effort and sincere parigaram open the way — keep going with faith; every Thursday and Friday morning is good for steps on this.', 'தொடர் முயற்சியும் மனமார்ந்த பரிகாரமும் வழி திறக்கும் — நம்பிக்கையுடன் தொடருங்கள்; ஒவ்வொரு வியாழன், வெள்ளி காலையும் இதற்கான முயற்சிக்கு நல்லது.')
     : L(`Tradition sees ${monthYear(r.earliest?.peakFrom || best.peakFrom)} onwards as a supportive period — ${planetName((r.earliest || best).md)} Dasa, ${planetName((r.earliest || best).ad)} Bhukti.`,
       `பாரம்பரியப்படி ${monthYear(r.earliest?.peakFrom || best.peakFrom)} முதல் சாதகமான காலம் — ${planetName((r.earliest || best).md)} தசை, ${planetName((r.earliest || best).ad)} புக்தி.`);
   const caution = ['child', 'pr', 'visa', 'court', 'marriage', 'partner'].includes(ui.q)
@@ -95,7 +97,7 @@ function renderPrediction(c, m) {
     ${r.careful.length ? `<div class="section-title">🤍 ${L('Periods to be extra caring with each other', 'ஒருவருக்கொருவர் கூடுதல் அன்பு காட்ட வேண்டிய காலங்கள்')}</div>
       ${r.careful.map((w) => `<div class="card glass window care"><div class="win-dates">${monthYear(w.start)} – ${monthYear(w.end)}</div><div class="small">${esc(dasaLabel(w))}</div><p class="small">${L('Patience, shared prayer and open talks keep the bond strong in this period.', 'இந்தக் காலத்தில் பொறுமை, சேர்ந்த வழிபாடு, மனம் திறந்த பேச்சு உறவை வலுப்படுத்தும்.')}</p></div>`).join('')}` : ''}
     <div class="card glass"><div class="card-title">🔍 ${L('What the chart shows', 'ஜாதகம் காட்டுவது')}</div>${r.promise.notes.map((n) => `<div class="small">• ${esc(bi(n))}</div>`).join('')}</div>
-    <div class="card glass"><div class="card-title">🪔 ${L('Parigaram', 'பரிகாரம்')}</div><p>${esc(bi(r.remedy))}</p>
+    <div class="card glass"><div class="card-title">🪔 ${faith === 'hindu' ? L('Parigaram', 'பரிகாரம்') : L('A simple practice (optional)', 'எளிய வழி (விருப்பம்)')}</div><p>${esc(bi(r.remedy))}</p>
       ${r.karakaRemedies.map((k) => `<p class="small"><span style="color:${COLOR[k.planet]}">${GLYPH[k.planet]}</span> ${esc(planetName(k.planet))}: ${esc(bi(k.free))}</p>`).join('')}</div>
     <button class="btn-gold" id="lifeExplain">📜 ${L('Detailed explanation', 'விரிவான விளக்கம்')}</button>
     <div class="card glass" id="lifeAi" hidden><div class="card-title"><span>📜 ${L('Explanation', 'விளக்கம்')}</span><button class="link-btn" id="lifeSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="lifeText"></div></div>
@@ -142,7 +144,7 @@ function renderCompass(c, m) {
 }
 
 function renderHabits(c, m) {
-  const h = habitGuard(c);
+  const h = habitGuard(c, { faith: faithOf(m) });
   $('#lifeOut').innerHTML = `<div class="card glass verdict-card life-head"><div class="ti-icon">🛡️</div><div class="mini-label">${esc(displayName(m))}</div>
       <div class="life-answer">${h.level === 'low' ? L('No special tendency shown — keep healthy routines.', 'சிறப்பான போக்கு எதுவும் இல்லை — நல்ல பழக்கங்களைத் தொடருங்கள்.') : h.level === 'mild' ? L('A mild tendency to watch.', 'கவனிக்க வேண்டிய லேசான போக்கு.') : L('Areas to guard carefully.', 'கவனமாகக் காக்க வேண்டியவை.')}</div></div>
     ${h.notes.length ? `<div class="card glass">${h.notes.map((n) => `<div class="small">• ${esc(bi(n))}</div>`).join('')}</div>` : ''}

@@ -156,6 +156,30 @@ It must cite evidence ids for every chart statement. The validator rejects:
 
 Sentences that negate the claim ("cannot predict", "முடியாது") are allowed.
 
+**Jathagam health guide — traditional indications for adults (owner decision, Oct 2026).** The on-device
+health guide (`shared/health.js`, `public/screens-health.js`) may again name the body areas that Tamil /
+Jyotish tradition associates with the natal chart (6th house and its lord, planets in 6/8/12, weak planets,
+Kalapurusha sign → body part, planet → body system), with the running Dasa / Bhukti and the Saturn, Jupiter and
+Rahu–Ketu Gochara (with dates), a 12-month care map and traditional food tips (Siddha / Ayurveda planet and dosha
+associations). Conditions, all tested in `test/health-guide.test.js`:
+
+* adults (18+) only — children and teenagers get general sleep / play / food habits and growth check-ups, never a
+  chart-based body area;
+* every section says it is a traditional indication, not a diagnosis, and to see a doctor for any symptom; the
+  wording is "தமிழ் மரபில் இந்தக் காலம் <பகுதி> பகுதியில் கவனம் தேவை எனக் கூறப்படுகிறது" — never
+  "you will get / you have <disease>";
+* still forbidden: diagnosis, disease or fertility prediction, fatal-disease names, lifespan or death, medicine,
+  doses or treatment instructions, fear wording and certainty; food tips carry "if you have diabetes, a kidney or
+  heart condition, are pregnant or have any condition, follow your doctor's diet", and pregnancy gets only
+  "follow your obstetrician";
+* unknown birth time → Moon-sign reference only, with a note that Lagna-based parts need the time; approximate
+  time → Lagna-based items marked "may change";
+* remedies follow the person's faith (non-Hindu: own-faith prayer, charity, discipline; Hindu practice only on
+  opt-in, marked optional).
+
+Other surfaces keep the stricter rule: the Today card shows only the one-line "ஆரோக்கிய கவனம் இப்போது" summary
+(`healthNow`) with a link to the guide, and Ask Thunai's health answers carry no body-area or food lists.
+
 **Deadline first.** Prasnam never tells anyone to defer hospital care, court deadlines, contracts or
 necessary payments.
 * The categories `surgery`, `delivery`, `court`, `contract`, `tech_partner`, `cheque`, `loan` and
@@ -261,6 +285,44 @@ necessary payments.
   through those (Brief §24).
 * **Consent is not acted on.** `consent.rememberChat` is carried but no chat history is stored server-side;
   deletion is covered by the existing account-deletion flow.
+
+## 11. Ask Thunai for everyday questions (common-questions corpus)
+
+`test/fixtures/common-questions.json` holds 350 real questions people ask a family jothidar (Tamil script,
+Tanglish, English): child delay, marriage delay, remarriage, love vs arranged, divorce worry, jobs, government
+jobs, abroad / visa / PR, business, debts, court and property disputes, house / land / vehicle, children's
+studies, health of self and parents, family quarrels, lost items and missing persons, dosham, Ezharai / Ashtama
+Sani, baby names, muhurtham, temples, lifespan fear, self-harm and abuse disclosures, teens, children and elders.
+`test/common-questions.test.js` runs every question through `askThunai` (public/ask-thunai.js — the function
+the chat screen calls) for an adult, a 10-year-old, a 69-year-old and an unknown-birth-time adult, and through
+the server router with no API key. Each row lists what a good answer MUST and MUST NOT contain.
+
+Answer shape (on device and in the AI prompt `ANSWER_STYLE`, shared/narrator.js): 1) a direct answer,
+2) what the chart shows (named houses / karaka planets), 3) when — supportive windows with month and year from
+the running Dasa–Bhukti and Jupiter / Saturn transits (Jupiter's transit from the Moon sign when the birth star is
+uncertain), 4) what to do now — practical steps plus ONE free remedy suited to the person's faith, 5) one gentle
+follow-up question.
+
+Policy decisions taken here (need review — see §9):
+* **Children questions** ("kulanthai late aguthu eppo", "குழந்தை பாக்கியம் உண்டா?") are answered with supportive
+  periods and a line to meet a fertility specialist together — never a yes / no fertility verdict, never a
+  percentage. The server no longer routes them to `disease_decline`; it adds the required elements
+  `medical_referral`, `no_fertility_verdict`, `timing_periods_only`. Real infertility / disease predictions stay declined.
+* **"Boy or girl?"** is declined (`baby_sex_decline`): a chart cannot tell, and pre-natal sex determination is
+  illegal in India (PCPNDT Act).
+* **Missing person** (`safety_missing`): police 112 / 100 first, Childline 1098 for under-18s, no chart reading.
+  Lost *items* get practical steps (police complaint, Sanchar Saathi / CEIR for phones) and no accusation.
+* **Abuse at home** (Tanglish "adikkiraaru", dowry torture, harassment) routes to help: Women Helpline 181, 112,
+  Childline 1098, Tele-MANAS 14416 — "not your fault", no chart reading.
+* **Soft distress inside a life question** ("romba kashtama irukku, eppo nalladhu nadakkum") is answered with
+  empathy first and a safety check-in; strong distress words still route to `support_distress`.
+* **A son's / daughter's / grandchild's matter** asked by a parent is read from the parent's 5th house and the
+  house counted from it (11th for a child's marriage, 9th for grandchildren and studies, 2nd for work), and the
+  answer says the person's own horoscope gives the clearest reading.
+* **Faith**: a Christian, Muslim, other or no-faith asker (profile, or named in the question — "Insha Allah",
+  "கர்த்தர்") never gets Hindu deity / temple / mantra lines; they get prayer in their own faith, charity and
+  discipline (shared/faith.js).
+* **Health of a parent or spouse**: the treating doctors guide recovery; no period-based reading is attached.
 
 ## Configuration
 

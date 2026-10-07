@@ -9,12 +9,12 @@
 // Safety rules live here too: no diagnosis, no death/lifespan prediction, no guarantees, crisis support.
 import { RASIS, PLANETS } from './astro.js';
 import { grahaStrength, NAVAGRAHA } from './remedies.js';
-import { transitStatus, BHAVAS } from './analysis.js';
+import { transitStatus, BHAVAS, dasaTone } from './analysis.js';
 import { luckyNumbers } from './personal.js';
 import { predictEvent } from './predict.js';
 import { healthGuide } from './health.js';
-import { closingPrayer } from './daily.js';
-import { faithBlessing, universalPractice } from './faith.js';
+import { closingPrayer, runningDasa } from './daily.js';
+import { faithBlessing, universalPractice, isHinduFaith } from './faith.js';
 import { tamilDay } from './tamilcal.js';
 import { TEMPLES } from './temples.js';
 import { ageProfile, topicAllowed, ageGuardAnswer, facilitationCheck, policyAnswer, reviewedAnswer, childFeelingsAsked, REVIEWED_TEXT, LIMITS_LINE } from './age-guard.js';
@@ -36,9 +36,18 @@ export { isTamilText };
 const WHEN = /\bwhen\b|\bwhich (year|age|month)\b|\bwhat age\b|\bwill i (get|have|be)\b|\beppo\b|\beppa\b|\beppodhu\b|\beppothu\b|\beppadi\b|\bepdi\b|\bvarum\b|\bnadakkum\b|\bkidaikkum\b|எப்போது|எப்போ|எந்த வருட|எந்த வயதில்|நடக்குமா|கிடைக்குமா|நடக்கும்|கிடைக்கும்/i;
 const MARRIAGE = /mar+[iae]+g|marri|marry|merr?[ia]g|wedd|shaad[iy]|spouse|husband|wife|alliance|\bkall?y?aa?n[ae]?m|thiruman|tiruman|ponnu|maap+ill?ai|varan|jodi|திருமண|கல்யாண|வரன்|மனைவி|கணவர்|மாப்பிள்ளை|பெண் பார்|வாழ்க்கைத் துணை/i;
 const CHILD = /\bkids?\b|child|children|\bbaby\b|pregnan|conceiv|santh?h?anam|kuzh?andh?ai|kulandh?ai|kuzhanth?ai|kulanth?ai|\bpillai|குழந்தை|பிள்ளை|சந்தான|கர்ப்ப|மகப்பேறு/i;
+// Abuse / violence at home, harassment, dowry torture, threats (English, Tamil script, Tanglish).
+const ABUSE = /beat(s|ing)? me|hit(s|ting)? me|abus(e|es|ed|ing) me|domestic violence|harass(es|ed|ing)? me|molest|bad touch|touch(es|ed|ing)? me (in a bad way|wrongly|badly|inappropriately|without)|threaten(s|ed|ing)? to kill|torture|dowry|varadh?a?tchanai|varathatchanai|adikk?(iraa?ru|iraar|iraan|iraa|uraa?ru|uraan|raa?ru|raan|raanga|iraanga|uraanga)\b|thappa (nadandh?u|nadakk?|thod)|அடிக்கிறா|அடிக்கிறார்|அடிக்கிறான்|தவறாகத் ?தொடு|தவறாக நடந்து|வரதட்சணை|சித்திரவதை|கொடுமைப்படுத்து|கொன்று விடுவே|மிரட்டுகிறா/i;
+// A missing PERSON (not a lost item): the police come first.
+const MISSING = /missing|ran away|run away|has not (come|returned) home|not come home|didn'?t come home|kaa?nom|kaa?nala|kaa?navillai|odi ?poi|odi ?poitt?aa?|veett?uk?ku varala|வீட்டுக்கு வரவில்லை|வீடு திரும்பவில்லை|காணவில்லை|காணாமல் போ|ஓடிப் ?போ/i;
+const MISSING_WHO = /\b(son|daughter|husband|wife|father|mother|child|kid|boy|girl|brother|sister|grand(son|daughter|father|mother)|he|she|magan|magal|ponnu|paiyan|pullai|appa|amma|purushan|manaivi|thambi|thangachi|anna|akka|thatha|paati)\b|மகன்|மகள்|கணவர்|மனைவி|அப்பா|அம்மா|தம்பி|தங்கை|அண்ணன்|அக்கா|குழந்தை|பிள்ளை|தாத்தா|பாட்டி/i;
+const LOST_ITEM = /\b(phone|mobile|wallet|purse|chain|nagai|gold|jewel\w*|ring|keys?|bag|documents?|certificate|cat|dog|pet|bike|vandi|cow)\b|சங்கிலி|நகை|தங்க|போன்|பர்ஸ்|சாவி|ஆவண|மோதிர/i;
 const RULES = [
-  ['crisis', /suicid|kill myself|end my life|want to die|no reason to live|self.?harm|saaga?num|sethu?d|saa?ga ?(po|pog)|sethu ?(po|pog)|sethuruv|uyir ?vida|thar ?kolai|going to die|don'?t want to live|do not want to live|சாகப் ?போ|சாகப்போ|செத்துப் ?போ|செத்துருவ|தற்கொலை|சாக வேண்டும்|உயிரை மாய்|வாழ விருப்பமில்லை|சாகணும்/i],
-  ['death', /when will i die|death date|lifespan|how long will i live|longevity|maranam|aayul|ஆயுள் எவ்வளவு|எப்போது இறப்|மரணம் எப்போது|சாவு எப்போது|ஆயுட்காலம்/i],
+  ['crisis', /suicid|kill myself|end my life|want to die|no reason to live|self.?harm|saaga?num|sethu?d|saa?ga ?(po|pog)|sethu ?(po|pog)|sethuruv|uyir ?vida|thar ?kolai|going to die|don'?t want to live|do not want to live|சாகப் ?போ|சாகப்போ|செத்துப் ?போ|செத்துருவ|தற்கொலை|சாக வேண்டும்|உயிரை மாய்|வாழ விருப்பமில்லை|சாகணும்|சாகலாம்|வாழவே பிடிக்க|வாழப் ?பிடிக்க|வாழ விருப்பமில்லை|உயிரை விட|vaa?zha ?(pidikk?ala|pidikkalai|virupam illa|venam)|sethudal?aam|sethuduven|thatkolai|thar ?kolai|take my (own )?life|end it all|kill(ing)? my ?self/i],
+  // Abuse / violence disclosures and a missing person: help first, never a chart reading.
+  ['abuse', ABUSE],
+  ['missing', { test: (q) => MISSING.test(q) && MISSING_WHO.test(q) && !LOST_ITEM.test(q) }],
+  ['death', /when will (i|he|she|my \w+( \w+)?) die|will (i|he|she|my \w+) die|death date|lifespan|life span|how long (will|would|do) (i|he|she|my \w+) live|longevity|danger to (my|his|her) life|life danger|maranam|marana ?(bayam|kaalam)|aa?yul|aayusu|evlo naal (vaazh|vazh|iru)|evvalavu naal (vaazh|iru)|eppo saav|uyirukku aabath|ஆயுள்|ஆயுட்காலம்|எப்போது இறப்|மரணம் எப்போது|சாவு எப்போது|எத்தனை வயது வரை வாழ|எவ்வளவு காலம் வாழ|எவ்வளவு நாள் வாழ|உயிருக்கு ஆபத்து/i],
   ['pain', /\bpain\b|hurt(s|ing)?\b|\bvali\b|valikk?u|வலி|வேதனை/i],
   ['emotional', /worr|anxi|stress|tension|\bsad|depress|lonely|afraid|\bfear|upset|confus|kavalai|bayam|bayama|mana ?kast|nimmadhi|கவலை|பயம்|மன அழுத்த|மனக்குழப்ப|டென்ஷன்|வருத்த|தனிமை|மனம் சரியில்லை|நிம்மதி/i],
   ['health', /health|\bill(ness)?\b|\bsick|disease|fever|cancer|\bsugar\b|diabet|\bbp\b|blood pressure|surgery|operation|hospital|doctor|medicine|udambu|udal ?nal|\bnoi\b|kaichal|ஆரோக்கிய|நோய்|உடல்நல|காய்ச்சல்|சர்க்கரை|மருத்துவ|அறுவை|ஆஸ்பத்திரி|மருந்து/i],
@@ -104,11 +113,13 @@ export function chartFacts(chart, rel, now = new Date()) {
   const occupants = (h) => Object.keys(P).filter((k) => k !== 'Lagna' && house(from, P[k].rasi) === h);
   const houseInfo = (h) => ({ h, lord: lordOf(from, h), lordHouse: house(from, P[lordOf(from, h)].rasi), occupants: occupants(h) });
   const dasaOk = rel?.nakshatra !== false;
-  const cur = dasaOk ? chart.dasa.current : null;
-  const bh = dasaOk ? chart.dasa.currentBhukti : null;
+  // The Dasa–Bhukti running on `now` (not at chart-compute time), the same rule Today / analysis / palan use.
+  const run = dasaOk ? runningDasa(chart, now) : { md: null, ad: null };
+  const cur = run.md || null;
+  const bh = run.ad || null;
   const ruled = (k) => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((h) => lordOf(from, h) === k);
   let transit = null;
-  try { transit = transitStatus(chart, now); } catch { /* transit needs the ephemeris; skip if unavailable */ }
+  try { transit = transitStatus(chart, now, { faith: rel?.faith }); } catch { /* transit needs the ephemeris; skip if unavailable */ }
   return {
     now,
     chart,
@@ -143,8 +154,28 @@ export function factsForAI(f) {
     planetStrength: Object.fromEntries(Object.values(f.strength).map((g) => [g.planet, `${g.level} (${g.score}/100 traditional points: ${g.reasons.map((r) => r.en).join('; ') || 'no special factors'})`])),
     currentDasa: f.dasa ? `${f.dasa.lord} mahadasa ${f.dasa.start} to ${f.dasa.end}${f.dasa.approx ? ` (approximate, ± ${f.dasa.shiftDays} days)` : ''}` : 'not available (birth star uncertain)',
     currentBhukti: f.bhukti ? `${f.bhukti.lord} bhukti until ${f.bhukti.end}` : null,
+    // The dated timeline the answer may use for "when" questions (engine dates only — the model must not invent others).
+    upcomingDasaBhukti: upcomingPeriods(f, 10),
     transits: f.transit?.status.map((s) => s.en) || [],
+    saturnTransit: f.transit ? `Saturn ${f.transit.saturnFromMoon}${ordEn(f.transit.saturnFromMoon).slice(String(f.transit.saturnFromMoon).length)} from the Moon sign, in this sign ${iso(f.transit.satSpan.from)} to ${iso(f.transit.satSpan.to)}` : null,
+    jupiterTransit: f.transit ? `Jupiter ${f.transit.jupiterFromMoon}${ordEn(f.transit.jupiterFromMoon).slice(String(f.transit.jupiterFromMoon).length)} from the Moon sign, in this sign ${iso(f.transit.jupSpan.from)} to ${iso(f.transit.jupSpan.to)}` : null,
   };
+}
+
+/** Dasa–Bhukti periods from now for `years` years: "Jupiter dasa / Saturn bhukti 2031-03-01 to 2033-09-12". */
+export function upcomingPeriods(f, years = 10) {
+  if (!f?.dasa || !f.chart?.dasa?.periods) return [];
+  const now = f.now ? new Date(f.now) : new Date();
+  const end = new Date(now.getTime() + years * YEAR);
+  const out = [];
+  for (const md of f.chart.dasa.periods) {
+    if (md.end < now || md.start > end) continue;
+    for (const ad of md.bhuktis) {
+      if (ad.end < now || ad.start > end) continue;
+      out.push(`${md.lord} dasa / ${ad.lord} bhukti ${iso(Math.max(ad.start, now))} to ${iso(ad.end)}`);
+    }
+  }
+  return out.slice(0, 24);
 }
 
 // ---------------------------------------------------------------- answer building
@@ -159,7 +190,11 @@ const SECTION_TITLES = {
   facts: T('Factual information', 'உண்மைத் தகவல்'),
   support: T('Support', 'உதவி'),
   prayer: T('Prayer for you', 'உங்களுக்கான பிரார்த்தனை'),
+  ask: T('A question for you', 'உங்களிடம் ஒரு கேள்வி'),
 };
+
+/** Safety intents: answered with help first — no age gate in front of them, no chart reading, no closing deity prayer. */
+export const SAFETY_INTENTS = new Set(['crisis', 'abuse', 'missing']);
 
 const strengthWord = (g, lang) => (lang === 'ta'
   ? ({ strong: 'பலம்', average: 'மத்திமம்', weak: 'பலவீனம்' }[g.level])
@@ -256,15 +291,15 @@ export function lifeEventCheck(chart, eventId, { now = new Date(), eventYear = n
  * @param {object} p { question, lang, facts (chartFacts or null), name, today: { rahuKalam, yamagandam, goodTimes:[], horai } }
  * @returns {{ intent, lang, sections:[{key,title,lines}], actions:[{go,param,label}], clarify?:{options}, text }}
  */
-export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null, name = '', today = null, life = {}, turns = [], speaker = null }) {
+export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null, name = '', today = null, life = {}, turns = [], speaker = null, intent: forcedIntent = null }) {
   const lang = answerLang(question, appLang);
   const tr = (o) => (lang === 'ta' ? o.ta : o.en);
   const L = (en, ta) => (lang === 'ta' ? ta : en);
-  const { intent } = classify(question);
+  const intent = forcedIntent || classify(question).intent;
   const certainty = f?.rel?.certainty || (f ? 'exact' : 'none');
   // POLICY FIRST (after crisis support): adult / unknown-age romance or attraction toward a minor is declined, a
   // speaker who says they are under 18 gets the child / teen answer — before any chart is read (shared/age-guard.js).
-  if (intent !== 'crisis') {
+  if (!SAFETY_INTENTS.has(intent)) {
     const minorTopic = { marriage: 'marriage', marriage_when: 'marriage', love: 'love', career: 'career', finance: 'money', legal: 'court', property: 'property', child_when: 'child', pregnancy: 'child' }[intent] || null;
     const gate = policyAnswer(facilitationCheck(question, { turns, speaker }), { lang, question, topic: minorTopic, name });
     if (gate) return validateOffline({ ...gate, lang, clarify: null }, { lang, inputCertainty: certainty });
@@ -304,7 +339,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
     if (age == null || !f) return false;
     const gTopic = GUARD_TOPIC[intent];
     if (gTopic && !topicAllowed(gTopic, ageP)) {
-      const g = ageGuardAnswer({ topic: gTopic, profile: ageP, lang, name });
+      const g = ageGuardAnswer({ topic: gTopic, profile: ageP, lang, name, faith: life.faith });
       for (const sx of g.sections) add(sx.key === 'dos' ? 'practice' : sx.key === 'prayer' ? 'next' : sx.key === 'note' ? 'support' : 'answer', ...sx.lines);
       return true;
     }
@@ -324,12 +359,37 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
         L('Please talk to someone right now: Tele-MANAS (free, 24×7, Tamil & English) — call 14416 or 1-800-891-4416. In immediate danger, call 112.', 'தயவுசெய்து இப்போதே யாரிடமாவது பேசுங்கள்: Tele-MANAS (இலவசம், 24×7, தமிழ் & ஆங்கிலம்) — 14416 அல்லது 1-800-891-4416 அழையுங்கள். உடனடி ஆபத்து என்றால் 112.'),
         L('If you can, tell a family member or a friend you trust how you feel today.', 'முடிந்தால் நம்பிக்கையான குடும்பத்தினர் அல்லது நண்பரிடம் இன்று உங்கள் உணர்வைச் சொல்லுங்கள்.'),
         L('A horoscope cannot decide your future. Difficult periods pass, and help works.', 'ஜாதகம் உங்கள் எதிர்காலத்தைத் தீர்மானிக்காது. கடினமான காலங்கள் கடந்து போகும்; உதவி பலன் தரும்.'));
+      add('ask', L('Are you safe right now? I am here — would you like to keep talking with me while you reach someone?', 'இப்போது நீங்கள் பாதுகாப்பாக இருக்கிறீர்களா? நான் இங்கே இருக்கிறேன் — யாரையாவது தொடர்புகொள்ளும் வரை என்னுடன் பேசலாமா?'));
+      break;
+    }
+    case 'abuse': {
+      add('support',
+        L('Thank you for telling me. What is happening is not your fault, and no horoscope, dosham or period is the reason for it.', 'என்னிடம் சொன்னதற்கு நன்றி. நடப்பது உங்கள் தவறு அல்ல; எந்த ஜாதகமும், தோஷமும், காலமும் இதற்குக் காரணம் அல்ல.'),
+        L('If you are in danger right now, call 112 (police / emergency) immediately, or move to a safe place or a neighbour you trust.', 'இப்போதே ஆபத்தில் இருந்தால், உடனே 112 (காவல் / அவசர உதவி) அழையுங்கள், அல்லது பாதுகாப்பான இடத்துக்கோ நம்பிக்கையான அண்டை வீட்டாரிடமோ செல்லுங்கள்.'),
+        L('Free help in India: Women Helpline 181 (24×7), Childline 1098 for anyone under 18, Tele-MANAS 14416 for emotional support. Domestic violence and dowry harassment are offences — the police or a Protection Officer can help you.', 'இந்தியாவில் இலவச உதவி: பெண்கள் உதவி எண் 181 (24×7), 18 வயதுக்குக் குறைவானவர்களுக்கு சைல்ட்லைன் 1098, மன ஆதரவுக்கு டெலி-மனஸ் 14416. குடும்ப வன்முறையும் வரதட்சணைக் கொடுமையும் சட்டப்படி குற்றம் — காவல்துறையோ பாதுகாப்பு அலுவலரோ உதவுவார்கள்.'),
+        L('If you can, tell one trusted person who is not involved — a relative, friend or teacher — today.', 'முடிந்தால், இதில் சம்பந்தப்படாத நம்பிக்கையான ஒருவரிடம் — உறவினர், நண்பர், ஆசிரியர் — இன்றே சொல்லுங்கள்.'));
+      add('ask', L('Are you safe right now? Would you like me to stay with you while you call for help?', 'இப்போது நீங்கள் பாதுகாப்பாக இருக்கிறீர்களா? உதவியை அழைக்கும் வரை உங்களுடன் இருக்கட்டுமா?'));
+      break;
+    }
+    case 'missing': {
+      add('answer',
+        L('Please call the police now — dial 112 (or 100) and report the missing person. Do not wait for any horoscope answer; there is no waiting period for a missing-person complaint.', 'உடனே காவல்துறையை அழையுங்கள் — 112 (அல்லது 100) எண்ணில் காணாமல் போனவர் பற்றிப் புகார் செய்யுங்கள். எந்த ஜாதகப் பதிலுக்காகவும் காத்திருக்க வேண்டாம்; காணாமல் போனவர் புகாருக்குக் காத்திருப்புக் காலம் இல்லை.'),
+        L('If the person is under 18, also call Childline 1098.', '18 வயதுக்குக் குறைவானவர் என்றால், சைல்ட்லைன் 1098-ஐயும் அழையுங்கள்.'));
+      add('next',
+        L('Give the police a recent photo, what they were wearing and where they were last seen. Call their friends, school or workplace and nearby hospitals.', 'சமீபத்திய புகைப்படம், அணிந்திருந்த உடை, கடைசியாகப் பார்த்த இடம் ஆகியவற்றைக் காவல்துறையிடம் கொடுங்கள். நண்பர்கள், பள்ளி / பணியிடம், அருகிலுள்ள மருத்துவமனைகளை அழையுங்கள்.'),
+        L('Keep one phone free and let one family member stay in touch with the police.', 'ஒரு கைப்பேசியைத் தயாராக வைத்து, குடும்பத்தில் ஒருவர் காவல்துறையுடன் தொடர்பில் இருக்கட்டும்.'));
+      add('support', L('I know how frightening this is. You are doing the right thing by acting quickly.', 'இது எவ்வளவு பயமாக இருக்கும் என்று புரிகிறது. விரைவாகச் செயல்படுவதே சரியானது.'));
+      add('ask', L('Have you been able to reach the police yet?', 'காவல்துறையைத் தொடர்புகொண்டீர்களா?'));
       break;
     }
     case 'death': {
+      add('support', L('I understand this worry — it comes to many of us, especially when someone we love is unwell.', 'இந்தக் கவலை புரிகிறது — அன்புக்குரியவர் உடல்நலம் சரியில்லாதபோது பலருக்கும் இது வரும்.'));
       add('interpretation', L('Thunai does not predict death, lifespan or the timing of anyone’s passing. Traditional texts are not a reliable basis for that, and such predictions cause real fear.', 'மரணம், ஆயுட்காலம், யாருடைய மறைவின் நேரத்தையும் துணை கணிக்காது. அதற்குப் பாரம்பரிய நூல்கள் நம்பகமான அடிப்படை அல்ல; அத்தகைய கணிப்புகள் உண்மையான பயத்தை உண்டாக்கும்.'));
       add('next', L('If you are worried about your own or a loved one’s health, a doctor’s check-up is the right next step. I can help with a prayer for well-being or a calm day plan.', 'உங்கள் அல்லது அன்புக்குரியவரின் உடல்நலம் பற்றிக் கவலை என்றால், மருத்துவப் பரிசோதனையே சரியான அடுத்த படி. நலனுக்கான வழிபாடு அல்லது அமைதியான நாள் திட்டத்திற்கு உதவுகிறேன்.'));
-      add('practice', L('Optional: the Mahamrityunjaya mantra or lighting a lamp at home, simply as a prayer for peace and well-being.', 'விருப்பம்: அமைதி, நலனுக்கான பிரார்த்தனையாக மகா மிருத்யுஞ்ஜய மந்திரம் அல்லது வீட்டில் தீபம்.'));
+      add('practice', isHinduFaith(life.faith)
+        ? L('Optional: the Mahamrityunjaya mantra or lighting a lamp at home, simply as a prayer for peace and well-being.', 'விருப்பம்: அமைதி, நலனுக்கான பிரார்த்தனையாக மகா மிருத்யுஞ்ஜய மந்திரம் அல்லது வீட்டில் தீபம்.')
+        : L('Optional: a quiet prayer in your own faith for peace and well-being, and time spent with the people you love.', 'விருப்பம்: உங்கள் நம்பிக்கைப்படி அமைதி, நலனுக்காக ஒரு சிறு பிரார்த்தனை; அன்புக்குரியவர்களுடன் நேரம்.'));
+      add('ask', L('Would you like a calm daily routine or a short prayer for peace of mind?', 'மன அமைதிக்கு ஒரு அமைதியான தினசரி வழக்கம் அல்லது சிறு பிரார்த்தனை வேண்டுமா?'));
       break;
     }
     case 'pain': {
@@ -380,8 +440,10 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
         add('interpretation', L(`${f.dasa.lord} mahadasa: ${DASA_NATURE[f.dasa.lord].en}.`, `${pName(f.dasa.lord, 'ta')} மகா தசை: ${DASA_NATURE[f.dasa.lord].ta}.`));
         if (f.bhukti) add('interpretation', L(`Within it, the ${f.bhukti.lord} bhukti adds the flavour of ${DASA_NATURE[f.bhukti.lord].en.split(';')[0]}.`, `அதற்குள் ${pName(f.bhukti.lord, 'ta')} புக்தி — ${DASA_NATURE[f.bhukti.lord].ta.split(';')[0]}.`));
         const g = f.strength[f.dasa.lord];
-        add('interpretation', g.level === 'strong' ? L('The period lord is strong in your chart, which tradition reads as supportive.', 'தசா நாதன் உங்கள் ஜாதகத்தில் பலமாக உள்ளார்; பாரம்பரியம் இதைச் சாதகமாகப் பார்க்கிறது.')
-          : g.level === 'weak' ? L('The period lord is weak in your chart, so tradition advises patience and steady effort rather than big risks.', 'தசா நாதன் பலவீனமாக உள்ளதால், பெரிய அபாயங்களை விட பொறுமையும் நிலையான உழைப்பும் நல்லது எனப் பாரம்பரியம் கூறுகிறது.')
+        // The one shared "is this Maha Dasa supportive?" rule (shared/analysis.js dasaTone), so Ask agrees with the analysis card and palan.
+        const tone = dasaTone(f.reference === 'lagna' ? f.chart : { ...f.chart, planets: Object.fromEntries(Object.entries(f.chart.planets).filter(([k]) => k !== 'Lagna')) }, f.dasa.lord);
+        add('interpretation', tone.good ? L('The period lord is strong in your chart, which tradition reads as supportive.', 'தசா நாதன் உங்கள் ஜாதகத்தில் பலமாக உள்ளார்; பாரம்பரியம் இதைச் சாதகமாகப் பார்க்கிறது.')
+          : g.level === 'weak' || !tone.good ? L('The period lord is weak in your chart, so tradition advises patience and steady effort rather than big risks.', 'தசா நாதன் பலவீனமாக உள்ளதால், பெரிய அபாயங்களை விட பொறுமையும் நிலையான உழைப்பும் நல்லது எனப் பாரம்பரியம் கூறுகிறது.')
             : L('The period lord is of middling strength — results follow effort.', 'தசா நாதன் மத்திம பலம் — உழைப்புக்கேற்ற பலன்.'));
         if (f.nextDasa) add('factors', L(`Next: ${f.nextDasa.lord} mahadasa from ${iso(f.nextDasa.start)}.`, `அடுத்து: ${pName(f.nextDasa.lord, 'ta')} மகா தசை ${iso(f.nextDasa.start)} முதல்.`));
         add('practice', freePractice(f.dasa.lord, lang));
@@ -398,7 +460,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       add('interpretation', ...f.weakest.map((g) => L(`${g.planet} traditionally governs ${NAVAGRAHA[g.planet].governs.en.toLowerCase()}. A weaker ${g.planet} suggests giving these areas a little more care — not that something bad will happen.`, `${pName(g.planet, 'ta')} பாரம்பரியப்படி ${NAVAGRAHA[g.planet].governs.ta} ஆகியவற்றைக் குறிக்கும். பலம் குறைந்தால் இவற்றில் சற்றுக் கூடுதல் கவனம் — தீங்கு நடக்கும் என்பதல்ல.`)));
       add('uncertainty', L('“Strength” here is a traditional point score (sign, house, combustion, retrogression), not a measured probability. Different schools weigh these differently.', 'இங்கு “பலம்” என்பது பாரம்பரியப் புள்ளி மதிப்பு (ராசி, பாவம், அஸ்தங்கம், வக்கிரம்); அளவிடப்பட்ட நிகழ்தகவு அல்ல. ஒவ்வொரு மரபும் வேறுபடலாம்.'), ref());
       add('practice', ...f.weakest.map((g) => `${pName(g.planet, lang)}: ${freePractice(g.planet, lang)}`));
-      add('next', L('Choose one simple practice and keep it for 48 days. No costly pooja or gemstone is needed.', 'ஒரு எளிய வழிபாட்டைத் தேர்ந்து 48 நாள் தொடருங்கள். விலையுயர்ந்த பூஜையோ ரத்தினமோ தேவையில்லை.'));
+      add('next', L('Choose one simple practice and keep it for 48 days. You do not need any costly pooja or gemstone.', 'ஒரு எளிய வழிபாட்டைத் தேர்ந்து 48 நாள் தொடருங்கள். விலையுயர்ந்த பூஜையோ ரத்தினமோ தேவையில்லை.'));
       actions.push({ go: 'parigaram', label: L('All simple practices', 'அனைத்து எளிய வழிபாடுகள்') });
       break;
     }
@@ -654,7 +716,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
   // Straight answer first (fallback: the first support/interpretation line), then all planet details, fully visible.
   if (!S.answer?.length) { const src = ['support', 'interpretation', 'next'].find((k) => S[k]?.length); if (src) S.answer = [S[src].shift()]; }
   // Close with the deities of the person's running Dasa and Bhukti lords (not after a crisis or a medical alarm).
-  if (f?.chart && !['crisis', 'death', 'pain'].includes(intent)) {
+  if (f?.chart && !['crisis', 'death', 'pain', 'abuse', 'missing'].includes(intent)) {
     if (life.faith && life.faith !== 'hindu') {
       // Other faiths: a blessing in their own faith and practices that suit every faith.
       const bl = faithBlessing(life.faith);
@@ -665,7 +727,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       if (pr) add('prayer', `🙏 ${pr.lines.map((x) => tr(x)).join(' · ')}`);
     }
   }
-  const order = ['question', 'answer', 'support', 'factors', 'interpretation', 'uncertainty', 'facts', 'practice', 'next', 'prayer'];
+  const order = ['question', 'answer', 'support', 'factors', 'interpretation', 'uncertainty', 'facts', 'practice', 'next', 'ask', 'prayer'];
   const sections = order.filter((k) => S[k]?.length).map((k) => ({ key: k, title: tr(SECTION_TITLES[k]), lines: S[k] }));
   const text = sections.map((s) => `${s.title}:\n${s.lines.map((l) => `• ${l}`).join('\n')}`).join('\n\n');
   const textOut = meter ? text.replace(/^([^\n]*\n• )/m, `$1${meter.pct}% — ${meter.label}. `) : text;

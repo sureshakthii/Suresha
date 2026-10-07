@@ -1,13 +1,13 @@
 // Feature screens: Tamil calendar, Porutham, Muhurtham, Ruthu, Parigaram, Thivasam,
 // Natchathira birthday, Jothidar chat and the shareable daily card.
-import { faithOf } from './shared/faith.js';
+import { faithOf, isHinduFaith, TRADITIONAL_OPTIONAL } from './shared/faith.js';
 import { panchang, vedicDay, RASIS, NAKSHATRAS } from './shared/astro.js';
 import { CATEGORIES, getCategory } from './shared/prasna.js';
 import { tamilMonth, tamilDay, TAMIL_MONTHS } from './shared/tamilcal.js';
 import { matchPorutham, doshams, doshaSamyam } from './shared/porutham.js';
 import { poruthamView, discussionHtml } from './screens-couple.js';
-import { grahaStrength, dailyParigaram, NAVAGRAHA } from './shared/remedies.js';
-import { thivasamDates, natchathiraBirthdays, findMuhurtham, milestones, birthTamilMonth, STAR_BIRTHDAY_RULE } from './shared/special.js';
+import { grahaStrength, dailyParigaram, NAVAGRAHA, governsFor, mantraOnly } from './shared/remedies.js';
+import { thivasamDates, natchathiraBirthdays, findMuhurtham, milestones, milestoneNote, birthTamilMonth, STAR_BIRTHDAY_RULE } from './shared/special.js';
 import { remindBtn } from './remind.js';
 import { predictEvent } from './shared/predict.js';
 import { personalGuide } from './shared/personal.js';
@@ -24,9 +24,9 @@ import {
   displayName, assistantName, BRAND, supportCard, copyright,
 } from './core.js';
 import { dayOutlook, gauge, animateGauges, refreshSnap, reliabilityOf, setupVoiceInput } from './screens-main.js';
-import { chartFacts, composeAnswer, factsForAI, classify, answerLang } from './shared/guidance.js';
-import { detectTopic, detectTopics, topicAnswer, cleanSharedAnswer, generalFollowups, guardAnswer, childGeneralAnswer, validateOffline, LIMITED_LABEL } from './ask-thunai.js';
-import { ageProfile, suggestionsFor, isAdult, MATCH_ADULTS_NOTE } from './shared/age-guard.js';
+import { chartFacts, factsForAI, classify, answerLang } from './shared/guidance.js';
+import { askThunai, askSuggestions, childGeneralAnswer, LIMITED_LABEL } from './ask-thunai.js';
+import { ageProfile, isAdult, MATCH_ADULTS_NOTE } from './shared/age-guard.js';
 import { dailyReview } from './shared/daily.js';
 import { clarityPrompt } from './growth.js';
 
@@ -352,28 +352,35 @@ function renderParigaram(sec) {
   const snap = state.snap;
   const m = activeMember();
   const c = m && chartOf(m);
-  const items = dailyParigaram({ weekday: snap.weekday.index, chart: c, snapshot: snap });
+  // Faith and age first: a person of another faith (or none) sees practices that fit every faith; the Hindu
+  // Navagraha entries stay available below, collapsed and marked optional, only if they choose to open them.
+  const person = m && m.relation !== 'organization' ? m : null;
+  const faith = person ? faithOf(person) : 'hindu';
+  const hindu = isHinduFaith(faith);
+  const prof = person ? ageProfile(person, { tz: state.loc?.tz }) : null;
+  const items = dailyParigaram({ weekday: snap.weekday.index, chart: c, snapshot: snap, faith, profile: prof, now: new Date() });
   const weak = c ? grahaStrength(c.planets).filter((g) => g.level === 'weak').map((g) => g.planet) : [];
   const card = (k, open) => {
     const n = NAVAGRAHA[k];
     return `<details class="card glass nava"${open ? ' open' : ''}><summary><span class="pg" style="color:${COLOR[k]}">${GLYPH[k]}</span> <b>${esc(planetName(k))}</b> · ${esc(bi(n.deity))}${weak.includes(k) ? ` <span class="tag bad">${L('weak for you', 'உங்களுக்குப் பலவீனம்')}</span>` : ''}</summary>
-      <dl class="kv"><dt>${L('Governs', 'காரகம்')}</dt><dd>${esc(bi(n.governs))}</dd>
+      <dl class="kv"><dt>${L('Governs', 'காரகம்')}</dt><dd>${esc(bi(governsFor(k, prof)))}</dd>
       ${n.day != null ? `<dt>${L('Day', 'கிழமை')}</dt><dd>${esc(ta() ? ['ஞாயிறு', 'திங்கள்', 'செவ்வாய்', 'புதன்', 'வியாழன்', 'வெள்ளி', 'சனி'][n.day] : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][n.day])}</dd>` : ''}
       <dt>${L('Colour', 'நிறம்')}</dt><dd>${esc(bi(n.color))}</dd><dt>${L('Grain (dhanyam)', 'தானியம்')}</dt><dd>${esc(bi(n.grain))}</dd>
       <dt>${L('Temple', 'கோவில்')}</dt><dd>${esc(bi(n.temple))}</dd></dl>
       <p>🪔 <b>${L('Free remedy', 'இலவச பரிகாரம்')}:</b> ${esc(bi(n.free))}</p>
       <p>🤲 <b>${L('Charity', 'தானம்')}:</b> ${esc(bi(n.charity))}</p>
-      <p class="mantra">📿 ${esc(bi(n.mantra))} <button class="link-btn say" data-say="${esc(n.mantra.ta)}" aria-label="Read aloud">🔊</button></p>
+      <p class="mantra">📿 ${esc(bi(n.mantra))} <button class="link-btn say" data-say="${esc(mantraOnly(n.mantra))}" aria-label="Read aloud">🔊</button></p>
       <p class="muted small">💎 ${L('Gemstone', 'ரத்தினம்')}: ${esc(bi(n.gem))} — ${L('wear only after a careful personal consultation; it is never required.', 'கவனமான தனிப்பட்ட ஆலோசனைக்குப் பின் மட்டும் அணியவும்; இது கட்டாயமல்ல.')}</p></details>`;
   };
-  const rec = c ? sthalamPicks(c, weak) : [];
-  sec.innerHTML = `${subHeader(L('Parigaram', 'பரிகாரம்'), L('Simple, free remedies first — for peace, health and prosperity', 'எளிய இலவச பரிகாரங்கள் முதலில் — அமைதி, ஆரோக்கியம், செல்வத்திற்கு'))}
+  const rec = c && hindu ? sthalamPicks(c, weak) : [];
+  const cards = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'].map((k) => card(k, hindu && weak.includes(k))).join('');
+  sec.innerHTML = `${subHeader(L('Parigaram', 'பரிகாரம்'), hindu ? L('Simple, free remedies first — for peace, health and prosperity', 'எளிய இலவச பரிகாரங்கள் முதலில் — அமைதி, ஆரோக்கியம், செல்வத்திற்கு') : L('Simple practices that fit every faith — prayer in your own way, charity, discipline and service', 'எல்லா நம்பிக்கைக்கும் பொருந்தும் எளிய வழிகள் — உங்கள் வழியில் பிரார்த்தனை, தானம், ஒழுக்கம், சேவை'))}
     ${rec.length ? sthalamCard(rec, m) : ''}
     <div class="card glass"><div class="card-title">🌅 ${L('For today', 'இன்றைக்கு')}${m ? ` · ${esc(displayName(m))}` : ''}</div>
-      ${items.map((i) => `<div class="pari-row"><span class="pg" style="color:${COLOR[i.planet]}">${GLYPH[i.planet]}</span><div><b>${esc(bi(i.reason))}</b><p>${esc(bi(i.free))}</p><p class="muted small">🛕 ${esc(bi(i.deity))} · ${esc(bi(i.temple))}</p></div></div>`).join('')}
+      ${items.map((i) => `<div class="pari-row"><span class="pg" style="color:${COLOR[i.planet]}">${GLYPH[i.planet]}</span><div><b>${esc(bi(i.reason))}</b><p>${esc(bi(i.free))}</p>${hindu ? `<p class="muted small">🛕 ${esc(bi(i.deity))} · ${esc(bi(i.temple))}</p>` : `<p class="muted small">🤲 ${esc(bi(i.charity))}</p>`}</div></div>`).join('')}
     </div>
-    <div class="section-title">${L('Navagraha parigaram', 'நவகிரக பரிகாரம்')}</div>
-    ${['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'].map((k) => card(k, weak.includes(k))).join('')}`;
+    ${hindu ? `<div class="section-title">${L('Navagraha parigaram', 'நவகிரக பரிகாரம்')}</div>${cards}`
+    : `<details class="disclose"><summary>${L('Traditional Navagraha practices (optional)', 'பாரம்பரிய நவகிரக வழிபாடு (விருப்பம்)')}</summary><p class="small muted">${esc(bi(TRADITIONAL_OPTIONAL))}</p>${cards}</details>`}`;
   $$('.say', sec).forEach((b) => b.addEventListener('click', () => speak(b.dataset.say)));
   $('#stPlan')?.addEventListener('click', () => {
     const ids = $$('input[name=stTemple]:checked', sec).map((x) => x.value);
@@ -547,8 +554,8 @@ function renderStarBday(sec) {
           <p class="small muted">📐 ${esc(bi(x.basis))}</p>
           ${starNote(x.day)}
           ${x.thousandthFullMoon ? `<div class="small muted">🌕 ${L('1000th full moon', '1000-வது பௌர்ணமி')}: ${fmtIsoDate(new Date(x.thousandthFullMoon.getTime() + loc.tz * 3600000).toISOString().slice(0, 10))}</div>` : ''}
-          <p class="small">${L('Traditionally celebrated at Thirukadaiyur Abhirami–Amritaghateswarar temple or at home with homam.', 'பாரம்பரியமாகத் திருக்கடையூர் அபிராமி–அமிர்தகடேஸ்வரர் கோவிலில் அல்லது வீட்டில் ஹோமத்துடன் கொண்டாடப்படும்.')}</p>
-          <div class="btn-row"><button class="chip-btn" data-go="packages" data-param='{"id":"thirukadaiyur"}'>🧳 ${L('Package', 'பேக்கேஜ்')}</button><button class="chip-btn" data-go="seva" data-param='{"service":"homam"}'>🔥 ${L('Book priest', 'புரோகிதர்')}</button></div></div>`).join('')).join('')}`);
+          ${(() => { const nt = milestoneNote(faithOf(m)); return `<p class="small">${esc(bi(nt))}</p>${nt.hindu ? `<div class="btn-row"><button class="chip-btn" data-go="packages" data-param='{"id":"thirukadaiyur"}'>🧳 ${L('Package', 'பேக்கேஜ்')}</button><button class="chip-btn" data-go="seva" data-param='{"service":"homam"}'>🔥 ${L('Book priest', 'புரோகிதர்')}</button></div>` : ''}`; })()}
+          </div>`).join('')).join('')}`);
     }
   }, 40);
 }
@@ -559,15 +566,7 @@ registerScreen('starbday', { render: renderStarBday, parent: 'home', needsLoc: t
 // receives those facts and must not invent others; without AI, the built-in engine answers the actual
 // question in the same six-part structure. Every answer is labelled with its source.
 const chat = { messages: [], memberId: null, busy: false };
-const SUGGEST = [
-  ['Which temple should I visit?', 'எந்தக் கோவிலுக்குச் செல்லலாம்?'],
-  ['Help me understand my current period', 'என் தற்போதைய காலத்தைப் புரிந்துகொள்ள உதவுங்கள்'],
-  ['Help our family choose a good date', 'எங்கள் குடும்பத்திற்கு ஏற்ற நாளைத் தேர்வு செய்ய உதவுங்கள்'],
-  ['Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'],
-  ['When will I get married?', 'எனக்கு எப்போது திருமணம் நடக்கும்?'],
-  ['Which planet is weak for me, and what simple practice can I do?', 'எந்தக் கிரகம் எனக்குப் பலவீனம்? என்ன எளிய வழிபாடு செய்யலாம்?'],
-  ['What is a good time today for important work?', 'இன்று முக்கிய வேலைக்கு நல்ல நேரம் எது?'],
-];
+// Suggested-question chips come from ask-thunai.js askSuggestions (the most common real questions per age band).
 
 /** Today's practical timings for the "good time" answers. */
 function todayFacts() {
@@ -619,7 +618,7 @@ function chatContext(question) {
     today: { date: fmtIsoDate(new Date(Date.now() + loc.tz * 3600000).toISOString().slice(0, 10)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name, ...todayFacts() },
     person: m ? { name: m.name, relation: m.relation, birth: m.relation === 'organization' ? undefined : { date: m.date }, ageBand: ageOf(m).band, birthTimeCertainty: rel.certainty, timeSensitiveResultsAllowed: rel.lagna, rasi: rel.rasi ? chartOf(m).janmaRasi.name : 'uncertain', star: rel.nakshatra ? chartOf(m).janmaNakshatra.name : 'uncertain' } : null,
     verifiedChartFacts: factsForAI(facts),
-    lifeDetails: (() => { const l = lifeOf(m); return m ? { maritalStatus: l.maritalStatus || 'not given', marriedYear: l.marriedYear || null, children: l.children ?? 'not given', firstChildYear: l.firstChildYear || null } : null; })(),
+    lifeDetails: (() => { const l = lifeOf(m); return m ? { faith: l.faith || 'hindu', maritalStatus: l.maritalStatus || 'not given', marriedYear: l.marriedYear || null, children: l.children ?? 'not given', firstChildYear: l.firstChildYear || null } : null; })(),
     builtInAnswer: askAnswer(question, m, facts, chatTurns()).text,
   };
 }
@@ -644,7 +643,7 @@ function renderChat(sec, params = {}) {
     <div class="chat-head card glass"><div class="avatar big">🪔</div><div><b>${esc(assistantName())}</b>
       <div class="muted small">${m ? L(`Using ${displayName(m)}'s chart${m.private ? ' · private profile — this chat stays on this phone' : ''}`, `${displayName(m)} அவர்களின் ஜாதகப்படி${m.private ? ' · தனிப்பட்ட சுயவிவரம் — இந்த உரையாடல் இந்தக் கைப்பேசியிலேயே' : ''}`) : L('Add birth details for personal answers', 'தனிப்பட்ட பதில்களுக்குப் பிறப்பு விவரம் சேர்க்கவும்')}</div></div></div>
     <div id="chatLog" class="chat-log" aria-live="polite">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask anything — in Tamil, English or Tanglish. Answers come in English (change language with the தமிழ் button).', 'வணக்கம்! தமிழ், ஆங்கிலம், தங்கிலீஷ் — எப்படியும் கேளுங்கள். பதில் தமிழில் வரும்.')}</div>`}</div>
-    <div class="suggest-row">${suggestionsFor(ageOf(m), SUGGEST).map((x) => `<button class="sg">${esc(bi(x))}</button>`).join('')}</div>
+    <div class="suggest-row">${askSuggestions(ageOf(m), { faith: m ? faithOf(m) : 'hindu' }).map((x) => `<button class="sg">${esc(bi(x))}</button>`).join('')}</div>
     <form id="chatForm" class="chat-form"><button type="button" id="micBtn" class="mic" aria-label="${L('Speak', 'பேசுங்கள்')}">🎙️</button>
       <label class="sr-only" for="chatInput">${L('Message', 'செய்தி')}</label><textarea id="chatInput" class="grow-in" rows="1" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai…', 'கேள்வியை இங்கே எழுதுங்கள்…'))}"></textarea>
       <button class="send" aria-label="${L('Send', 'அனுப்பு')}">➤</button></form></div>
@@ -712,44 +711,21 @@ function addBubble(role, text, meta = {}) {
  * family) are routed to a chart-based answer; anything else gets the closest reading plus three follow-ups.
  */
 function askAnswer(text, m, facts, turns = []) {
-  const life = lifeOf(m);
-  const today = todayFacts();
-  // AGE FIRST: the selected person's age decides what may be answered (shared/age-guard.js). The person typing is
-  // known only when their own profile is open; otherwise the speaker's age is unknown (never assumed adult).
+  // The whole on-device answer path lives in ask-thunai.js (askThunai — pure, tested against the common-questions
+  // corpus): safety first → policy / age gate → the life topic → dated periods, practical steps, a faith-suited remedy.
+  // AGE FIRST: the person typing is known only when their own profile is open; otherwise the speaker's age is unknown.
   const prof = m ? ageOf(m) : ageProfile(null);
   const speaker = m?.relation === 'self' ? prof : null;
-  const lang = answerLang(text, state.lang);
-  const certainty = m ? reliabilityOf(m).certainty : 'none';
-  // Every offline answer is checked (shared/themes.js findProhibited) before it is shown or read aloud.
-  const done = (a) => validateOffline(a, { lang, inputCertainty: certainty });
-  // POLICY FIRST: composeAnswer runs the facilitation / speaker-age check before any topic is read.
-  const base = composeAnswer({ question: text, lang: state.lang, facts, name: m ? displayName(m) : '', today, life, turns, speaker });
-  if (base.policy) return done(base);
-  if (['crisis', 'death', 'pain', 'emotional'].includes(base.intent)) return done(cleanSharedAnswer(base));
-  let topic = detectTopic(text);
-  // For a child's chart, "child / kids" means the child — read the other topic the question names (studies, health …).
-  if (prof.minor && topic === 'child') topic = detectTopics(text).find((t) => t !== 'child') || null;
-  if (topic === 'marriage' && life.maritalStatus === 'married') topic = 'harmony';
-  if (topic && m) {
-    try {
-      const a = topicAnswer({ topic, question: text, chart: chartOf(m), rel: reliabilityOf(m), lang: state.lang, name: displayName(m), life, today, turns, speaker });
-      if (a) return done(a);
-    } catch (e) { console.warn('ask', e); }
-  }
-  if (prof.minor) {
-    // Children: no dasa reading for open questions — a warm, simple answer with today's prayer and good habits.
+  // Children: an open question gets a warm answer with today's prayer (no Hindu deity for a child of another faith).
+  const childAnswer = () => {
     let deity = null;
-    try { refreshSnap(); deity = dailyReview(chartOf(m), state.snap, new Date()).deity; } catch { /* optional */ }
-    const shared = ['general', 'greeting', 'chart', 'dasa', 'weak', 'goodtime', 'dates'].includes(base.intent) ? null : guardAnswer(cleanSharedAnswer(base), prof, state.lang);
-    return done(shared?.sections?.some((sx) => sx.key === 'answer') ? shared : childGeneralAnswer({ profile: prof, lang: state.lang, name: displayName(m), deity, question: text }));
-  }
-  // Unclear question: answer with the closest reading (the running Dasa–Bhukti) and offer three follow-ups.
-  if (base.intent === 'general' || base.intent === 'greeting') {
-    const near = cleanSharedAnswer(composeAnswer({ question: L('Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'), lang: state.lang, facts, name: m ? displayName(m) : '', today, life }));
-    near.followups = generalFollowups(prof).map((f) => bi(f));
-    return done(near);
-  }
-  return done(guardAnswer(cleanSharedAnswer(base), prof, state.lang));
+    try { refreshSnap(); deity = isHinduFaith(faithOf(m)) ? dailyReview(chartOf(m), state.snap, new Date(), { faith: faithOf(m) }).deity : null; } catch { /* optional */ }
+    return childGeneralAnswer({ profile: prof, lang: state.lang, name: displayName(m), deity, question: text, faith: faithOf(m) });
+  };
+  return askThunai({
+    text, chart: m ? chartOf(m) : null, rel: m ? reliabilityOf(m) : null, facts, life: lifeOf(m), lang: answerLang(text, state.lang),
+    name: m ? displayName(m) : '', today: todayFacts(), turns, speaker, profile: prof, childAnswer: m ? childAnswer : null,
+  });
 }
 
 /** The person's own earlier messages in this chat (oldest first) — follow-ups keep the earlier context. */

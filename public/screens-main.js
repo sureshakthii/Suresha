@@ -22,9 +22,10 @@ import { icon, iconChip } from './icons.js';
 import { searchPill } from './screens-hubs.js';
 import { QUICK, toolById } from './tool-registry.js';
 import { healthGuide } from './shared/health.js';
+import { healthNowHtml } from './screens-health.js';
 import { dailyReview } from './shared/daily.js';
 import { todayPlan } from './shared/today-plan.js';
-import { faithOf, faithWelcome, faithBlessing, universalPractice } from './shared/faith.js';
+import { faithOf, faithWelcome, faithBlessing, universalPractice, isHinduFaith } from './shared/faith.js';
 import { todayLines } from './today-lines.js';
 import { ageProfile, suggestionsFor, categoryAllowed, childSafe } from './shared/age-guard.js';
 import { compatCardHtml, bindCompatCard } from './compat-card.js';
@@ -75,7 +76,7 @@ function todayPlanCard(m, snap, loc, td) {
   let plan, review;
   try {
     const chart = person ? chartOf(person) : null;
-    review = chart ? minorDay(dailyReview(chart, snap, new Date()), ageOf(person)) : null;
+    review = chart ? minorDay(dailyReview(chart, snap, new Date(), { faith: faithOf(person) }), ageOf(person)) : null;
     const age = person ? (ageOf(person).age ?? 30) : 30;
     plan = todayPlan({ chart, snap, festivals: td.festivals || [], level: review?.level || 'steady', now: new Date(), faith: person ? faithOf(person) : 'hindu', age });
   } catch { return ''; }
@@ -128,10 +129,11 @@ function timeStrip(td, snap, loc) {
 function dailyCard(m, snap, loc) {
   const person = m && m.relation !== 'organization' ? m : null;
   let r;
-  try { r = dailyReview(person ? chartOf(person) : null, snap, new Date()); } catch { return ''; }
+  try { r = dailyReview(person ? chartOf(person) : null, snap, new Date(), { faith: person ? faithOf(person) : 'hindu' }); } catch { return ''; }
   if (person) r = minorDay(r, ageOf(person));
   const god = `<div class="dc-god"><span class="mini-label">${L('God of the day', 'இன்றைய தெய்வம்')}</span><b>${esc(bi(r.deity.god))}</b><span class="dc-mantra">${esc(bi(r.deity.mantra))}</span><span class="small muted">${esc(bi(r.deity.act))}</span></div>`;
-  if (!r.personal) return `<section class="card glass daily-card">${god}</section>`;
+  // God of the day: Hindu tradition — shown only when the member is Hindu (or no member is chosen).
+  if (!r.personal) return person && !isHinduFaith(faithOf(person)) ? '' : `<section class="card glass daily-card">${god}</section>`;
   const range = (w) => `${fmtDate(w.start, loc.tz)} ${fmtTime(w.start, loc.tz)} – ${fmtDate(w.end, loc.tz)} ${fmtTime(w.end, loc.tz)}`;
   const ch = r.nextChandrashtamam;
   const chLine = r.chandrashtamam
@@ -168,7 +170,7 @@ function minorDay(r, prof) {
 }
 
 function shareDaily(m, snap, loc) {
-  const r = minorDay(dailyReview(chartOf(m), snap, new Date()), ageOf(m));
+  const r = minorDay(dailyReview(chartOf(m), snap, new Date(), { faith: faithOf(m) }), ageOf(m));
   const text = [
     `🌅 ${L('Today for', 'இன்று')} ${displayName(m)} — ${bi(r.label)}`,
     r.chandrashtamam ? `⚠️ ${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}` : '',
@@ -189,7 +191,7 @@ function shareDaily(m, snap, loc) {
 function healthTodayCard(m) {
   if (!m || m.relation === 'organization') return '';
   let h;
-  try { h = healthGuide(chartOf(m), { gender: m.gender }); } catch { return ''; }
+  try { h = healthGuide(chartOf(m), { gender: m.gender, faith: faithOf(m) }); } catch { return ''; }
   const w = h.wellbeing, r = h.reflection;
   const habits = w.habits.filter((x) => ['sleep', 'walk', 'doctor'].includes(x.id));
   const pr = r.practices[0];
@@ -197,6 +199,7 @@ function healthTodayCard(m) {
     <div class="card-title"><span id="htTitle">${icon('health', { size: 18 })} ${esc(bi(w.label))}</span><span class="pill">⚕️ ${esc(bi(w.reviewLabel))}</span></div>
     <ul class="ht-list">${habits.map((x) => `<li>${x.icon} ${esc(bi(x))}</li>`).join('')}</ul>
     ${pr ? `<p class="small ht-practice">🪔 <b>${esc(bi(r.label))}</b>: ${esc(bi(pr.lamp))}. <span class="muted">${L('Spiritual practice — not health advice.', 'ஆன்மீகப் பழக்கம் — உடல்நல ஆலோசனை அல்ல.')}</span></p>` : ''}
+    ${healthNowHtml(m, { link: false })}
     <button class="chip-btn" data-go="health">${L('Full health guide ›', 'முழு ஆரோக்கிய வழிகாட்டி ›')}</button>
   </section>`;
 }
@@ -398,7 +401,9 @@ function relationsCard() {
 
 function parigaramCard(snap) {
   const m = activeMember();
-  const items = dailyParigaram({ weekday: snap.weekday.index, chart: m && chartOf(m), snapshot: snap }).slice(0, 2);
+  // Faith and age first: another faith gets every-faith practices, a child gets child-safe ones.
+  const person = m && m.relation !== 'organization' ? m : null;
+  const items = dailyParigaram({ weekday: snap.weekday.index, chart: person && chartOf(person), snapshot: snap, faith: person ? faithOf(person) : 'hindu', profile: person ? ageOf(person) : null, now: new Date() }).slice(0, 2);
   return `<div class="card glass" data-go="parigaram"><div class="card-title"><span>🪔 ${L('Today\'s parigaram', 'இன்றைய பரிகாரம்')}${m ? ` · ${esc(displayName(m))}` : ''}</span><span class="link-btn">${L('All', 'அனைத்தும்')} ›</span></div>
     ${items.map((i) => `<div class="pari-row"><span class="pg" style="color:${COLOR[i.planet]}">${GLYPH[i.planet]}</span><div><b>${esc(bi(i.reason))}</b><p>${esc(bi(i.free))}</p></div></div>`).join('')}</div>`;
 }
@@ -478,16 +483,31 @@ function buildWheel() {
   svg.innerHTML = `<defs><radialGradient id="core"><stop offset="0" stop-color="#ffe7a3"/><stop offset=".6" stop-color="#f5b83d"/><stop offset="1" stop-color="#b8620f" stop-opacity="0"/></radialGradient></defs>
     <g id="zring">${ring}</g>
     <line x1="-${R1 + 6}" y1="0" x2="${R1 + 6}" y2="0" stroke="rgba(255,255,255,.18)" stroke-dasharray="3 4"/>
-    <text x="-${R1 + 2}" y="-6" fill="#f5c26b" font-size="9">${L('ASC', 'லக்')}</text>
+    <g class="wl"><rect x="-${R3 - 3}" y="-18" width="28" height="14" rx="7" fill="#0b0626" stroke="#f5c26b" stroke-width="1"/>
+    <text x="-${R3 - 17}" y="-11" fill="#ffe7a3" font-size="9" font-weight="700" text-anchor="middle" dominant-baseline="central">${L('ASC', 'லக்')}</text></g>
     <circle r="16" fill="url(#core)"/><g id="zplanets"></g>`;
   wheelBuilt = true;
 }
 
 function renderWheel(pos, lagnaLon, moonNak) {
   if (!wheelBuilt) buildWheel();
-  $$('#wheel .wr').forEach((el) => { el.textContent = ta() ? RASIS[el.dataset.i].ta.slice(0, 4) : RASIS[el.dataset.i].en.slice(0, 5); });
-  $('#zring').setAttribute('transform', `rotate(${lagnaLon - 180})`);
-  $$('#wheel .wn').forEach((el) => el.setAttribute('fill', Number(el.dataset.i) === moonNak ? '#ffe066' : '#b7a9d6'));
+  const spin = lagnaLon - 180;
+  $('#zring').setAttribute('transform', `rotate(${spin})`);
+  // Ring labels turn with the zodiac; counter-rotate each one about its own anchor so every rasi name and star number
+  // stays upright (horizontal), then shrink a rasi name only as much as the ring band allows at its current angle.
+  $$('#wheel .wr, #wheel .wn').forEach((el) => el.setAttribute('transform', `rotate(${-spin} ${el.getAttribute('x')} ${el.getAttribute('y')})`));
+  $$('#wheel .wr').forEach((el) => {
+    const r = RASIS[el.dataset.i];
+    const name = ta() ? (r.ta === 'விருச்சிகம்' ? 'விருச்சி' : r.ta) : r.en;
+    if (el.textContent !== name) el.textContent = name;
+    const phi = (Number(el.dataset.i) * 30 + 15 - spin) * Math.PI / 180;
+    const room = Math.min(62 / Math.max(Math.abs(Math.sin(phi)), 0.01), 30 / Math.max(Math.abs(Math.cos(phi)), 0.01));
+    el.setAttribute('font-size', '10.5');
+    let w = 0;
+    try { w = el.getComputedTextLength(); } catch { /* not laid out yet */ }
+    if (w > room) el.setAttribute('font-size', String(Math.max(8.5, 10.5 * room / w).toFixed(2)));
+  });
+  $$('#wheel .wn').forEach((el) => el.setAttribute('fill', Number(el.dataset.i) === moonNak ? '#ffe066' : '#cfc4ea'));
   const entries = Object.entries(pos).filter(([k]) => k !== 'Lagna').sort((a, b) => a[1].longitude - b[1].longitude);
   const radii = [82, 64, 46];
   let lastLon = -99, lvl = 0;
@@ -891,7 +911,7 @@ async function ask(opts = {}) {
   $('#answer').hidden = false;
   if (!categoryAllowed(category, prof)) {
     // Only the selected minor is limited: a typed adult question gets the age-appropriate reply, never a verdict.
-    const g = ageGuardAnswer({ topic: category, profile: prof, lang: state.lang, name: m ? displayName(m) : '', question, label: { en: cat.en.toLowerCase(), ta: cat.ta } });
+    const g = ageGuardAnswer({ topic: category, profile: prof, lang: state.lang, name: m ? displayName(m) : '', question, label: { en: cat.en.toLowerCase(), ta: cat.ta }, faith: m && m.relation !== 'organization' ? faithOf(m) : 'hindu' });
     lastAnswer = { category: null, guard: g };
     renderGuard(g);
     $('#answer').scrollIntoView({ behavior: 'smooth' });

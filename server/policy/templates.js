@@ -8,7 +8,7 @@
 // Child / teen wording shared with the on-device age guard (shared/age-guard.js) — one reviewed source.
 import { REVIEWED_TEXT } from '../../shared/age-guard.js';
 
-export const TEMPLATE_VERSION = 'templates-0.1.0-draft';
+export const TEMPLATE_VERSION = 'templates-0.2.0-draft';
 
 const T = (id, route, en, ta, extra = {}) => ({ id, route, en, ta, reviewStatus: 'draft', ...extra });
 
@@ -104,6 +104,11 @@ export const TEMPLATES = Object.fromEntries([
     'இது அவசர மருத்துவ உதவி தேவைப்படும் நிலையாகத் தோன்றுகிறது. உடனே ஆம்புலன்ஸ் அல்லது அவசர உதவி எண்ணை அழையுங்கள், அல்லது அருகிலுள்ள மருத்துவமனைக்குச் செல்லுங்கள் — நல்ல நேரத்துக்காகவோ ராகு காலம் முடியவோ காத்திருக்க வேண்டாம். மருத்துவ சிகிச்சையே எப்போதும் முதன்மை.',
     { resources: ['emergency'] }),
 
+  T('safety_missing', 'safety_support',
+    'Please call the police now — dial 112 (or 100) and report the missing person; there is no waiting period for a missing-person complaint, and no horoscope answer should delay it. If the person is under 18, also call Childline 1098. Give the police a recent photo, what they wore and where they were last seen, and call their friends, school or workplace and nearby hospitals. I know how frightening this is — have you been able to reach the police?',
+    'உடனே காவல்துறையை அழையுங்கள் — 112 (அல்லது 100) எண்ணில் காணாமல் போனவர் பற்றிப் புகார் செய்யுங்கள்; இந்தப் புகாருக்குக் காத்திருப்புக் காலம் இல்லை, எந்த ஜாதகப் பதிலும் அதைத் தாமதப்படுத்தக் கூடாது. 18 வயதுக்குக் குறைவானவர் என்றால் சைல்ட்லைன் 1098-ஐயும் அழையுங்கள். சமீபத்திய புகைப்படம், அணிந்திருந்த உடை, கடைசியாகப் பார்த்த இடம் ஆகியவற்றைக் காவல்துறையிடம் கொடுங்கள்; நண்பர்கள், பள்ளி / பணியிடம், அருகிலுள்ள மருத்துவமனைகளை அழையுங்கள். இது எவ்வளவு பயமாக இருக்கும் என்று புரிகிறது — காவல்துறையைத் தொடர்புகொண்டீர்களா?',
+    { resources: ['emergency', 'child'] }),
+
   // ------------------------------------------------------------ privacy (Brief §21 intrusive parent)
   T('privacy_boundary', 'adult_guidance',
     'I cannot read or reveal anyone\'s private chats, messages or location, and a horoscope cannot tell you whom someone loves. Adding a family member\'s chart does not give access to their private conversations. If you are worried about your child, a calm, respectful conversation usually helps most: choose a relaxed moment, listen without judging, share your concern about their safety, and agree on simple online-safety rules together. If you believe a child is in danger, contact the help listed below.',
@@ -130,6 +135,9 @@ export const TEMPLATES = Object.fromEntries([
   T('disease_decline', 'adult_guidance',
     'A horoscope cannot tell whether someone will get an illness, or whether they can have children. For health or fertility questions, please talk to a qualified doctor, who can check properly. Traditional practices like prayer can support peace of mind, but they never replace medical care.',
     'ஒருவருக்கு நோய் வருமா, குழந்தை பிறக்குமா என்பதை ஜாதகம் சொல்ல முடியாது. உடல்நலம் அல்லது குழந்தைப்பேறு பற்றிய கேள்விகளுக்கு, முறையாகப் பரிசோதிக்கக்கூடிய தகுதியான மருத்துவரிடம் பேசுங்கள். பிரார்த்தனை போன்ற பாரம்பரிய வழிமுறைகள் மன அமைதிக்கு உதவலாம்; ஆனால் அவை மருத்துவ சிகிச்சைக்கு மாற்று அல்ல.'),
+  T('baby_sex_decline', 'adult_guidance',
+    'A horoscope cannot tell whether a baby is a boy or a girl, and I never predict it — in India, finding this out before birth is also against the law (PCPNDT Act). Every child is a blessing; what matters now is the mother\'s health, regular check-ups with the doctor, good food and rest.',
+    'குழந்தை ஆணா பெண்ணா என்பதை ஜாதகம் சொல்ல முடியாது; நான் அதைக் கணிப்பதில்லை — இந்தியாவில் பிறப்புக்கு முன் இதைக் கண்டறிவது சட்டப்படி குற்றமும் கூட (PCPNDT சட்டம்). ஒவ்வொரு குழந்தையும் ஒரு வரம்; இப்போது முக்கியம் தாயின் ஆரோக்கியம், மருத்துவரிடம் சீரான பரிசோதனை, சத்தான உணவு, ஓய்வு.'),
   T('probability_decline', 'adult_guidance',
     'I do not give percentages or odds for things like betrayal, accidents, divorce or illness — a chart cannot measure those, and a number would be misleading. I can explain your chart\'s traditional themes as reflection, together with practical steps that help either way.',
     'துரோகம், விபத்து, விவாகரத்து, நோய் போன்றவற்றுக்கு நான் சதவீதமோ வாய்ப்பு அளவோ சொல்வதில்லை — ஜாதகம் அவற்றை அளக்க முடியாது; ஒரு எண் தவறாக வழிநடத்தும். உங்கள் ஜாதகத்தின் பாரம்பரியக் கருத்துகளைச் சிந்தனைக்காக விளக்கி, எப்படியிருந்தாலும் உதவும் நடைமுறை வழிகளைச் சொல்ல முடியும்.'),

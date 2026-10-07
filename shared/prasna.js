@@ -722,7 +722,7 @@ const GROUP_STEP = {
 const PARIGARAM = {
   health: T2('Light a ghee lamp and say "Om Namo Bhagavate Dhanvantaraye" 11 times for a smooth recovery.', 'நெய் தீபம் ஏற்றி "ஓம் நமோ பகவதே தன்வந்தரயே" 11 முறை சொல்லுங்கள் — நலம் விரைவில் கூட.'),
   work: T2('Before you leave, pray to Vinayagar and say "Om Gam Ganapataye Namaha" 9 times.', 'கிளம்பும் முன் விநாயகரை வணங்கி "ஓம் கம் கணபதயே நமஹ" 9 முறை சொல்லுங்கள்.'),
-  money: T2('Light a lamp before Mahalakshmi and say "Om Shreem Mahalakshmyai Namaha" 9 times.', 'மகாலட்சுமி முன் தீபம் ஏற்றி "ஓம் ஸ்ரீம் மகாலக்ஷ்ம்யை நமஹ" 9 முறை சொல்லுங்கள்.'),
+  money: T2('Light a lamp before Mahalakshmi and say "Om Shri Mahalakshmiyai Namaha" 9 times.', 'மகாலட்சுமி முன் தீபம் ஏற்றி "ஓம் ஸ்ரீ மகாலட்சுமியை நமஹ" 9 முறை சொல்லுங்கள்.'),
   home: T2('Light a lamp in the north-east corner of the house and pray to the Kula Deivam.', 'வீட்டின் வடகிழக்கு மூலையில் தீபம் ஏற்றி, குலதெய்வத்தை வணங்குங்கள்.'),
   buy: T2('Light a lamp before Mahalakshmi and touch the new item to the pooja place before using it.', 'மகாலட்சுமி முன் தீபம் ஏற்றி, புதிய பொருளைப் பூஜை அறையில் வைத்து வணங்கிப் பிறகு பயன்படுத்துங்கள்.'),
   family: T2('Light a ghee lamp, seek the elders\' blessing and pray to the Kula Deivam together.', 'நெய் தீபம் ஏற்றி, பெரியோரின் ஆசி பெற்று, குடும்பமாகக் குலதெய்வத்தை வணங்குங்கள்.'),

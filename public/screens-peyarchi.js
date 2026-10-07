@@ -10,6 +10,9 @@ import {
 } from './core.js';
 import { remindBtn } from './remind.js';
 import { ageProfile, adultText } from './shared/age-guard.js';
+import { faithOf } from './shared/faith.js';
+// The viewer's faith (the active family member's) — another faith gets practices for every faith, not Hindu pujas.
+const pyFaith = () => { const m = activeMember(); return m && m.relation !== 'organization' ? faithOf(m) : 'hindu'; };
 
 // Age first: when the selected person is a child and this is their own rasi, keep only child-appropriate sentences
 // (no marriage, spouse, business, money) and hide the career / money bars.
@@ -63,7 +66,7 @@ function injectCss() {
 .vr-row .tx span { color: var(--muted); font-size: 14px; }
 .vr-row .chip-btn { flex: 0 0 auto; }
 .vr-row.today { background: rgba(245,194,107,.08); border-radius: 10px; padding-left: 8px; }
-.vr-row.past { opacity: .55; }
+.vr-row.past .ic { opacity: .55; } .vr-row.past .tx b { color: var(--muted); font-weight: 600; } /* past days: dimmed but still AA-readable */
 `;
   document.head.append(s);
 }
@@ -143,7 +146,7 @@ function fillNow(cur) {
 
 let lastPalans = [];
 function fillPalan(cur) {
-  lastPalans = PEYARCHI_PLANETS.map((p) => ({ p, rasi: cur[p].rasi, x: peyarchiPalan(p, cur[p].rasi, pyRasi) }));
+  lastPalans = PEYARCHI_PLANETS.map((p) => ({ p, rasi: cur[p].rasi, x: peyarchiPalan(p, cur[p].rasi, pyRasi, { faith: pyFaith() }) }));
   $('#pyPalan').innerHTML = `<div class="card glass">
     <div class="card-title"><span>${L('Peyarchi Palan for', 'பெயர்ச்சி பலன்')} · ${esc(rasiName(pyRasi))} ${L('rasi', 'ராசி')}</span></div>
     ${lastPalans.map(({ p, rasi, x }) => `<div class="py-palan">

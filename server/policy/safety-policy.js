@@ -12,7 +12,9 @@
 import { AGE_POLICY_VERSION, bandProhibited, bandRules } from './age-policy.js';
 import { TEMPLATES } from './templates.js';
 
-export const POLICY_VERSION = 'safety-policy-1.0.0';
+export const POLICY_VERSION = 'safety-policy-1.1.0';
+// Distress words strong enough to route to support even inside a life question.
+const STRONG_DISTRESS = /hopeless|depress|can'?t cope|cannot cope|worthless|nobody cares|no one cares|crying every day|my chart is (bad|cursed|terrible)|நம்பிக்கை இல்லை|அழுகிறேன்|azhuguren/u;
 export const ROUTES = ['safety_support', 'child_guidance', 'teen_guidance', 'adult_guidance', 'clarify', 'decline_facilitation'];
 
 export const ALWAYS_PROHIBITED = [
@@ -87,6 +89,7 @@ export function decide(ctx, intent, { category = null } = {}) {
   if (f.danger) return out('safety_support', 'safety_danger', 'immediate_danger');
   if (f.medicalUrgent) return out('safety_support', 'safety_medical', 'acute_medical');
   if (f.abuse) return out('safety_support', 'safety_abuse', 'abuse_disclosure');
+  if (f.missingPerson) return out('safety_support', 'safety_missing', 'missing_person');
 
   // 2. Adult–minor romantic/sexual context.
   if (romanticAny || sexualAny) {
@@ -108,7 +111,9 @@ export function decide(ctx, intent, { category = null } = {}) {
 
   // 3. Coercion / distress.
   if (f.coercion) return out('safety_support', 'safety_coercion', 'coercion');
-  if (f.distress) return out('safety_support', 'support_distress', 'distress');
+  // Strong distress words route to support; "romba kashtam" inside an ordinary life question is answered with
+  // empathy first and a safety check-in (below), not a refusal to answer.
+  if (f.distress && !(intent.purpose !== 'general' && !STRONG_DISTRESS.test(intent.normalized || ''))) return out('safety_support', 'support_distress', 'distress');
 
   // 4. Minor speaker.
   if (minorSpeaker) {
@@ -150,6 +155,8 @@ export function decide(ctx, intent, { category = null } = {}) {
   // 8. Ordinary.
   const extraRequired = [];
   if (f.paidRemedy) { extraRequired.push('free_remedy_first'); reasons.push('paid_remedy_question'); }
+  if (f.fertility) { extraRequired.push('medical_referral', 'no_fertility_verdict', 'timing_periods_only'); reasons.push('child_timing_question'); }
+  if (f.distress) { extraRequired.push('empathy_first', 'safety_checkin'); reasons.push('soft_distress_with_life_question'); }
   if (st.selfHarm) { extraRequired.push('safety_checkin'); reasons.push('earlier_distress_in_session'); }
   if (romanticAny && adultSpeaker) reasons.push('adult_consensual_relationship');
   reasons.push(sp.minor === null ? 'age_unknown_general' : 'adult_ordinary');
@@ -175,6 +182,7 @@ function prohibitedCard(f, intent) {
   if (f.accidentPrediction) return { templateId: 'travel_safeguard', reason: 'accident_prediction_request' };
   if (f.diseasePrediction) return { templateId: 'disease_decline', reason: 'disease_or_fertility_prediction_request' };
   if (f.sensitiveProbability) return { templateId: 'probability_decline', reason: 'probability_request' };
+  if (f.babySex) return { templateId: 'baby_sex_decline', reason: 'baby_sex_request' };
   return null;
 }
 

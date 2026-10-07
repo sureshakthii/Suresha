@@ -23,8 +23,20 @@ export function faithOf(member) {
 
 export const FAITHS = [
   ['auto', 'Auto (from name)', 'தானியங்கி (பெயரிலிருந்து)'], ['hindu', 'Hindu', 'இந்து'], ['christian', 'Christian', 'கிறிஸ்தவர்'],
-  ['muslim', 'Muslim', 'இஸ்லாமியர்'], ['other', 'Other / all faiths', 'பிற / அனைத்து நம்பிக்கைகள்'], ['none', 'Prefer not to say', 'சொல்ல விரும்பவில்லை'],
+  ['muslim', 'Muslim', 'இஸ்லாமியர்'], ['jain', 'Jain', 'சமணர்'], ['sikh', 'Sikh', 'சீக்கியர்'], ['buddhist', 'Buddhist', 'பௌத்தர்'],
+  ['other', 'Other / all faiths', 'பிற / அனைத்து நம்பிக்கைகள்'], ['none', 'No religion / prefer not to say', 'மதம் இல்லை / சொல்ல விரும்பவில்லை'],
 ];
+
+/**
+ * Is the Hindu traditional content (deity pujas, temple visits, homam, mantras, fasting rules) the person's own
+ * tradition? Only 'hindu' (chosen, or the Auto default) is. Every other faith — and 'none' — gets neutral or
+ * faith-appropriate practice first; Hindu content is shown to them only when they opt in, marked optional.
+ */
+export const isHinduFaith = (faith) => !faith || faith === 'hindu';
+
+/** Label shown over Hindu traditional content offered (opt-in) to a person of another faith. */
+export const TRADITIONAL_OPTIONAL = T('Traditional Hindu practice — optional, for information only. Not required; follow your own faith first.',
+  'இந்து மரபு வழிபாடு — விருப்பத்திற்குரியது, தகவலுக்காக மட்டும். கட்டாயமல்ல; உங்கள் சொந்த நம்பிக்கையே முதன்மை.');
 
 /** Respectful welcome shown on the Today screen for people of other faiths. */
 export function faithWelcome(faith, name = '') {
@@ -41,6 +53,9 @@ export function faithBlessing(faith) {
   return {
     christian: T('🙏 May God bless you and guide your path.', '🙏 கர்த்தர் உங்களை ஆசீர்வதித்து வழிநடத்துவாராக.'),
     muslim: T('🤲 May Allah grant you peace, health and success.', '🤲 இறைவன் (அல்லாஹ்) உங்களுக்கு அமைதி, ஆரோக்கியம், வெற்றி அருள்வானாக.'),
+    jain: T('🙏 Jai Jinendra — may you walk in peace, non-violence and right conduct.', '🙏 ஜெய் ஜினேந்திரா — அமைதியும் அகிம்சையும் நல்லொழுக்கமும் உங்கள் வழியாகட்டும்.'),
+    sikh: T('🙏 May Waheguru bless you with peace, courage and seva.', '🙏 வாஹேகுரு உங்களுக்கு அமைதியும் துணிவும் சேவை மனமும் அருளட்டும்.'),
+    buddhist: T('🙏 May you be well, peaceful and free from worry.', '🙏 நீங்கள் நலமும் அமைதியும் கவலையின்மையும் பெறுவீர்களாக.'),
     other: T('🙏 May the Divine bless you with peace and strength.', '🙏 இறையருள் உங்களுக்கு அமைதியும் வலிமையும் தரட்டும்.'),
     none: T('🌿 Wishing you peace, health and success.', '🌿 அமைதி, ஆரோக்கியம், வெற்றி உங்களுக்குக் கிடைக்கட்டும்.'),
   }[faith] || null;
@@ -60,4 +75,19 @@ export function universalPractice(planet) {
     Ketu: T('Quiet reflection or meditation; feed animals; forgive old hurts.', 'அமைதியான சிந்தனை / தியானம்; விலங்குகளுக்கு உணவு; பழைய வருத்தங்களை மன்னியுங்கள்.'),
   };
   return P[planet] || T('Prayer in your own faith, charity and kind words.', 'உங்கள் நம்பிக்கைப்படி பிரார்த்தனை, தானம், இனிய சொல்.');
+}
+
+/** A neutral, every-faith practice for a child (no fasting, no deity, no money). */
+export const CHILD_PRACTICE = T('A short prayer or quiet moment in your family’s own way, kind words and helping at home.',
+  'உங்கள் குடும்ப வழக்கப்படி ஒரு சிறு பிரார்த்தனை அல்லது அமைதியான நிமிடம், இனிய சொல், வீட்டில் உதவி.');
+
+/**
+ * Faith-aware practice for a planet that needs support. `hindu` is the module's own traditional text
+ * ({ en, ta } — deity puja, lamp, mantra, temple). Hindu: that text, unchanged. Any other faith: the universal
+ * practice; the Hindu text is attached as `traditional` (marked optional) only when the person opted in.
+ * Returns { text, traditional|null, optional, faith }.
+ */
+export function practiceFor(planet, faith, hindu, { traditional = false } = {}) {
+  if (isHinduFaith(faith)) return { text: hindu || universalPractice(planet), traditional: null, optional: true, faith: 'hindu' };
+  return { text: universalPractice(planet), traditional: traditional && hindu ? { ...hindu, note: TRADITIONAL_OPTIONAL, optional: true } : null, optional: true, faith };
 }

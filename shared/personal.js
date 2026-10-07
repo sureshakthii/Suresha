@@ -3,8 +3,9 @@
 // Everything is derived from the birth chart with traditional, explainable rules — each suggestion is
 // attributed to its method and is optional. Gemstones are never presented as necessary protection.
 import { RASIS, PLANETS, NAKSHATRAS } from './astro.js';
-import { NAVAGRAHA, grahaStrength } from './remedies.js';
+import { NAVAGRAHA, grahaStrength, PRIMARY } from './remedies.js';
 import { ayulBalam } from './lifecheck.js';
+import { isHinduFaith, universalPractice, faithBlessing } from './faith.js';
 
 const T = (en, ta) => ({ en, ta });
 const SEVEN = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
@@ -39,19 +40,13 @@ export function luckyNumbers(dateStr) {
 }
 
 // ---------------------------------------------------------------- Deities
-export const PLANET_DEITY = {
-  Sun: T('Lord Shiva', 'சிவபெருமான்'), Moon: T('Goddess Parvathi (Ambal)', 'அம்பாள் (பார்வதி)'), Mars: T('Lord Murugan', 'முருகப் பெருமான்'),
-  Mercury: T('Lord Vishnu (Perumal)', 'பெருமாள் (விஷ்ணு)'), Jupiter: T('Lord Dakshinamurthy', 'தட்சிணாமூர்த்தி'), Venus: T('Goddess Mahalakshmi', 'மகாலட்சுமி'),
-  Saturn: T('Lord Venkatachalapathi / Sri Anjaneyar', 'வெங்கடாசலபதி / ஸ்ரீ ஆஞ்சநேயர்'), Rahu: T('Goddess Durga', 'துர்கை அம்மன்'), Ketu: T('Lord Vinayagar', 'விநாயகர்'),
-};
-export const DEITY_MANTRA = {
-  Sun: 'ஓம் நமசிவாய', Moon: 'ஓம் சக்தி பராசக்தி', Mars: 'ஓம் சரவணபவ', Mercury: 'ஓம் நமோ நாராயணாய', Jupiter: 'ஓம் குருவே நமஹ',
-  Venus: 'ஓம் ஸ்ரீ மகாலட்சுமியை நமஹ', Saturn: 'ஓம் நமோ வெங்கடேசாய', Rahu: 'ஓம் துர்காயை நமஹ', Ketu: 'ஓம் கம் கணபதயே நமஹ',
-};
+// One primary deity and mantra per planet, shared with every surface (shared/remedies.js PRIMARY).
+export const PLANET_DEITY = Object.fromEntries(Object.entries(PRIMARY).map(([k, v]) => [k, T(v.deity.en, v.deity.ta)]));
+export const DEITY_MANTRA = Object.fromEntries(Object.entries(PRIMARY).map(([k, v]) => [k, v.mantra.ta]));
 
 /** Traditional worship deity for each birth star (நட்சத்திர வழிபாட்டுத் தெய்வம்). */
 export const STAR_DEITY = [
-  T('Goddess Saraswathi', 'சரஸ்வதி'), T('Goddess Durga', 'துர்கை'), T('Lord Murugan', 'முருகன்'), T('Lord Krishna', 'கிருஷ்ணர்'),
+  T('Goddess Saraswathi', 'சரஸ்வதி'), T('Goddess Durga', 'துர்க்கை'), T('Lord Murugan', 'முருகன்'), T('Lord Krishna', 'கிருஷ்ணர்'),
   T('Lord Shiva (Chandramouleeswarar)', 'சந்திரமௌலீஸ்வரர் (சிவன்)'), T('Lord Nataraja', 'நடராஜர்'), T('Lord Rama', 'ஸ்ரீ ராமர்'), T('Lord Dakshinamurthy', 'தட்சிணாமூர்த்தி'),
   T('Naga Devathai / Adhiseshan', 'நாக தேவதை / ஆதிசேஷன்'), T('Lord Vinayagar', 'விநாயகர்'), T('Goddess Andal', 'ஆண்டாள்'), T('Lord Ayyappan (Sastha)', 'ஐயப்பன் (சாஸ்தா)'),
   T('Gayatri Devi', 'காயத்ரி தேவி'), T('Sri Chakrathazhwar', 'சக்கரத்தாழ்வார்'), T('Lord Narasimhar', 'நரசிம்மர்'), T('Lord Murugan', 'முருகன்'),
@@ -204,8 +199,16 @@ export function personalPlaylist(chart, now = new Date()) {
 }
 
 /** The complete personal guide for one person. */
-export function personalGuide(chart, { date, now = new Date(), weekday = now.getDay() } = {}) {
+export function personalGuide(chart, { date, now = new Date(), weekday = now.getDay(), faith = 'hindu' } = {}) {
+  // Faith: Ishta Theivam, Siddhar and the mantra playlist are Hindu / Tamil Saiva practice. For another faith (or
+  // none) the guide leads with a practice for every faith and their own blessing; the playlist is empty and the
+  // Hindu items stay available only as optional information (`hindu: false` tells the screen to fold them away).
+  const hindu = isHinduFaith(faith);
+  const ref = lordOf(refRasi(chart), 1);
   return {
+    hindu, faith: hindu ? 'hindu' : faith,
+    practice: hindu ? null : universalPractice(ref),
+    blessing: hindu ? null : faithBlessing(faith),
     numbers: luckyNumbers(date || chart.date),
     ishta: ishtaTheivam(chart),
     today: colorForDay(chart, weekday),
@@ -213,7 +216,7 @@ export function personalGuide(chart, { date, now = new Date(), weekday = now.get
     gems: gemstones(chart),
     siddhar: proposeSiddhar(chart),
     ayul: ayulBalam(chart),
-    playlist: personalPlaylist(chart, now),
+    playlist: hindu ? personalPlaylist(chart, now) : [],
     lagnaLord: chart.planets.Lagna ? lordOf(chart.planets.Lagna.rasi, 1) : null,
     reference: chart.planets.Lagna ? 'lagna' : 'moon',
     needsBirthTime: !chart.planets.Lagna,

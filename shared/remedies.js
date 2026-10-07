@@ -1,6 +1,8 @@
 // Parigaram (remedies) and Graha Balam (planet strength).
 // Philosophy: free and simple remedies first — prayer, lamp, charity, discipline.
 import { RASIS, PLANETS } from './astro.js';
+import { isHinduFaith, universalPractice, CHILD_PRACTICE, TRADITIONAL_OPTIONAL } from './faith.js';
+import { adultText } from './age-guard.js';
 
 export const NAVAGRAHA = {
   Sun: {
@@ -46,12 +48,12 @@ export const NAVAGRAHA = {
     temple: { en: 'Alangudi Abathsahayeswarar Temple', ta: 'ஆலங்குடி ஆபத்சகாயேஸ்வரர் கோவில்' },
     free: { en: 'Light a ghee lamp for Dakshinamurthy on Thursday; respect teachers; share knowledge.', ta: 'வியாழன் தட்சிணாமூர்த்திக்கு நெய் தீபம்; ஆசிரியர்களை மதிக்கவும்; அறிவைப் பகிரவும்.' },
     charity: { en: 'Donate chickpeas or yellow cloth on Thursday.', ta: 'வியாழன் அன்று கொண்டைக் கடலை அல்லது மஞ்சள் துணி தானம்.' },
-    governs: { en: 'Wisdom, children, wealth, marriage (for women)', ta: 'ஞானம், குழந்தைகள், செல்வம், திருமணம்' },
+    governs: { en: 'Wisdom, children, wealth, marriage', ta: 'ஞானம், குழந்தைகள், செல்வம், திருமணம்' },
   },
   Venus: {
     deity: { en: 'Goddess Mahalakshmi', ta: 'மகாலட்சுமி' }, day: 5, color: { en: 'White / pastel', ta: 'வெள்ளை / இளநிறம்' },
     grain: { en: 'Field beans (mochai)', ta: 'மொச்சை' }, gem: { en: 'Diamond', ta: 'வைரம்' },
-    mantra: { en: 'Om Mahalakshmyai Namaha', ta: 'ஓம் மகாலட்சுமியை நமஹ' },
+    mantra: { en: 'Om Shri Mahalakshmiyai Namaha', ta: 'ஓம் ஸ்ரீ மகாலட்சுமியை நமஹ' },
     temple: { en: 'Kanjanur Agneeswarar Temple', ta: 'கஞ்சனூர் அக்னீஸ்வரர் கோவில்' },
     free: { en: 'Light a lamp for Mahalakshmi on Friday evening; keep home clean and fragrant; respect women.', ta: 'வெள்ளி மாலை மகாலட்சுமிக்கு விளக்கேற்றவும்; வீட்டைச் சுத்தமாக வைக்கவும்; பெண்களை மதிக்கவும்.' },
     charity: { en: 'Donate white sweets or clothes on Friday.', ta: 'வெள்ளி அன்று இனிப்பு அல்லது வெண்ணிற ஆடை தானம்.' },
@@ -64,14 +66,14 @@ export const NAVAGRAHA = {
     temple: { en: 'Thirunallar Dharbaranyeswarar Temple', ta: 'திருநள்ளாறு தர்பாரண்யேஸ்வரர் கோவில்' },
     free: { en: 'Light a sesame-oil (nallennai) lamp on Saturday; feed crows; serve the elderly and workers.', ta: 'சனி அன்று நல்லெண்ணெய் தீபம்; காகத்திற்கு அன்னமிடவும்; முதியோர், உழைப்பாளர்களுக்கு உதவவும்.' },
     charity: { en: 'Donate black sesame, oil or food on Saturday.', ta: 'சனி அன்று எள், எண்ணெய் அல்லது அன்னதானம்.' },
-    governs: { en: 'Career, discipline, longevity, hard work', ta: 'தொழில், ஒழுக்கம், ஆயுள், உழைப்பு' },
+    governs: { en: 'Career, discipline, patience, hard work', ta: 'தொழில், ஒழுக்கம், பொறுமை, உழைப்பு' },
   },
   Rahu: {
-    deity: { en: 'Goddess Durga', ta: 'துர்கை அம்மன்' }, day: null, color: { en: 'Smoky / dark', ta: 'புகை நிறம்' },
+    deity: { en: 'Goddess Durga', ta: 'துர்க்கை அம்மன்' }, day: null, color: { en: 'Smoky / dark', ta: 'புகை நிறம்' },
     grain: { en: 'Black gram (ulundhu)', ta: 'உளுந்து' }, gem: { en: 'Hessonite (Gomedhagam)', ta: 'கோமேதகம்' },
     mantra: { en: 'Om Rahave Namaha', ta: 'ஓம் ராகவே நமஹ' },
     temple: { en: 'Thirunageswaram Naganathar Temple', ta: 'திருநாகேஸ்வரம் நாகநாதர் கோவில்' },
-    free: { en: 'Light a lamp for Durga during Rahu Kalam on Tuesday or Friday; avoid shortcuts and addictions.', ta: 'செவ்வாய்/வெள்ளி ராகு காலத்தில் துர்கைக்கு விளக்கேற்றவும்; குறுக்கு வழிகள், போதைகளைத் தவிர்க்கவும்.' },
+    free: { en: 'Light a lamp for Durga during Rahu Kalam on Tuesday or Friday; avoid shortcuts and addictions.', ta: 'செவ்வாய்/வெள்ளி ராகு காலத்தில் துர்க்கைக்கு விளக்கேற்றவும்; குறுக்கு வழிகள், போதைகளைத் தவிர்க்கவும்.' },
     charity: { en: 'Donate black gram.', ta: 'உளுந்து தானம்.' },
     governs: { en: 'Ambition, foreign lands, sudden events', ta: 'ஆசை, வெளிநாடு, திடீர் நிகழ்வுகள்' },
   },
@@ -85,6 +87,25 @@ export const NAVAGRAHA = {
     governs: { en: 'Spirituality, detachment, moksha', ta: 'ஆன்மீகம், பற்றின்மை, மோட்சம்' },
   },
 };
+
+/**
+ * ONE primary deity and mantra per planet, used by every surface (Today's Dasa deity and closing prayer, My Guide,
+ * the mantra playlist, parigaram). It is the first mantra of the Navagraha entry above. Other well-loved forms are
+ * kept as `also` ("also traditional") so a family's own practice is still recognised.
+ */
+export const PRIMARY = Object.freeze({
+  Sun: { deity: { en: 'Lord Surya', ta: 'சூரிய பகவான்' }, mantra: { en: 'Om Suryaya Namaha', ta: 'ஓம் சூர்யாய நமஹ' }, potri: { en: 'Surya Bhagavane Potri', ta: 'சூரிய பகவானே போற்றி' }, also: { en: 'Lord Shiva — Om Namah Shivaya; Aditya Hrudayam', ta: 'சிவபெருமான் — ஓம் நமசிவாய; ஆதித்ய ஹிருதயம்' } },
+  Moon: { deity: { en: 'Goddess Ambal (Parvathi)', ta: 'அம்பாள் (பார்வதி)' }, mantra: { en: 'Om Chandraya Namaha', ta: 'ஓம் சந்திராய நமஹ' }, potri: { en: 'Ambal Thaye Potri', ta: 'அம்பாள் தாயே போற்றி' }, also: { en: 'Om Sakthiye Potri', ta: 'ஓம் சக்தியே போற்றி' } },
+  Mars: { deity: { en: 'Lord Murugan', ta: 'முருகப் பெருமான்' }, mantra: { en: 'Om Saravanabhava', ta: 'ஓம் சரவணபவ' }, potri: { en: 'Muruga Potri', ta: 'முருகா போற்றி' }, also: { en: 'Kanda Sashti Kavasam', ta: 'கந்த சஷ்டி கவசம்' } },
+  Mercury: { deity: { en: 'Lord Perumal (Vishnu)', ta: 'பெருமாள் (விஷ்ணு)' }, mantra: { en: 'Om Budhaya Namaha', ta: 'ஓம் புதாய நமஹ' }, potri: { en: 'Perumale Potri', ta: 'பெருமாளே போற்றி' }, also: { en: 'Om Namo Narayanaya; Vishnu Sahasranamam', ta: 'ஓம் நமோ நாராயணாய; விஷ்ணு சகஸ்ரநாமம்' } },
+  Jupiter: { deity: { en: 'Lord Dakshinamurthy', ta: 'தட்சிணாமூர்த்தி' }, mantra: { en: 'Om Guruve Namaha', ta: 'ஓம் குருவே நமஹ' }, potri: { en: 'Dakshinamurthiye Potri', ta: 'தட்சிணாமூர்த்தியே போற்றி' }, also: null },
+  Venus: { deity: { en: 'Goddess Mahalakshmi', ta: 'மகாலட்சுமி' }, mantra: { en: 'Om Shri Mahalakshmiyai Namaha', ta: 'ஓம் ஸ்ரீ மகாலட்சுமியை நமஹ' }, potri: { en: 'Thaye Potri', ta: 'தாயே போற்றி' }, also: null },
+  Saturn: { deity: { en: 'Lord Saneeswarar', ta: 'சனீஸ்வரர்' }, mantra: { en: 'Om Shanaischaraya Namaha', ta: 'ஓம் சனைச்சராய நமஹ' }, potri: { en: 'Saneeswara Potri', ta: 'சனீஸ்வரா போற்றி' }, also: { en: 'Lord Venkatachalapathi — Om Namo Venkatesaya; Sri Anjaneyar — Sri Rama Jaya Rama Jaya Jaya Rama', ta: 'வெங்கடாசலபதி — ஓம் நமோ வெங்கடேசாய; ஸ்ரீ ஆஞ்சநேயர் — ஸ்ரீ ராம ஜெய ராம ஜெய ஜெய ராம' } },
+  Rahu: { deity: { en: 'Goddess Durga', ta: 'துர்க்கை அம்மன்' }, mantra: { en: 'Om Rahave Namaha', ta: 'ஓம் ராகவே நமஹ' }, potri: { en: 'Durga Thaye Potri', ta: 'துர்க்கை தாயே போற்றி' }, also: { en: 'Om Durgayai Namaha', ta: 'ஓம் துர்காயை நமஹ' } },
+  Ketu: { deity: { en: 'Lord Vinayagar', ta: 'விநாயகர்' }, mantra: { en: 'Om Ketave Namaha', ta: 'ஓம் கேதவே நமஹ' }, potri: { en: 'Vinayaga Potri', ta: 'விநாயகா போற்றி' }, also: { en: 'Om Gam Ganapataye Namaha', ta: 'ஓம் கம் கணபதயே நமஹ' } },
+});
+/** Only the chantable mantra of a Navagraha entry (no hymn title after "·") — what the 🔊 button speaks. */
+export const mantraOnly = (m) => String(m?.ta ?? m ?? '').split(' · ')[0].trim();
 
 const EXALT = { Sun: 0, Moon: 1, Mars: 9, Mercury: 5, Jupiter: 3, Venus: 11, Saturn: 6 };
 const OWN = { Sun: [4], Moon: [3], Mars: [0, 7], Mercury: [2, 5], Jupiter: [8, 11], Venus: [1, 6], Saturn: [9, 10] };
@@ -176,24 +197,70 @@ export function grahaStrength(planets) {
   return out;
 }
 
-/** Today's personal parigaram: weekday lord + weakest planets + running dasa lord + moon-based cautions. */
-export function dailyParigaram({ weekday, chart, snapshot }) {
+// What a planet "governs", worded for a child (no business, land, marriage, wealth or longevity words).
+const GOVERNS_CHILD = {
+  Sun: { en: 'Confidence, health habits and respect for elders', ta: 'தன்னம்பிக்கை, ஆரோக்கியப் பழக்கம், பெரியோருக்கு மரியாதை' },
+  Moon: { en: 'Feelings, a calm mind, mother and sleep', ta: 'உணர்வு, அமைதியான மனம், தாய், உறக்கம்' },
+  Mars: { en: 'Courage, sports and brothers and sisters', ta: 'தைரியம், விளையாட்டு, உடன்பிறப்பு' },
+  Mercury: { en: 'Learning, speech, reading and maths', ta: 'கற்றல், பேச்சு, வாசிப்பு, கணக்கு' },
+  Jupiter: { en: 'Wisdom, good values and teachers', ta: 'ஞானம், நல்லொழுக்கம், ஆசிரியர்கள்' },
+  Venus: { en: 'Music, art, friendships and a happy home', ta: 'இசை, கலை, நட்பு, மகிழ்ச்சியான வீடு' },
+  Saturn: { en: 'Discipline, patience and hard work', ta: 'ஒழுக்கம், பொறுமை, உழைப்பு' },
+  Rahu: { en: 'Curiosity and new interests', ta: 'ஆர்வம், புதிய விருப்பங்கள்' },
+  Ketu: { en: 'Concentration, prayer and quiet focus', ta: 'மன ஒருமைப்பாடு, வழிபாடு, அமைதியான கவனம்' },
+};
+/** What a planet governs, worded for the chart owner's age (a minor never sees business / marriage / wealth words). */
+export function governsFor(planet, profile = null) {
+  return profile && profile.minor ? GOVERNS_CHILD[planet] : NAVAGRAHA[planet]?.governs;
+}
+
+/**
+ * The practice to show for a planet, by faith and age.
+ * Hindu (or Auto): the full Navagraha entry, unchanged — deity, mantra, temple, free remedy, charity, gem.
+ * Any other faith or none: a universal practice (prayer in their own faith, charity, discipline, service) and the
+ * charity line; NO deity, mantra, temple or gem. The Hindu entry is attached as `traditional` (marked optional,
+ * for information) only when the person opted in. A minor gets a child-safe practice and governs line.
+ */
+export function remedyFor(planet, { faith = 'hindu', traditional = false, profile = null } = {}) {
+  const n = NAVAGRAHA[planet];
+  if (!n) return null;
+  const minor = !!profile?.minor;
+  if (isHinduFaith(faith)) {
+    // A Hindu child keeps the deity and prayer; a free-practice line about work or money becomes a study prayer.
+    const free = minor && adultText(n.free) ? { en: `A short prayer to ${n.deity.en} before studies, and kind words at home.`, ta: `படிக்கும் முன் ${n.deity.ta} வழிபாடு; வீட்டில் இனிய சொல்.` } : n.free;
+    return { planet, ...n, free, governs: governsFor(planet, profile), faith: 'hindu' };
+  }
+  return {
+    planet, faith, day: n.day, color: n.color, governs: governsFor(planet, profile),
+    free: minor ? CHILD_PRACTICE : universalPractice(planet), charity: n.charity,
+    traditional: traditional ? { deity: n.deity, mantra: n.mantra, temple: n.temple, free: n.free, note: TRADITIONAL_OPTIONAL, optional: true } : null,
+  };
+}
+
+/**
+ * Today's personal parigaram: weekday lord + weakest planets + running dasa lord + moon-based cautions.
+ * opts: faith (non-Hindu → universal practices, Hindu entries only as opt-in `traditional`), traditional (opt-in),
+ * profile (ageProfile — a minor gets child-safe lines), now (for the running dasa; default: the chart's own).
+ */
+export function dailyParigaram({ weekday, chart, snapshot, faith = 'hindu', traditional = false, profile = null, now = null }) {
   const items = [];
+  const R = (planet) => remedyFor(planet, { faith, traditional, profile });
   const dayLord = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'][weekday];
-  items.push({ reason: { en: `Today is ruled by ${dayLord}`, ta: `இன்று ${PLANETS[dayLord].ta} கிழமை` }, planet: dayLord, ...NAVAGRAHA[dayLord] });
+  items.push({ reason: { en: `Today is ruled by ${dayLord}`, ta: `இன்று ${PLANETS[dayLord].ta} கிழமை` }, ...R(dayLord) });
   if (chart) {
     const weak = grahaStrength(chart.planets).filter((g) => g.level === 'weak').sort((a, b) => a.score - b.score);
     for (const w of weak.slice(0, 2)) {
       if (w.planet === dayLord) continue;
-      items.push({ reason: { en: `${w.planet} is weak in your chart`, ta: `உங்கள் ஜாதகத்தில் ${w.ta} பலவீனம்` }, planet: w.planet, ...NAVAGRAHA[w.planet] });
+      items.push({ reason: { en: `${w.planet} is weak in your chart`, ta: `உங்கள் ஜாதகத்தில் ${w.ta} பலவீனம்` }, ...R(w.planet) });
     }
-    const dasa = chart.dasa?.current?.lord;
+    const t = now ? new Date(now) : null;
+    const dasa = (t && (chart.dasa?.periods || []).find((p) => new Date(p.start) <= t && t < new Date(p.end))?.lord) || chart.dasa?.current?.lord;
     if (dasa && !items.some((i) => i.planet === dasa)) {
-      items.push({ reason: { en: `You are running ${dasa} Dasa`, ta: `${PLANETS[dasa].ta} தசை நடக்கிறது` }, planet: dasa, ...NAVAGRAHA[dasa] });
+      items.push({ reason: { en: `You are running ${dasa} Dasa`, ta: `${PLANETS[dasa].ta} தசை நடக்கிறது` }, ...R(dasa) });
     }
     if (snapshot) {
       const pos = ((snapshot.moonRasi.index - chart.janmaRasi.index + 12) % 12) + 1;
-      if (pos === 8) items.unshift({ reason: { en: 'Chandrashtamam today — be patient, avoid arguments and big decisions', ta: 'இன்று சந்திராஷ்டமம் — பொறுமை காக்கவும், பெரிய முடிவுகளைத் தவிர்க்கவும்' }, planet: 'Moon', ...NAVAGRAHA.Moon });
+      if (pos === 8) items.unshift({ reason: { en: 'Chandrashtamam today — be patient, avoid arguments and big decisions', ta: 'இன்று சந்திராஷ்டமம் — பொறுமை காக்கவும், பெரிய முடிவுகளைத் தவிர்க்கவும்' }, ...R('Moon') });
     }
   }
   return items;

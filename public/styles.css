@@ -2538,7 +2538,7 @@ body.large .ith-p { font-size: 22px; }
 .ith-rate select { min-height: 40px; border-radius: 10px; padding: 2px 6px; border: 1px solid var(--glass-b); background: var(--surface-soft); color: var(--text); }
 @media (min-width: 900px) { .ith-bar { bottom: 16px; } .ith-p { font-size: 20px; } }
 /* Hymns & Stotras: inline links on hymn names, the list and the reader (reuses the Ithihasa player bar). */
-.hymn-link { display: inline; padding: 0; margin: 0; border: 0; background: none; font: inherit; color: var(--gold2); text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; text-align: start; }
+.hymn-link { display: inline; padding: 12px 0; margin: 0; -webkit-box-decoration-break: clone; box-decoration-break: clone; border: 0; background: none; font: inherit; color: var(--gold2); text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; text-align: start; }
 .hymn-link::after { content: ' 📜'; font-size: .85em; text-decoration: none; }
 .hymn-link:hover { text-decoration-style: solid; }
 .menu.hy-list > button.hy-row > span.hy-ic.hy-ic { flex: 0 0 34px; width: 34px; font-size: 24px; text-align: center; }

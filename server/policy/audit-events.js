@@ -7,7 +7,7 @@ const MAX_EVENTS = 500;
 const events = [];
 const counters = new Map();
 
-const ALLOWED_KEYS = ['surface', 'route', 'reasons', 'templateId', 'allowAstrology', 'validation', 'validationErrors', 'source', 'band', 'ageSource', 'language', 'jurisdiction', 'deadline', 'retentionClass', 'versions', 'latencyMs', 'classifier'];
+const ALLOWED_KEYS = ['surface', 'route', 'reasons', 'templateId', 'allowAstrology', 'validation', 'validationErrors', 'source', 'band', 'ageSource', 'language', 'jurisdiction', 'deadline', 'retentionClass', 'versions', 'latencyMs', 'classifier', 'trace'];
 const safeId = (v) => String(v ?? '').replace(/[^\w:.-]/g, '').slice(0, 64);
 
 /** Record one policy decision. Unknown keys are dropped; strings are reduced to identifier characters. */

@@ -7,6 +7,7 @@
 // times out we mark the classification uncertain so the policy uses reviewed safe handling.
 // Internal flag names are never shown to users.
 import { normalizeText, wordsToDigits, extractAges, decodeEmbedded, TB } from './lexicon.js';
+import { INTENT_PATTERNS } from '../../shared/age-guard.js';
 
 export const ROUTER_VERSION = 'router-1.0.0';
 
@@ -147,6 +148,11 @@ const R = {
     T('(திருமணம் செய்யலாமா|கல்யாணம் (செய்யலாமா|பண்ணலாமா)|காதலிக்கலாமா|சந்திக்கலாமா)'),
     /\b((kalyaa?nam|love|marry|sex|meet) pann?alaa?ma|kaa?dhalikkalaa?ma)\b/,
   ],
+  // Liking / wanting / winning over a specific person ("I like a 15 year old girl", "get her to love me") —
+  // shared with the phone's offline check (shared/age-guard.js).
+  attraction: INTENT_PATTERNS.attraction,
+  // 6–12 feelings / bullying / friendship fights → supportive child template ("tell a trusted adult").
+  childFeelings: INTENT_PATTERNS.childFeelings,
   privateMeeting: [/\b(alone|in private|secretly|without (her|his) parents)\b/, T('தனியாக|ரகசியமாக'), /\b(thaniya|ragasiyama|rahasiyama)\b/],
   meeting: [/\b(meet(ing)?|see (her|him)|visit (her|him)|alone with|in private|hotel|room|take (her|him) out|run away with|elope)\b/, T('சந்திக்க|தனியாக|ஓடிப்போ'), /\b(meet pann\w*|thaniya|odi pog)\b/],
   ambiguousFunk: [/\bfunk\b/],
@@ -217,7 +223,7 @@ export function classifyText(original) {
   return { normalized: norm, flags, purpose, requestedAction, urgency, ages };
 }
 
-const STICKY = ['selfHarm', 'abuse', 'danger', 'coercion', 'romanticOrSexual', 'romance', 'sexual', 'marriage', 'meeting', 'secrecy', 'bypass', 'fictional', 'privacyIntrusion'];
+const STICKY = ['selfHarm', 'abuse', 'danger', 'coercion', 'romanticOrSexual', 'romance', 'sexual', 'marriage', 'attraction', 'meeting', 'secrecy', 'bypass', 'fictional', 'privacyIntrusion'];
 
 let modelClassifier = null;
 /** Plug in an optional model-based classifier: async (text, deterministic) => ({ flags: {...} }). Off by default. */
@@ -245,6 +251,7 @@ export function classifyConversation(turns) {
     requestedAction: current.requestedAction,
     urgency: current.urgency,
     ages,
+    currentTurn: earlier.length,
     uncertainty: uncertain ? 'medium' : 'low',
     classifier: { deterministic: true, model: 'off' },
   };

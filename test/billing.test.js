@@ -74,17 +74,17 @@ async function buyWithRazorpay(cookie, plan, orderId, paymentId) {
 test('plans in INR (default) and USD', async () => {
   const inr = await (await req('GET', '/api/billing/plans')).json();
   assert.equal(inr.currency, 'INR');
-  assert.deepEqual(inr.plans.map((p) => p.id), ['free', 'premium_month', 'premium_year', 'family_month', 'family_year']);
+  assert.deepEqual(inr.plans.map((p) => p.id), ['free', 'personal_month', 'personal_year', 'family_month', 'family_year']);
   for (const p of inr.plans) {
     assert.ok(p.name.en && p.name.ta && p.features.length && p.features.every((x) => x.en && x.ta));
     assert.ok(['month', 'year', null].includes(p.interval));
   }
-  assert.equal(inr.plans.find((p) => p.id === 'premium_month').amount, 199);
+  assert.equal(inr.plans.find((p) => p.id === 'personal_month').amount, 199);
   assert.equal(inr.plans.find((p) => p.id === 'family_year').amount, 3999);
   const usd = await (await req('GET', '/api/billing/plans?currency=USD')).json();
   assert.equal(usd.currency, 'USD');
-  assert.equal(usd.plans.find((p) => p.id === 'premium_month').amount, 4.99);
-  assert.deepEqual(usd.plans.find((p) => p.id === 'premium_year').price, { INR: 1999, USD: 49 });
+  assert.equal(usd.plans.find((p) => p.id === 'personal_month').amount, 4.99);
+  assert.deepEqual(usd.plans.find((p) => p.id === 'personal_year').price, { INR: 1999, USD: 49 });
   assert.equal((await req('GET', '/api/billing/plans?currency=EUR')).status, 400);
 });
 
@@ -115,7 +115,7 @@ test('Razorpay checkout + verify activates premium for a month; bad signature 40
   process.env.RAZORPAY_KEY_ID = 'rzp_test_key';
   process.env.RAZORPAY_KEY_SECRET = 'rzp_secret';
   const calls = mockRazorpay('order_SUB1');
-  const res = await req('POST', '/api/billing/checkout', { plan: 'premium_month', currency: 'INR' }, as(alice));
+  const res = await req('POST', '/api/billing/checkout', { plan: 'personal_month', currency: 'INR' }, as(alice));
   assert.equal(res.status, 200);
   const co = await res.json();
   assert.deepEqual(co, { subscriptionId: co.subscriptionId, gateway: 'razorpay', keyId: 'rzp_test_key', razorpayOrderId: 'order_SUB1', amount: 19900, currency: 'INR' });
@@ -136,14 +136,14 @@ test('Razorpay checkout + verify activates premium for a month; bad signature 40
   assert.equal(ok.status, 200);
   const { subscription } = await ok.json();
   assert.equal(subscription.status, 'active');
-  assert.equal(subscription.plan, 'premium_month');
+  assert.equal(subscription.plan, 'personal_month');
   near(subscription.expiresAt, plusMonths(t0, 1), 'expiry +1 month');
   // Re-verifying is idempotent (no double extension)
   const again = (await (await verify({ razorpay_signature: rzpSig('order_SUB1', 'pay_1') })).json()).subscription;
   assert.equal(again.expiresAt, subscription.expiresAt);
 
   const m = await me(alice);
-  assert.equal(m.plan, 'premium_month');
+  assert.equal(m.plan, 'personal_month');
   assert.equal(m.status, 'active');
   assert.equal(m.expiresAt, subscription.expiresAt);
   assert.deepEqual(m.entitlements, { unlimitedAi: false, aiMonthly: 100, predictions: true, familyProfiles: 1 });
@@ -161,7 +161,7 @@ test('buying again extends from the current active expiry', async () => {
   const { subscription } = await v.json();
   near(subscription.expiresAt, plusYears(before, 1), 'extended by a year from previous expiry');
   const m = await me(alice);
-  assert.equal(m.plan, 'premium_year');
+  assert.equal(m.plan, 'personal_year');
   assert.equal(m.expiresAt, subscription.expiresAt);
 });
 
@@ -235,7 +235,7 @@ test('admin grant gives complimentary access and lists subscriptions', async () 
   assert.equal(subscription.gateway, 'admin');
   assert.equal(subscription.amountMinor, 0);
   near(subscription.expiresAt, t0 + 30 * DAY, 'grant +30 days');
-  assert.equal((await me(bala)).plan, 'premium_month');
+  assert.equal((await me(bala)).plan, 'personal_month');
 
   const list = (await (await req('GET', '/api/admin/billing/subscriptions', undefined, ADMIN)).json()).subscriptions;
   assert.ok(list.some((s) => s.id === subscription.id && s.userId === balaId));
@@ -265,7 +265,7 @@ test('AI quota: 402 after the free daily limit when BILLING_ENFORCE=1; premium h
   assert.equal(m.aiFreeDaily, 3);
   const blocked = await ask(dave);
   assert.equal(blocked.status, 402);
-  assert.deepEqual(await blocked.json(), { error: 'Free daily AI limit reached — built-in guidance keeps working; Premium includes a monthly AI allowance', upgrade: true });
+  assert.deepEqual(await blocked.json(), { error: 'Free daily AI limit reached — built-in guidance keeps working; the Personal plan includes a monthly AI allowance', upgrade: true });
   // Invalid requests are not counted
   assert.equal((await req('POST', '/api/ai/chat', { messages: [{ role: 'assistant', content: 'x' }] })).status, 400);
 

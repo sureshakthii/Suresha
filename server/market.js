@@ -49,7 +49,29 @@ const SERVICE_IDS = new Set(SERVICES.map((s) => s.id));
 const ORDER_ADMIN_STATUSES = ['paid', 'shipped', 'delivered', 'cancelled'];
 const PRIEST_STATUSES = ['pending', 'verified', 'rejected'];
 const REQUEST_TYPES = ['service', 'annadhanam', 'temple_booking', 'package'];
-const REQUEST_ADMIN_STATUSES = ['confirmed', 'assigned', 'completed', 'cancelled'];
+/**
+ * Request lifecycle: requested → awaiting_confirmation (set right after submit) → confirmed → (assigned) →
+ * completed / cancelled / refunded. 'requested' is kept for rows created before awaiting_confirmation existed.
+ */
+const REQUEST_ADMIN_STATUSES = ['awaiting_confirmation', 'confirmed', 'assigned', 'completed', 'cancelled', 'refunded'];
+const REQUEST_OPEN = ['requested', 'awaiting_confirmation', 'confirmed', 'assigned'];
+/**
+ * Store refunds (public/legal.js): a paid order may be refunded before delivery, and up to ORDER_REFUND_DAYS days
+ * after delivery (the delivered status time). The customer asks; the team (finance role) decides and refunds.
+ */
+const ORDER_REFUND_DAYS = 7;
+const REFUNDABLE_ORDER = ['paid', 'shipped', 'delivered'];
+/** Last moment a refund can be asked for (null = no deadline yet, i.e. not delivered); undefined = not refundable. */
+function refundDeadline(o) {
+  if (!REFUNDABLE_ORDER.includes(o.status)) return undefined;
+  return o.status === 'delivered' ? (o.updated_at || o.created_at) + ORDER_REFUND_DAYS * 86400000 : null;
+}
+/**
+ * Operational switch: seva / priest / package request intake is OFF unless SERVICES_OPEN=1 — nobody can fulfil
+ * requests until partners are onboarded, so the app must not take them. Priest registration stays open.
+ */
+export const servicesOpen = () => env('SERVICES_OPEN') === '1';
+export const SERVICES_CLOSED_MESSAGE = 'Coming soon — we are not accepting seva, priest or package requests yet. Nothing has been booked or charged.';
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS store_orders (
@@ -108,6 +130,16 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS service_requests_user ON service_requests(user_id);
   CREATE INDEX IF NOT EXISTS service_requests_priest ON service_requests(priest_id);
+  CREATE TABLE IF NOT EXISTS order_refund_requests (
+    id TEXT PRIMARY KEY,
+    order_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    reason TEXT,
+    status TEXT NOT NULL,
+    created_at INTEGER,
+    resolved_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS order_refund_requests_order ON order_refund_requests(order_id);
 `;
 
 const env = (k) => (process.env[k] || '').trim();
@@ -237,6 +269,7 @@ function priceItems(items) {
 }
 
 const razorpayConfigured = () => !!(env('RAZORPAY_KEY_ID') && env('RAZORPAY_KEY_SECRET'));
+const razorpayAuth = () => `Basic ${Buffer.from(`${env('RAZORPAY_KEY_ID')}:${env('RAZORPAY_KEY_SECRET')}`).toString('base64')}`;
 
 async function createRazorpayOrder(amountPaise, receipt) {
   const auth = Buffer.from(`${env('RAZORPAY_KEY_ID')}:${env('RAZORPAY_KEY_SECRET')}`).toString('base64');
@@ -254,10 +287,16 @@ async function createRazorpayOrder(amountPaise, receipt) {
 
 const parse = (s, d) => { try { return JSON.parse(s); } catch { return d; } };
 
+const refundOut = (x) => x && ({ id: x.id, orderId: x.order_id, reason: x.reason || '', status: x.status, createdAt: x.created_at, resolvedAt: x.resolved_at ?? null });
+const latestRefund = (orderId) => { try { return db().prepare('SELECT * FROM order_refund_requests WHERE order_id = ? ORDER BY created_at DESC LIMIT 1').get(orderId) || null; } catch { return null; } };
+
 const orderOut = (o, admin = false) => ({
   id: o.id, total: o.total, currency: 'INR', status: o.status, items: parse(o.items, []),
   address: parse(o.address, null), razorpayOrderId: o.razorpay_order_id || null,
   paymentId: o.razorpay_payment_id || null, createdAt: o.created_at, updatedAt: o.updated_at,
+  refundRequest: refundOut(latestRefund(o.id)),
+  refundEligible: refundDeadline(o) !== undefined && (refundDeadline(o) === null || now() <= refundDeadline(o)),
+  refundableUntil: refundDeadline(o) ?? null,
   ...(admin ? { userId: o.user_id } : {}),
 });
 
@@ -274,6 +313,8 @@ function logRequest(id, status, actor) {
 const requestHistory = (id) => db().prepare('SELECT status, actor, at FROM request_events WHERE request_id = ? ORDER BY id').all(id);
 
 const STATUS_TEXT = {
+  awaiting_confirmation: ['Your request is waiting for confirmation', 'உங்கள் கோரிக்கை உறுதிப்படுத்தலுக்குக் காத்திருக்கிறது'],
+  refunded: ['Your payment for this request was refunded', 'இந்தக் கோரிக்கைக்கான கட்டணம் திருப்பித் தரப்பட்டது'],
   confirmed: ['Your request is confirmed', 'உங்கள் கோரிக்கை உறுதி செய்யப்பட்டது'],
   assigned: ['A priest / partner has been assigned', 'புரோகிதர் / கூட்டாளர் நியமிக்கப்பட்டார்'],
   completed: ['Your seva is completed 🙏', 'உங்கள் சேவை நிறைவடைந்தது 🙏'],
@@ -379,8 +420,28 @@ export function marketRouter() {
     res.json({ orders: rows.map((o) => orderOut(o)) });
   });
 
+  // The customer asks for a refund of their own paid order within the stated window; this creates a request that
+  // the team (finance role) reviews and refunds with POST /admin/orders/:id/refund.
+  r.post('/store/orders/:id/refund-request', requireUser, handle((req, res) => {
+    const d = db();
+    const order = d.prepare('SELECT * FROM store_orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (!REFUNDABLE_ORDER.includes(order.status)) return res.status(409).json({ error: `Only paid orders can be refunded (this order is ${order.status})` });
+    const deadline = refundDeadline(order);
+    if (deadline !== null && now() > deadline) return res.status(409).json({ error: `Refunds can be requested up to ${ORDER_REFUND_DAYS} days after delivery` });
+    const open = d.prepare("SELECT * FROM order_refund_requests WHERE order_id = ? AND status IN ('open', 'refund_pending')").get(order.id);
+    if (open) return res.json({ refundRequest: refundOut(open), already: true });
+    const reason = text(body(req).reason, 'reason', { min: 0, max: 500, optional: true }) || '';
+    const id = crypto.randomUUID();
+    d.prepare("INSERT INTO order_refund_requests (id, order_id, user_id, reason, status, created_at) VALUES (?, ?, ?, ?, 'open', ?)").run(id, order.id, req.user.id, reason, now());
+    audit({ admin: { name: `user:${req.user.id}`, role: 'customer' }, ip: req.ip }, 'order.refund.request', order.id, { refundRequest: id });
+    res.status(201).json({ refundRequest: refundOut(d.prepare('SELECT * FROM order_refund_requests WHERE id = ?').get(id)) });
+  }));
+
   // Priests
   r.get('/services', (_req, res) => res.json(SERVICES));
+  /** Whether seva / priest / package requests are being accepted (SERVICES_OPEN). */
+  r.get('/service-status', (_req, res) => res.json({ open: servicesOpen(), message: servicesOpen() ? null : SERVICES_CLOSED_MESSAGE }));
 
   r.post('/priests/register', requireUser, handle((req, res) => {
     const b = body(req);
@@ -453,6 +514,7 @@ export function marketRouter() {
 
   // Service requests / bookings
   r.post('/requests', requireUser, handle((req, res) => {
+    if (!servicesOpen()) return res.status(503).json({ error: SERVICES_CLOSED_MESSAGE, servicesClosed: true });
     const b = body(req);
     const type = oneOf(b.type, REQUEST_TYPES, 'type');
     let service = null;
@@ -485,10 +547,11 @@ export function marketRouter() {
     };
     const t = now();
     db().prepare(`INSERT INTO service_requests (id, user_id, type, service, priest_id, temple_id, date, time, city, people, meals, amount,
-      notes, contact_phone, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'requested', ?, ?)`)
+      notes, contact_phone, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_confirmation', ?, ?)`)
       .run(q.id, req.user.id, q.type, q.service, q.priestId, q.templeId, q.date, q.time, q.city, q.people, q.meals, q.amount,
         q.notes, q.contactPhone, t, t);
     logRequest(q.id, 'requested', 'customer');
+    logRequest(q.id, 'awaiting_confirmation', 'system');
     res.status(201).json({ request: requestOut(db().prepare('SELECT * FROM service_requests WHERE id = ?').get(q.id)) });
   }));
 
@@ -504,7 +567,7 @@ export function marketRouter() {
     const d = db();
     const row = d.prepare('SELECT * FROM service_requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!row) return res.status(404).json({ error: 'Request not found' });
-    if (!['requested', 'confirmed', 'assigned'].includes(row.status)) return res.status(409).json({ error: `This request is already ${row.status}` });
+    if (!REQUEST_OPEN.includes(row.status)) return res.status(409).json({ error: `This request is already ${row.status}` });
     d.prepare("UPDATE service_requests SET status = 'cancelled', updated_at = ? WHERE id = ?").run(now(), row.id);
     audit({ admin: { name: `user:${req.user.id}`, role: 'customer' }, ip: req.ip }, 'request.cancel', row.id, { from: row.status });
     logRequest(row.id, 'cancelled', 'customer');
@@ -542,6 +605,42 @@ export function marketRouter() {
     audit(req, 'order.status', req.params.id, { status });
     res.json({ order: orderOut(d.prepare('SELECT * FROM store_orders WHERE id = ?').get(req.params.id), true) });
   }));
+
+  // Refund a store order (finance role). With Razorpay configured and a captured payment: calls the Razorpay refund
+  // API (status 'refunded' when processed, else 'refund_pending' until the refund.processed webhook). Without a
+  // gateway payment: marks 'refund_pending' for a manual refund. Every step is audited.
+  r.post('/admin/orders/:id/refund', adminRole('finance'), handle(async (req, res) => {
+    const d = db();
+    const order = d.prepare('SELECT * FROM store_orders WHERE id = ?').get(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.status === 'refunded') return res.json({ order: orderOut(order, true), already: true });
+    if (![...REFUNDABLE_ORDER, 'refund_pending'].includes(order.status)) return res.status(409).json({ error: `Order is ${order.status} — nothing was paid to refund` });
+    const b = body(req);
+    const paid = order.total * 100;
+    const amount = b.amountMinor === undefined ? paid : Number(b.amountMinor);
+    if (!Number.isInteger(amount) || amount < 1 || amount > paid) fail('amountMinor must be between 1 and the amount paid');
+    let status = 'refund_pending', refundId = null;
+    if (razorpayConfigured() && order.razorpay_payment_id) {
+      const r2 = await marketFetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(order.razorpay_payment_id)}/refund`, {
+        method: 'POST', headers: { Authorization: razorpayAuth(), 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, notes: { order: order.id } }),
+      });
+      const out = await r2.json().catch(() => ({}));
+      if (!r2.ok) return res.status(502).json({ error: `Razorpay refund failed (${r2.status})` });
+      refundId = out.id || null;
+      if (out.status === 'processed' && amount >= paid) status = 'refunded';
+    } else if (b.markRefunded === true) status = 'refunded'; // the team refunded by hand (bank transfer / UPI) and confirms it
+    const t = now();
+    d.prepare('UPDATE store_orders SET status = ?, updated_at = ? WHERE id = ?').run(status, t, order.id);
+    d.prepare("UPDATE order_refund_requests SET status = ?, resolved_at = ? WHERE order_id = ? AND status IN ('open', 'refund_pending')")
+      .run(status, status === 'refunded' ? t : null, order.id);
+    audit(req, 'order.refund', order.id, { amount, refundId, status, manual: !refundId });
+    res.json({ order: orderOut(d.prepare('SELECT * FROM store_orders WHERE id = ?').get(order.id), true), refundId, manual: !refundId });
+  }));
+
+  r.get('/admin/refund-requests', requireAdmin, (_req, res) => {
+    const rows = db().prepare('SELECT * FROM order_refund_requests ORDER BY created_at DESC').all();
+    res.json({ refundRequests: rows.map((x) => ({ ...refundOut(x), userId: x.user_id })) });
+  });
 
   r.get('/admin/requests', requireAdmin, (_req, res) => {
     const rows = db().prepare('SELECT * FROM service_requests ORDER BY created_at DESC').all();

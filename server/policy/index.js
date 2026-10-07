@@ -11,6 +11,7 @@ import { resourcesFor, resourcesText, DIRECTORY_VERSION } from './resource-direc
 import { VALIDATOR_VERSION } from './answer-validator.js';
 import { EVIDENCE_VERSION } from './evidence-builder.js';
 import { recordPolicyEvent } from './audit-events.js';
+import { answerTrace } from '../../shared/themes.js';
 
 export const VERSIONS = {
   policy: POLICY_VERSION, agePolicy: AGE_POLICY_VERSION, router: ROUTER_VERSION, context: CONTEXT_SCHEMA_VERSION,
@@ -76,14 +77,23 @@ export function publicPolicy(decision, ctx, extra = {}) {
   };
 }
 
+/**
+ * Traceability (§7b): calculation + rule versions, the tradition profile and the birth-input certainty.
+ * Sent as `trace` in every AI / policy response and recorded with every audit event. No personal data.
+ */
+export function traceFor(ctx, body = {}) {
+  const tp = typeof body?.traditionProfile === 'string' && /^[\w.-]{1,48}$/.test(body.traditionProfile) ? body.traditionProfile : undefined;
+  return answerTrace({ inputCertainty: ctx?.chartPrecision || 'none', ...(tp ? { traditionProfileId: tp } : {}) });
+}
+
 /** Step 10: minimal metrics (no message text, DOB or location). */
-export function audit(surface, { decision, ctx, validation = 'not_run', validationErrors = [], source, latencyMs, intent }) {
+export function audit(surface, { decision, ctx, validation = 'not_run', validationErrors = [], source, latencyMs, intent, trace = null }) {
   return recordPolicyEvent({
     surface, route: decision.route, reasons: decision.reasons, templateId: decision.templateId, allowAstrology: decision.allowAstrology,
     validation, validationErrors: validationErrors.map((e) => e.split(':').slice(0, 2).join(':')), source,
     band: ctx.speaker.band, ageSource: ctx.speaker.ageSource, language: ctx.language, jurisdiction: ctx.jurisdiction?.country,
     deadline: decision.deadline || 'none', retentionClass: decision.retentionClass, versions: VERSIONS, latencyMs,
-    classifier: intent?.classifier?.model,
+    classifier: intent?.classifier?.model, trace: trace || traceFor(ctx),
   });
 }
 

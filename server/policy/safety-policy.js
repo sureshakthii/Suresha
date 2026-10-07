@@ -59,7 +59,14 @@ export function decide(ctx, intent, { category = null } = {}) {
   const romanticNow = Boolean(f.romanticOrSexual || (category && MARRIAGE_CATEGORIES.has(category)));
   // Follow-ups ("will my dasa help me with her?") keep the earlier romantic context alive.
   const minorMentioned = ctx.participants.some((p) => p.minor === true && p.group !== 'child');
-  const romanticAny = romanticNow || Boolean(minorMentioned && f.meeting && (f.privateMeeting || f.secrecy)) || Boolean(st.romanticOrSexual && (f.meeting || f.timing || f.firstPersonRomance || f.permissionLanguage || /\b(her|him|she|he|them|அவள்|அவன்|aval|avan)\b/u.test(intent.normalized || '')));
+  // "I like a 15 year old girl", "help me with a 15 year old girl", "get her to love me": attraction toward a
+  // mentioned minor is a romantic context even without the words love / marry.
+  // A minor named in a romantic role ("my girlfriend is 15") in THIS message is a romantic context by itself;
+  // earlier turns only carry over through the sticky flags below (an unrelated follow-up is not declined).
+  const curTurn = intent.currentTurn ?? Math.max(-1, ...(intent.ages || []).map((a) => a.turn ?? -1));
+  const minorRomanticRole = (intent.ages || []).some((a) => a.who === 'other' && a.age < 18 && a.group === 'romantic' && (a.turn ?? curTurn) === curTurn);
+  const romanticAny = romanticNow || minorRomanticRole || Boolean(minorMentioned && (f.attraction || (f.meeting && (f.privateMeeting || f.secrecy))))
+    || Boolean((st.romanticOrSexual || st.attraction) && (f.meeting || f.timing || f.firstPersonRomance || f.permissionLanguage || f.attraction || /\b(her|him|she|he|them|அவள்|அவன்|aval|avan)\b/u.test(intent.normalized || '')));
   const sexualAny = Boolean(f.sexual || (st.sexual && romanticAny));
   const chatOthers = ctx.participants.filter((p) => p.role !== 'chart_subject');
   const minorTargets = ctx.participants.filter((p) => p.minor === true && p.group !== 'child' && !(p.role === 'chart_subject' && ['self'].includes(ctx.subject.relation)));
@@ -88,9 +95,9 @@ export function decide(ctx, intent, { category = null } = {}) {
     if (minorTargets.length) {
       if (minorSpeaker) return minorRomance(ctx, intent, reasons, 'peer_minor_romance', category, f, sexualAny);
       if (adultActors.length) return out('decline_facilitation', 'decline_minor_facilitation', 'adult_minor_facilitation_third_party');
-      const pursuing = f.firstPersonRomance || minorTargets.some((p) => p.group === 'romantic' || p.group === 'spouse') || f.secrecy || st.secrecy || f.privateMeeting;
-      if (adultSpeaker && pursuing) return out('decline_facilitation', 'decline_minor_facilitation', 'adult_minor_facilitation');
-      if (!adultSpeaker && pursuing) return minorRomance(ctx, intent, [...reasons], 'minor_partner_speaker_age_unknown', category, f, sexualAny);
+      const pursuing = f.firstPersonRomance || f.attraction || st.attraction || minorTargets.some((p) => p.group === 'romantic' || p.group === 'spouse') || f.secrecy || st.secrecy || f.privateMeeting;
+      // Adult OR unknown-age speaker pursuing a minor → decline (a speaker who is a minor was handled above).
+      if (pursuing) return out('decline_facilitation', 'decline_minor_facilitation', adultSpeaker ? 'adult_minor_facilitation' : 'unknown_age_minor_facilitation');
       return out('teen_guidance', f.marriage || (category && MARRIAGE_CATEGORIES.has(category)) ? 'minor_marriage' : 'guardian_minor_romance', 'third_party_minor_romance_question', { audience: 'guardian' });
     }
     if (minorChildren.length || (ctx.subject.minor === true && ctx.subject.relation !== 'self')) {
@@ -109,6 +116,7 @@ export function decide(ctx, intent, { category = null } = {}) {
     const child = band === '6-12';
     if (romanticAny || sexualAny) return minorRomance(ctx, intent, reasons, 'minor_speaker_romance', category, f, sexualAny);
     if (f.sexualHealth) return out(child ? 'child_guidance' : 'teen_guidance', child ? 'child_sensitive' : 'teen_sexual_health', 'minor_sexual_health_question', { resourceKinds: ['child'] });
+    if (child && f.childFeelings) return out('child_guidance', 'child_feelings', 'child_feelings_or_bullying');
     const card = prohibitedCard(f, intent);
     if (card) return out(child ? 'child_guidance' : 'teen_guidance', child ? 'child_sensitive' : card.templateId, ['minor_speaker', card.reason]);
     if (f.ambiguous) return out('clarify', 'clarify_funk', 'ambiguous_term');

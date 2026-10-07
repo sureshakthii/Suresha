@@ -4,6 +4,9 @@ import { createApp } from '../server/index.js';
 import { CATEGORIES, scoreSnapshot } from '../shared/prasna.js';
 import { panchang } from '../shared/astro.js';
 
+// Own in-memory database: the SQLite-backed rate limiter (server/admin.js) would otherwise share
+// data/kaippesi.db — and its per-IP window — with every other test file running in parallel.
+process.env.DB_PATH = ':memory:';
 delete process.env.ANTHROPIC_API_KEY;
 delete process.env.ANTHROPIC_AUTH_TOKEN;
 let server, base;

@@ -6,10 +6,12 @@ import {
 } from './core.js';
 import { icon, iconChip } from './icons.js';
 import { GROUPS, TOOLS, toolById, searchTools } from './tool-registry.js';
+import { savedJourneysHtml } from './screens-journey.js';
 
 export { GROUPS, TOOLS, searchTools };
 
-const statusBadge = (t) => (t.status === 'server' && STATIC ? `<span class="badge unv">${L('Opening soon', 'விரைவில்')}</span>`
+const statusBadge = (t) => (t.status === 'soon' ? `<span class="badge unv">${L('Coming soon', 'விரைவில்')}</span>`
+  : t.status === 'server' && STATIC ? `<span class="badge unv">${L('Opening soon', 'விரைவில்')}</span>`
   : t.status === 'sample' ? `<span class="badge est">${L('Sample', 'மாதிரி')}</span>` : '');
 
 /** One list row: icon · name (· group) · chevron. Same row everywhere (tools, hubs, settings). */
@@ -106,10 +108,11 @@ function renderServices(sec) {
     <button class="row-card" data-go="tools">${iconChip('tools', { size: 22, cls: 'mi-icon' })}<span class="row-txt"><span class="row-name">${L('All tools', 'அனைத்து கருவிகள்')}</span><small>${L('Every feature, grouped by what you want to do', 'எல்லா வசதிகளும், தேவை வாரியாக')}</small></span><span class="row-go" aria-hidden="true">${icon('chevron-right', { size: 18 })}</span></button>
     <button class="card glass cta-card journey-cta" data-go="journey"><b>${L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்')}</b>
       <span class="small muted">${L('Nearby, matching your leave, or close to home — with route, timings, weather and stay.', 'அருகில், உங்கள் விடுப்புக்கு ஏற்ப, அல்லது வீட்டருகே — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.')}</span></button>
+    ${savedJourneysHtml()}
     ${groupList('worship', { exclude: ['journey'] })}
     ${groupList('services', { exclude: ['consult'] })}
-    <button class="card glass cta-card second-opinion" data-go="consult"><b>${L('Want a second opinion from an expert jothidar? (paid)', 'நிபுணர் ஜோதிடரின் இரண்டாவது கருத்து வேண்டுமா? (கட்டண சேவை)')}</b>
-      <span class="small muted">${L('Optional — book a fixed-price session with a verified jothidar.', 'விருப்பம் மட்டும் — சரிபார்க்கப்பட்ட ஜோதிடருடன் நிலையான கட்டண அமர்வு.')}</span></button>
+    <button class="card glass cta-card second-opinion" data-go="consult"><b>${L('Talk to an astrologer', 'ஜோதிடருடன் பேச')} <span class="badge unv">${L('Coming soon', 'விரைவில்')}</span></b>
+      <span class="small muted">${L('Not available yet — no practitioners are onboarded, so nothing can be booked or charged.', 'இப்போது கிடைக்கவில்லை — எந்த ஜோதிடரும் இணைக்கப்படவில்லை; எதையும் முன்பதிவு செய்யவோ கட்டணம் செலுத்தவோ இயலாது.')}</span></button>
     <details class="card glass disclose"><summary class="card-title">${L('Our commitments', 'எங்கள் உறுதிமொழி')}</summary>
       <ul class="small">
         <li>${L('Payment never changes which temples we suggest.', 'கட்டணம் எந்தக் கோவிலைப் பரிந்துரைப்போம் என்பதை மாற்றாது.')}</li>
@@ -122,12 +125,38 @@ function renderServices(sec) {
 registerScreen('services', { render: renderServices });
 
 // ================================================================ MY BOOKINGS (fulfilment tracking)
+// Lifecycle: requested → awaiting_confirmation → confirmed → (assigned) → completed / cancelled / refunded.
 const STEP = {
-  requested: ['Requested', 'கோரப்பட்டது'], confirmed: ['Confirmed', 'உறுதி'], assigned: ['Priest / partner assigned', 'புரோகிதர் / கூட்டாளர் நியமனம்'],
+  requested: ['Requested', 'கோரப்பட்டது'], awaiting_confirmation: ['Awaiting confirmation', 'உறுதிப்படுத்தலுக்குக் காத்திருக்கிறது'],
+  confirmed: ['Confirmed', 'உறுதி'], refunded: ['Refunded', 'பணம் திருப்பப்பட்டது'], assigned: ['Priest / partner assigned', 'புரோகிதர் / கூட்டாளர் நியமனம்'],
   accepted: ['Accepted by the priest', 'புரோகிதர் ஏற்றார்'], declined: ['Priest unavailable — being reassigned', 'புரோகிதர் இயலவில்லை — மீண்டும் நியமனம்'],
   completed: ['Completed', 'நிறைவு'], cancelled: ['Cancelled', 'ரத்து'],
 };
 const stepName = (st) => L(...(STEP[st] || [st, st]));
+const CANCELLABLE = ['requested', 'awaiting_confirmation', 'confirmed', 'assigned'];
+const stepBadge = (st) => (st === 'completed' ? 'ok' : ['cancelled', 'refunded'].includes(st) ? 'unv' : 'est');
+const ORDER_STATUS = {
+  awaiting_payment: ['Awaiting payment', 'கட்டணத்திற்குக் காத்திருக்கிறது'], awaiting_payment_setup: ['Payment not set up — not charged', 'கட்டணம் அமைக்கப்படவில்லை — வசூலிக்கப்படவில்லை'],
+  payment_failed: ['Payment failed', 'கட்டணம் தோல்வி'], paid: ['Paid', 'செலுத்தப்பட்டது'], shipped: ['Shipped', 'அனுப்பப்பட்டது'], delivered: ['Delivered', 'விநியோகிக்கப்பட்டது'],
+  cancelled: ['Cancelled', 'ரத்து'], refund_pending: ['Refund in progress', 'பணத்திருப்பம் நடைபெறுகிறது'], refunded: ['Refunded', 'பணம் திருப்பப்பட்டது'],
+};
+const orderStatus = (st) => L(...(ORDER_STATUS[st] || [st, st]));
+
+/** Store orders with "Request a refund" while the order is inside the refund window. */
+async function storeOrdersHtml() {
+  let orders = [];
+  try { ({ orders } = await api('/api/store/orders')); } catch { return ''; }
+  if (!orders.length) return '';
+  return `<div class="section-title">📦 ${L('Store orders', 'கடை ஆர்டர்கள்')}</div>${orders.map((o) => {
+    const rq = o.refundRequest;
+    const canAsk = o.refundEligible && !(rq && ['open', 'refund_pending'].includes(rq.status));
+    return `<article class="card glass"><div class="card-title"><span>₹${Number(o.total).toLocaleString('en-IN')} · ${fmtAt(o.createdAt)}</span><span class="badge ${['refunded', 'cancelled', 'payment_failed'].includes(o.status) ? 'unv' : o.status === 'delivered' ? 'ok' : 'est'}">${esc(orderStatus(o.status))}</span></div>
+      <p class="small">${o.items.map((i) => `${esc(bi(i.name))} × ${i.qty}`).join(', ')}</p>
+      ${rq ? `<p class="small muted">${L('Refund request', 'பணத்திருப்பக் கோரிக்கை')}: ${esc(rq.status === 'open' ? L('sent — our team will review it', 'அனுப்பப்பட்டது — எங்கள் குழு பரிசீலிக்கும்') : orderStatus(rq.status))}</p>` : ''}
+      ${canAsk ? `<button class="chip-btn" data-refund="${esc(o.id)}">↩ ${L('Request a refund', 'பணத்திருப்பம் கோரு')}</button>${o.refundableUntil ? ` <span class="small muted">${L('until', 'வரை')} ${fmtAt(o.refundableUntil)}</span>` : ''}` : ''}
+    </article>`;
+  }).join('')}`;
+}
 const fmtAt = (t) => new Date(t).toLocaleString(ta() ? 'ta-IN' : 'en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 async function renderBookings(sec) {
@@ -137,15 +166,24 @@ async function renderBookings(sec) {
   if (!state.user) { body.innerHTML = `<div class="card glass cta-card" data-go="login">${L('Sign in to see your bookings', 'உங்கள் முன்பதிவுகளைப் பார்க்க உள்நுழையவும்')} ›</div>`; return; }
   let requests = [];
   try { ({ requests } = await api('/api/requests')); } catch (e) { body.innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
-  if (!requests.length) { body.innerHTML = `<p class="muted">${L('No bookings yet.', 'இன்னும் முன்பதிவு இல்லை.')}</p><button class="btn-soft" data-go="seva">🛕 ${L('Request a seva', 'சேவை கோரு')}</button>`; return; }
+  const orders = await storeOrdersHtml();
+  if (!requests.length) { body.innerHTML = `<p class="muted">${L('No bookings yet.', 'இன்னும் முன்பதிவு இல்லை.')}</p><button class="btn-soft" data-go="seva">🛕 ${L('Seva requests', 'சேவைக் கோரிக்கைகள்')}</button>${orders}`; wireRefunds(sec); return; }
   body.innerHTML = requests.map((r) => `<article class="card glass">
-      <div class="card-title"><span>${esc(r.service || r.type)} · ${fmtIsoDate(r.date)}</span><span class="badge ${r.status === 'completed' ? 'ok' : r.status === 'cancelled' ? 'unv' : 'est'}">${esc(stepName(r.status))}</span></div>
+      <div class="card-title"><span>${esc(r.service || r.type)} · ${fmtIsoDate(r.date)}</span><span class="badge ${stepBadge(r.status)}">${esc(stepName(r.status))}</span></div>
       <ol class="bk-timeline">${(r.history?.length ? r.history : [{ status: r.status, at: r.updatedAt }]).map((h) => `<li><b>${esc(stepName(h.status))}</b> <span class="muted small">${fmtAt(h.at)}</span></li>`).join('')}</ol>
-      ${['requested', 'confirmed', 'assigned'].includes(r.status) ? `<button class="chip-btn" data-cancel="${esc(r.id)}">✕ ${L('Cancel this request', 'இந்தக் கோரிக்கையை ரத்து செய்')}</button>` : ''}
-    </article>`).join('') + `<p class="small muted">${L('You get a notification when the status changes (if notifications are switched on).', 'நிலை மாறும்போது அறிவிப்பு வரும் (அறிவிப்புகள் இயக்கத்தில் இருந்தால்).')}</p>`;
+      ${CANCELLABLE.includes(r.status) ? `<button class="chip-btn" data-cancel="${esc(r.id)}">✕ ${L('Cancel this request', 'இந்தக் கோரிக்கையை ரத்து செய்')}</button>` : ''}
+    </article>`).join('') + `<p class="small muted">${L('You get a notification when the status changes (if notifications are switched on).', 'நிலை மாறும்போது அறிவிப்பு வரும் (அறிவிப்புகள் இயக்கத்தில் இருந்தால்).')}</p>${orders}`;
+  wireRefunds(sec);
   $$('[data-cancel]', sec).forEach((b) => b.addEventListener('click', async () => {
     if (!confirm(L('Cancel this request?', 'இந்தக் கோரிக்கையை ரத்து செய்யவா?'))) return;
     try { await api(`/api/requests/${b.dataset.cancel}/cancel`, { method: 'POST' }); toast(L('Request cancelled', 'கோரிக்கை ரத்து செய்யப்பட்டது')); renderBookings(sec); } catch (e) { toast(e.message); }
+  }));
+}
+function wireRefunds(sec) {
+  $$('[data-refund]', sec).forEach((b) => b.addEventListener('click', async () => {
+    const reason = prompt(L('Why do you want a refund? (optional)', 'பணத்திருப்பம் ஏன்? (விருப்பம்)'));
+    if (reason === null) return;
+    try { await api(`/api/store/orders/${b.dataset.refund}/refund-request`, { method: 'POST', body: { reason: reason.trim().slice(0, 500) || undefined } }); toast(L('Refund request sent — our team will review it', 'பணத்திருப்பக் கோரிக்கை அனுப்பப்பட்டது — எங்கள் குழு பரிசீலிக்கும்')); renderBookings(sec); } catch (e) { toast(e.message); }
   }));
 }
 registerScreen('bookings', { render: renderBookings, parent: 'services' });
@@ -171,7 +209,7 @@ registerScreen('consult', { render: renderConsult, parent: 'services' });
 
 // ================================================================ FAMILY SHARED PLANS
 function renderFamilyPlan(sec) {
-  const plans = (JSON.parse(localStorage.getItem('kj_plans') || '[]'));
+  const saved = savedJourneysHtml(); // dated list lives on the journey screen (saved-on date, open, rename, delete)
   sec.innerHTML = `${subHeader(L('Shared events & journeys', 'பகிர்ந்த நிகழ்வுகள் & பயணங்கள்'), L('Plan together — share only what is needed', 'சேர்ந்து திட்டமிடுங்கள் — தேவையானதை மட்டும் பகிருங்கள்'))}
     <div class="menu">
       <button data-go="muhurtham" data-param='{"category":"graha_pravesam","allFamily":true}'>${iconChip('muhurtham', { size: 20, cls: 'mi-icon' })}<span>${L('Choose dates for a family event (e.g. housewarming)', 'குடும்ப நிகழ்வுக்கு நாள் தேர்வு (எ.கா. கிரகப்பிரவேசம்)')}</span></button>
@@ -179,8 +217,7 @@ function renderFamilyPlan(sec) {
       <button data-go="reminders">${iconChip('reminders', { size: 20, cls: 'mi-icon' })}<span>${L('Family reminders', 'குடும்ப நினைவூட்டல்கள்')}</span></button>
     </div>
     <div class="section-title">${L('Saved plans', 'சேமித்த திட்டங்கள்')}</div>
-    ${plans.length ? plans.map((p) => `<button class="card glass plan-row" data-go="journey" data-param='${esc(JSON.stringify({ open: p.id }))}'><b>${esc(p.title)}</b><span class="muted small">${esc(p.dates || '')} · ${esc((p.travellers || []).join(', '))}</span></button>`).join('')
-    : `<p class="muted">${L('No saved plans yet.', 'இன்னும் சேமித்த திட்டம் இல்லை.')}</p>`}
+    ${saved || `<p class="muted">${L('No saved plans yet.', 'இன்னும் சேமித்த திட்டம் இல்லை.')}</p>`}
     <div class="card glass"><div class="card-title">🔒 ${L('Sharing & privacy', 'பகிர்வு & தனியுரிமை')}</div>
       <ul class="small">
         <li>${L('Each profile can be marked private: its chats and concerns stay on this phone and are never included in shared reports.', 'ஒவ்வொரு சுயவிவரத்தையும் “தனிப்பட்டது” எனக் குறிக்கலாம்: அதன் உரையாடல்களும் கவலைகளும் இந்தக் கைப்பேசியிலேயே இருக்கும்; பகிர்வில் சேராது.')}</li>

@@ -177,6 +177,7 @@ export const ICONS = {
   plus: "plus",
   invite: "gift",
   feedback: "star",
+  report: "triangle-alert",
   legal: "file-text",
   admin: "shield-check",
   user: "user",

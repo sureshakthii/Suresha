@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 
 process.env.DB_PATH = ':memory:';
+process.env.SERVICES_OPEN = '1'; // request intake is off by default (see the SERVICES_OPEN tests in market.test.js)
 process.env.AUTH_DEV_MODE = '1';
 process.env.AUTH_SECRET = 't';
 process.env.ADMIN_TOKENS = 'meena:finance:finance-token-123456,ravi:viewer:viewer-token-1234567';
@@ -61,7 +62,7 @@ test('Razorpay webhook: bad signature rejected; payment.captured activates; dupl
   const ev = { event: 'payment.captured', payload: { payment: { entity: { id: 'pay_1', order_id: co.razorpayOrderId, amount: 19900 } } } };
   assert.equal((await hook(ev, 'evt_1')).status, 200);
   const m1 = await me(kavi);
-  assert.equal(m1.plan, 'premium_month');
+  assert.equal(m1.plan, 'personal_month');
   const dup = await (await hook(ev, 'evt_1')).json();
   assert.equal(dup.duplicate, true);
   assert.equal((await me(kavi)).expiresAt, m1.expiresAt, 'a duplicate callback does not extend access');
@@ -83,7 +84,7 @@ test('admin refund needs the finance role, revokes access and is audited', async
   const user = await login('9876500033', 'Anbu');
   const co = await (await req('POST', '/api/billing/checkout', { plan: 'premium_month' }, as(user))).json();
   await hook({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_r', order_id: co.razorpayOrderId } } } }, 'evt_r');
-  assert.equal((await me(user)).plan, 'premium_month');
+  assert.equal((await me(user)).plan, 'personal_month');
   assert.equal((await req('POST', '/api/admin/billing/refund', { subscriptionId: co.subscriptionId }, { 'x-admin-token': 'viewer-token-1234567' })).status, 403);
   const r = await req('POST', '/api/admin/billing/refund', { subscriptionId: co.subscriptionId }, { 'x-admin-token': 'finance-token-123456' });
   assert.equal(r.status, 200);

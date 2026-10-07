@@ -75,7 +75,7 @@ export function businessMetrics({ days = 30, now = Date.now() } = {}) {
 
   // Bookings: fulfilled vs open; store booking value is GROSS and is not revenue.
   const fulfilled = one("SELECT COUNT(*) AS n FROM service_requests WHERE status = 'completed' AND updated_at >= ?", from).n || 0;
-  const bookingsOpen = one("SELECT COUNT(*) AS n FROM service_requests WHERE status IN ('requested', 'confirmed', 'assigned')").n || 0;
+  const bookingsOpen = one("SELECT COUNT(*) AS n FROM service_requests WHERE status IN ('requested', 'awaiting_confirmation', 'confirmed', 'assigned')").n || 0;
   const bookingsCancelled = one("SELECT COUNT(*) AS n FROM service_requests WHERE status = 'cancelled' AND updated_at >= ?", from).n || 0;
   const storeValue = one("SELECT COALESCE(SUM(total), 0) AS v FROM store_orders WHERE status IN ('paid', 'shipped', 'delivered') AND created_at >= ?", from).v || 0;
 

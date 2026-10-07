@@ -2,12 +2,15 @@
 // (temple office by phone, the official HR&CE / devasthanam website, or a visit) — never from memory or blogs.
 // Every entry needs: source (who/what was checked), verifiedOn (YYYY-MM-DD) and verifiedBy (reviewer name).
 // Entries older than STALE_DAYS are shown as "needs re-check" automatically.
+// Fields read by the app: hours, phone, accessibility (practical facts → "Verified (source, date)" via templeFacts() in
+// shared/journey.js) and association (tradition block). Anything not here is labelled "Needs checking".
 //
 // Format:
 //   madurai_meenakshi: {
 //     hours: { en: '5:00–12:30, 16:00–21:30', ta: 'காலை 5:00–மதியம் 12:30, மாலை 4:00–இரவு 9:30',
 //              source: 'Temple office phone call', verifiedOn: '2026-10-10', verifiedBy: 'Reviewer name' },
 //     accessibility: { en: 'Ramp at the east entrance; wheelchairs on request', ta: '…', source: '…', verifiedOn: '…', verifiedBy: '…' },
+//     phone: { en: '+91 …', source: 'HR&CE temple page', verifiedOn: '…', verifiedBy: '…' },
 //     association: { en: 'Navagraha sthalam for Mercury', ta: '…', source: 'HR&CE temple page', verifiedOn: '…', verifiedBy: '…' },
 //   },
 export const STALE_DAYS = 180;

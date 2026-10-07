@@ -15,8 +15,10 @@ export const BRAND = Object.freeze({
   descriptorTa: 'தனிப்பட்ட ஜோதிடம் & ஆன்மீக வழிகாட்டல்',
   assistantEn: 'Thunai Guide',     // the chat assistant's display name
   assistantTa: 'துணை வழிகாட்டி',
-  premiumEn: 'Thunai Premium',
-  premiumTa: 'துணை பிரீமியம்',
+  personalEn: 'Thunai Personal',   // the paid plan for one person (called "Premium" before)
+  personalTa: 'துணை தனிநபர்',
+  premiumEn: 'Thunai Personal',    // deprecated alias of personalEn — kept so older code shows the new name
+  premiumTa: 'துணை தனிநபர்',
   familyEn: 'Thunai Family',
   familyTa: 'துணை குடும்பம்',
   year: 2026,

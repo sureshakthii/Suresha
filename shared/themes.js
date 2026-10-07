@@ -9,6 +9,9 @@
 // matching and temple modules and by the tests: it walks every string in a report/card and rejects
 // accusation, mortality, fertility, guaranteed-event and unsafe-permission wording.
 
+import { CALC_VERSION, RULES_VERSION } from './version.js';
+import { DEFAULT_PROFILE_ID } from './rules/profiles.js';
+
 const T = (en, ta) => ({ en, ta });
 const DAY = 86400000;
 
@@ -166,4 +169,18 @@ export function dasaThemes(chart, { from = new Date(), count = 3, traditionProfi
     if (out.length >= count) break;
   }
   return assertNoProhibited(out);
+}
+
+// ----------------------------------------------------------------------------- traceability (§7b)
+
+/**
+ * The trace attached to every answer (server AI / policy responses, audit events and offline answers):
+ * calculation + rule versions, the tradition profile used and how certain the birth input was.
+ * inputCertainty: the birth-time precision ('exact' | 'approximate' | 'unknown' | 'entered' | 'none').
+ */
+export function answerTrace({ inputCertainty = null, traditionProfileId = DEFAULT_PROFILE_ID, source = null, policyVersion = null } = {}) {
+  const t = { calcVersion: CALC_VERSION, rulesVersion: RULES_VERSION, traditionProfileId, inputCertainty: inputCertainty ? String(inputCertainty).slice(0, 16) : 'none' };
+  if (source) t.source = source;
+  if (policyVersion) t.policyVersion = policyVersion;
+  return t;
 }

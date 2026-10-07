@@ -10,8 +10,9 @@ import { locationSettingsHtml, bindLocationSettings } from './residence-ui.js';
 import {
   state, $, $$, L, ta, esc, bi, api, STATIC, store, go, registerScreen, subHeader, saveFamily, saveSettings, setLoc,
   toast, RELATIONS, chartOf, nakName, rasiName, displayName, copyright, BRAND, supportCard,
-  placeName,
+  placeName, mergeAccountFamily,
 } from './core.js';
+import { track } from './growth.js';
 
 startPhoneInputs(); // every mobile-number field in the app gets the country-code picker
 
@@ -34,9 +35,8 @@ export async function loadSession() {
 async function pullAccountData() {
   try {
     const { data } = await api('/api/me/data');
-    const remote = Array.isArray(data?.family) ? data.family : [];
-    const ids = new Set(remote.map((m) => m.id));
-    state.family = [...remote, ...state.family.filter((m) => !ids.has(m.id))];
+    // Private profiles live only on this phone and win over any older server copy (core.js mergeAccountFamily).
+    state.family = mergeAccountFamily(Array.isArray(data?.family) ? data.family : [], state.family);
     if (Array.isArray(data?.ancestors)) state.ancestors = data.ancestors;
     state.activeId = data?.activeId && state.family.some((m) => m.id === data.activeId) ? data.activeId : state.family[0]?.id || null;
     saveFamily();
@@ -170,6 +170,7 @@ async function verifyOtp() {
     } else {
       const r = await api('/api/auth/otp/verify', { method: 'POST', body: { channel: login.channel, to: login.to, code, name: name || undefined } });
       state.user = r.user;
+      track(r.isNew ? 'signup' : 'login');
       await pullAccountData();
       saveFamily(); // upload anything that was only on this device
     }
@@ -404,7 +405,7 @@ function renderMore(sec) {
       <div style="flex:1">${u ? `<b>${esc(displayName(state.family.find((m) => m.relation === 'self')) || u.name || L('Signed in', 'உள்நுழைந்துள்ளீர்கள்'))}</b><div class="muted small">${esc(u.phone ? formatPhone(u.phone) : u.email || (u.hasFacebook ? 'Facebook' : ''))}${u.demo ? ' · demo' : ''}</div>`
     : `<b>${L('Not signed in', 'உள்நுழையவில்லை')}</b><div class="muted small">${L('Sign in to back up your family', 'குடும்ப விவரங்களைப் பாதுகாக்க உள்நுழையவும்')}</div>`}</div>
       ${u ? `<button class="chip-btn" id="signOut">${L('Sign out', 'வெளியேறு')}</button>` : `<button class="chip-btn" data-go="login">${L('Sign in', 'உள்நுழை')}</button>`}</div>
-    <button class="premium-cta" data-go="plans">${iconChip('plans', { size: 20, cls: 'mi-icon' })}${L(`${BRAND.premiumEn} & ${BRAND.familyEn}`, `${BRAND.premiumTa} & ${BRAND.familyTa}`)} ›</button>
+    <button class="premium-cta" data-go="plans">${iconChip('plans', { size: 20, cls: 'mi-icon' })}${L(`${BRAND.personalEn} & ${BRAND.familyEn}`, `${BRAND.personalTa} & ${BRAND.familyTa}`)} ›</button>
     <div class="card glass settings">
       <div class="card-title">${L('Settings', 'அமைப்புகள்')}</div>
       <div class="set-row"><span>${L('Language', 'மொழி')}</span><div class="seg"><button data-lang="ta" class="${ta() ? 'sel' : ''}">தமிழ்</button><button data-lang="en" class="${ta() ? '' : 'sel'}">English</button></div></div>

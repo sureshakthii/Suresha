@@ -9,7 +9,8 @@ import { grahaStrength, NAVAGRAHA } from './shared/remedies.js';
 import { significations, planetScore } from './shared/predict.js';
 import { capDate, minCap } from './shared/lifespan-cap.js';
 import { healthGuide } from './shared/health.js';
-import { ageProfile, topicAllowed, ageGuardAnswer, guardAnswer, suggestionsFor } from './shared/age-guard.js';
+import { ageProfile, topicAllowed, ageGuardAnswer, guardAnswer, suggestionsFor, facilitationCheck, policyAnswer, LIMITED_LABEL, LIMITS_LINE } from './shared/age-guard.js';
+import { validateOffline } from './shared/guidance.js';
 
 const DAY = 86400000;
 const T = (en, ta) => ({ en, ta });
@@ -155,10 +156,11 @@ const TOPIC = {
     action: { go: 'muhurtham', label: T('Find a good date', 'நல்ல நாள் தேர்வு') } },
   court: { houses: [6, 11, 1], negate: [5, 12, 8], key: 6, karakas: ['Mars', 'Sun'],
     name: T('Court case', 'வழக்கு'), houseWhy: T('6th (disputes and victory over them), 11th (success), 1st (your strength)', '6-ம் வீடு (வழக்கு, எதிர்ப்பை வெல்லுதல்), 11-ம் வீடு (வெற்றி), 1-ம் வீடு (உங்கள் பலம்)'),
-    dos: [T('Keep every document organised and follow your lawyer’s plan', 'அனைத்து ஆவணங்களையும் ஒழுங்காக வைத்து வழக்கறிஞர் திட்டப்படி செயல்படுங்கள்'), T('Attend important hearings after Murugan prayer', 'முக்கிய விசாரணைக்கு முன் முருகன் வழிபாடு'), T('Consider a fair settlement in the favourable window', 'சாதகமான காலத்தில் நியாயமான சமரசத்தையும் பரிசீலியுங்கள்')],
-    donts: [T('Avoid angry words with the other side', 'எதிர்தரப்பிடம் கோபமான சொற்கள் தவிர்க்கவும்'), T('Do not sign papers in Rahu Kalam', 'ராகு காலத்தில் ஆவணம் கையெழுத்திட வேண்டாம்')],
+    dos: [T('Attend every hearing on the date the court fixes and meet every filing deadline — follow your lawyer’s plan', 'நீதிமன்றம் நிர்ணயிக்கும் தேதியில் ஒவ்வொரு விசாரணைக்கும் செல்லுங்கள், ஒவ்வொரு தாக்கல் கெடுவையும் தவறாதீர்கள் — வழக்கறிஞர் திட்டப்படி செயல்படுங்கள்'), T('Keep every document organised; a short Murugan prayer before the hearing can bring calm', 'அனைத்து ஆவணங்களையும் ஒழுங்காக வையுங்கள்; விசாரணைக்கு முன் சிறு முருகன் வழிபாடு மன அமைதி தரும்'), T('Consider a fair settlement if your lawyer advises it', 'வழக்கறிஞர் பரிந்துரைத்தால் நியாயமான சமரசத்தையும் பரிசீலியுங்கள்')],
+    donts: [T('Never miss or postpone a hearing or a legal deadline for Rahu Kalam, a good time or a favourable period', 'ராகு காலம், நல்ல நேரம் அல்லது சாதகமான காலத்துக்காக விசாரணையையோ சட்டக் கெடுவையோ ஒருபோதும் தவறவிடாதீர்கள், தள்ளிப்போடாதீர்கள்'), T('Avoid angry words with the other side', 'எதிர்தரப்பிடம் கோபமான சொற்கள் தவிர்க்கவும்')],
+    practicalFirst: T('⚖️ Practical first: court dates, filing deadlines and your lawyer’s advice come first. Never miss a hearing or a legal deadline because of Prasnam, Rahu Kalam or a favourable period below. What is your real deadline?', '⚖️ நடைமுறை முதலில்: நீதிமன்றத் தேதிகள், தாக்கல் கெடுக்கள், உங்கள் வழக்கறிஞரின் ஆலோசனை — இவையே முதன்மை. பிரசன்னம், ராகு காலம் அல்லது கீழே உள்ள சாதகமான காலத்துக்காக விசாரணையையோ சட்டக் கெடுவையோ ஒருபோதும் தவறவிடாதீர்கள். உங்கள் உண்மையான கெடு என்ன?'),
     remedy: T('Recite Kanda Sashti Kavasam on Tuesdays; light a lamp for Sarabeswarar on Sundays in Rahu Kalam.', 'செவ்வாய்தோறும் கந்த சஷ்டி கவசம்; ஞாயிறு ராகு காலத்தில் சரபேஸ்வரருக்கு தீபம்.'),
-    follow: [T('Good date for the hearing', 'விசாரணைக்கு நல்ல நாள்'), T('Is a settlement better now?', 'இப்போது சமரசம் நல்லதா?'), T('Parigaram for Mars', 'செவ்வாய்க்கான பரிகாரம்')] },
+    follow: [T('How do I stay calm before the hearing?', 'விசாரணைக்கு முன் மன அமைதியாக இருப்பது எப்படி?'), T('Is a settlement better now?', 'இப்போது சமரசம் நல்லதா?'), T('Parigaram for Mars', 'செவ்வாய்க்கான பரிகாரம்')] },
   family: { houses: [2, 4, 9, 11], negate: [6, 8, 12], key: 4, karakas: ['Moon', 'Jupiter'],
     name: T('Family peace', 'குடும்ப அமைதி'), houseWhy: T('2nd (family), 4th (home, mother), 9th (father, blessings), 11th (siblings, support)', '2-ம் வீடு (குடும்பம்), 4-ம் வீடு (வீடு, தாய்), 9-ம் வீடு (தந்தை, ஆசி), 11-ம் வீடு (உடன்பிறப்பு)'),
     dos: [T('Eat together at least once a day', 'தினம் ஒருமுறையாவது சேர்ந்து உணவு'), T('Visit your Kula Deivam temple together', 'குலதெய்வக் கோவிலுக்குக் குடும்பமாகச் செல்லுங்கள்'), T('Give elders time and respect — their blessing is strength', 'பெரியோருக்கு நேரமும் மரியாதையும் — அவர்கள் ஆசியே பலம்')],
@@ -227,14 +229,19 @@ const pick = (o, lang) => (o ? (lang === 'ta' ? o.ta : o.en) : '');
  * Build the answer for a life topic. Returns the same shape the chat bubble renders:
  * { intent, text, sections: [{ key, title, lines }], meter, actions, followups }.
  */
-export function topicAnswer({ topic, question, chart, rel = {}, lang = 'ta', name = '', life = {}, today = null, now = new Date() }) {
+export function topicAnswer({ topic, question, chart, rel = {}, lang = 'ta', name = '', life = {}, today = null, now = new Date(), turns = [], speaker = null }) {
   const def = TOPIC[topic];
   const L = (en, ta) => (lang === 'ta' ? ta : en);
   if (!def || !chart) return null;
+  const certainty = rel?.certainty || 'exact';
+  // POLICY FIRST: romance / marriage / attraction toward a minor is declined, and a speaker who says they are under
+  // 18 gets the child / teen answer — before any house, dasa or meter is computed (shared/age-guard.js).
+  const gate = policyAnswer(facilitationCheck(question, { turns, speaker }), { lang, question, topic, name });
+  if (gate) return validateOffline(gate, { lang, inputCertainty: certainty });
   // AGE FIRST: the chart owner's age decides whether this topic is read at all. A child's chart is never
   // scored, timed or given a meter for marriage, job, money, court …: it gets a warm, age-appropriate reply.
   const profile = ageProfile(life.birthDate || chart, { now, tz: chart.tz });
-  if (!topicAllowed(topic, profile)) return ageGuardAnswer({ topic, profile, lang, name, question });
+  if (!topicAllowed(topic, profile)) return validateOffline(ageGuardAnswer({ topic, profile, lang, name, question }), { lang, inputCertainty: certainty });
   const useLagna = rel.lagna !== false;
   const c = useLagna ? chart : fromMoonChart(chart);
   const q = { houses: def.houses, negate: def.negate, key: def.key, karakas: def.karakas };
@@ -318,20 +325,21 @@ export function topicAnswer({ topic, question, chart, rel = {}, lang = 'ta', nam
   if (today?.rahuKalam) donts.push(L(`Today’s Rahu Kalam: ${today.rahuKalam}`, `இன்றைய ராகு காலம்: ${today.rahuKalam}`));
 
   const sections = [
-    { key: 'answer', title: L('Answer', 'பதில்'), lines: [head] },
+    { key: 'answer', title: L('Answer', 'பதில்'), lines: def.practicalFirst ? [pick(def.practicalFirst, lang), head] : [head] },
     { key: 'periods', title: L('Favourable periods', 'சாதகமான காலங்கள்'), lines: periodLines },
     { key: 'dos', title: L('Do', 'செய்யலாம்'), lines: dos },
     { key: 'donts', title: L('Avoid', 'தவிர்க்கவும்'), lines: donts },
     { key: 'remedy', title: L('Free parigaram', 'இலவச பரிகாரம்'), lines: rem },
     { key: 'chart', title: L('Your chart for this question', 'இந்தக் கேள்விக்கான உங்கள் ஜாதகம்'), lines: chartLines },
+    { key: 'uncertainty', title: L('Limits', 'வரம்பு'), lines: [pick(LIMITS_LINE, lang)] },
   ];
   const meter = { topic: pick(def.name, lang), pct, level, label: level === 'high' ? L('Very favourable', 'மிகச் சாதகம்') : level === 'mid' ? L('Favourable with effort', 'முயற்சியுடன் சாதகம்') : L('Builds step by step', 'படிப்படியாக வளரும்') };
   const actions = def.action ? [{ go: def.action.go, label: pick(def.action.label, lang) }] : [];
   if (['second_marriage', 'marriage', 'business', 'property', 'vehicle', 'court'].includes(topic) && !actions.some((a) => a.go === 'muhurtham')) actions.push({ go: 'muhurtham', label: L('Good dates', 'நல்ல நாள்') });
   actions.push({ go: 'parigaram', label: L('Parigaram & temple', 'பரிகாரம் & கோவில்') });
   const text = sections.map((s) => `${s.title}:\n${s.lines.map((l) => `• ${l}`).join('\n')}`).join('\n\n');
-  const out = { intent: topic, topic, question, text, sections, meter, actions, followups: def.follow.map((f) => pick(f, lang)) };
-  return guardAnswer(out, profile, lang);
+  const out = { intent: topic, topic, question, text, sections, meter, actions, followups: def.follow.map((f) => pick(f, lang)), deadlineFirst: Boolean(def.practicalFirst) };
+  return validateOffline(guardAnswer(out, profile, lang), { lang, inputCertainty: certainty });
 }
 
 /** Follow-up suggestions when a question is unclear: the three most-asked life topics (adults only). */
@@ -343,17 +351,29 @@ export const GENERAL_FOLLOWUPS = [
 /** Follow-ups for an unclear question, chosen by the chart owner's age band (children never see marriage / job / money). */
 export const generalFollowups = (profile) => suggestionsFor(profile, GENERAL_FOLLOWUPS).slice(0, 3);
 export { ageProfile, guardAnswer, ageGuardAnswer, topicAllowed };
-export { childGeneralAnswer, suggestionsFor } from './shared/age-guard.js';
+export { childGeneralAnswer, suggestionsFor, facilitationCheck, policyAnswer, LIMITED_LABEL, LIMITS_LINE } from './shared/age-guard.js';
+export { validateOffline };
 
 /** Lines that must never reach the user (referrals away from the app, review labels, evidence ids). */
 const HIDE = /astrologer|jothidar|ஜோதிடர|expert review|awaiting|proposed rule|not a prediction|முன்னறிவிப்பு அல்ல|rule id|ruleId|engine|இயந்திர|evidence|ஆதாரம்|source:|reviewer|மதிப்பாய்வு/i;
-/** Clean an answer from the shared engine for display: drop the question echo, uncertainty and referral lines. */
+/**
+ * Clean an answer from the shared engine for display: drop the question echo and referral lines. The limits /
+ * uncertainty section is KEPT as one short line (the engine's own first uncertainty line when it is clean, else the
+ * standard limits line) so every rule-based answer says what it cannot know.
+ */
 export function cleanSharedAnswer(ans) {
   if (!ans?.sections) return ans;
+  const lang = ans.lang === 'en' || (!ans.lang && !/[\u0B80-\u0BFF]/.test(ans.text || '')) ? 'en' : 'ta';
+  const policy = ans.intent === 'policy' || ans.intent === 'age_guard';
   const sections = ans.sections
-    .filter((s) => !['question', 'uncertainty'].includes(s.key))
-    .map((s) => ({ ...s, lines: (s.lines || []).filter((l) => !HIDE.test(l)) }))
+    .filter((s) => s.key !== 'question')
+    .map((s) => {
+      if (s.key !== 'uncertainty') return { ...s, lines: (s.lines || []).filter((l) => !HIDE.test(l)) };
+      const keep = (s.lines || []).find((l) => !HIDE.test(l) && l.length <= 200);
+      return { ...s, lines: [keep || pick(LIMITS_LINE, lang)] };
+    })
     .filter((s) => s.lines.length);
+  if (!policy && !sections.some((s) => s.key === 'uncertainty')) sections.push({ key: 'uncertainty', title: lang === 'ta' ? 'வரம்பு' : 'Limits', lines: [pick(LIMITS_LINE, lang)] });
   return { ...ans, sections, text: sections.map((s) => `${s.title}:\n${s.lines.map((l) => `• ${l}`).join('\n')}`).join('\n\n') };
 }
 export const hiddenText = (s) => HIDE.test(String(s || ''));

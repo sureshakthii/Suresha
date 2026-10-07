@@ -13,12 +13,14 @@ import { ageProfile, topicAllowed, adultText, childSafe } from './shared/age-gua
 import { locName, zoneDiffText, countryOfLoc } from './shared/residence.js';
 import { moneyRange, currencyForCountry } from './shared/currency.js';
 import { PACKAGES, PACKAGE_INCLUDES, packageRoute } from './shared/packages.js';
+import { provLabel, asSaved, templeFacts, prov } from './shared/journey.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtIsoDate, api, store,
   activeMember, chartOf, registerScreen, go, subHeader, aiTask, toast, speak, stopSpeaking, STATIC, needsServerCard, displayName,
   placeName, BRAND, copyright,
 } from './core.js';
 import { refreshSnap } from './screens-main.js';
+import { servicesOpen, servicesClosedCard } from './growth.js';
 import { fetchForecast, weatherAdvice } from './shared/weather.js';
 import { stationObservation } from './shared/station.js';
 
@@ -137,18 +139,45 @@ async function renderWeather(sec, params = {}) {
 registerScreen('weather', { render: renderWeather, parent: 'home', needsLoc: true });
 
 // ================================================================ TEMPLE DETAILS (sirappu, power, thala varalaru, how to reach)
-/** Expandable details for one temple: highlights, what to pray for, legend and the way by air, rail and road. */
-export function templeDetailHtml(t, { open = false } = {}) {
+/**
+ * Provenance badge for a practical fact (brief §9c; model in shared/journey.js): Live / Saved / Estimated /
+ * Verified / Needs checking. `savedOn` turns estimates and live values into "Saved (on date)".
+ */
+export function provBadge(p, { savedOn = null } = {}) {
+  const q = savedOn ? asSaved(p, savedOn) : p;
+  const lab = provLabel(q, { date: (d) => (d ? fmtIsoDate(String(d).slice(0, 10)) : '—') });
+  return `<span class="badge prov prov-${q.kind}">${esc(bi(lab))}</span>`;
+}
+/** Offline: nothing current can be promised — flights, weather, opening hours and bookings must be checked. */
+export function offlineBanner() {
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) return '';
+  return `<div class="note-box offline-banner" role="status">📴 <b>${L('Check before travel', 'பயணத்திற்கு முன் சரிபார்க்கவும்')}</b> — ${L('you are offline. Weather, opening hours, flight availability and bookings shown here are not current.', 'இணைப்பு இல்லை. இங்குள்ள வானிலை, நடை நேரம், விமானம் கிடைப்பது, முன்பதிவு எதுவும் தற்போதையவை அல்ல.')}</div>`;
+}
+/** Practical facts for a temple card: opening hours and phone, each with its provenance badge. */
+export function templeFactsHtml(t) {
+  const f = templeFacts(t.id);
+  const links = templeLinks(t);
+  return `<div class="facts-block"><div class="mini-label">🧭 ${L('Travel facts', 'பயணத் தகவல்')}</div>
+    <p class="small">🕰️ ${L('Opening hours', 'நடை திறப்பு')}: ${f.hours.value ? `${esc(bi(f.hours.value))}` : L('not on file', 'பதிவில் இல்லை')} ${provBadge(f.hours.prov)}</p>
+    <p class="small">📞 ${L('Phone', 'தொலைபேசி')}: ${f.phone.value ? esc(bi(f.phone.value)) : `<a href="${links.contact}" target="_blank" rel="noopener">${L('see the Google Maps listing', 'Google Maps பட்டியலில் பாருங்கள்')}</a>`} ${provBadge(f.phone.prov)}</p>
+    <p class="small">♿ ${L('Access', 'அணுகல்')}: ${f.accessibility.value ? esc(bi(f.accessibility.value)) : L('steps and queues not verified', 'படிகள், வரிசை சரிபார்க்கப்படவில்லை')} ${provBadge(f.accessibility.prov)}</p></div>`;
+}
+/** Expandable details for one temple: tradition (highlights, prayer, legend, festival) kept apart from travel facts. */
+export function templeDetailHtml(t, { open = false, facts = true } = {}) {
   const i = templeInfo(t.id);
   if (!i) return '';
   const q = encodeURIComponent(`${t.name.en}, ${t.town}`);
+  const hours = templeFacts(t.id).hours;
   return `<details class="temple-more"${open ? ' open' : ''}><summary>📜 ${L('Sirappu, power & thala varalaru', 'சிறப்பு, சக்தி & தல வரலாறு')}</summary>
+    <div class="trad-block"><div class="mini-label">🪔 ${L('Tradition', 'மரபு')}</div>
     <p class="small">🌟 <b>${L('Sirappu', 'சிறப்பு')}:</b> ${esc(bi(i.sirappu))}</p>
     <p class="small">🙏 <b>${L('Pray here for', 'இங்கு வேண்டுவது')}:</b> ${esc(bi(i.power))}</p>
     <p class="small">📖 <b>${L('Thala varalaru', 'தல வரலாறு')}:</b> ${esc(bi(i.varalaru))}</p>
     ${i.festival ? `<p class="small">🎉 <b>${L('Festival', 'திருவிழா')}:</b> ${esc(bi(i.festival))}</p>` : ''}
-    ${i.timings ? `<p class="small">🕰️ <b>${L('Nadai thirappu (approx.)', 'நடை திறப்பு (தோராயம்)')}:</b> ${esc(bi(i.timings))}</p>` : ''}
-    <p class="small">✈️ ${esc(bi(i.airport))}</p><p class="small">🚆 ${esc(bi(i.rail))}</p>
+    <p class="small muted">${L('Traditional accounts — devotional associations, not travel facts.', 'மரபு வழிச் செய்திகள் — வழிபாட்டுத் தொடர்பு; பயணத் தகவல் அல்ல.')}</p></div>
+    <div class="facts-block"><div class="mini-label">🧭 ${L('How to reach', 'எப்படிச் செல்வது')}</div>
+    ${facts && hours.value ? `<p class="small">🕰️ <b>${L('Nadai thirappu (approx.)', 'நடை திறப்பு (தோராயம்)')}:</b> ${esc(bi(hours.value))} ${provBadge(hours.prov)}</p>` : ''}
+    <p class="small">✈️ ${esc(bi(i.airport))} ${provBadge(prov('estimated'))}</p><p class="small">🚆 ${esc(bi(i.rail))} ${provBadge(prov('estimated'))}</p></div>
     <div class="btn-row">
       <a class="chip-btn" href="https://www.google.com/travel/flights?q=${encodeURIComponent(`flights to ${i.airport.en.split(' (')[0].split(' ~')[0]}`)}" target="_blank" rel="noopener">✈️ ${L('Flights', 'விமானம்')}</a>
       ${t.abroad ? '' : `<a class="chip-btn" href="https://www.irctc.co.in/" target="_blank" rel="noopener">🚆 ${L('Train', 'ரயில்')}</a>`}
@@ -163,6 +192,7 @@ function renderTemples(sec, params = {}) {
   const m = activeMember();
   const weak = m ? grahaStrength(chartOf(m).planets).filter((g) => g.level === 'weak').map((g) => g.planet) : [];
   sec.innerHTML = `${subHeader(L('Temples near you', 'அருகிலுள்ள கோவில்கள்'), `${L('Distances from', 'தூரம்')} 📍 ${esc(placeName(state.loc.name))}`)}
+    ${offlineBanner()}
     ${weak.length ? `<div class="card glass"><b>🌟 ${L('Parigara sthalams for', 'பரிகாரத் தலங்கள்')} ${esc(displayName(m))}:</b> ${weak.map((k) => `${GLYPH[k]} ${esc(bi(NAVAGRAHA[k].temple))}`).join(' · ')}</div>` : ''}
     <div class="member-switch">${TEMPLE_TAGS.map((t) => `<button class="mchip${templeUi.tag === t.id ? ' sel' : ''}" data-tag="${t.id}">${esc(bi(t))}</button>`).join('')}</div>
     ${templeSearchField({ id: 'tSearch', value: templeUi.query })}
@@ -179,9 +209,10 @@ function renderTemples(sec, params = {}) {
         <div class="pg big" style="color:${t.planet ? COLOR[t.planet] : 'var(--gold)'}">${t.planet ? GLYPH[t.planet] : '🛕'}</div>
         <div style="flex:1;min-width:0"><b>${esc(bi(t.name))}</b>
           <p class="muted small">${esc(bi(t.deity))} · ${esc(placeName(t.town))}</p>
-          <p class="small dist">${t.mode === 'flight' ? `✈️ ~${Math.round(t.km).toLocaleString()} km · ${L('flight suggested', 'விமானப் பயணம் பரிந்துரை')} (~${Math.round(t.flightHours)} ${L('hr', 'மணி')})` : `📏 ${t.km < 1 ? '<1' : `~${Math.round(t.roadKm)}`} km ${L('by road', 'சாலை வழி')} · 🚗 ~${t.driveHours < 1 ? `${Math.round(t.driveHours * 60)} ${L('min', 'நிமி')}` : `${t.driveHours.toFixed(1)} ${L('hr', 'மணி')}`}`}</p>
-          <p class="small">${esc(bi(t.note))}</p>
-          ${templeDetailHtml(t)}
+          <p class="small dist">${t.mode === 'flight' ? `✈️ ~${Math.round(t.km).toLocaleString()} km · ${L('flight suggested', 'விமானப் பயணம் பரிந்துரை')} (~${Math.round(t.flightHours)} ${L('hr', 'மணி')})` : `📏 ${t.km < 1 ? '<1' : `~${Math.round(t.roadKm)}`} km ${L('by road', 'சாலை வழி')} · 🚗 ~${t.driveHours < 1 ? `${Math.round(t.driveHours * 60)} ${L('min', 'நிமி')}` : `${t.driveHours.toFixed(1)} ${L('hr', 'மணி')}`}`} ${provBadge(prov('estimated'))}</p>
+          ${templeFactsHtml(t)}
+          <div class="trad-block"><div class="mini-label">🪔 ${L('Tradition', 'மரபு')}</div><p class="small">${esc(bi(t.note))}</p></div>
+          ${templeDetailHtml(t, { facts: false })}
           <div class="btn-row">
             <a class="chip-btn" href="${links.directions}" target="_blank" rel="noopener">🗺️ ${L('Directions', 'வழி')}</a>
             <a class="chip-btn" href="${links.contact}" target="_blank" rel="noopener">📞 ${L('Phone & timings', 'தொலைபேசி & நேரம்')}</a>
@@ -394,9 +425,14 @@ async function renderSeva(sec, params = {}, mode = 'seva') {
   const list = priests ? PRIEST_QUICK : SEVA_QUICK;
   const pick = params.type === 'temple_booking' ? 'temple_booking' : params.service || null;
   const rerender = (p) => renderSeva(sec, p, mode);
-  sec.innerHTML = `${priests
-    ? subHeader(L('Priests', 'புரோகிதர்கள்'), L('Verified Iyers / Vadhyars at your home — homam, graha pravesam, wedding, thivasam and more', 'சரிபார்க்கப்பட்ட ஐயர் / வாத்தியார் உங்கள் இல்லத்திற்கு — ஹோமம், கிரகப் பிரவேசம், திருமணம், திவசம்'))
-    : subHeader(L('Seva', 'சேவைகள்'), L('Temple archanai, annadhanam, gomatha and kubera pooja — done for you by trusted partners', 'கோவில் அர்ச்சனை, அன்னதானம், கோமாதா, குபேர பூஜை — நம்பகமான கூட்டாளிகள் மூலம்'))}
+  // SERVICES_OPEN (server switch): until partners can fulfil requests, the headings make no claims and no form is shown.
+  const open = await servicesOpen();
+  sec.innerHTML = `${!open
+    ? subHeader(priests ? L('Priests', 'புரோகிதர்கள்') : L('Seva', 'சேவைகள்'), L('Priest network — opening soon', 'புரோகிதர் வலையமைப்பு — விரைவில்'))
+    : priests
+      ? subHeader(L('Priests', 'புரோகிதர்கள்'), L('Iyers / Vadhyars at your home — homam, graha pravesam, wedding, thivasam and more', 'ஐயர் / வாத்தியார் உங்கள் இல்லத்திற்கு — ஹோமம், கிரகப் பிரவேசம், திருமணம், திவசம்'))
+      : subHeader(L('Seva', 'சேவைகள்'), L('Temple archanai, annadhanam, gomatha and kubera pooja — arranged through our partners', 'கோவில் அர்ச்சனை, அன்னதானம், கோமாதா, குபேர பூஜை — எங்கள் கூட்டாளிகள் மூலம் ஏற்பாடு'))}
+    ${open || STATIC ? '' : servicesClosedCard()}
     <div class="tiles">${list.map(([id, icon, en, tx]) => `<button class="tile${pick === id ? ' sel-tile' : ''}" data-seva="${id}"><span class="ti-icon">${icon}</span><span>${esc(L(en, tx))}</span></button>`).join('')}</div>
     <div class="btn-row">${priests ? `<button class="chip-btn" data-go="seva">🛕 ${L('Temple seva', 'கோவில் சேவைகள்')}</button>` : `<button class="chip-btn" data-go="priests">🧑‍🦳 ${L('Book a priest', 'புரோகிதர் முன்பதிவு')}</button>`}<button class="chip-btn" data-go="packages">🧳 ${L('Yatra packages', 'யாத்திரை')}</button><button class="chip-btn" data-go="muhurtham">🗓️ ${L('Good date', 'நல்ல நாள்')}</button></div>
     <div id="sevaForm"></div><div id="myReq"></div>
@@ -404,7 +440,7 @@ async function renderSeva(sec, params = {}, mode = 'seva') {
   $$('[data-seva]', sec).forEach((b) => b.addEventListener('click', () => rerender(b.dataset.seva === 'temple_booking' ? { type: 'temple_booking' } : { service: b.dataset.seva })));
   if (STATIC) { $('#sevaForm').innerHTML = needsServerCard(L('Bookings, priest connect and Annadhanam requests open here soon.', 'முன்பதிவு, புரோகிதர் இணைப்பு, அன்னதானக் கோரிக்கைகள் விரைவில் இங்கு தொடங்கும்.')); return; }
   $('#regPriest')?.addEventListener('click', () => priestForm());
-  if (pick) sevaRequestForm(pick, params);
+  if (pick && open) sevaRequestForm(pick, params); // closed: the "not accepting requests yet" card above is the answer
   if (state.user) {
     try {
       const { requests } = await api('/api/requests');
@@ -438,12 +474,13 @@ async function sevaRequestForm(pick, params) {
     e.preventDefault();
     if (e.target.elements.templeId && !e.target.elements.templeId.value) { $('#reqErr').textContent = L('Please choose the temple from the list', 'பட்டியலிலிருந்து கோவிலைத் தேர்வு செய்யுங்கள்'); $('#reqTemple').focus(); return; }
     if (!state.user) { toast(L('Please sign in to send a request', 'கோரிக்கை அனுப்ப உள்நுழையவும்')); go('login'); return; }
+    if (!(await servicesOpen())) { $('#sevaForm').innerHTML = servicesClosedCard(); return; }
     const f = e.target;
     const val = (k) => f.elements[k]?.value?.trim() || undefined;
     const body = { type, service: type === 'service' ? pick : undefined, priestId: val('priestId'), templeId: val('templeId'), date: val('date'), time: val('time'), city: val('city'), contactPhone: val('contactPhone'), notes: val('notes'), meals: f.elements.meals ? Number(f.elements.meals.value) : undefined };
     try {
       const { request } = await api('/api/requests', { method: 'POST', body });
-      $('#sevaForm').innerHTML = `<div class="card glass"><b>🙏 ${L('Request sent', 'கோரிக்கை அனுப்பப்பட்டது')}</b><p class="small">${L('Our team will confirm shortly.', 'எங்கள் குழு விரைவில் உறுதிப்படுத்தும்.')}${request.amount ? ` ${L('Indicative amount', 'தோராயத் தொகை')}: ${inr(request.amount)}` : ''}</p></div>`;
+      $('#sevaForm').innerHTML = `<div class="card glass"><b>🙏 ${L('Request sent — awaiting confirmation', 'கோரிக்கை அனுப்பப்பட்டது — உறுதிப்படுத்தலுக்குக் காத்திருக்கிறது')}</b><p class="small">${L('Nothing is booked until our team confirms it. Track it in My bookings.', 'எங்கள் குழு உறுதிசெய்யும் வரை எதுவும் முன்பதிவாகாது. “என் முன்பதிவுகள்” பகுதியில் பார்க்கலாம்.')}${request.amount ? ` ${L('Indicative amount', 'தோராயத் தொகை')}: ${inr(request.amount)}` : ''}</p></div>`;
     } catch (err) { $('#reqErr').textContent = err.message; }
   });
 }
@@ -716,6 +753,7 @@ function renderPackages(sec, params = {}) {
   const loc = state.loc;
   const open = params.id || null;
   sec.innerHTML = `${subHeader(L('Yatra & Parigaram Packages', 'யாத்திரை & பரிகார பேக்கேஜ்கள்'), L('Temples, priest, pooja items, stay and travel — arranged together', 'கோவில், புரோகிதர், பூஜைப் பொருள், தங்குமிடம், பயணம் — ஒன்றாக ஏற்பாடு'))}
+    ${offlineBanner()}
     <div class="card glass pkg-find"><div class="card-title">🔍 ${L('Find a temple', 'கோவிலைத் தேடுங்கள்')}</div>
       ${templeSearchField({ id: 'pkgSearch' })}<div id="pkgHit" aria-live="polite"></div></div>
     <div class="card glass"><div class="card-title">✅ ${L('Every package includes', 'ஒவ்வொரு பேக்கேஜிலும்')}</div>${PACKAGE_INCLUDES.map((i) => `<div class="small">• ${esc(bi(i))}</div>`).join('')}
@@ -765,15 +803,16 @@ function pkgFlightHtml(r, loc) {
   const dest = locName({ name: f.airport.city, cc: f.airport.cc });
   const diff = zoneDiffText(home, dest, f.diffHours);
   const cur = currencyForCountry(countryOfLoc(state.residence) || countryOfLoc(loc));
-  return `<div class="pkg-flight small"><b>✈️ ${esc(placeName(f.origin.city))} (${f.origin.code}) → ${esc(placeName(f.airport.city))} (${f.airport.code})</b> · ≈ ${f.out.hours} ${L('h', 'மணி')}${f.out.direct ? '' : ` ${L('incl. one connection', 'ஒரு இணைப்பு உட்பட')}`}
+  return `<div class="pkg-flight small"><b>✈️ ${esc(placeName(f.origin.city))} (${f.origin.code}) → ${esc(placeName(f.airport.city))} (${f.airport.code})</b> · ≈ ${f.out.hours} ${L('h', 'மணி')}${f.out.direct ? '' : ` ${L('incl. one connection', 'ஒரு இணைப்பு உட்பட')}`} ${provBadge(prov('estimated'))}
     ${diff ? `<div>🕒 ${esc(bi(diff))}</div>` : ''}
-    <div>💺 ${L('Flights per person, return', 'ஒருவருக்கு விமானம், போய்வர')}: ${moneyRange(f.farePerPerson.low, f.farePerPerson.high, cur)} <span class="muted">(${L('check airline', 'விமான நிறுவனத்திடம் உறுதி செய்யவும்')})</span></div>
+    <div>💺 ${L('Flights per person, return', 'ஒருவருக்கு விமானம், போய்வர')}: ${moneyRange(f.farePerPerson.low, f.farePerPerson.high, cur)} ${provBadge(prov('estimated'))} <span class="muted">(${L('check airline', 'விமான நிறுவனத்திடம் உறுதி செய்யவும்')})</span></div>
     <div class="muted">${L(`${r.totalDays} days including the flight days. Airport pickup at ${f.airport.city} can be arranged with the package.`, `விமான நாட்கள் உட்பட ${r.totalDays} நாள். ${placeName(f.airport.city)} விமான நிலைய வரவேற்பு பேக்கேஜுடன் ஏற்பாடு செய்யலாம்.`)}</div></div>`;
 }
 
-function packageForm(id) {
+async function packageForm(id) {
   const box = $(`#pkgForm-${id}`);
   if (STATIC) { box.innerHTML = needsServerCard(L('Package requests go to our operations team for a quote within a day.', 'பேக்கேஜ் கோரிக்கைகள் எங்கள் குழுவுக்குச் சென்று ஒரு நாளில் விலை தெரிவிக்கப்படும்.')); return; }
+  if (!(await servicesOpen())) { box.innerHTML = servicesClosedCard(); return; }
   if (!state.user) { toast(L('Please sign in to request a package', 'பேக்கேஜ் கோர உள்நுழையவும்')); go('login'); return; }
   box.innerHTML = `<form class="pkg-form"><div class="row2"><label>${L('Start date', 'தொடக்கத் தேதி')}<input type="date" name="date" required min="${todayIso()}"></label><label>${L('People', 'நபர்கள்')}<input type="number" name="people" min="1" max="60" value="4" required></label></div>
     <label>${L('Starting city', 'புறப்படும் நகரம்')}<input name="city" required value="${esc(placeName(state.loc.name))}"></label>

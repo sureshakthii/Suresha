@@ -76,7 +76,7 @@ function renderGuide(sec) {
       <p class="small">⭐ ${L('Your birth-star deity', 'உங்கள் நட்சத்திர வழிபாட்டுத் தெய்வம்')}: <b>${esc(bi(g.ishta.starDeity))}</b></p>
       <p class="muted small">${L('How we found it', 'கணக்கு')}: ${esc(bi(g.ishta.why))}</p></div>
 
-    ${locked ? lockCard(L('Gemstones, your Siddhar and your personal mantra playlist are part of Premium.', 'ரத்தினங்கள், உங்கள் சித்தர், தனிப்பட்ட மந்திரப் பட்டியல் பிரீமியத்தில் உள்ளன.')) : `
+    ${locked ? lockCard(L('Gemstones, your Siddhar and your personal mantra playlist are part of the Personal plan.', 'ரத்தினங்கள், உங்கள் சித்தர், தனிப்பட்ட மந்திரப் பட்டியல் தனிநபர் திட்டத்தில் உள்ளன.')) : `
     <div class="card glass"><div class="card-title">💎 ${L('Gemstones', 'ரத்தினங்கள்')}</div>
       <div class="mini-label">✅ ${L('Suitable for you', 'உங்களுக்கு ஏற்றவை')}</div>
       ${g.gems.good.map((x) => `<div class="factor"><span>${GLYPH[x.planet]} <b>${esc(bi(x.gem))}</b>${x.primary ? ` <span class="tag good">${L('Main', 'முதன்மை')}</span>` : ''}<br><small class="muted">${esc(bi(x.role))}</small></span></div>`).join('')}

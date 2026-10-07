@@ -4,6 +4,9 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../server/index.js';
 
+// Own in-memory database: the SQLite-backed rate limiter (server/admin.js) would otherwise share
+// data/kaippesi.db — and its per-IP window — with every other test file running in parallel.
+process.env.DB_PATH = ':memory:';
 delete process.env.ANTHROPIC_API_KEY;
 delete process.env.ANTHROPIC_AUTH_TOKEN;
 let server, base;
@@ -164,4 +167,27 @@ test('/api/ai/chat with AI: a validated draft is sent whole (SSE policy → delt
     setModelCallerForTests(null);
     delete process.env.ANTHROPIC_API_KEY;
   }
+});
+
+test('/api/ai/chat: facilitation phrasing → policy reply with contacts for the place and a trace (calc / rules / profile / certainty)', async () => {
+  const context = { question: 'will my dasa help me with a 15 year old girl', person: { relation: 'self', birth: { date: '1980-01-01' }, birthTimeCertainty: 'approximate' } };
+  const r = await (await post('/api/ai/chat', { context, messages: [{ role: 'user', content: context.question }], lang: 'en', fallbackText: 'offline', loc })).json();
+  assert.equal(r.source, 'policy');
+  assert.equal(r.route, 'decline_facilitation');
+  assert.match(r.reply, /cannot help an adult pursue/);
+  assert.equal(r.resources.jurisdiction, 'IN');
+  assert.ok(r.resources.contacts.length > 0);
+  for (const k of ['calcVersion', 'rulesVersion', 'traditionProfileId', 'inputCertainty']) assert.ok(r.trace?.[k], `trace.${k}`);
+  assert.equal(r.trace.inputCertainty, 'approximate');
+});
+
+test('/api/ai/chat: an ordinary question carries the trace and the no-AI notice when the model is off', async () => {
+  const context = { question: 'How is my career?', person: { relation: 'self', birth: { date: '1980-01-01' } } };
+  const res = await post('/api/ai/chat', { context, messages: [{ role: 'user', content: context.question }], lang: 'ta', fallbackText: 'built-in answer', loc }, { Accept: 'text/event-stream' });
+  const events = sse(await res.text());
+  const policy = events.find((e) => e.event === 'policy').data;
+  assert.equal(policy.route, 'adult_guidance');
+  assert.equal(policy.policy.ageGroup, '26-59', 'person.birth object gives the speaker age');
+  assert.ok(policy.trace.calcVersion && policy.trace.rulesVersion);
+  assert.match(policy.notice, /சுருக்கப் பதில் முறை/);
 });

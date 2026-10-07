@@ -24,7 +24,7 @@ import {
 } from './core.js';
 import { dayOutlook, gauge, animateGauges, refreshSnap, reliabilityOf, setupVoiceInput } from './screens-main.js';
 import { chartFacts, composeAnswer, factsForAI, classify, answerLang } from './shared/guidance.js';
-import { detectTopic, detectTopics, topicAnswer, cleanSharedAnswer, generalFollowups, guardAnswer, childGeneralAnswer } from './ask-thunai.js';
+import { detectTopic, detectTopics, topicAnswer, cleanSharedAnswer, generalFollowups, guardAnswer, childGeneralAnswer, validateOffline, LIMITED_LABEL } from './ask-thunai.js';
 import { ageProfile, suggestionsFor, isAdult, MATCH_ADULTS_NOTE } from './shared/age-guard.js';
 import { dailyReview } from './shared/daily.js';
 
@@ -153,6 +153,7 @@ function renderPorutham(sec) {
     <div class="card glass"><p class="small">⚠️ ${L('Matching only the 10 poruthams by star is not enough. Before finalising a marriage, check both full horoscopes (birth date, time and place) — long life, papa samyam, dasa sandhi and the marriage houses.', 'நட்சத்திரம் மூலம் 10 பொருத்தம் மட்டும் பார்ப்பது போதாது. திருமணத்தை உறுதி செய்யும் முன் இருவரின் முழு ஜாதகத்தையும் (பிறந்த தேதி, நேரம், இடம்) பாருங்கள் — ஆயுள், பாப சாம்யம், தசா சந்தி, திருமண பாவங்கள்.')}</p>
     <button class="btn-gold big-cta" data-go="couple">💑 ${L('Complete Marriage Porutham — with birth date & place of both', 'முழுமையான திருமணப் பொருத்தம் — இருவரின் பிறந்த தேதி, இடத்துடன்')}</button></div>
     <div class="card glass"><div class="card-title">${L('Quick check by star', 'நட்சத்திரம் மூலம் விரைவுப் பொருத்தம்')}</div>${adultsNote()}<div class="por-grid">${sideForm('girl')}${sideForm('boy')}</div>
+      ${starSideUsed() ? `<label class="adult-confirm"><input type="checkbox" id="porAdults"${porSide.adultsOk ? ' checked' : ''}> ${L('I confirm both people are adults (18 or older). Marriage matching is never done for anyone under 18.', 'இருவரும் 18 வயது அல்லது அதற்கு மேற்பட்டவர்கள் என்று உறுதி செய்கிறேன். 18 வயதுக்குக் குறைவானவர்களுக்குத் திருமணப் பொருத்தம் பார்க்கப்படுவதில்லை.')}</label><p class="small adult-confirm-err" id="porAdultsErr" role="alert" hidden>${L('Please confirm that both people are 18 or older to see the porutham.', 'பொருத்தம் பார்க்க, இருவரும் 18 வயது அல்லது அதற்கு மேற்பட்டவர்கள் என்று உறுதி செய்யவும்.')}</p>` : ''}
       <button class="btn-gold" id="porBtn">💞 ${L('Check porutham', 'பொருத்தம் பார்க்கவும்')}</button>
       <p class="muted small">${L('Tip: add both people under Family with full birth details to include the Chevvai and Rahu-Ketu dosham check.', 'குறிப்பு: செவ்வாய், ராகு-கேது தோஷ ஆய்வுக்கு இருவரின் முழு பிறப்பு விவரங்களையும் குடும்பத்தில் சேர்க்கவும்.')}</p></div>
     <div id="porResult"></div>${aiBlock('porAi')}`;
@@ -162,8 +163,15 @@ function renderPorutham(sec) {
     side[s.dataset.f] = s.dataset.f === 'memberId' ? s.value : Number(s.value);
     if (s.dataset.f !== 'memberId') renderPorutham(sec);
   }));
-  $('#porBtn').addEventListener('click', () => computePorutham());
+  $('#porAdults')?.addEventListener('change', (e) => { porSide.adultsOk = e.target.checked; if (e.target.checked) $('#porAdultsErr').hidden = true; });
+  $('#porBtn').addEventListener('click', () => {
+    // "By star" has no birth date to check, so the person must confirm both are adults before any result is shown.
+    if (starSideUsed() && !porSide.adultsOk) { $('#porResult').innerHTML = ''; $('#porAdultsErr').hidden = false; $('#porAdults')?.focus(); return; }
+    computePorutham();
+  });
 }
+/** True when either side is entered by star (no family profile, so no date of birth to check the age). */
+const starSideUsed = () => ['girl', 'boy'].some((w) => porSide[w].mode !== 'member' || !matchPool().length);
 
 function sideData(who) {
   const s = porSide[who];
@@ -612,7 +620,7 @@ function chatContext(question) {
     person: m ? { name: m.name, relation: m.relation, birth: m.relation === 'organization' ? undefined : { date: m.date }, ageBand: ageOf(m).band, birthTimeCertainty: rel.certainty, timeSensitiveResultsAllowed: rel.lagna, rasi: rel.rasi ? chartOf(m).janmaRasi.name : 'uncertain', star: rel.nakshatra ? chartOf(m).janmaNakshatra.name : 'uncertain' } : null,
     verifiedChartFacts: factsForAI(facts),
     lifeDetails: (() => { const l = lifeOf(m); return m ? { maritalStatus: l.maritalStatus || 'not given', marriedYear: l.marriedYear || null, children: l.children ?? 'not given', firstChildYear: l.firstChildYear || null } : null; })(),
-    builtInAnswer: askAnswer(question, m, facts).text,
+    builtInAnswer: askAnswer(question, m, facts, chatTurns()).text,
   };
 }
 
@@ -659,12 +667,22 @@ function addBubble(role, text, meta = {}) {
   if (role === 'user') { b.textContent = text; $('#chatLog').append(b); return b; }
   const body = document.createElement('div');
   body.className = 'ans-body';
-  if (meta.answer) body.innerHTML = renderAnswerHtml(meta.answer); else body.textContent = text;
+  if (meta.answer?.sections) body.innerHTML = renderAnswerHtml(meta.answer); else body.textContent = text;
+  // Help contacts sent with a server policy reply (safety / decline): tappable, from the verified directory.
+  const contacts = (meta.resources?.contacts || []).filter((c) => /^[\d +-]{2,20}$/.test(String(c.number || '')));
+  if (contacts.length) {
+    const row = document.createElement('div'); row.className = 'btn-row help-contacts';
+    contacts.forEach((c) => { const a = document.createElement('a'); a.className = 'chip-btn'; a.href = `tel:${String(c.number).replace(/[^\d+]/g, '')}`; a.textContent = `☎️ ${c.number} · ${c.name}`; row.append(a); });
+    body.append(row);
+  }
+  if (meta.notice) { const n = document.createElement('p'); n.className = 'small muted ans-notice'; n.textContent = meta.notice; body.append(n); }
   const foot = document.createElement('div');
   foot.className = 'ans-foot';
-  const badge = '';
+  // Every on-device / rule-based answer carries a visible "limited guidance" badge.
+  const badge = meta.source === 'rules' && meta.typing !== true ? `<span class="pill limited-badge">${esc(bi(LIMITED_LABEL))}</span> ` : '';
   foot.innerHTML = `${badge}<button class="link-btn say-bubble" aria-label="${L('Read aloud', 'வாசித்துக்காட்டு')}">🔊</button>`;
-  foot.querySelector('.say-bubble').addEventListener('click', () => speak(body.textContent));
+  // Read aloud speaks only the validated answer text (never unchecked DOM content).
+  foot.querySelector('.say-bubble').addEventListener('click', () => speak(meta.speakText || text));
   b.append(body, foot);
   if (meta.answer?.clarify) {
     const row = document.createElement('div'); row.className = 'btn-row';
@@ -692,21 +710,29 @@ function addBubble(role, text, meta = {}) {
  * (marriage, second marriage, job, business, money, loan, health, education, child, house, travel, court,
  * family) are routed to a chart-based answer; anything else gets the closest reading plus three follow-ups.
  */
-function askAnswer(text, m, facts) {
+function askAnswer(text, m, facts, turns = []) {
   const life = lifeOf(m);
   const today = todayFacts();
-  // AGE FIRST: the selected person's age decides what may be answered (shared/age-guard.js).
+  // AGE FIRST: the selected person's age decides what may be answered (shared/age-guard.js). The person typing is
+  // known only when their own profile is open; otherwise the speaker's age is unknown (never assumed adult).
   const prof = m ? ageOf(m) : ageProfile(null);
-  const base = composeAnswer({ question: text, lang: state.lang, facts, name: m ? displayName(m) : '', today, life });
-  if (['crisis', 'death', 'pain', 'emotional'].includes(base.intent)) return cleanSharedAnswer(base);
+  const speaker = m?.relation === 'self' ? prof : null;
+  const lang = answerLang(text, state.lang);
+  const certainty = m ? reliabilityOf(m).certainty : 'none';
+  // Every offline answer is checked (shared/themes.js findProhibited) before it is shown or read aloud.
+  const done = (a) => validateOffline(a, { lang, inputCertainty: certainty });
+  // POLICY FIRST: composeAnswer runs the facilitation / speaker-age check before any topic is read.
+  const base = composeAnswer({ question: text, lang: state.lang, facts, name: m ? displayName(m) : '', today, life, turns, speaker });
+  if (base.policy) return done(base);
+  if (['crisis', 'death', 'pain', 'emotional'].includes(base.intent)) return done(cleanSharedAnswer(base));
   let topic = detectTopic(text);
   // For a child's chart, "child / kids" means the child — read the other topic the question names (studies, health …).
   if (prof.minor && topic === 'child') topic = detectTopics(text).find((t) => t !== 'child') || null;
   if (topic === 'marriage' && life.maritalStatus === 'married') topic = 'harmony';
   if (topic && m) {
     try {
-      const a = topicAnswer({ topic, question: text, chart: chartOf(m), rel: reliabilityOf(m), lang: state.lang, name: displayName(m), life, today });
-      if (a) return a;
+      const a = topicAnswer({ topic, question: text, chart: chartOf(m), rel: reliabilityOf(m), lang: state.lang, name: displayName(m), life, today, turns, speaker });
+      if (a) return done(a);
     } catch (e) { console.warn('ask', e); }
   }
   if (prof.minor) {
@@ -714,16 +740,19 @@ function askAnswer(text, m, facts) {
     let deity = null;
     try { refreshSnap(); deity = dailyReview(chartOf(m), state.snap, new Date()).deity; } catch { /* optional */ }
     const shared = ['general', 'greeting', 'chart', 'dasa', 'weak', 'goodtime', 'dates'].includes(base.intent) ? null : guardAnswer(cleanSharedAnswer(base), prof, state.lang);
-    return shared?.sections?.some((sx) => sx.key === 'answer') ? shared : childGeneralAnswer({ profile: prof, lang: state.lang, name: displayName(m), deity, question: text });
+    return done(shared?.sections?.some((sx) => sx.key === 'answer') ? shared : childGeneralAnswer({ profile: prof, lang: state.lang, name: displayName(m), deity, question: text }));
   }
   // Unclear question: answer with the closest reading (the running Dasa–Bhukti) and offer three follow-ups.
   if (base.intent === 'general' || base.intent === 'greeting') {
     const near = cleanSharedAnswer(composeAnswer({ question: L('Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'), lang: state.lang, facts, name: m ? displayName(m) : '', today, life }));
     near.followups = generalFollowups(prof).map((f) => bi(f));
-    return near;
+    return done(near);
   }
-  return guardAnswer(cleanSharedAnswer(base), prof, state.lang);
+  return done(guardAnswer(cleanSharedAnswer(base), prof, state.lang));
 }
+
+/** The person's own earlier messages in this chat (oldest first) — follow-ups keep the earlier context. */
+const chatTurns = () => chat.messages.filter((x) => x.role === 'user').map((x) => x.content).slice(-12);
 
 async function send(text) {
   text = String(text || '').trim();
@@ -734,21 +763,29 @@ async function send(text) {
   const ub = addBubble('user', text);
   requestAnimationFrame(() => ub.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   const { m, facts } = memberFacts();
-  const answer = askAnswer(text, m, facts);
-  // Safety-critical topics are always answered by the built-in rules, never by free AI text.
-  // Private profiles never send their questions to the AI service.
+  const answer = askAnswer(text, m, facts, chatTurns());
+  // Safety-critical topics and on-device policy answers (decline / child / teen) are always the reviewed rules,
+  // never free AI text. Private profiles never send their questions to the AI service.
   // Age-guarded answers are never handed to free AI text; a minor's chat goes to the AI only through the server,
-  // whose policy re-checks the person's age (no server policy on the phone-only build).
+  // whose policy re-checks the person's age (the phone-only build never calls a model — see core.js aiTask).
   const prof = m ? ageOf(m) : null;
-  const rulesOnly = ['crisis', 'death', 'pain', 'age_guard'].includes(answer.intent) || Boolean(m?.private) || Boolean(prof?.minor && STATIC);
-  let msg = { role: 'assistant', content: answer.text, answer, source: 'rules' };
+  const rulesOnly = ['crisis', 'death', 'pain', 'age_guard', 'policy'].includes(answer.intent) || Boolean(answer.policy) || answer.validationFallback || Boolean(m?.private) || Boolean(prof?.minor && STATIC);
+  let msg = { role: 'assistant', content: answer.text, answer, source: 'rules', speakText: answer.text };
   if (!rulesOnly) {
-    const thinking = addBubble('assistant', L('Thinking…', 'யோசிக்கிறேன்…'));
+    const thinking = addBubble('assistant', L('Thinking…', 'யோசிக்கிறேன்…'), { typing: true });
     thinking.classList.add('typing');
     const node = thinking.querySelector('.ans-body');
     const r = await aiTask({ task: 'chat', context: chatContext(text), messages: chat.messages.slice(-12).map(({ role, content }) => ({ role, content })), fallbackText: answer.text, onText: (tx) => { if (tx !== answer.text) node.textContent = tx; } });
     thinking.remove();
-    if (r.source === 'ai' && r.text.trim()) msg = { role: 'assistant', content: r.text, source: 'ai', answer: { actions: answer.actions } };
+    const meta = r.meta || {};
+    // The server's answer wins whenever it is a validated AI reply OR a policy reply (safety / decline / clarify /
+    // child / teen) — a policy reply is never replaced by the on-device answer.
+    if ((r.source === 'ai' || r.source === 'policy') && r.text.trim()) {
+      msg = { role: 'assistant', content: r.text, source: r.source, speakText: r.text, resources: meta.resources || null, notice: meta.notice || null, trace: meta.trace || null,
+        answer: r.source === 'ai' ? { actions: answer.actions } : null };
+    } else if (meta.notice) {
+      msg.notice = meta.notice; // the server could not add an AI explanation: say so (no_ai_notice)
+    }
   }
   chat.messages.push(msg);
   addBubble('assistant', msg.content, msg);

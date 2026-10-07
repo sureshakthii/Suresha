@@ -90,7 +90,8 @@ test('temple planner: free/local first, nearby low-cost, sourced practical data,
     for (const k of ['hours', 'crowds', 'route', 'accommodation', 'accessibility', 'weather']) {
       assert.ok(o.practical[k].source, `${k} source`);
       assert.ok(o.practical[k].lastVerified !== undefined);
-      assert.ok(o.practical[k].status === 'needs-checking' || o.practical[k].lastVerified);
+      assert.ok(['needs-checking', 'estimated'].includes(o.practical[k].status) || o.practical[k].lastVerified);
+      assert.ok(['live', 'saved', 'estimated', 'verified', 'check'].includes(o.practical[k].prov.kind), `${k} provenance`);
     }
     assert.equal(o.practical.booking.confirmed, false);
     assert.equal(o.practical.booking.status, 'not-booked');

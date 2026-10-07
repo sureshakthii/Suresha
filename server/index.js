@@ -20,7 +20,7 @@ import { isValidZone, zonedToUtc } from '../shared/datetime.js';
 import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
 import { findMuhurtham } from '../shared/special.js';
 import { AI_TASKS, DEADLINE_FIRST } from '../shared/narrator.js';
-import { evaluatePolicy, templateAnswer, deadlineNote, publicPolicy, audit, buildEvidence, publicEvidence, templateText } from './policy/index.js';
+import { evaluatePolicy, templateAnswer, deadlineNote, publicPolicy, audit, buildEvidence, publicEvidence, templateText, traceFor } from './policy/index.js';
 import { policyRouter } from './policy/routes.js';
 
 // Simple per-IP limiter for AI calls (protects the API budget).
@@ -156,13 +156,14 @@ export function createApp() {
     const user = currentUser(req);
     const { intent, ctx: pctx, decision } = await evaluatePolicy({ body: req.body, user, turns: q.trim() ? [q] : [], lang, category });
 
+    const trace = traceFor(pctx, req.body);
     if (!decision.allowAstrology) {
       const t = templateAnswer(decision, pctx, lang);
       const policy = publicPolicy(decision, pctx);
-      audit('ask', { decision, ctx: pctx, intent, source: 'policy', latencyMs: Date.now() - started });
-      if (!wantsStream) return res.json({ category, route: decision.route, reply: t.text, source: 'policy', policy, resources: t.resources });
+      audit('ask', { decision, ctx: pctx, intent, source: 'policy', latencyMs: Date.now() - started, trace });
+      if (!wantsStream) return res.json({ category, route: decision.route, reply: t.text, source: 'policy', policy, resources: t.resources, trace });
       const send = openStream(res);
-      send('policy', { ...policy, resources: t.resources });
+      send('policy', { ...policy, resources: t.resources, trace });
       send('delta', { text: t.text });
       send('done', { source: 'policy', route: decision.route });
       return res.end();
@@ -209,8 +210,9 @@ export function createApp() {
       claims: reply.answer?.claims || [],
       validation: reply.validation.status,
       notice: reply.source === 'ai' ? null : templateText('no_ai_notice', lang),
+      trace,
     };
-    audit('ask', { decision, ctx: pctx, intent, validation: reply.validation.status, validationErrors: reply.validation.errors, source: reply.source, latencyMs: Date.now() - started });
+    audit('ask', { decision, ctx: pctx, intent, validation: reply.validation.status, validationErrors: reply.validation.errors, source: reply.source, latencyMs: Date.now() - started, trace });
     if (!send) return res.json({ ...summary, reply: text, source: reply.source, ...extra });
     send('policy', extra);
     send('delta', { text });
@@ -286,10 +288,11 @@ export function createApp() {
       return res.end();
     };
 
+    const trace = traceFor(pctx, req.body);
     if (!decision.allowAstrology) {
       const t = templateAnswer(decision, pctx, lang);
-      audit(`ai:${task}`, { decision, ctx: pctx, intent, source: 'policy', latencyMs: Date.now() - started });
-      return respond({ reply: t.text, source: 'policy', route: decision.route, policy: publicPolicy(decision, pctx), resources: t.resources }, 'policy');
+      audit(`ai:${task}`, { decision, ctx: pctx, intent, source: 'policy', latencyMs: Date.now() - started, trace });
+      return respond({ reply: t.text, source: 'policy', route: decision.route, policy: publicPolicy(decision, pctx), resources: t.resources, trace }, 'policy');
     }
 
     if (process.env.AI_REQUIRE_LOGIN === '1' && !user) return res.status(401).json({ error: 'Please sign in to use the AI Jothidar' });
@@ -299,7 +302,7 @@ export function createApp() {
     if (quota && !quota.allowed) {
       return res.status(402).json(quota.period === 'month'
         ? { error: `Monthly AI allowance of ${quota.limit} answers reached — built-in guidance keeps working`, upgrade: false }
-        : { error: 'Free daily AI limit reached — built-in guidance keeps working; Premium includes a monthly AI allowance', upgrade: true });
+        : { error: 'Free daily AI limit reached — built-in guidance keeps working; the Personal plan includes a monthly AI allowance', upgrade: true });
     }
 
     // Evidence: a server-computed chart when birth details are sent; otherwise the app's deterministic facts
@@ -324,13 +327,14 @@ export function createApp() {
       else reply = String(fallbackText).slice(0, 4000) || templateText('validation_fallback', lang);
     }
     const cited = r.answer?.claims?.flatMap((c) => c.evidenceIds);
-    audit(`ai:${task}`, { decision, ctx: pctx, intent, validation: r.validation.status, validationErrors: r.validation.errors, source: r.source, latencyMs: Date.now() - started });
+    audit(`ai:${task}`, { decision, ctx: pctx, intent, validation: r.validation.status, validationErrors: r.validation.errors, source: r.source, latencyMs: Date.now() - started, trace });
     return respond({
       reply, source: r.source, route: decision.route, policy: publicPolicy(decision, pctx, templateId ? { templateId } : {}),
       evidence: r.answer ? publicEvidence(evidence, cited) : [],
       claims: r.answer?.claims || [], uncertainty: r.answer?.uncertainty || null, nextSteps: r.answer?.nextSteps || [],
       validation: r.validation.status,
       notice: r.source === 'ai' ? null : templateText('no_ai_notice', lang),
+      trace,
     }, r.source);
   });
 

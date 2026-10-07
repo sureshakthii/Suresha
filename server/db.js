@@ -40,7 +40,7 @@ export function getDb() {
   const file = process.env.DB_PATH || 'data/kaippesi.db';
   if (file !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
   db = new DatabaseSync(file);
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   db.exec(SCHEMA);
   return db;
 }

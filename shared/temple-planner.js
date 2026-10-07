@@ -6,13 +6,16 @@
 //  • Planet → deity links are "traditional devotional associations" (status 'proposed', awaiting astrologer
 //    approval). Never "this temple will solve your problem"; a pilgrimage is never necessary for protection.
 //  • Practical data (hours, crowds, route, accommodation, accessibility, weather, booking) always carries its
-//    source and lastVerified date, or says it needs checking. Nothing is ever shown as booked.
+//    source and a provenance record (`prov`, the shared model in journey.js: live / saved / estimated /
+//    verified / check). Nothing is ever shown as booked.
 //  • Ranking ignores sponsorship: a `sponsored` flag is reported but never changes the order.
 import { TEMPLES, distanceKm, templeLinks } from './temples.js';
 import { templeInfo } from './temple-info.js';
 import { PACKAGES, packageRoute } from './packages.js';
 import { assertNoProhibited } from './themes.js';
 import { PLANETS } from './astro.js';
+// One provenance model for the whole app (brief §9c): defined in journey.js, reused here — no second copy.
+import { prov, templeFacts } from './journey.js';
 
 const T = (en, ta) => ({ en, ta });
 const DAY = 86400000;
@@ -38,6 +41,12 @@ export const DEVOTIONAL_ASSOCIATIONS = {
 
 const MODE_KMPH = { car: 45, taxi: 45, bus: 35, train: 50, two_wheeler: 35, flight: 120 };
 const NEEDS_CHECKING = 'needs-checking';
+/** Legacy status/lastVerified fields derived from the shared provenance record (kept for API stability). */
+const legacy = (p) => ({
+  prov: p,
+  status: p.kind === 'verified' || p.kind === 'live' ? 'verified' : p.kind === 'estimated' ? 'estimated' : NEEDS_CHECKING,
+  lastVerified: p.kind === 'verified' ? p.verifiedOn : p.kind === 'live' ? p.checkedAt : null,
+});
 const HRCE = { id: 'hrce_tn', url: 'https://hrce.tn.gov.in/', title: T('Tamil Nadu HR&CE / temple devasthanam (official)', 'தமிழ்நாடு இந்து சமய அறநிலையத் துறை / தேவஸ்தானம் (அதிகாரப்பூர்வம்)') };
 
 const FRAMING = T(
@@ -63,17 +72,19 @@ const BAND_ORDER = ['free', 'local', 'low', 'medium', 'high'];
 function practical(t, { travelMode, oneWayHours, weather }) {
   const info = templeInfo(t.id);
   const links = templeLinks(t);
-  const item = (value, source, extra = {}) => ({ value, source, lastVerified: null, status: NEEDS_CHECKING, ...extra });
+  const facts = templeFacts(t.id);
+  const item = (value, source, p = prov('check', { source: source.title || source }), extra = {}) => ({ value, source, ...legacy(p), ...extra });
+  const hoursSrc = facts.hours.prov.kind === 'verified' ? { id: 'temple_verified', title: facts.hours.prov.source } : { ...HRCE, note: T('Approximate; changes on festival days', 'தோராயமானது; திருவிழா நாட்களில் மாறும்') };
   return {
-    hours: item(info?.timings || T('Opening hours not on file', 'திறப்பு நேரம் பதிவில் இல்லை'), { ...HRCE, note: T('Approximate; changes on festival days', 'தோராயமானது; திருவிழா நாட்களில் மாறும்') }),
-    crowds: item(info?.festival ? T(`Festival periods (expect crowds): ${info.festival.en}`, `திருவிழாக் காலம் (கூட்டம் இருக்கலாம்): ${info.festival.ta}`) : T('Festival calendar not on file', 'திருவிழா அட்டவணை பதிவில் இல்லை'), HRCE),
-    route: item(T(`About ${Math.round(oneWayHours * 10) / 10} h each way by ${travelMode} (straight-line estimate)`, `ஒரு வழிக்கு சுமார் ${Math.round(oneWayHours * 10) / 10} மணி நேரம் (தோராயக் கணக்கு)`), { id: 'estimate', title: T('Distance estimate (not live traffic)', 'தூர மதிப்பீடு (நேரலைப் போக்குவரத்து அல்ல)') }, { url: links.directions }),
-    accommodation: item(T('Search stays near the temple', 'கோவில் அருகே தங்குமிடம் தேடுக'), { id: 'maps_search', title: T('Map search (unverified listings)', 'வரைபடத் தேடல் (சரிபார்க்கப்படாதவை)') }, { url: links.hotels }),
-    accessibility: item(T('Steps, queues and wheelchair access not verified', 'படிகள், வரிசை, சக்கர நாற்காலி வசதி சரிபார்க்கப்படவில்லை'), HRCE),
+    hours: item(facts.hours.value || T('Opening hours not on file', 'திறப்பு நேரம் பதிவில் இல்லை'), hoursSrc, facts.hours.prov),
+    crowds: item(info?.festival ? T(`Festival periods (expect crowds): ${info.festival.en}`, `திருவிழாக் காலம் (கூட்டம் இருக்கலாம்): ${info.festival.ta}`) : T('Festival calendar not on file', 'திருவிழா அட்டவணை பதிவில் இல்லை'), HRCE, prov('estimated')),
+    route: item(T(`About ${Math.round(oneWayHours * 10) / 10} h each way by ${travelMode} (straight-line estimate)`, `ஒரு வழிக்கு சுமார் ${Math.round(oneWayHours * 10) / 10} மணி நேரம் (தோராயக் கணக்கு)`), { id: 'estimate', title: T('Distance estimate (not live traffic)', 'தூர மதிப்பீடு (நேரலைப் போக்குவரத்து அல்ல)') }, prov('estimated'), { url: links.directions }),
+    accommodation: item(T('Search stays near the temple', 'கோவில் அருகே தங்குமிடம் தேடுக'), { id: 'maps_search', title: T('Map search (unverified listings)', 'வரைபடத் தேடல் (சரிபார்க்கப்படாதவை)') }, undefined, { url: links.hotels }),
+    accessibility: item(facts.accessibility.value || T('Steps, queues and wheelchair access not verified', 'படிகள், வரிசை, சக்கர நாற்காலி வசதி சரிபார்க்கப்படவில்லை'), HRCE, facts.accessibility.prov),
     weather: weather?.[t.id]?.checkedAt
-      ? { value: weather[t.id].summary || null, source: { id: 'open_meteo_forecast', url: 'https://open-meteo.com/' }, lastVerified: new Date(weather[t.id].checkedAt).toISOString(), status: 'verified' }
+      ? { value: weather[t.id].summary || null, source: { id: 'open_meteo_forecast', url: 'https://open-meteo.com/' }, ...legacy(prov('live', { checkedAt: new Date(weather[t.id].checkedAt).toISOString() })) }
       : item(T('Check the forecast close to the date', 'பயண நாளுக்கு அருகில் வானிலையைச் சரிபார்க்கவும்'), { id: 'open_meteo_forecast', url: 'https://open-meteo.com/' }),
-    booking: { status: 'not-booked', confirmed: false, value: T('Nothing has been booked. Check darshan and stay availability with the official source.', 'எதுவும் முன்பதிவு செய்யப்படவில்லை. தரிசனம், தங்குமிடம் கிடைப்பதை அதிகாரப்பூர்வத் தளத்தில் சரிபார்க்கவும்.'), source: HRCE, lastVerified: null },
+    booking: { status: 'not-booked', confirmed: false, value: T('Nothing has been booked. Check darshan and stay availability with the official source.', 'எதுவும் முன்பதிவு செய்யப்படவில்லை. தரிசனம், தங்குமிடம் கிடைப்பதை அதிகாரப்பூர்வத் தளத்தில் சரிபார்க்கவும்.'), source: HRCE, lastVerified: null, prov: prov('check') },
   };
 }
 

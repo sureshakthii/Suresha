@@ -90,8 +90,12 @@ const CHILD_RELATIONS = new Set(['son', 'daughter', 'child', 'grandson', 'grandd
 const clampAge = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= 120 ? Math.floor(n) : null; };
 const validDob = (v) => (typeof v === 'string' && ymd(v) ? v : null);
 
-/** Pull a YYYY-MM-DD date out of a free string like "1990-01-01 10:00 Chennai" (the chat client's person.birth). */
-function dobFrom(v) {
+/**
+ * The chat client's person.birth: an object { date, time, … } (current app), a { dob } object, or a free
+ * string like "1990-01-01 10:00 Chennai" (older clients). Returns 'YYYY-MM-DD' or null.
+ */
+export function dobFrom(v) {
+  if (v && typeof v === 'object') return dobFrom(typeof v.date === 'string' ? v.date : typeof v.dob === 'string' ? v.dob : null);
   if (typeof v !== 'string') return null;
   const m = /(\d{4}-\d{2}-\d{2})/.exec(v);
   return m && ymd(m[1]) ? m[1] : null;
@@ -192,7 +196,7 @@ export function resolveContext({ body = {}, user = null, intent = null, turns = 
     language: lang === 'ta' ? 'ta' : 'en',
     intent: intent ? { purpose: intent.purpose, requestedAction: intent.requestedAction, urgency: intent.urgency, uncertainty: intent.uncertainty } : null,
     consent: { rememberChat: consent.rememberChat === true, scope: subjectRelation === 'self' || subjectRelation === 'unknown' ? 'self' : 'family' },
-    chartPrecision: String(b.birth?.timePrecision || sIn.timePrecision || (subjectDob ? 'entered' : 'none')).slice(0, 16),
+    chartPrecision: String(b.birth?.timePrecision || sIn.timePrecision || ctxPerson?.birthTimeCertainty || (typeof ctxPerson?.birth === 'object' && ctxPerson.birth?.timePrecision) || (subjectDob ? 'entered' : 'none')).slice(0, 16),
     jurisdiction: resolveJurisdiction(b),
     conversation: { version: CONVERSATION_CONTEXT_VERSION, turns: turns.length },
   };

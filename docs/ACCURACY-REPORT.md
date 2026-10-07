@@ -1,7 +1,27 @@
 # Thunai — calculation accuracy report
 
-*Engine: calc 2.0.1 (`shared/astro.js`, astronomy-engine 2.1.19). Report date: October 2026.*
+*Engine: calc 2.0.1 (`shared/astro.js`, astronomy-engine 2.1.19). Report date: 7 October 2026.*
 *Reproduce: `cd scripts/benchmark && npm install && npm run setup && npm run bench`. Full output: `scripts/benchmark/results.md`.*
+
+**Versions stamped at generation** (the benchmark writes the same values into `results.json` → `meta.versions` and
+the first line of `results.md`; `test/accuracy-report.test.js` fails if this table and the code disagree):
+
+| Stamp | Value | Where it is defined |
+|---|---|---|
+| CALC_VERSION | `2.0.1` | `shared/version.js` — bumped when an astronomical or panchangam convention changes |
+| RULES_VERSION | `1.0.0` | `shared/version.js` — bumped when interpretation text or scoring rules change |
+| ENGINE_VERSION | `2.0.1` | `shared/engine-contract.js` — the version of the settings contract; by rule always equal to CALC_VERSION |
+| astronomy-engine | `2.1.19` | `node_modules/astronomy-engine/package.json`, pinned in `ENGINE_SETTINGS.ephemeris.version` |
+| Swiss Ephemeris (reference) | `2.10.03` | `scripts/benchmark` (`sweph` npm, data files `sepl_18` / `semo_18`) |
+| Git commit at generation | `36c9bf2` (with uncommitted changes) | `git rev-parse --short HEAD` when `npm run bench` ran |
+
+`shared/version.js` also exports a display label named `ENGINE_VERSION` (`"calc 2.0.1 · rules 1.0.0"`). That label is
+a *different thing* from the contract's `ENGINE_VERSION` above: it is the string shown in "Why this result?". The test
+checks both: the label is built from CALC_VERSION and RULES_VERSION, and the contract version equals CALC_VERSION.
+
+> **Astronomical agreement is not prediction accuracy.** Everything in this report measures whether the app computes
+> the *sky* correctly (where the planets were, when a tithi ended, which dasa was running). It says nothing about
+> whether a prediction, porutham result, yoga or remedy is *true* for a person. That is a separate question; see §8.
 
 ## 1. Summary for the owner
 
@@ -9,9 +29,17 @@
   astrology software uses. We used its full-precision JPL-based data files. We checked 500 random moments between
   1940 and 2060, 600 sunrise days in 31 cities (Chennai, Madurai, Coimbatore, Colombo, Jaffna, Dubai, Singapore,
   London, Toronto and others), 300 births and 372 Tamil month beginnings.
-- **Rasi, nakshatra, tithi, yoga, karana, weekday, dasa lord, Tamil month and Tamil date agreed in 100 % of cases.**
-  The pada agreed in 99.98 % of cases. The only mismatch was Jupiter sitting 0.06″ (six hundredths of an arc-second)
-  from a pada boundary.
+- **Every "100 %" below is a count over a fixed, stated sample — not a guarantee for all dates:**
+  - rasi and nakshatra of 9 bodies + Lagna: 100 % of 500 random instants (5,000 placements);
+  - tithi, nakshatra, yoga, karana and weekday at sunrise: 100 % of 600 city-days;
+  - first dasa lord: 100 % of 300 births; maha-dasa start dates within 10.9 h for the births up to 2025;
+  - Tamil month day 1 (Chennai, sunset rule): 100 % of 372 month starts.
+  The pada agreed for 4,999 of 5,000 placements (99.98 %). The only mismatch was Jupiter sitting 0.06″ (six
+  hundredths of an arc-second) from a pada boundary.
+- **Divisional charts and sub-periods (new, §3.5–3.6).** D9, D10 and D30 placements agreed for 100 % of 5,000
+  placements each, D12 for 99.98 % and D60 for 99.96 %; all 3 mismatches were within 7″ of a varga boundary.
+  Pratyantara lords agreed for 297 of 300 sampled moments, Sookshma lords for 283 of 300; every mismatch was within
+  47 hours of a period boundary, i.e. inside the same few-hours uncertainty as the maha-dasa start dates.
 - Sunrise and sunset agree within **4 seconds**. Rahu Kalam agrees within **4 seconds**. Tithi, nakshatra, yoga and
   karana end times agree within **40 seconds**, and within a few seconds for present-day dates.
 - **One engine bug was found and fixed.** Rahu and Ketu could be off by up to 17″ (about 0.005°) because the wrong
@@ -30,7 +58,7 @@
 |---|---|
 | Reference | Swiss Ephemeris 2.10.03 through the `sweph` npm package (native). Data files `sepl_18.se1` and `semo_18.se1` (planets and Moon, 1800–2399, fitted to JPL DE431). No Moshier fallback happened: the benchmark checks every call |
 | Ayanamsa in reference | `SE_SIDM_LAHIRI` (Indian Calendar Reform Committee definition), the same definition the app uses |
-| Independence | The reference side calls only Swiss Ephemeris. It has its own root-finder (20-minute scan, bisection to 0.5 s), its own Rahu Kalam split from Swiss sunrise and sunset, and its own dasa arithmetic from the Swiss Moon. It does not call any app function |
+| Independence | The reference side calls only Swiss Ephemeris. It has its own root-finder (20-minute scan, bisection to 0.5 s), its own Rahu Kalam split from Swiss sunrise and sunset, its own dasa and sub-period arithmetic from the Swiss Moon, and its own Parashara varga mappings (D9, D10, D12, D30, D60). It does not call any app function |
 | Samples | Random instants and days, uniform over 1940-01-01 to 2060-12-31 (fixed seed 7), across 31 cities from Auckland to San Francisco, latitudes 37° S to 52° N |
 | Script | `scripts/benchmark/run.mjs`. Dev-only: its own `package.json`, and nothing is added to the app |
 
@@ -89,13 +117,54 @@ The first dasa lord agreed for 100 % of births. For births up to 2025, maha-dasa
 1.7 hours and at most 10.9 hours, which is under half a day. Across 1940–2060 the maximum difference is 2.7 days, all
 from future births. Both sides use 1 dasa year = 365.25 days, so these differences come only from the Moon position.
 
-### 3.5 Tamil month start (Sankranti) — 372 ingresses
+### 3.5 Pratyantara and Sookshma — 300 births (§2b external check)
+
+Reference: from the Swiss Moon longitude at birth, the benchmark places the maha-dasa start by the unelapsed fraction
+of the nakshatra and then splits every level proportionally (child years / 120 of the parent, sequence starting with
+the parent's own lord). This is written fresh in `scripts/benchmark/run.mjs`, independently of `subPeriods()` in
+`shared/astro.js`. For each birth one random moment within the first 80 years is chosen and the running
+maha → bhukti → pratyantara → sookshma lords are compared.
+
+| Level | Lord path agrees | Start date: median | 95 % within | Max | Max, births up to 2025 |
+|---|---|---|---|---|---|
+| Pratyantara | 297 of 300 (99 %) | 3.1 h | 28.6 h | 74.5 h | 14.6 h |
+| Sookshma | 283 of 300 (94.3 %) | 2.8 h | — | 74.5 h | — |
+
+Every disagreement is a moment within 0.4–47 h of a reference period boundary: the two sides agree on the rule and
+differ only because the birth Moon (and so the dasa start) differs by a few arc-seconds, which moves every boundary by
+the same few hours. A Sookshma period can be as short as about 6.5 hours (Sun–Sun–Sun–Sun), so a few hours of shift is
+enough to name the neighbouring lord. The app therefore should not present Sookshma lords as exact for any birth whose
+time is uncertain by more than a few minutes.
+
+### 3.6 Divisional charts — 500 instants × 10 bodies (§2b external check)
+
+Reference: the varga sign is computed from the **Swiss** sidereal longitude with an independent implementation of the
+documented Parashara mappings, written fresh in the benchmark (not imported from `shared/varga.js`): D9 counted from
+Mesha / Makara / Thula / Kataka by element, D10 odd-from-sign / even-from-9th, D12 from the sign, D30 the unequal
+Mars–Saturn–Jupiter–Mercury–Venus portions, D60 thirty-minute parts from the sign itself (the app's variant, still
+awaiting astrologer review). The reference mapping is self-checked against hand-worked examples before it runs.
+
+| Varga | Placements compared | Agree (app longitude + app mapping vs Swiss longitude + reference mapping) | Mapping only (same longitude, random + exact boundaries) |
+|---|---|---|---|
+| D9 Navamsa | 5,000 | 100 % | 100 % of 20,216 |
+| D10 Dasamsa | 5,000 | 100 % | 100 % of 20,240 |
+| D12 Dwadasamsa | 5,000 | 99.98 % (1) | 100 % of 20,288 |
+| D30 Trimsamsa | 5,000 | 100 % | 100 % of 20,000 |
+| D60 Shashtiamsa | 5,000 | 99.96 % (2) | 100 % of 21,440 |
+
+The 3 placement mismatches (Jupiter D12 and D60 on 4 Jul 2019, Moon D60 on 27 Feb 2042) all have the reference
+longitude within 6.4–6.8″ of a varga boundary, smaller than the 7.5″ longitude difference at that instant. The
+mapping itself agrees everywhere, including exactly on boundaries (a boundary longitude belongs to the following part
+on both sides). D60 boundaries are only 30′ apart, so a birth time uncertain by about 2 minutes can already move the
+D60 Lagna; the screen should say so (see §9).
+
+### 3.7 Tamil month start (Sankranti) — 372 ingresses
 
 The Sun's sidereal ingress times differ by a median of 11 s and at most 48 s. The **Tamil month day 1** in Chennai
 agreed in 100 % of cases. The rule: if the ingress is before sunset, the month starts that day. If it is after
 sunset, the month starts the next day.
 
-### 3.6 Spot checks against published days
+### 3.8 Spot checks against published days
 
 | Published fact | App | Result |
 |---|---|---|
@@ -177,8 +246,55 @@ London, the twice-in-month case (both settings), the skipped-sunrise case, and T
 - **Convention differences are not errors.** Different Lahiri variants, the Vakya and Thirukanitha methods, the
   sunrise definition, the true and mean node, and the "first or second star day" choice can all change a printed
   date. The app states its convention on screen wherever this matters.
-- **Birth data limits.** An approximate birth time makes the Lagna and the dasa dates approximate. The app already
-  marks unstable items (`chartStability`).
+- **Birth data limits.** An approximate birth time makes the Lagna, the divisional charts and the dasa dates
+  approximate. `chartStability()` in `shared/astro.js` computes which items change within the uncertainty window and
+  stores it as `chart.stability`. <!-- TODO-LEAD: no screen shows chart.stability yet (checked 2026-10-07). When the
+  chart screen shows it for approximate birth times, replace this comment with: "This is shown on the chart screen for
+  approximate times." Until then the app does NOT mark unstable items. -->
+  It is **not yet shown** on any screen (TODO-LEAD).
 - **Interpretation cannot be "100 % proven".** Predictions, porutham verdicts, yogas and remedies follow traditional
   rules (`docs/RULE-REGISTRY.md`). Those rules can be shown and reviewed by an astrologer, but nobody can prove them
   correct the way a sunrise time can be proven. The app presents them as traditional guidance, not certainty.
+- **Astronomical agreement ≠ prediction accuracy.** A 100 % match with the Swiss Ephemeris proves the sky is computed
+  correctly. It does not show that any reading made from that sky is correct for a person.
+
+## 9. Unsupported or limited cases
+
+| Case | What happens | Status |
+|---|---|---|
+| Polar latitudes (beyond about ±66°) | The ascendant is unstable or undefined there; the Lagna carries `highLatitude: true`. Days without a sunrise or sunset carry `polar: true`, `approximate: true` and list what is `missing`; Horai falls back to equal 60-minute slots and says so | Flagged, not validated. No benchmark city is above 52° N |
+| Dates outside 1940–2060 | Computed, but **not** in the Swiss benchmark. Fixture tests cover ayanamsa monotonicity 1900–2100 only; the engine contract's "supported range" 1900–2100 is a fixture range, not a benchmark range | Untested against the reference |
+| Vakya panchangam | Not supported. The app is Thirukanitha only; Vakya almanac dates can differ by hours or a day | Not supported |
+| Rahu / Ketu | Mean node only. The true node differs by up to about 1.9° (§3.1); there is no true-node option | Convention, documented |
+| Ambiguous or missing local times (daylight saving changes) | A time that occurs twice (clocks go back) is flagged `ambiguous` and the earlier instant is used by default; a time that never occurred (clocks go forward) is flagged `nonexistent` and moved forward by the gap (`shared/datetime.js`) | Flagged |
+| Sookshma lords and D60 placements for approximate birth times | Computed exactly from the given time, but a few minutes of birth-time error can change them (§3.5, §3.6) | Limitation; stability not yet shown on screen (TODO-LEAD) |
+| Topocentric Moon, hill-top or "visible" sunrise | Not used (geocentric positions, sea-level horizon) | Convention |
+| Interpretation (yogas, porutham, predictions, remedies) | Traditional rules, status *proposed* until an astrologer signs off (`docs/RULE-REGISTRY.md`) | Not an accuracy claim |
+
+## 10. Test coverage (automated, run on 7 October 2026)
+
+The engine is also covered by fixture and invariant tests that run with `npm test` (no Swiss Ephemeris needed).
+Counts below are from `node --test <file>` on the generation date; all passed.
+
+| Test file | Tests | What it checks |
+|---|---|---|
+| `test/engine-ayanamsa.test.js` | 6 | Lahiri ayanamsa against published almanac values (tolerances set before testing), monotonic 1900–2100 |
+| `test/engine-contract.test.js` | 6 | Settings object, ephemeris version pin, accuracy wording, birth-time stability |
+| `test/engine-dasa.test.js` | 5 | Exact Maha → Bhukti → Pratyantara → Sookshma partition |
+| `test/engine-datetime.test.js` | 10 | Birth inputs, historical time zones, DST ambiguous / nonexistent times, calendar age |
+| `test/engine-deterministic.test.js` | 6 | Invariants over many charts: normalised angles, Ketu opposition, house indices, event order, dasa sums |
+| `test/engine-motion.test.js` | 9 | Retrograde, speed, stationary planets, Lagna |
+| `test/engine-panchang.test.js` | 9 | Panchangam event search, Horai methods, weekday before sunrise, polar days |
+| `test/engine-strength.test.js` | 4 | Strength index naming, combustion table, no double counting |
+| `test/engine-varga.test.js` | 7 | Varga variants, exact segment-boundary fixtures, Ashtakavarga |
+| `test/astro.test.js` | 6 | Chart, panchangam and dasa basics |
+| `test/varga.test.js` | 6 | Divisional-chart mappings |
+| `test/reference.test.js` | 6 | Published astronomical events (NASA eclipse catalogue and others) |
+| `test/starbday.test.js` | 10 | Star birthday and milestones against an independent day-by-day scan |
+| `test/peyarchi.test.js` | 7 | Transit (peyarchi) dates |
+| `test/accuracy-report.test.js` | 5 | This report's version stamps equal the code constants and the benchmark output |
+| **Total** | **102** | |
+
+The Swiss Ephemeris benchmark (§2–3.8) is separate and dev-only: `scripts/benchmark` (not run in CI because the SE
+data files and the native `sweph` module are not part of the app).
+

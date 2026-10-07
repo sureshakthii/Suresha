@@ -125,7 +125,7 @@ async function boot() {
   $$('.tabbar button').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
 
   const startHash = location.hash;
-  if (location.hash === '#billing-success') toast(L('Payment received — Premium is active 🙏', 'கட்டணம் பெறப்பட்டது — பிரீமியம் செயலில் 🙏'));
+  if (location.hash === '#billing-success') toast(L('Payment received — your plan is active 🙏', 'கட்டணம் பெறப்பட்டது — உங்கள் திட்டம் செயலில் 🙏'));
   if (location.hash === '#welcome') toast(L('Signed in with Facebook', 'Facebook மூலம் உள்நுழைந்தீர்கள்'));
   if (location.hash === '#login-failed') toast(L('Facebook sign-in failed. Please try again.', 'Facebook உள்நுழைவு தோல்வி. மீண்டும் முயற்சிக்கவும்.'));
   if (location.hash) history.replaceState(null, '', location.pathname);

@@ -16,7 +16,7 @@ export const GROUPS = [
 
 /**
  * Every tool. k = extra search words (English, Tanglish spellings, Tamil synonyms).
- * status: 'server' needs the online service · 'sample' uses sample data.
+ * status: 'server' needs the online service · 'sample' uses sample data · 'soon' is not available yet (shown as "Coming soon").
  */
 export const TOOLS = [
   // 1. Today
@@ -63,8 +63,8 @@ export const TOOLS = [
   { id: 'store', group: 'services', en: 'Pooja store', ta: 'பூஜைக் கடை', k: 'store shop kadai pooja items buy', status: 'sample' },
   { id: 'packages', group: 'services', en: 'Yatra packages', ta: 'யாத்திரை பேக்கேஜ்', k: 'yatra package tour travel', status: 'server' },
   { id: 'bookings', group: 'services', en: 'My bookings', ta: 'என் முன்பதிவுகள்', k: 'booking bookings status cancel order', status: 'server' },
-  { id: 'consult', group: 'services', en: 'Talk to an astrologer', ta: 'ஜோதிடருடன் பேச', k: 'consult astrologer jothidar call expert second opinion' },
-  { id: 'plans', group: 'services', en: 'Premium & Family plans', ta: 'பிரீமியம் & குடும்பத் திட்டங்கள்', k: 'premium plan subscription family plan pay' },
+  { id: 'consult', group: 'services', en: 'Talk to an astrologer', ta: 'ஜோதிடருடன் பேச', k: 'consult astrologer jothidar call expert second opinion', status: 'soon' },
+  { id: 'plans', group: 'services', en: 'Personal & Family plans', ta: 'தனிநபர் & குடும்பத் திட்டங்கள்', k: 'personal plan premium subscription family plan pay thaninabar' },
   // 8. More
   { id: 'numerology', group: 'more', en: 'Name & number numerology', ta: 'பெயர் & எண் கணிதம்', k: 'numerology en kanitham name number' },
   { id: 'vargas', group: 'more', en: 'Divisional charts & Ashtakavarga', ta: 'வர்க்கச் சக்கரங்கள் & அஷ்டகவர்க்கம்', k: 'varga divisional navamsa d9 d10 ashtakavarga' },
@@ -76,6 +76,7 @@ export const TOOLS = [
   { id: 'why', group: 'more', en: 'How Thunai reads your chart', ta: 'துணை ஜாதகத்தைப் படிக்கும் முறை', k: 'how why method explain' },
   { id: 'calc', group: 'more', en: 'Calculation methods', ta: 'கணிப்பு முறைகள்', k: 'calculation ayanamsa lahiri method' },
   { id: 'feedback', group: 'more', en: 'Rate & comment', ta: 'மதிப்பீடு & கருத்து', k: 'feedback rate review karuthu' },
+  { id: 'report', group: 'more', en: 'Report a problem', ta: 'பிரச்சினையைத் தெரிவி', k: 'report problem bug issue error defect not working pirachinai' },
   { id: 'invite', group: 'more', en: 'Invite family', ta: 'குடும்பத்தினரை அழை', k: 'invite share friends' },
   { id: 'legal', group: 'more', en: 'Terms & refunds', ta: 'விதிமுறைகள் & பணத்திருப்பம்', k: 'terms legal refund cancellation policy' },
   { id: 'about', group: 'more', en: 'About Thunai', ta: 'துணை பற்றி', k: 'about help version' },

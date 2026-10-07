@@ -44,13 +44,21 @@ function answer(m, scroll = true) {
   const c = chartOf(m);
   const out = $('#lifeOut');
   if (!lifeQuestionAllowed(ui.q, ageOf(m))) { out.innerHTML = ''; return; }
-  if (isLocked('predictions')) { out.innerHTML = lockCard(ageOf(m).minor ? L('Detailed readings are part of Premium. Start with a free trial.', 'விரிவான பலன்கள் பிரீமியத்தில் உள்ளன. இலவசச் சோதனையுடன் தொடங்குங்கள்.') : L('Life-timing predictions for marriage, job, PR, house and children are part of Premium. Start with a free trial.', 'திருமணம், வேலை, PR, வீடு, குழந்தை — வாழ்க்கை நேரக் கணிப்புகள் பிரீமியத்தில் உள்ளன. இலவசச் சோதனையுடன் தொடங்குங்கள்.')); return; }
+  // Value before payment: when locked, the first result card is still shown free; the lock card follows it.
+  const locked = isLocked('predictions');
+  const lockText = ageOf(m).minor ? L('This first result is free. Detailed readings are part of the Personal plan. Start with a free trial.', 'இந்த முதல் முடிவு இலவசம். விரிவான பலன்கள் தனிநபர் திட்டத்தில் உள்ளன. இலவசச் சோதனையுடன் தொடங்குங்கள்.') : L('This first result is free. All periods, parigaram and the detailed explanation for marriage, job, PR, house and children are part of the Personal plan. Start with a free trial.', 'இந்த முதல் முடிவு இலவசம். திருமணம், வேலை, PR, வீடு, குழந்தை — அனைத்துக் காலங்கள், பரிகாரம், விரிவான விளக்கம் தனிநபர் திட்டத்தில் உள்ளன. இலவசச் சோதனையுடன் தொடங்குங்கள்.');
   out.innerHTML = '<div class="loader"><i></i><i></i><i></i></div>';
   setTimeout(() => {
     if (ui.q === 'kula') renderKula(c, m);
     else if (ui.q === 'compass') renderCompass(c, m);
     else if (ui.q === 'habits') renderHabits(c, m);
     else renderPrediction(c, m);
+    if (locked) {
+      const kids = [...out.children];
+      const first = kids.findIndex((el) => el.classList.contains('card'));
+      kids.slice(first + 1).forEach((el) => el.remove());
+      out.insertAdjacentHTML('beforeend', lockCard(lockText));
+    }
     if (scroll) out.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 30);
 }

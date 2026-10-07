@@ -3,16 +3,25 @@ import express from 'express';
 import { getDb } from './db.js';
 import { requireAdmin as adminRole, audit } from './admin.js';
 import { currentUser } from './auth.js';
-import { PLANS, grantComplimentary, setBillingClock } from './billing.js';
+import { PAID_PLAN_IDS, canonicalPlan, grantComplimentary, setBillingClock } from './billing.js';
 
 // Growth: gift / trial codes, usage analytics, feedback & testimonials, referrals and the admin overview.
 
 const HOUR = 3600000;
 const DAY = 24 * HOUR;
 const IST = 5.5 * HOUR; // daily stats roll over at midnight India time
-const PAID = PLANS.filter((p) => p.interval).map((p) => p.id);
+const PAID = PAID_PLAN_IDS; // current ids plus the old premium_* aliases
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no I/L/O/0/1
-const EVENT_TYPES = ['first_open', 'app_open', 'install', 'screen_view', 'signup', 'login', 'feature', 'purchase', 'share', 'referral_open'];
+/**
+ * Analytics event types (sent only with the person's analytics consent). Product metrics (§14):
+ *   feature_use (feature = tool id) · task_complete (feature = porutham | journey | names | prasnam | weekly_plan)
+ *   paywall_view (feature = the locked feature) · plan_click (feature = plan id)
+ *   comprehension_feedback (feature = '<where>:yes' | '<where>:no' — "Was this clear?")
+ */
+export const EVENT_TYPES = ['first_open', 'app_open', 'install', 'screen_view', 'signup', 'login', 'feature', 'purchase', 'share', 'referral_open',
+  'feature_use', 'task_complete', 'paywall_view', 'plan_click', 'comprehension_feedback'];
+/** Feedback kinds: a rating/comment, or a defect report ("Report a problem"). */
+export const FEEDBACK_TYPES = ['feedback', 'defect'];
 const PLATFORMS = ['android', 'ios', 'huawei', 'pwa', 'web'];
 const FEEDBACK_STATUSES = ['new', 'approved', 'hidden'];
 const COMPLIMENTARY = ['gift', 'trial', 'referral', 'admin'];
@@ -89,7 +98,14 @@ export function setGrowthClock(fn) {
 const ready = new WeakSet();
 function db() {
   const d = getDb();
-  if (!ready.has(d)) { d.exec(SCHEMA); ready.add(d); }
+  if (!ready.has(d)) {
+    d.exec(SCHEMA);
+    // Columns added after the first release (older databases get them here).
+    for (const col of ["type TEXT NOT NULL DEFAULT 'feedback'", 'meta TEXT']) {
+      try { d.exec(`ALTER TABLE feedback ADD COLUMN ${col}`); } catch { /* already there */ }
+    }
+    ready.add(d);
+  }
   return d;
 }
 
@@ -185,16 +201,32 @@ function ipLimited(ip, max = 300, windowMs = 10 * 60000) {
 // ---- shapes ----
 
 const giftOut = (g) => ({
-  code: g.code, plan: g.plan, hours: g.hours, maxUses: g.max_uses, uses: g.uses, note: g.note || '',
+  code: g.code, plan: canonicalPlan(g.plan), hours: g.hours, maxUses: g.max_uses, uses: g.uses, note: g.note || '',
   createdAt: g.created_at, expiresAt: g.expires_at ?? null,
 });
 
 const firstName = (n) => (n || '').trim().split(/\s+/)[0] || 'அன்பர்';
 
+const parseMeta = (s) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
 const feedbackOut = (f) => ({
-  id: f.id, userId: f.user_id, deviceId: f.device_id, name: f.user_id ? firstName(f.name) : 'அன்பர்', rating: f.rating,
-  comment: f.comment || '', screen: f.screen, status: f.status, reply: f.reply, createdAt: f.created_at,
+  id: f.id, type: f.type || 'feedback', userId: f.user_id, deviceId: f.device_id, name: f.user_id ? firstName(f.name) : 'அன்பர்', rating: f.rating || null,
+  comment: f.comment || '', screen: f.screen, status: f.status, reply: f.reply, createdAt: f.created_at, ...(f.type === 'defect' ? { report: parseMeta(f.meta) } : {}),
 });
+
+/** Defect report fields: what the person typed plus build / screen / device size / language — no personal data. */
+function defectReport(v) {
+  const r = v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+  const out = {
+    steps: text(r.steps, 'report.steps', { max: 1000 }),
+    expected: text(r.expected, 'report.expected', { max: 500 }),
+    actual: text(r.actual, 'report.actual', { max: 500 }),
+    build: text(r.build, 'report.build', { max: 80 }),
+    viewport: text(r.viewport, 'report.viewport', { max: 20 }),
+    lang: blank(r.lang) ? null : ['ta', 'en'].includes(r.lang) ? r.lang : fail('report.lang must be ta or en'),
+  };
+  if (out.viewport && !/^\d{2,5}x\d{2,5}$/.test(out.viewport)) fail('report.viewport must look like 360x780');
+  return out;
+}
 
 // ---- stats ----
 
@@ -215,7 +247,7 @@ export function computeStats(days = 30) {
     for (const r of rows) if (r.currency in revenueByCurrency) revenueByCurrency[r.currency] = Math.round(r.n || 0) / 100;
   } catch (err) { if (!/no such table/.test(err.message)) throw err; }
 
-  const fb = d.prepare('SELECT COUNT(*) AS c, AVG(rating) AS avg FROM feedback').get();
+  const fb = d.prepare("SELECT COUNT(*) AS c, AVG(rating) AS avg FROM feedback WHERE type = 'feedback'").get();
   const totals = {
     devices: scalar('SELECT COUNT(DISTINCT device_id) AS n FROM events'),
     installs: scalar("SELECT COUNT(DISTINCT device_id) AS n FROM events WHERE type = 'install'"),
@@ -261,10 +293,38 @@ export function computeStats(days = 30) {
 
   const topScreens = d.prepare(`SELECT screen, COUNT(*) AS views FROM events WHERE type = 'screen_view' AND screen IS NOT NULL AND created_at >= ?
     GROUP BY screen ORDER BY views DESC, screen LIMIT 10`).all(from).map((r) => ({ screen: r.screen, views: r.views }));
-  const topFeatures = d.prepare(`SELECT feature, COUNT(*) AS uses FROM events WHERE type = 'feature' AND feature IS NOT NULL AND created_at >= ?
+  const topFeatures = d.prepare(`SELECT feature, COUNT(*) AS uses FROM events WHERE type IN ('feature', 'feature_use') AND feature IS NOT NULL AND created_at >= ?
     GROUP BY feature ORDER BY uses DESC, feature LIMIT 10`).all(from).map((r) => ({ feature: r.feature, uses: r.uses }));
 
-  return { totals, byPlatform, daily, topScreens, topFeatures };
+  return { totals, byPlatform, daily, topScreens, topFeatures, product: productStats(from) };
+}
+
+/**
+ * Product metrics (owner checklist §14) from consented analytics events since `from`: tool use, completed tasks,
+ * paywall views → plan clicks → purchases, sign-ups / logins and "Was this clear?" answers.
+ */
+export function productStats(from) {
+  const d = db();
+  const byFeature = (type, limit = 20) => Object.fromEntries(d.prepare(`SELECT feature, COUNT(*) AS n FROM events WHERE type = ? AND feature IS NOT NULL AND created_at >= ?
+    GROUP BY feature ORDER BY n DESC, feature LIMIT ?`).all(type, from, limit).map((r) => [r.feature, r.n]));
+  const count = (type) => d.prepare('SELECT COUNT(*) AS n FROM events WHERE type = ? AND created_at >= ?').get(type, from).n;
+  const clarity = { yes: 0, no: 0 };
+  for (const r of d.prepare("SELECT feature, COUNT(*) AS n FROM events WHERE type = 'comprehension_feedback' AND feature IS NOT NULL AND created_at >= ? GROUP BY feature").all(from)) {
+    const v = String(r.feature).split(':').pop();
+    if (v === 'yes' || v === 'no') clarity[v] += r.n;
+  }
+  const paywallViews = count('paywall_view'), planClicks = count('plan_click'), purchases = count('purchase');
+  const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null);
+  return {
+    featureUse: byFeature('feature_use'),
+    tasksCompleted: byFeature('task_complete'),
+    paywallViews, planClicks, purchases,
+    paywallToClickRate: pct(planClicks, paywallViews),
+    clickToPurchaseRate: pct(purchases, planClicks),
+    planClicksByPlan: byFeature('plan_click'),
+    signups: count('signup'), logins: count('login'),
+    comprehension: { ...clarity, clearRate: pct(clarity.yes, clarity.yes + clarity.no) },
+  };
 }
 
 // ---- referrals ----
@@ -306,9 +366,10 @@ export function growthRouter() {
     let code;
     do code = `KJ-${randomCode(4)}-${randomCode(4)}`;
     while (d.prepare('SELECT 1 FROM gift_codes WHERE code = ?').get(code));
+    const plan = canonicalPlan(b.plan);
     d.prepare(`INSERT INTO gift_codes (code, plan, hours, max_uses, uses, note, created_at, expires_at)
-      VALUES (?, ?, ?, ?, 0, ?, ?, ?)`).run(code, b.plan, hours, maxUses, note, now(), expiresAt);
-    audit(req, 'giftcode.create', code, { plan: b.plan, hours, maxUses });
+      VALUES (?, ?, ?, ?, 0, ?, ?, ?)`).run(code, plan, hours, maxUses, note, now(), expiresAt);
+    audit(req, 'giftcode.create', code, { plan, hours, maxUses });
     res.status(201).json({ code, giftCode: giftOut(d.prepare('SELECT * FROM gift_codes WHERE code = ?').get(code)) });
   }));
 
@@ -363,33 +424,38 @@ export function growthRouter() {
   }));
 
   // Feedback, ratings, testimonials
+  // type 'feedback' (default): rating 1–5 + optional comment. type 'defect' ("Report a problem"): no rating; the
+  // comment says what went wrong and `report` carries steps / expected / actual / build / device size / language.
   r.post('/feedback', handle((req, res) => {
     const b = body(req);
     const device = deviceId(b.deviceId);
-    const rating = int(b.rating, 'rating', 1, 5);
-    const comment = text(b.comment, 'comment', { max: 1000 });
+    const type = blank(b.type) ? 'feedback' : FEEDBACK_TYPES.includes(b.type) ? b.type : fail(`type must be one of: ${FEEDBACK_TYPES.join(', ')}`);
+    const rating = type === 'defect' ? (blank(b.rating) ? 0 : int(b.rating, 'rating', 1, 5)) : int(b.rating, 'rating', 1, 5);
+    const comment = text(b.comment, 'comment', { max: 1000, optional: type !== 'defect' });
+    const meta = type === 'defect' ? JSON.stringify(defectReport(b.report)) : null;
     const screen = label(b.screen, 'screen');
     const t = now();
     if (db().prepare('SELECT COUNT(*) AS n FROM feedback WHERE device_id = ? AND created_at > ?').get(device, t - HOUR).n >= 10) {
       return res.status(429).json({ error: 'Too much feedback from this device — please try later' });
     }
-    db().prepare(`INSERT INTO feedback (id, user_id, device_id, rating, comment, screen, status, created_at, reply)
-      VALUES (?, ?, ?, ?, ?, ?, 'new', ?, NULL)`).run(crypto.randomUUID(), currentUser(req)?.id || null, device, rating, comment, screen, t);
-    res.json({ ok: true });
+    db().prepare(`INSERT INTO feedback (id, user_id, device_id, rating, comment, screen, status, created_at, reply, type, meta)
+      VALUES (?, ?, ?, ?, ?, ?, 'new', ?, NULL, ?, ?)`).run(crypto.randomUUID(), currentUser(req)?.id || null, device, rating, comment, screen, t, type, meta);
+    res.json({ ok: true, type });
   }));
 
   r.get('/testimonials', (_req, res) => {
     const rows = db().prepare(`SELECT f.*, u.name FROM feedback f LEFT JOIN users u ON u.id = f.user_id
-      WHERE f.status = 'approved' ORDER BY f.created_at DESC LIMIT 20`).all();
+      WHERE f.status = 'approved' AND f.type = 'feedback' AND f.rating > 0 ORDER BY f.created_at DESC LIMIT 20`).all();
     res.json({ testimonials: rows.map((f) => ({ rating: f.rating, comment: f.comment || '', name: f.user_id ? firstName(f.name) : 'அன்பர்', createdAt: f.created_at })) });
   });
 
   r.get('/admin/feedback', requireAdmin, handle((req, res) => {
-    const { status } = req.query;
+    const { status, type } = req.query;
     if (status !== undefined && !FEEDBACK_STATUSES.includes(status)) fail(`status must be one of: ${FEEDBACK_STATUSES.join(', ')}`);
-    const where = status ? 'WHERE f.status = ?' : '';
-    const rows = db().prepare(`SELECT f.*, u.name FROM feedback f LEFT JOIN users u ON u.id = f.user_id ${where} ORDER BY f.created_at DESC`)
-      .all(...(status ? [status] : []));
+    if (type !== undefined && !FEEDBACK_TYPES.includes(type)) fail(`type must be one of: ${FEEDBACK_TYPES.join(', ')}`);
+    const conds = [...(status ? ['f.status = ?'] : []), ...(type ? ['f.type = ?'] : [])];
+    const rows = db().prepare(`SELECT f.*, u.name FROM feedback f LEFT JOIN users u ON u.id = f.user_id ${conds.length ? `WHERE ${conds.join(' AND ')}` : ''} ORDER BY f.created_at DESC`)
+      .all(...(status ? [status] : []), ...(type ? [type] : []));
     res.json({ feedback: rows.map(feedbackOut) });
   }));
 
@@ -433,20 +499,22 @@ export function growthRouter() {
     } catch {
       return res.status(409).json({ error: 'You have already used a referral code' });
     }
-    const subscription = grantComplimentary(req.user.id, 'premium_month', 'referral', days * DAY, { extend: true, ref: code });
-    if (referrerDays) grantComplimentary(owner.user_id, 'premium_month', 'referral', referrerDays * DAY, { extend: true, ref: req.user.id });
+    const subscription = grantComplimentary(req.user.id, 'personal_month', 'referral', days * DAY, { extend: true, ref: code });
+    if (referrerDays) grantComplimentary(owner.user_id, 'personal_month', 'referral', referrerDays * DAY, { extend: true, ref: req.user.id });
     res.json({ ok: true, days, subscription, expiresAt: subscription.expiresAt });
   }));
 
   // Admin overview
   r.get('/admin/overview', requireAdmin, (_req, res) => {
-    const latest = db().prepare('SELECT f.*, u.name FROM feedback f LEFT JOIN users u ON u.id = f.user_id ORDER BY f.created_at DESC LIMIT 5').all();
+    const latest = db().prepare("SELECT f.*, u.name FROM feedback f LEFT JOIN users u ON u.id = f.user_id WHERE f.type = 'feedback' ORDER BY f.created_at DESC LIMIT 5").all();
     res.json({
       stats: computeStats(30),
       latestFeedback: latest.map(feedbackOut),
       pendingPriests: scalar("SELECT COUNT(*) AS n FROM priests WHERE status = 'pending'"),
-      openRequests: scalar("SELECT COUNT(*) AS n FROM service_requests WHERE status IN ('requested', 'confirmed', 'assigned')"),
+      openRequests: scalar("SELECT COUNT(*) AS n FROM service_requests WHERE status IN ('requested', 'awaiting_confirmation', 'confirmed', 'assigned')"),
       ordersAwaitingPayment: scalar("SELECT COUNT(*) AS n FROM store_orders WHERE status IN ('awaiting_payment', 'awaiting_payment_setup')"),
+      openRefundRequests: scalar("SELECT COUNT(*) AS n FROM order_refund_requests WHERE status IN ('open', 'refund_pending')"),
+      problemReports: scalar("SELECT COUNT(*) AS n FROM feedback WHERE type = 'defect' AND status = 'new'"),
     });
   });
 

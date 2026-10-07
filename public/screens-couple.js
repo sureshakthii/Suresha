@@ -149,7 +149,7 @@ function showCouple(bride, groom) {
       ${r.samyam.map((n) => `<div class="factor"><span>${esc(bi(n))}</span><b class="${n.ok ? 'pos' : 'neg'}">${n.ok ? '✓' : '!'}</b></div>`).join('')}</details>
     <div class="card glass"><div class="card-title">🛡️ ${L('Beyond the 10 poruthams', '10 பொருத்தத்திற்கும் மேலான ஆய்வு')} <span class="pill">${r.deep.passed}/${r.deep.checks.length}</span></div>
       ${r.deep.checks.map((c) => `<div class="deep-row"><span>${c.ok ? '✅' : '🟡'} <b>${esc(bi(c.name))}</b><br><small class="muted">${esc(bi(c.note))}</small></span></div>`).join('')}
-    ${locked ? lockCard(L('Mana porutham, children and wealth timing and the 25-year married-life timeline are part of Premium.', 'மனப் பொருத்தம், குழந்தை & செல்வ காலம், 25 ஆண்டு திருமண வாழ்க்கைக் காலவரிசை பிரீமியத்தில் உள்ளன.')) : `
+    ${locked ? lockCard(L('Mana porutham, children and wealth timing and the 25-year married-life timeline are part of the Personal plan.', 'மனப் பொருத்தம், குழந்தை & செல்வ காலம், 25 ஆண்டு திருமண வாழ்க்கைக் காலவரிசை தனிநபர் திட்டத்தில் உள்ளன.')) : `
     <div class="card glass"><div class="card-title">💗 ${L('Mana Porutham — mind & life compatibility', 'மனப் பொருத்தம் — மனமும் வாழ்க்கையும்')}</div>${areaRows(r.mana.areas)}
       ${r.mana.karmic ? `<p class="small">✨ ${L('Rahu/Ketu link your charts — a strong karmic bond; keep honesty and shared prayer at the centre.', 'ராகு/கேது உங்கள் ஜாதகங்களை இணைக்கிறது — வலுவான கர்ம பந்தம்; நேர்மையும் சேர்ந்த வழிபாடும் மையமாக இருக்கட்டும்.')}</p>` : ''}</div>
     <div class="card glass"><div class="card-title">🏠 ${L('Marriage houses of each person', 'ஒவ்வொருவரின் திருமண பாவங்கள்')}</div>
@@ -224,7 +224,7 @@ function showPartners(a, b) {
     <div class="card glass"><div class="card-title">🤝 ${L('Compatibility', 'பொருத்தம்')}</div>${areaRows(r.areas)}</div>
     <div class="card glass"><div class="card-title">🧩 ${L('Who suits which role', 'யாருக்கு எந்தப் பொறுப்பு')}</div>
       ${r.roles.map((x) => `<div class="factor"><span>${esc(bi(x))}<br><small class="muted">${esc(bi(names[0]))} ${x.a} · ${esc(bi(names[1]))} ${x.b}</small></span><b class="pos">${who(x.best)}</b></div>`).join('')}</div>
-    ${locked ? lockCard(L('The 15-year partnership timeline and growth periods are part of Premium.', '15 ஆண்டு கூட்டுக் காலவரிசையும் வளர்ச்சிக் காலங்களும் பிரீமியத்தில் உள்ளன.')) : `
+    ${locked ? lockCard(L('The 15-year partnership timeline and growth periods are part of the Personal plan.', '15 ஆண்டு கூட்டுக் காலவரிசையும் வளர்ச்சிக் காலங்களும் தனிநபர் திட்டத்தில் உள்ளன.')) : `
     <div class="card glass"><div class="card-title">🚀 ${L('Growth periods both charts agree on', 'இரு ஜாதகமும் ஒப்புக்கொள்ளும் வளர்ச்சிக் காலம்')}</div>
       ${r.growth.length ? r.growth.slice(0, 4).map((w) => `<div class="best">🌟 ${monthYear(w.from)} – ${monthYear(w.to)}</div>`).join('') : `<p class="small">${r.timeline.some((x) => x.level === 'good') ? `${L('Best years from the timeline below', 'கீழே உள்ள காலவரிசையின் சிறந்த ஆண்டுகள்')}: ${r.timeline.filter((x) => x.level === 'good').map((x) => x.year).join(', ')}` : esc(bi(CAP_LINES.windows))}</p>`}
       ${r.companyNote ? `<p class="small">🏢 ${L('Company chart: 10th house', 'நிறுவன ஜாதகம்: 10-ம் பாவம்')} ${r.companyNote.tenth}, ${L('11th (profits)', '11-ம் (லாபம்)')} ${r.companyNote.eleventh}</p>` : ''}</div>

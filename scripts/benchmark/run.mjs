@@ -15,6 +15,13 @@ import {
 } from '../../shared/astro.js';
 import { tamilDate } from '../../shared/tamilcal.js';
 import { zoneOffsetMinutes } from '../../shared/datetime.js';
+// App side of the divisional-chart and sub-dasa checks (the reference side below is written fresh, not imported).
+import { vargaRasi } from '../../shared/varga.js';
+import { subPeriods } from '../../shared/astro.js';
+import { CALC_VERSION, RULES_VERSION, ENGINE_VERSION as RULES_ENGINE_LABEL } from '../../shared/version.js';
+import { ENGINE_VERSION, ENGINE_SETTINGS } from '../../shared/engine-contract.js';
+import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 
 const require = createRequire(import.meta.url);
 const swe = require('sweph');
@@ -124,10 +131,19 @@ const r2 = (x) => Math.round(x * 100) / 100;
 /** Distance (arcsec) of a longitude to the nearest boundary of segments of width `span`. */
 const boundaryDistSec = (lon, span) => { const r = lon % span; return Math.min(r, span - r) * 3600; };
 
-const report = { meta: {}, positions: {}, classification: {}, disagreements: [], panchang: {}, sunrise: {}, rahu: {}, dasa: {}, sankranti: {}, spot: [] };
+const report = { meta: {}, positions: {}, classification: {}, disagreements: [], panchang: {}, sunrise: {}, rahu: {}, dasa: {}, subDasa: {}, varga: {}, sankranti: {}, spot: [] };
+// Versions stamped into every result file (docs/ACCURACY-REPORT.md quotes them; test/accuracy-report.test.js checks them).
+const ROOT = join(HERE, '..', '..');
+const AE_VERSION = JSON.parse(readFileSync(join(ROOT, 'node_modules', 'astronomy-engine', 'package.json'), 'utf8')).version;
+let gitCommit = 'unknown', gitDirty = false;
+try {
+  gitCommit = execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim();
+  gitDirty = execSync('git status --porcelain', { cwd: ROOT }).toString().trim().length > 0;
+} catch { /* not a git checkout */ }
 report.meta = {
+  versions: { calcVersion: CALC_VERSION, rulesVersion: RULES_VERSION, engineVersion: ENGINE_VERSION, engineLabel: RULES_ENGINE_LABEL, astronomyEngine: AE_VERSION, contractEphemeris: ENGINE_SETTINGS.ephemeris.version, gitCommit, gitDirty, swissEphemeris: swe.version() },
   reference: `Swiss Ephemeris ${swe.version()} (sweph npm, SE data files sepl_18/semo_18), SE_SIDM_LAHIRI`,
-  engine: 'shared/astro.js on astronomy-engine 2.1.19',
+  engine: `shared/astro.js on astronomy-engine ${AE_VERSION}`,
   samples: { positions: N_POS, days: N_DAYS, births: N_BIRTH }, range: '1940-01-01 … 2060-12-31', cities: CITIES.length, seed: arg('seed', 7),
   ran: new Date().toISOString(),
 };
@@ -264,6 +280,144 @@ const dsp = stats(dasaErrPast);
 report.dasa = { births: N_BIRTH, firstLordAgreementPercent: r2(100 * dasaLordAgree.ok / dasaLordAgree.n), startErrorHours: { median: r2(ds.median), p95: r2(ds.p95), max: r2(ds.max) }, startErrorHoursBirthsTo2025: { median: r2(dsp.median), p95: r2(dsp.p95), max: r2(dsp.max) }, convention: '1 dasa year = 365.25 days on both sides; differences come only from the Moon position at birth' };
 void DASA_ORDER;
 
+// ------------------------------------------------------------------ 3b. Divisional charts (D9, D10, D12, D30, D60)
+// Reference: the varga sign is computed from the SWISS sidereal longitude with an independent implementation of
+// the documented Parashara mappings (written here from the texts, NOT imported from shared/varga.js):
+//   D9  Navamsa    — nine 3°20' parts; counting starts from Mesha for fire signs, Makara for earth, Thula for air,
+//                    Kataka for water.
+//   D10 Dasamsa    — ten 3° parts; odd signs count from the sign itself, even signs from the 9th sign from it.
+//   D12 Dwadasamsa — twelve 2°30' parts counted from the sign itself.
+//   D30 Trimsamsa  — odd signs: Mars 0–5° (Mesha), Saturn 5–10° (Kumbha), Jupiter 10–18° (Dhanusu),
+//                    Mercury 18–25° (Mithuna), Venus 25–30° (Thula); even signs: Venus 0–5° (Rishaba),
+//                    Mercury 5–12° (Kanni), Jupiter 12–20° (Meena), Saturn 20–25° (Makara), Mars 25–30° (Vrischika).
+//   D60 Shashtiamsa— sixty 0°30' parts counted from the sign itself (the app's variant 'd60-from-sign-itself',
+//                    awaiting astrologer review; other traditions differ for even signs).
+// Boundary rule on both sides: a longitude exactly on a boundary belongs to the following part.
+const ELEMENT_START = { fire: 0, earth: 9, air: 6, water: 3 };
+const ELEMENT_OF = ['fire', 'earth', 'air', 'water'];
+const D30_REF = {
+  odd: [{ from: 0, to: 5, sign: 0 }, { from: 5, to: 10, sign: 10 }, { from: 10, to: 18, sign: 8 }, { from: 18, to: 25, sign: 2 }, { from: 25, to: 30, sign: 6 }],
+  even: [{ from: 0, to: 5, sign: 1 }, { from: 5, to: 12, sign: 5 }, { from: 12, to: 20, sign: 11 }, { from: 20, to: 25, sign: 9 }, { from: 25, to: 30, sign: 7 }],
+};
+function refVarga(lon, n) {
+  const L = n360(lon);
+  const sign = Math.floor(L / 30);
+  const inSign = L - 30 * sign;
+  const isOdd = sign % 2 === 0; // Mesha (index 0) is the 1st, an odd sign
+  const partOf = (width) => Math.floor(inSign / width);
+  if (n === 9) return (ELEMENT_START[ELEMENT_OF[sign % 4]] + partOf(30 / 9)) % 12;
+  if (n === 10) return ((isOdd ? sign : sign + 8) + partOf(3)) % 12;
+  if (n === 12) return (sign + partOf(2.5)) % 12;
+  if (n === 30) return (isOdd ? D30_REF.odd : D30_REF.even).find((r) => inSign >= r.from && inSign < r.to).sign;
+  if (n === 60) return (sign + partOf(0.5)) % 12;
+  throw new Error(`no reference for D${n}`);
+}
+/** Distance (arcsec) of a longitude to the nearest boundary of varga n (equal parts, or D30's unequal limits). */
+function vargaBoundarySec(lon, n) {
+  const inSign = n360(lon) % 30;
+  const cuts = n === 30 ? [0, ...(Math.floor(n360(lon) / 30) % 2 === 0 ? [5, 10, 18, 25] : [5, 12, 20, 25]), 30] : Array.from({ length: n + 1 }, (_, k) => (30 * k) / n);
+  return Math.min(...cuts.map((c) => Math.abs(inSign - c))) * 3600;
+}
+const VARGA_LIST = [9, 10, 12, 30, 60];
+const VARGA_BODIES = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu', 'Lagna'];
+const vAgree = Object.fromEntries(VARGA_LIST.map((n) => [n, { n: 0, ok: 0 }]));
+const vDis = [];
+// Self-check of the reference mapping against hand-worked textbook examples (fails loudly if mistyped).
+for (const [lon, n, want] of [[0, 9, 0], [31, 9, 9], [61, 9, 6], [91, 9, 3], [31, 10, 9], [5, 10, 1], [15.1, 12, 6], [31, 30, 1], [44, 30, 11], [11, 30, 8], [29.9, 60, 11], [30.2, 60, 1]]) {
+  if (refVarga(lon, n) !== want) throw new Error(`reference varga self-check failed: D${n} of ${lon}° = ${refVarga(lon, n)}, expected ${want}`);
+}
+seed = arg('seed', 7) + 101;
+for (let i = 0; i < N_POS; i++) {
+  const d = randDate();
+  const [city, lat, lon] = CITIES[i % CITIES.length];
+  const app = planetPositions(d, lat, lon).planets;
+  for (const b of VARGA_BODIES) {
+    const ref = b === 'Ketu' ? n360(refLon('Rahu', d) + 180) : b === 'Lagna' ? refAsc(d, lat, lon) : refLon(b, d);
+    for (const n of VARGA_LIST) {
+      const a = vargaRasi(app[b].longitude, n), r = refVarga(ref, n);
+      vAgree[n].n++; vAgree[n].ok += a === r;
+      if (a !== r) vDis.push({ varga: `D${n}`, body: b, at: d.toISOString(), place: b === 'Lagna' ? city : '', app: a, ref: r, deltaArcsec: r2(angDiffSec(app[b].longitude, ref)), refDistToBoundaryArcsec: r2(vargaBoundarySec(ref, n)) });
+    }
+  }
+}
+// Same-longitude check: the app's mapping fed the SWISS longitude must give the reference sign every time
+// (this isolates the mapping from the ephemeris difference).
+const vMap = Object.fromEntries(VARGA_LIST.map((n) => [n, { n: 0, ok: 0 }]));
+for (let i = 0; i < 20000; i++) {
+  const L = rnd() * 360;
+  for (const n of VARGA_LIST) { vMap[n].n++; vMap[n].ok += vargaRasi(L, n) === refVarga(L, n); }
+}
+// Exact boundaries (k × part width) and just below them.
+for (const n of [9, 10, 12, 60]) for (let k = 0; k < 12 * n; k++) for (const L of [(30 * k) / n, (30 * k) / n - 1e-9]) { const x = n360(L); vMap[n].n++; vMap[n].ok += vargaRasi(x, n) === refVarga(x, n); }
+report.varga = {
+  instants: N_POS, bodies: VARGA_BODIES,
+  placementAgreementPercent: Object.fromEntries(VARGA_LIST.map((n) => [`D${n}`, r2(100 * vAgree[n].ok / vAgree[n].n)])),
+  placements: Object.fromEntries(VARGA_LIST.map((n) => [`D${n}`, vAgree[n].n])),
+  mappingAgreementPercent: Object.fromEntries(VARGA_LIST.map((n) => [`D${n}`, r2(100 * vMap[n].ok / vMap[n].n)])),
+  mappingSamples: Object.fromEntries(VARGA_LIST.map((n) => [`D${n}`, vMap[n].n])),
+  disagreements: vDis,
+  maxBoundaryDistanceOfDisagreementArcsec: vDis.length ? Math.max(...vDis.map((x) => x.refDistToBoundaryArcsec)) : 0,
+  note: 'Placement = app longitude → app mapping vs Swiss longitude → reference mapping. Mapping = both mappings on the same longitude (random + exact boundaries).',
+};
+
+// ------------------------------------------------------------------ 3c. Pratyantara and Sookshma start dates
+// Reference: from the Swiss Moon longitude at birth, the maha-dasa start is placed by the unelapsed fraction of
+// the nakshatra; every lower level splits its parent proportionally (child years / 120 of the parent span, the
+// sequence starting from the parent's own lord). Written here independently of shared/astro.js subPeriods().
+const REF_LORDS = ['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury'];
+const REF_YEARS = { Ketu: 7, Venus: 20, Sun: 6, Moon: 10, Mars: 7, Rahu: 18, Jupiter: 16, Saturn: 19, Mercury: 17 };
+const YMS = 365.25 * 86400000;
+function refChildren(lord, startMs, lengthMs) {
+  const out = []; let t = startMs; const i0 = REF_LORDS.indexOf(lord);
+  for (let k = 0; k < 9; k++) { const l = REF_LORDS[(i0 + k) % 9]; const len = lengthMs * REF_YEARS[l] / 120; out.push({ lord: l, start: t, end: t + len }); t += len; }
+  return out;
+}
+function refPath(birth, at) {
+  const mo = refMoon(birth);
+  const nak = Math.floor(mo / NAK);
+  const first = REF_LORDS[nak % 9];
+  let t = birth.getTime() - ((mo % NAK) / NAK) * REF_YEARS[first] * YMS;
+  let maha = null;
+  for (let k = 0; k < 9; k++) { const l = REF_LORDS[(nak % 9 + k) % 9]; const len = REF_YEARS[l] * YMS; if (at >= t && at < t + len) { maha = { lord: l, start: t, end: t + len }; break; } t += len; }
+  if (!maha) return null;
+  const path = [maha];
+  for (let lvl = 0; lvl < 3; lvl++) { const p = path[path.length - 1]; path.push(refChildren(p.lord, p.start, p.end - p.start).find((c) => at >= c.start && at < c.end) || refChildren(p.lord, p.start, p.end - p.start)[8]); }
+  return path; // [maha, bhukti, pratyantara, sookshma]
+}
+const sub = { praty: [], sook: [], prPast: [], skPast: [], pathOk: { praty: 0, sook: 0 }, n: 0, dis: [] };
+seed = arg('seed', 7) + 202;
+for (let i = 0; i < N_BIRTH; i++) {
+  const b = randDate();
+  const at = b.getTime() + rnd() * 80 * YMS; // a moment within the person's first 80 years
+  const ref = refPath(b, at);
+  const app = vimshottari(b, planetPositions(b, null, null).planets.Moon.longitude, new Date(at));
+  const within = (x) => at >= x.start.getTime() && at < x.end.getTime();
+  const maha = app.periods.find(within);
+  if (!ref || !maha) continue;
+  const bh = maha.bhuktis.find(within);
+  const pr = bh && subPeriods(bh).find(within);
+  const sk = pr && subPeriods(pr).find(within);
+  sub.n++;
+  const past = b.getTime() <= Date.UTC(2026, 0, 1);
+  const prOk = pr && [maha.lord, bh.lord, pr.lord].join() === ref.slice(0, 3).map((x) => x.lord).join();
+  const skOk = prOk && sk && sk.lord === ref[3].lord;
+  if (prOk) { sub.pathOk.praty++; const e = (pr.start.getTime() - ref[2].start) / 3600000; sub.praty.push(e); if (past) sub.prPast.push(e); }
+  if (skOk) { sub.pathOk.sook++; const e = (sk.start.getTime() - ref[3].start) / 3600000; sub.sook.push(e); if (past) sub.skPast.push(e); }
+  if (!prOk || !skOk) {
+    const lvl = !prOk ? 'pratyantara' : 'sookshma';
+    const r = ref[!prOk ? 2 : 3];
+    sub.dis.push({ level: lvl, birth: b.toISOString(), at: new Date(at).toISOString(), app: (!prOk ? pr : sk)?.lord, ref: r.lord, hoursFromRefBoundary: r2(Math.min(at - r.start, r.end - at) / 3600000) });
+  }
+}
+const hrs = (s) => ({ median: r2(s.median), p95: r2(s.p95), max: r2(s.max) });
+report.subDasa = {
+  births: sub.n,
+  pratyantara: { lordPathAgreementPercent: r2(100 * sub.pathOk.praty / sub.n), startErrorHours: hrs(stats(sub.praty)), startErrorHoursBirthsTo2025: hrs(stats(sub.prPast)) },
+  sookshma: { lordPathAgreementPercent: r2(100 * sub.pathOk.sook / sub.n), startErrorHours: hrs(stats(sub.sook)), startErrorHoursBirthsTo2025: hrs(stats(sub.skPast)) },
+  disagreements: sub.dis,
+  convention: 'Proportional split, 1 dasa year = 365.25 days; one random instant within the first 80 years per birth; lords compared along the maha→bhukti→pratyantara→sookshma path',
+};
+
 // ------------------------------------------------------------------ 4. Sankranti (Tamil month start) times and day-1 dates in Chennai
 const sank = [];
 const day1Dis = [];
@@ -349,7 +503,8 @@ writeFileSync(join(HERE, 'results.json'), JSON.stringify(report, null, 2));
 
 // ------------------------------------------------------------------ markdown summary
 const md = [];
-md.push(`# Benchmark results\n\n${report.meta.reference} vs ${report.meta.engine}. Samples: ${N_POS} instants, ${pc.n} sunrise-days, ${N_BIRTH} births, ${sank.length} sankrantis, ${CITIES.length} cities, ${report.meta.range}.\n`);
+const V = report.meta.versions;
+md.push(`# Benchmark results\n\nGenerated ${report.meta.ran} · CALC_VERSION ${V.calcVersion} · RULES_VERSION ${V.rulesVersion} · ENGINE_VERSION ${V.engineVersion} · astronomy-engine ${V.astronomyEngine} · git ${V.gitCommit}${V.gitDirty ? ' (uncommitted changes)' : ''}\n\n${report.meta.reference} vs ${report.meta.engine}. Samples: ${N_POS} instants, ${pc.n} sunrise-days, ${N_BIRTH} births, ${sank.length} sankrantis, ${CITIES.length} cities, ${report.meta.range}.\n`);
 md.push('## Sidereal longitudes (arc-seconds)\n\n| Body | Median | 95th pct | Max | Rasi agree % | Nakshatra agree % | Pada agree % |\n|---|---|---|---|---|---|---|');
 for (const b of BODY_LIST) md.push(`| ${b} | ${report.positions[b].medianArcsec} | ${report.positions[b].p95Arcsec} | ${report.positions[b].maxArcsec} | ${report.classification[b].rasi} | ${report.classification[b].nakshatra} | ${report.classification[b].pada} |`);
 md.push(`| Ayanamsa | ${report.positions.ayanamsa.medianArcsec} | ${report.positions.ayanamsa.p95Arcsec} | ${report.positions.ayanamsa.maxArcsec} | | | |`);
@@ -361,11 +516,17 @@ md.push('\n## Panchangam at sunrise\n\n| Element | Agreement % | End-time median
 for (const k of ['tithi', 'nakshatra', 'yoga', 'karana']) md.push(`| ${k} | ${report.panchang.agreementPercent[k]} | ${report.panchang.endTimeError[k].medianSec} | ${report.panchang.endTimeError[k].p95Sec} | ${report.panchang.endTimeError[k].maxSec} |`);
 md.push(`| weekday | ${report.panchang.agreementPercent.weekday} | | | |`);
 md.push(`\n## Vimshottari dasa\n\nFirst dasa lord agreement ${report.dasa.firstLordAgreementPercent} %; maha-dasa start dates: median ${report.dasa.startErrorHours.median} h, 95th pct ${report.dasa.startErrorHours.p95} h, max ${report.dasa.startErrorHours.max} h (births up to 2025 only: median ${report.dasa.startErrorHoursBirthsTo2025.median} h, max ${report.dasa.startErrorHoursBirthsTo2025.max} h).\n`);
+md.push(`## Pratyantara and Sookshma (sub-periods)\n\nOne random instant within the first 80 years of each of ${report.subDasa.births} births. Lord path (maha → bhukti → pratyantara) agreement ${report.subDasa.pratyantara.lordPathAgreementPercent} %; pratyantara start: median ${report.subDasa.pratyantara.startErrorHours.median} h, 95th pct ${report.subDasa.pratyantara.startErrorHours.p95} h, max ${report.subDasa.pratyantara.startErrorHours.max} h (births to 2025: max ${report.subDasa.pratyantara.startErrorHoursBirthsTo2025.max} h). Sookshma lord agreement ${report.subDasa.sookshma.lordPathAgreementPercent} %; start: median ${report.subDasa.sookshma.startErrorHours.median} h, max ${report.subDasa.sookshma.startErrorHours.max} h.\n`);
+md.push('## Divisional charts (Swiss longitude → independent Parashara mapping)\n\n| Varga | Placements | Placement agree % | Mapping-only agree % (samples) |\n|---|---|---|---|');
+for (const n of VARGA_LIST) md.push(`| D${n} | ${report.varga.placements[`D${n}`]} | ${report.varga.placementAgreementPercent[`D${n}`]} | ${report.varga.mappingAgreementPercent[`D${n}`]} (${report.varga.mappingSamples[`D${n}`]}) |`);
+md.push(`\nEvery placement disagreement lies within ${report.varga.maxBoundaryDistanceOfDisagreementArcsec}″ of a varga boundary (${vDis.length} of ${VARGA_LIST.reduce((a, n) => a + vAgree[n].n, 0)}).\n`);
 md.push(`## Sankranti (Tamil month start)\n\nTime error: median ${report.sankranti.timeErrorSec.medianSec} s, max ${report.sankranti.timeErrorSec.maxSec} s over ${sank.length} ingresses. Tamil day-1 date (Chennai, sunset rule) agreement: ${report.sankranti.tamilDay1Agreement} %.\n`);
 md.push('## Boundary disagreements (every one)\n');
 const allDis = [...report.disagreements.map((x) => `- ${x.kind} at ${x.at}${x.place ? ` (${x.place})` : ''}: app ${x.app}°, ref ${x.ref}°, Δ ${x.deltaArcsec}″; reference is ${x.refDistToBoundaryArcsec}″ from the pada boundary`),
   ...panDis.map((x) => `- ${x.kind}, ${x.place}, sunrise ${x.sunriseUTC}: app ${x.app}, ref ${x.ref}; the reference boundary is ${x.boundaryMinutesFromSunrise} min after sunrise+1 min`),
-  ...day1Dis.map((x) => `- Tamil month ${x.rasi} day 1: app ${x.app}, ref ${x.ref}; sankranti ${x.minutesFromSunset} min from sunset`)];
+  ...day1Dis.map((x) => `- Tamil month ${x.rasi} day 1: app ${x.app}, ref ${x.ref}; sankranti ${x.minutesFromSunset} min from sunset`),
+  ...vDis.map((x) => `- ${x.varga} ${x.body} at ${x.at}${x.place ? ` (${x.place})` : ''}: app sign ${x.app}, ref sign ${x.ref}, Δ ${x.deltaArcsec}″; reference is ${x.refDistToBoundaryArcsec}″ from the varga boundary`),
+  ...sub.dis.map((x) => `- ${x.level} at ${x.at} (birth ${x.birth}): app ${x.app}, ref ${x.ref}; instant is ${x.hoursFromRefBoundary} h from the reference boundary`)];
 md.push(allDis.length ? allDis.join('\n') : '- none');
 md.push('\n## Spot checks\n\n| Check | Expected | Engine | OK |\n|---|---|---|---|');
 for (const s of report.spot) md.push(`| ${s.name} | ${s.expected} | ${s.actual} | ${s.ok ? 'yes' : '**NO**'} |`);

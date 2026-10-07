@@ -45,7 +45,7 @@ function renderCalc(sec) {
   const label = { ephemeris: ['Ephemeris', 'கிரகக் கணிப்பு'], ayanamsa: ['Ayanamsa', 'அயனாம்சம்'], nodes: ['Rahu / Ketu', 'ராகு / கேது'], houses: ['Houses', 'பாவங்கள்'], lagna: ['Lagnam', 'லக்னம்'], sunrise: ['Sunrise', 'சூரிய உதயம்'], vedicDay: ['Panchangam day', 'பஞ்சாங்க நாள்'], timezone: ['Time zone & daylight saving', 'நேர மண்டலம்'], dasa: ['Dasa', 'தசை'], horai: ['Horai', 'ஓரை'], rahuKalam: ['Rahu Kalam', 'ராகு காலம்'] };
   sec.innerHTML = `${subHeader(L('Calculation methods', 'கணிப்பு முறைகள்'), '', 'more')}
     <div class="card glass"><dl class="kv">${Object.entries(CONVENTIONS).map(([k, v]) => `<dt>${L(...label[k])}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
-    <div class="note-box">${L('Coordinates come from the built-in gazetteer or what you enter. Historical daylight saving is not applied automatically: for births outside India or in years with war-time time changes, enter the UTC offset that was in force. Reference checks against published positions and panchangam boundaries run in the automated tests (docs/CALCULATIONS.md).', 'அட்ச/தீர்க்க ரேகைகள் உள்ளமைந்த பட்டியலிலிருந்து அல்லது நீங்கள் உள்ளிடுவதிலிருந்து. வரலாற்றுப் பகல் சேமிப்பு நேரம் தானாகப் பயன்படுத்தப்படாது: இந்தியாவுக்கு வெளியே அல்லது போர்க்கால நேர மாற்ற ஆண்டுகளில் பிறந்திருந்தால், அப்போதைய UTC நேரத்தை உள்ளிடவும்.')}</div>`;
+    <div class="note-box">${L('Coordinates come from the built-in gazetteer or what you enter. With a known time zone (built-in places, or a zone you choose) the historical UTC offset and daylight saving in force on the birth date are applied automatically from the time-zone database — including India’s war-time +6:30. A clock time that did not exist or happened twice when clocks changed is flagged (a repeated hour uses the earlier time). Reference checks against published positions and panchangam boundaries run in the automated tests (docs/CALCULATIONS.md).', 'அட்ச/தீர்க்க ரேகைகள் உள்ளமைந்த பட்டியலிலிருந்து அல்லது நீங்கள் உள்ளிடுவதிலிருந்து. நேர மண்டலம் தெரிந்தால் (உள்ளமைந்த இடங்கள் அல்லது நீங்கள் தேர்ந்த மண்டலம்), பிறந்த நாளில் நடைமுறையில் இருந்த UTC நேர வேறுபாடும் பகல் சேமிப்பு நேரமும் நேர மண்டலத் தரவுத்தளத்திலிருந்து தானாகப் பயன்படுத்தப்படும் — இந்தியாவின் போர்க்கால +6:30 உட்பட. கடிகாரம் மாற்றப்பட்டபோது இல்லாத அல்லது இருமுறை வந்த நேரம் தனியாகக் குறிக்கப்படும் (இருமுறை வந்த நேரத்திற்கு முந்தையது எடுக்கப்படும்).')}</div>`;
 }
 registerScreen('calc', { render: renderCalc, parent: 'more' });
 
@@ -53,17 +53,17 @@ registerScreen('calc', { render: renderCalc, parent: 'more' });
 export const CONSENT_KEYS = [
   { id: 'analytics', en: 'Anonymous usage statistics (screens opened — never birth details or chat text)', ta: 'பெயரில்லாப் பயன்பாட்டுப் புள்ளிவிவரம் (திறந்த திரைகள் — பிறப்பு விவரமோ உரையாடலோ இல்லை)', def: false },
   { id: 'aiChat', en: 'Allow detailed answers written with an outside writing service (my question and chart facts are sent for that answer only)', ta: 'வெளி எழுத்துச் சேவை மூலம் விரிவான பதில்களை அனுமதி (என் கேள்வியும் ஜாதகத் தகவலும் அந்தப் பதிலுக்கு மட்டும் அனுப்பப்படும்)', def: true },
-  { id: 'backup', en: 'Back up family profiles to my account (when signed in)', ta: 'குடும்ப சுயவிவரங்களை என் கணக்கில் சேமி (உள்நுழைந்தால்)', def: true },
+  { id: 'backup', en: 'Back up family profiles to my account (when signed in; private 🔒 profiles always stay on this phone)', ta: 'குடும்ப சுயவிவரங்களை என் கணக்கில் சேமி (உள்நுழைந்தால்; தனிப்பட்ட 🔒 சுயவிவரங்கள் எப்போதும் இந்தக் கைப்பேசியில் மட்டும்)', def: true },
 ];
 export const consent = (id) => store.get('kj_consent', {})[id] ?? CONSENT_KEYS.find((c) => c.id === id)?.def ?? false;
 
 function renderPrivacy(sec) {
   const flows = [
     ['🧮', 'Chart & panchangam calculations', 'ஜாதக, பஞ்சாங்கக் கணிப்பு', 'On this phone only', 'இந்தக் கைப்பேசியில் மட்டும்', true],
-    ['👨‍👩‍👧', 'Family profiles & birth details', 'குடும்ப சுயவிவரம், பிறப்பு விவரம்', 'On this phone; copied to our server only if you sign in and keep backup on', 'இந்தக் கைப்பேசியில்; உள்நுழைந்து காப்பு இயக்கினால் மட்டும் சேவையகத்திற்கு', true],
+    ['👨‍👩‍👧', 'Family profiles & birth details', 'குடும்ப சுயவிவரம், பிறப்பு விவரம்', 'On this phone; copied to our server only if you sign in and keep backup on. Private 🔒 profiles are never copied.', 'இந்தக் கைப்பேசியில்; உள்நுழைந்து காப்பு இயக்கினால் மட்டும் சேவையகத்திற்கு. தனிப்பட்ட 🔒 சுயவிவரங்கள் ஒருபோதும் நகலெடுக்கப்படாது.', true],
     ['💬', 'Ask (chat)', 'கேள்வி (உரையாடல்)', 'Everyday answers are worked out on your phone. Detailed answers (when the online service is on): your question, today’s data and chart facts go to our server and a writing service (Anthropic) for that answer only; never used for advertising. Private profiles are never sent.', 'அன்றாட பதில்கள் உங்கள் கைப்பேசியிலேயே கணிக்கப்படும். விரிவான பதில்கள் (இணைய சேவை இயக்கத்தில் இருந்தால்): உங்கள் கேள்வி, இன்றைய தரவு, ஜாதகத் தகவல் அந்தப் பதிலுக்கு மட்டும் எங்கள் சேவையகம், எழுத்துச் சேவை (Anthropic) வழியாக; விளம்பரத்திற்குப் பயன்படாது. தனிப்பட்ட சுயவிவரங்கள் அனுப்பப்படாது.', false],
     ['🎙️', 'Voice', 'குரல்', 'Speech-to-text is done by your phone’s or browser’s speech service (Google/Apple), which may process audio online. Thunai receives only the text. Read-aloud uses the phone’s voice, offline.', 'பேச்சு-எழுத்து மாற்றம் உங்கள் கைப்பேசி / உலாவியின் சேவையால் (Google/Apple) — இணையத்தில் செயலாக்கப்படலாம். துணைக்கு உரை மட்டுமே வரும். வாசித்துக்காட்டுதல் கைப்பேசிக் குரலில், இணையமின்றி.', false],
-    ['☁️', 'Backup', 'காப்பு', 'Only when signed in: profiles and settings are stored in our database.', 'உள்நுழைந்தால் மட்டும்: சுயவிவரங்களும் அமைப்புகளும் எங்கள் தரவுத்தளத்தில்.', false],
+    ['☁️', 'Backup', 'காப்பு', 'Only when signed in and backup is on: non-private profiles are stored in our database. Switching backup off removes the server copy.', 'உள்நுழைந்து காப்பு இயக்கத்தில் இருந்தால் மட்டும்: தனிப்பட்டதல்லாத சுயவிவரங்கள் எங்கள் தரவுத்தளத்தில். காப்பை நிறுத்தினால் சேவையக நகல் நீக்கப்படும்.', false],
     ['📊', 'Analytics', 'பகுப்பாய்வு', 'Off unless you allow it. Screen names and app version only — never birth details, names or chat content.', 'நீங்கள் அனுமதிக்கும் வரை நிறுத்தம். திரைப் பெயர், பதிப்பு மட்டும் — பிறப்பு விவரம், பெயர், உரையாடல் ஒருபோதும் இல்லை.', false],
     ['🎫', 'Bookings & payments', 'முன்பதிவு & கட்டணம்', 'When live: name, phone and booking details go to our server and the payment gateway (Razorpay). Card details never touch our server.', 'இயங்கும்போது: பெயர், தொலைபேசி, முன்பதிவு விவரம் எங்கள் சேவையகம், கட்டண நுழைவாயிலுக்கு (Razorpay). அட்டை விவரம் எங்கள் சேவையகத்திற்கு வராது.', false],
   ];
@@ -80,7 +80,18 @@ function renderPrivacy(sec) {
       <button class="btn-soft danger" id="delAll">⚠️ ${L('Delete everything on this phone' + (STATIC ? '' : ' and my account'), 'இந்தக் கைப்பேசியிலுள்ள அனைத்தையும்' + (STATIC ? '' : ', என் கணக்கையும்') + ' நீக்கு')}</button>
       <p class="small muted">${L('Children’s profiles are kept on the phone and in your private backup only; they are never shared or used for analytics.', 'குழந்தைகளின் சுயவிவரங்கள் கைப்பேசியிலும் உங்கள் தனிப்பட்ட காப்பிலும் மட்டுமே; பகிரப்படாது, பகுப்பாய்வுக்குப் பயன்படாது.')}</p></div>
     <p class="small muted center">${L('Questions: ', 'கேள்விகள்: ')}${esc(BRAND.supportEmail)}</p>`;
-  $$('[data-consent]', sec).forEach((x) => x.addEventListener('change', () => { const cur = store.get('kj_consent', {}); cur[x.dataset.consent] = x.checked; store.set('kj_consent', cur); toast(L('Saved', 'சேமிக்கப்பட்டது')); }));
+  $$('[data-consent]', sec).forEach((x) => x.addEventListener('change', async () => {
+    const cur = store.get('kj_consent', {}); cur[x.dataset.consent] = x.checked; store.set('kj_consent', cur);
+    if (x.dataset.consent === 'backup' && !STATIC && state.user) {
+      // Off: stop syncing and remove the copy on our server. On: upload the non-private profiles now.
+      if (!x.checked) {
+        try { await api('/api/me/data', { method: 'DELETE' }); toast(L('Backup off — the copy on our server was removed', 'காப்பு நிறுத்தப்பட்டது — சேவையக நகல் நீக்கப்பட்டது')); } catch (e) { toast(L('Backup is off, but the server copy could not be removed: ', 'காப்பு நிறுத்தப்பட்டது; ஆனால் சேவையக நகலை நீக்க முடியவில்லை: ') + e.message, 5000); }
+        return;
+      }
+      saveFamily();
+    }
+    toast(L('Saved', 'சேமிக்கப்பட்டது'));
+  }));
   $('#exportData').addEventListener('click', async () => {
     const local = {};
     for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('kj_')) local[k] = store.get(k, null); }

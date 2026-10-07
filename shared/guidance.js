@@ -18,7 +18,8 @@ import { closingPrayer } from './daily.js';
 import { faithBlessing, universalPractice } from './faith.js';
 import { tamilDay } from './tamilcal.js';
 import { TEMPLES } from './temples.js';
-import { ageProfile, topicAllowed, ageGuardAnswer } from './age-guard.js';
+import { ageProfile, topicAllowed, ageGuardAnswer, facilitationCheck, policyAnswer, reviewedAnswer, childFeelingsAsked, REVIEWED_TEXT, LIMITS_LINE } from './age-guard.js';
+import { findProhibited, answerTrace } from './themes.js';
 
 export { RULES_VERSION } from './version.js';
 
@@ -257,11 +258,24 @@ export function lifeEventCheck(chart, eventId, { now = new Date(), eventYear = n
  * @param {object} p { question, lang, facts (chartFacts or null), name, today: { rahuKalam, yamagandam, goodTimes:[], horai } }
  * @returns {{ intent, lang, sections:[{key,title,lines}], actions:[{go,param,label}], clarify?:{options}, text }}
  */
-export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null, name = '', today = null, life = {} }) {
+export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null, name = '', today = null, life = {}, turns = [], speaker = null }) {
   const lang = answerLang(question, appLang);
   const tr = (o) => (lang === 'ta' ? o.ta : o.en);
   const L = (en, ta) => (lang === 'ta' ? ta : en);
   const { intent } = classify(question);
+  const certainty = f?.rel?.certainty || (f ? 'exact' : 'none');
+  // POLICY FIRST (after crisis support): adult / unknown-age romance or attraction toward a minor is declined, a
+  // speaker who says they are under 18 gets the child / teen answer — before any chart is read (shared/age-guard.js).
+  if (intent !== 'crisis') {
+    const minorTopic = { marriage: 'marriage', marriage_when: 'marriage', love: 'love', career: 'career', finance: 'money', legal: 'court', property: 'property', child_when: 'child', pregnancy: 'child' }[intent] || null;
+    const gate = policyAnswer(facilitationCheck(question, { turns, speaker }), { lang, question, topic: minorTopic, name });
+    if (gate) return validateOffline({ ...gate, lang, clarify: null }, { lang, inputCertainty: certainty });
+    // A 6–12 child's chart: feelings, bullying and friendship fights get the supportive "tell a trusted adult" answer.
+    const owner = f?.birthDate ? ageProfile(f.birthDate, { now: f.now ? new Date(f.now) : new Date(), tz: f.chart?.tz }) : null;
+    if (owner?.band === '6-12' && intent !== 'death' && childFeelingsAsked(question)) {
+      return validateOffline({ ...reviewedAnswer('child_feelings', { lang, question, route: 'child_guidance' }), lang, clarify: null }, { lang, inputCertainty: certainty });
+    }
+  }
   const S = {};
   const add = (key, ...lines) => { (S[key] ||= []).push(...lines.flat().filter(Boolean)); };
   const actions = [];
@@ -666,5 +680,26 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
   const sections = order.filter((k) => S[k]?.length).map((k) => ({ key: k, title: tr(SECTION_TITLES[k]), lines: S[k] }));
   const text = sections.map((s) => `${s.title}:\n${s.lines.map((l) => `• ${l}`).join('\n')}`).join('\n\n');
   const textOut = meter ? text.replace(/^([^\n]*\n• )/m, `$1${meter.pct}% — ${meter.label}. `) : text;
-  return { intent, lang, sections, actions, clarify, meter, text: textOut };
+  return validateOffline({ intent, lang, sections, actions, clarify, meter, text: textOut }, { lang, inputCertainty: certainty });
 }
+
+/**
+ * Output check for every on-device (rule-based) answer, run before display AND before read-aloud: the shared
+ * prohibited-claim validator (shared/themes.js findProhibited). A flagged answer is replaced by the reviewed
+ * fallback text — never shown or spoken. Adds `limited: true` (the "Limited offline guidance" badge) and the
+ * traceability record (calc / rules versions, tradition profile, birth-input certainty).
+ */
+export function validateOffline(ans, { lang = 'ta', inputCertainty = null } = {}) {
+  if (!ans) return ans;
+  const trace = ans.trace || answerTrace({ inputCertainty: inputCertainty || 'none', source: 'offline-rules' });
+  const hits = findProhibited({ sections: ans.sections, text: ans.text, meter: ans.meter, followups: ans.followups });
+  if (!hits.length) return { ...ans, limited: true, validated: true, trace };
+  const say = (o) => (lang === 'ta' ? o.ta : o.en);
+  const sections = [{ key: 'answer', title: say(SECTION_TITLES.answer), lines: [say(REVIEWED_TEXT.validation_fallback)] }];
+  return {
+    intent: ans.intent, lang, question: ans.question, sections, actions: [], followups: [], clarify: null, meter: null,
+    text: `${sections[0].title}:\n• ${sections[0].lines[0]}`, limited: true, validated: true, validationFallback: true,
+    flagged: [...new Set(hits.map((h) => h.id))], trace,
+  };
+}
+export { LIMITS_LINE };

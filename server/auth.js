@@ -291,13 +291,14 @@ export function authRouter() {
     const col = channel === 'sms' ? 'phone' : 'email';
     const cleanName = typeof name === 'string' ? name.trim().slice(0, 80) : '';
     let user = db.prepare(`SELECT * FROM users WHERE ${col} = ?`).get(id);
+    const isNew = !user; // lets the app count sign-up vs log-in (analytics, only with the person's consent)
     if (!user) user = createUser({ [col]: id, name: cleanName });
     else if (cleanName && !user.name) {
       db.prepare('UPDATE users SET name = ? WHERE id = ?').run(cleanName, user.id);
       user.name = cleanName;
     }
     createSession(req, res, user.id);
-    res.json({ user: publicUser(user) });
+    res.json({ user: publicUser(user), isNew });
   });
 
   r.get('/auth/facebook/start', (req, res) => {
@@ -388,39 +389,80 @@ export function authRouter() {
     res.json({ ok: true });
   });
 
-  // Data export: everything stored about this account, as JSON.
+  // Data export: everything stored about this account (everything account deletion removes or de-identifies),
+  // as JSON. Secrets are never exported: OTP hashes, session tokens and push-subscription keys are left out.
   r.get('/me/export', (req, res) => {
     const user = currentUser(req);
     if (!user) return res.status(401).json({ error: 'Not signed in' });
     const d = getDb();
-    const tryAll = (sql) => { try { return d.prepare(sql).all(user.id); } catch { return []; } };
+    const tryAll = (sql, ...args) => { try { return d.prepare(sql).all(...(args.length ? args : [user.id])); } catch { return []; } };
     const row = d.prepare('SELECT data, updated_at FROM user_data WHERE user_id = ?').get(user.id);
+    const account = d.prepare('SELECT id, name, phone, email, created_at FROM users WHERE id = ?').get(user.id);
+    const parse = (v) => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
+    const priest = tryAll('SELECT id, name, phone, city, languages, services, experience_years, about, status, created_at, updated_at FROM priests WHERE user_id = ?')
+      .map((p) => ({ ...p, languages: parse(p.languages), services: parse(p.services) }))[0] || null;
+    const endpointHost = (e) => { try { return new URL(e).host; } catch { return null; } };
     res.setHeader('Content-Disposition', 'attachment; filename="thunai-account-export.json"');
     res.json({
       exportedAt: new Date(now()).toISOString(),
-      account: d.prepare('SELECT id, name, phone, email, created_at FROM users WHERE id = ?').get(user.id),
-      savedData: row?.data ? JSON.parse(row.data) : null,
+      account,
+      savedData: row?.data ? parse(row.data) : null,
+      savedDataUpdatedAt: row?.updated_at ?? null,
       subscriptions: tryAll('SELECT id, plan, status, currency, amount_minor, gateway, starts_at, expires_at, created_at FROM subscriptions WHERE user_id = ?'),
-      storeOrders: tryAll('SELECT id, items, total, status, created_at FROM store_orders WHERE user_id = ?'),
+      aiUsage: tryAll('SELECT day, count FROM ai_usage WHERE usage_key = ? ORDER BY day', `u:${user.id}`),
+      aiCost: tryAll('SELECT task, model, input_tokens, output_tokens, at FROM ai_cost WHERE user_id = ? ORDER BY at'),
+      giftRedemptions: tryAll('SELECT code, redeemed_at FROM gift_redemptions WHERE user_id = ?'),
+      referral: {
+        code: tryAll('SELECT code, created_at FROM referral_codes WHERE user_id = ?')[0] || null,
+        claimed: tryAll('SELECT code, created_at FROM referral_claims WHERE user_id = ?')[0] || null,
+        referredCount: tryAll('SELECT COUNT(*) AS n FROM referral_claims WHERE referrer_id = ?')[0]?.n || 0,
+      },
+      storeOrders: tryAll('SELECT id, items, address, total, status, created_at, updated_at FROM store_orders WHERE user_id = ?')
+        .map((o) => ({ ...o, items: parse(o.items), address: parse(o.address) })),
+      refundRequests: tryAll('SELECT id, order_id, reason, status, created_at, resolved_at FROM order_refund_requests WHERE user_id = ?'),
       serviceRequests: tryAll('SELECT * FROM service_requests WHERE user_id = ?'),
-      feedback: tryAll('SELECT id, rating, comment, status, created_at FROM feedback WHERE user_id = ?'),
+      requestHistory: tryAll('SELECT request_id, status, actor, at FROM request_events WHERE request_id IN (SELECT id FROM service_requests WHERE user_id = ?) ORDER BY id'),
+      priestProfile: priest,
+      feedback: tryAll("SELECT id, type, rating, comment, screen, meta, status, created_at FROM feedback WHERE user_id = ?").map((x) => ({ ...x, meta: parse(x.meta) })),
+      pushSubscriptions: tryAll('SELECT id, endpoint, prefs, created_at FROM push_subs WHERE user_id = ?')
+        .map((p) => ({ id: p.id, service: endpointHost(p.endpoint), prefs: parse(p.prefs), createdAt: p.created_at })), // keys and the endpoint URL are secrets
+      analyticsEvents: tryAll('SELECT type, screen, feature, platform, app_version, created_at FROM events WHERE user_id = ? ORDER BY created_at'),
+      pendingSignInCodes: tryAll('SELECT identifier, expires_at FROM otps WHERE identifier IN (?, ?)', account?.phone || '', account?.email || ''), // code hashes withheld
     });
   });
 
-  // Account deletion: removes profile data, sessions and the account. Payment and order records are
-  // de-identified (kept only where tax/accounting law requires), never shown again in the app.
+  // Account deletion: removes profile data, sessions, usage counters, referral and gift records, the priest profile,
+  // push subscriptions, analytics events, pending sign-in codes and the account. Payment, order and booking records
+  // are de-identified (kept only where tax/accounting law requires), never shown again in the app.
   r.delete('/me', (req, res) => {
     const user = currentUser(req);
     if (!user) return res.status(401).json({ error: 'Not signed in' });
     const d = getDb();
-    const run = (sql) => { try { d.prepare(sql).run(user.id); } catch { /* table not present on this instance */ } };
+    const run = (sql, ...args) => { try { d.prepare(sql).run(...(args.length ? args : [user.id])); } catch { /* table not present on this instance */ } };
+    const account = d.prepare('SELECT phone, email FROM users WHERE id = ?').get(user.id) || {};
+    let priestIds = [];
+    try { priestIds = d.prepare('SELECT id FROM priests WHERE user_id = ? OR (phone = ? AND ? <> \'\')').all(user.id, account.phone || '', account.phone || '').map((p) => p.id); } catch { /* no market tables */ }
     run('DELETE FROM user_data WHERE user_id = ?');
     run('DELETE FROM sessions WHERE user_id = ?');
     run('DELETE FROM push_subs WHERE user_id = ?');
     run('DELETE FROM feedback WHERE user_id = ?');
-    run('UPDATE events SET user_id = NULL WHERE user_id = ?');
+    run('DELETE FROM events WHERE user_id = ?');
+    run('DELETE FROM ai_usage WHERE usage_key = ?', `u:${user.id}`);
+    run('UPDATE ai_cost SET user_id = NULL WHERE user_id = ?');
+    run('DELETE FROM gift_redemptions WHERE user_id = ?');
+    run('DELETE FROM referral_codes WHERE user_id = ?');
+    run('DELETE FROM referral_claims WHERE user_id = ?');
+    run("UPDATE referral_claims SET referrer_id = 'deleted' WHERE referrer_id = ?"); // the friend's own claim stays theirs
+    if (account.phone || account.email) run('DELETE FROM otps WHERE identifier IN (?, ?)', account.phone || '', account.email || '');
+    for (const pid of priestIds) {
+      run('UPDATE service_requests SET priest_id = NULL WHERE priest_id = ?', pid);
+      run("UPDATE request_events SET actor = 'priest:deleted' WHERE actor = ?", `priest:${pid}`);
+      run('DELETE FROM priests WHERE id = ?', pid);
+    }
+    run('DELETE FROM request_events WHERE request_id IN (SELECT id FROM service_requests WHERE user_id = ?)');
+    run("UPDATE order_refund_requests SET reason = '', user_id = 'deleted' WHERE user_id = ?");
     run("UPDATE store_orders SET address = '{}', user_id = 'deleted' WHERE user_id = ?");
-    run("UPDATE service_requests SET contact_phone = NULL, notes = '', user_id = 'deleted' WHERE user_id = ?");
+    run("UPDATE service_requests SET contact_phone = '', notes = '', user_id = 'deleted' WHERE user_id = ?");
     run("UPDATE subscriptions SET user_id = 'deleted' WHERE user_id = ?");
     run('DELETE FROM users WHERE id = ?');
     setCookie(req, res, SESSION_COOKIE, '', { maxAge: 0 });

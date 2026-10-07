@@ -6,6 +6,21 @@
 //   • If the phone clock is moved backwards, the app locks.
 // When locked, the whole screen shows "please contact the administrator" and the app cannot be used.
 (function reviewLock() {
+  /**
+   * Pure lock decision (no storage, no DOM — tested in test/review-lock.test.js).
+   * In: now, hours, until (absolute ms or 0), and what this phone stored: first launch, last seen time, lock flag.
+   * Out: the values to store back plus { locked, end, left, rolledBack }.
+   */
+  function reviewState({ now, hours, until = 0, first = 0, seen = 0, lockedFlag = false }) {
+    const firstLaunch = first || now;
+    const rolledBack = Boolean(seen) && now < seen - 10 * 60000; // clock moved back more than 10 minutes
+    const nextSeen = !rolledBack && now > seen ? now : seen;
+    const end = Math.min(firstLaunch + hours * 3600000, until || Infinity);
+    const locked = Boolean(lockedFlag) || rolledBack || now >= end;
+    return { first: firstLaunch, seen: nextSeen, locked, end, left: Math.max(0, end - now), rolledBack };
+  }
+  window.kjReviewState = reviewState;
+
   const R = window.KJ_REVIEW;
   if (!R || !R.hours) return;
   const KEY_FIRST = 'kj_review_first', KEY_SEEN = 'kj_review_seen', KEY_LOCK = 'kj_review_locked';
@@ -13,16 +28,11 @@
   const set = (k, v) => { try { localStorage.setItem(k, String(v)); } catch { /* storage blocked */ } };
 
   function state() {
-    const now = Date.now();
-    let first = get(KEY_FIRST);
-    if (!first) { first = now; set(KEY_FIRST, first); }
-    const seen = get(KEY_SEEN);
-    const rolledBack = seen && now < seen - 10 * 60000; // clock moved back more than 10 minutes
-    if (!rolledBack && now > seen) set(KEY_SEEN, now);
-    const end = Math.min(first + R.hours * 3600000, R.until || Infinity);
-    const locked = get(KEY_LOCK) === 1 || rolledBack || now >= end;
-    if (locked) set(KEY_LOCK, 1);
-    return { locked, end, left: Math.max(0, end - now) };
+    const s = reviewState({ now: Date.now(), hours: R.hours, until: R.until, first: get(KEY_FIRST), seen: get(KEY_SEEN), lockedFlag: get(KEY_LOCK) === 1 });
+    if (s.first !== get(KEY_FIRST)) set(KEY_FIRST, s.first);
+    if (s.seen !== get(KEY_SEEN)) set(KEY_SEEN, s.seen);
+    if (s.locked) set(KEY_LOCK, 1);
+    return s;
   }
 
   function lockScreen() {

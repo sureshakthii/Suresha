@@ -14,9 +14,20 @@ const DAY = 86400000;
 const IST = 5.5 * 3600000; // quota days roll over at midnight India time
 
 const f = (en, ta) => ({ en, ta });
-const price = (cur, key, dflt) => { const v = Number(process.env[`PRICE_${cur}_${key}`]); return Number.isFinite(v) && v > 0 ? v : dflt; };
-/** Monthly AI-answer allowance per plan (AI_PREMIUM_MONTHLY, AI_FAMILY_MONTHLY). Never "unlimited" until costs are measured. */
-export const aiAllowance = (kind) => { const v = Number(process.env[kind === 'family' ? 'AI_FAMILY_MONTHLY' : 'AI_PREMIUM_MONTHLY']); return Number.isInteger(v) && v > 0 ? v : kind === 'family' ? 250 : 100; };
+const price = (cur, key, dflt) => {
+  // PRICE_<CUR>_PERSONAL_* is the current name; PRICE_<CUR>_PREMIUM_* (the plan's earlier name) is still honoured.
+  const raw = process.env[`PRICE_${cur}_${key}`] ?? (key.startsWith('PERSONAL_') ? process.env[`PRICE_${cur}_${key.replace('PERSONAL_', 'PREMIUM_')}`] : undefined);
+  const v = Number(raw);
+  return Number.isFinite(v) && v > 0 ? v : dflt;
+};
+/**
+ * Monthly AI-answer allowance per plan (AI_PERSONAL_MONTHLY — AI_PREMIUM_MONTHLY still read as the old name —
+ * and AI_FAMILY_MONTHLY). Never "unlimited" until costs are measured.
+ */
+export const aiAllowance = (kind) => {
+  const v = Number(kind === 'family' ? process.env.AI_FAMILY_MONTHLY : process.env.AI_PERSONAL_MONTHLY || process.env.AI_PREMIUM_MONTHLY);
+  return Number.isInteger(v) && v > 0 ? v : kind === 'family' ? 250 : 100;
+};
 /** Terms shown next to every price (also in public/legal.js). */
 export const PLAN_TERMS = {
   renewal: f('One-time payment for the chosen period. It does not renew automatically — you choose whether to buy again.', 'தேர்ந்த காலத்திற்கான ஒருமுறைக் கட்டணம். தானாகப் புதுப்பிக்கப்படாது — மீண்டும் வாங்குவது உங்கள் முடிவு.'),
@@ -32,39 +43,47 @@ const FREE_FEATURES = [
   f('Built-in explainable guidance, unlimited', 'உள்ளமைந்த விளக்க வழிகாட்டல், வரம்பின்றி'),
   f('A few detailed answers per day', 'நாளொன்றுக்குச் சில விரிவான பதில்கள்'),
 ];
-const PREMIUM_FEATURES = [
-  f(`Up to ${aiAllowance('premium')} detailed personal answers per month (everyday guidance is unlimited)`, `மாதம் ${aiAllowance('premium')} விரிவான தனிப்பட்ட பதில்கள் வரை (அன்றாட வழிகாட்டல் வரம்பின்றி)`),
-  f('Saved journey plans and printable reports', 'சேமித்த பயணத் திட்டங்கள், அச்சிடக்கூடிய அறிக்கைகள்'),
-  f('Life-timing predictions', 'வாழ்க்கை நிகழ்வுகளுக்கான கால கணிப்புகள்'),
-  f('Full analysis reading', 'முழுமையான ஜாதக ஆய்வுப் பலன்'),
-  f('Detailed marriage matching — papa samyam, dasa sandhi, married-life periods', 'விரிவான திருமணப் பொருத்தம் — பாப சாம்யம், தசா சந்தி, மண வாழ்க்கைக் காலங்கள்'),
+// `soon: true` marks a feature that is planned but NOT built yet: the Plans screen labels it "Coming soon" and it is
+// never part of what a payment buys today. Basic baby-name browsing, meanings and star letters stay free.
+const soon = (en, ta) => ({ en, ta, soon: true });
+const PERSONAL_FEATURES = [
+  f('Detailed reports — life-timing periods, full chart analysis, detailed marriage matching, business partner porutham', 'விரிவான அறிக்கைகள் — வாழ்க்கை நேரக் காலங்கள், முழு ஜாதக ஆய்வு, விரிவான திருமணப் பொருத்தம், வணிகக் கூட்டாளி பொருத்தம்'),
   f('My Guide — gemstones, Siddhar and personal mantra playlist', 'என் வழிகாட்டி — ரத்தினம், சித்தர், தனிப்பட்ட மந்திரப் பட்டியல்'),
-  f('Business partner porutham', 'வணிகக் கூட்டாளி பொருத்தம்'),
-
+  f(`Up to ${aiAllowance('personal')} detailed answers per month (everyday guidance is unlimited)`, `மாதம் ${aiAllowance('personal')} விரிவான பதில்கள் வரை (அன்றாட வழிகாட்டல் வரம்பின்றி)`),
+  f('Saved journey plans and printable reports', 'சேமித்த பயணத் திட்டங்கள், அச்சிடக்கூடிய அறிக்கைகள்'),
+  soon('Weekly planning', 'வாராந்திரத் திட்டமிடல்'),
+  soon('Saved goals', 'சேமித்த இலக்குகள்'),
 ];
 const FAMILY_FEATURES = [
-  f('Everything in Premium', 'பிரீமியத்தின் அனைத்து வசதிகளும்'),
-  f(`Up to ${aiAllowance('family')} detailed personal answers per month, shared by the family`, `குடும்பத்திற்குப் பகிர்ந்து மாதம் ${aiAllowance('family')} விரிவான பதில்கள் வரை`),
-  f('Shared event and journey planning with private profiles', 'தனிப்பட்ட சுயவிவரங்களுடன் பகிர்ந்த நிகழ்வு, பயணத் திட்டமிடல்'),
-  f('Up to 8 family profiles under one account', 'ஒரே கணக்கில் 8 குடும்ப உறுப்பினர்கள் வரை'),
-  f('Gift it to parents abroad or in India — one plan for the whole family', 'வெளிநாட்டிலோ இந்தியாவிலோ உள்ள பெற்றோருக்குப் பரிசளியுங்கள் — முழுக் குடும்பத்திற்கும் ஒரே திட்டம்'),
+  f('Everything in Personal', 'தனிநபர் திட்டத்தின் அனைத்து வசதிகளும்'),
+  f('Up to 8 family profiles, each shared only with permission (private profiles stay private)', '8 குடும்ப உறுப்பினர்கள் வரை — ஒவ்வொருவரின் அனுமதியுடன் மட்டுமே பகிர்வு (தனிப்பட்ட சுயவிவரம் தனிப்பட்டதாகவே)'),
+  f('Shared event and journey planning', 'பகிர்ந்த நிகழ்வு, பயணத் திட்டமிடல்'),
+  f(`Up to ${aiAllowance('family')} detailed answers per month, shared by the family`, `குடும்பத்திற்குப் பகிர்ந்து மாதம் ${aiAllowance('family')} விரிவான பதில்கள் வரை`),
 ];
 
 /**
  * Plans. Prices are INITIAL TEST PRICES and are configurable without code changes:
- *   PRICE_INR_PREMIUM_MONTH (199) · PRICE_INR_PREMIUM_YEAR (1999) · PRICE_INR_FAMILY_MONTH (399) · PRICE_INR_FAMILY_YEAR (3999)
- *   PRICE_USD_PREMIUM_MONTH (4.99) · PRICE_USD_PREMIUM_YEAR (49) · PRICE_USD_FAMILY_MONTH (9.99) · PRICE_USD_FAMILY_YEAR (99)
+ *   PRICE_INR_PERSONAL_MONTH (199) · PRICE_INR_PERSONAL_YEAR (1999) · PRICE_INR_FAMILY_MONTH (399) · PRICE_INR_FAMILY_YEAR (3999)
+ *   PRICE_USD_PERSONAL_MONTH (4.99) · PRICE_USD_PERSONAL_YEAR (49) · PRICE_USD_FAMILY_MONTH (9.99) · PRICE_USD_FAMILY_YEAR (99)
  * Payments are one-time for the period (no automatic renewal). Prices are in rupees / dollars (not minor units).
+ * "Personal" was called "Premium" before: the old ids premium_month / premium_year are accepted everywhere as
+ * aliases (PLAN_ALIASES), so existing subscription rows, gift codes, webhooks and referral grants keep working.
  */
 export const PLANS = [
   { id: 'free', name: f('Free', 'இலவசம்'), interval: null, price: { INR: 0, USD: 0 }, features: FREE_FEATURES },
-  { id: 'premium_month', name: f('Premium — monthly', 'பிரீமியம் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'PREMIUM_MONTH', 199), USD: price('USD', 'PREMIUM_MONTH', 4.99) }, features: PREMIUM_FEATURES },
-  { id: 'premium_year', name: f('Premium — yearly', 'பிரீமியம் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'PREMIUM_YEAR', 1999), USD: price('USD', 'PREMIUM_YEAR', 49) }, features: PREMIUM_FEATURES },
+  { id: 'personal_month', name: f('Personal — monthly', 'தனிநபர் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'PERSONAL_MONTH', 199), USD: price('USD', 'PERSONAL_MONTH', 4.99) }, features: PERSONAL_FEATURES },
+  { id: 'personal_year', name: f('Personal — yearly', 'தனிநபர் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'PERSONAL_YEAR', 1999), USD: price('USD', 'PERSONAL_YEAR', 49) }, features: PERSONAL_FEATURES },
   { id: 'family_month', name: f('Family — monthly', 'குடும்பம் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'FAMILY_MONTH', 399), USD: price('USD', 'FAMILY_MONTH', 9.99) }, features: FAMILY_FEATURES },
   { id: 'family_year', name: f('Family — yearly', 'குடும்பம் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'FAMILY_YEAR', 3999), USD: price('USD', 'FAMILY_YEAR', 99) }, features: FAMILY_FEATURES },
 ];
-const PLAN = new Map(PLANS.map((p) => [p.id, p]));
-const PAID = PLANS.filter((p) => p.interval).map((p) => p.id);
+/** Old plan id → current id. */
+export const PLAN_ALIASES = Object.freeze({ premium_month: 'personal_month', premium_year: 'personal_year' });
+/** The current id for a plan id (old aliases mapped; anything else returned unchanged). */
+export const canonicalPlan = (id) => PLAN_ALIASES[id] || id;
+const PLAN = new Map([...PLANS.map((p) => [p.id, p]), ...Object.entries(PLAN_ALIASES).map(([old, cur]) => [old, PLANS.find((p) => p.id === cur)])]);
+/** Paid plan ids accepted from callers (current ids first, then the old aliases). */
+export const PAID_PLAN_IDS = [...PLANS.filter((p) => p.interval).map((p) => p.id), ...Object.keys(PLAN_ALIASES)];
+const PAID = PAID_PLAN_IDS;
 const CURRENCIES = ['INR', 'USD'];
 
 const SCHEMA = `
@@ -154,7 +173,7 @@ function activate(sub, { paymentRef = null, days = null } = {}) {
 }
 
 const subOut = (s, admin = false) => ({
-  id: s.id, plan: s.plan, status: s.status, currency: s.currency, amountMinor: s.amount_minor, gateway: s.gateway,
+  id: s.id, plan: canonicalPlan(s.plan), status: s.status, currency: s.currency, amountMinor: s.amount_minor, gateway: s.gateway,
   startsAt: s.starts_at, expiresAt: s.expires_at, createdAt: s.created_at, ...(admin ? { userId: s.user_id, gatewayRef: s.gateway_ref } : {}),
 });
 
@@ -163,7 +182,7 @@ export function entitlementsFor(user) {
   const sub = activeSub(user?.id);
   const paid = !!sub;
   const family = !!sub?.plan.startsWith('family');
-  return { unlimitedAi: false, aiMonthly: paid ? aiAllowance(family ? 'family' : 'premium') : null, predictions: paid, familyProfiles: family ? 8 : 1 };
+  return { unlimitedAi: false, aiMonthly: paid ? aiAllowance(family ? 'family' : 'personal') : null, predictions: paid, familyProfiles: family ? 8 : 1 };
 }
 
 // ---- complimentary access (used by server/growth.js: gift codes, trials, referrals) ----
@@ -182,7 +201,7 @@ export function grantComplimentary(userId, planId, gateway, ms, { extend = false
   if (!extend && cur && cur.expires_at >= base + ms) return subOut(cur);
   const id = crypto.randomUUID();
   db().prepare(`INSERT INTO subscriptions (id, user_id, plan, status, currency, amount_minor, gateway, gateway_ref, starts_at, expires_at, created_at)
-    VALUES (?, ?, ?, 'active', 'INR', 0, ?, ?, ?, ?, ?)`).run(id, userId, plan.id, gateway, ref, t, base + ms, t);
+    VALUES (?, ?, ?, 'active', 'INR', 0, ?, ?, ?, ?, ?)`).run(id, userId, plan.id, gateway, ref, t, base + ms, t); // plan.id is always the current id
   return subOut(db().prepare('SELECT * FROM subscriptions WHERE id = ?').get(id));
 }
 
@@ -302,7 +321,7 @@ const handle = (fn) => async (req, res, next) => {
 };
 
 const body = (req) => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) && !Buffer.isBuffer(req.body) ? req.body : {});
-const paidPlan = (id) => (PAID.includes(id) ? PLAN.get(id) : fail(`plan must be one of: ${PAID.join(', ')}`));
+const paidPlan = (id) => (PAID.includes(id) ? PLAN.get(id) : fail(`plan must be one of: ${PAID.join(', ')}`)); // aliases → the current plan
 const currencyOf = (v, dflt) => {
   const c = v === undefined || v === null || v === '' ? dflt : String(v).toUpperCase();
   return CURRENCIES.includes(c) ? c : fail('currency must be INR or USD');
@@ -323,14 +342,14 @@ export function billingRouter() {
     // Optional automatic trial (TRIAL_HOURS): granted once, to a signed-in user who never had a subscription.
     const trialHours = Number(env('TRIAL_HOURS'));
     if (user && trialHours > 0 && !db().prepare("SELECT 1 FROM subscriptions WHERE user_id = ? AND status IN ('active', 'expired') LIMIT 1").get(user.id)) {
-      grantComplimentary(user.id, 'premium_month', 'trial', Math.min(trialHours, 8760) * 3600000);
+      grantComplimentary(user.id, 'personal_month', 'trial', Math.min(trialHours, 8760) * 3600000);
     }
     const sub = activeSub(user?.id);
     const quota = checkAiQuota(req);
     // locked: had paid/gift/trial access that has now lapsed (expiry is enforced via activeSub).
     const lapsed = !sub && !!user && !!db().prepare("SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'expired' LIMIT 1").get(user.id);
     res.json({
-      plan: sub ? sub.plan : 'free', status: sub ? sub.status : 'active', expiresAt: sub ? sub.expires_at : null,
+      plan: sub ? canonicalPlan(sub.plan) : 'free', status: sub ? sub.status : 'active', expiresAt: sub ? sub.expires_at : null,
       trialEndsAt: sub && ['gift', 'trial'].includes(sub.gateway) ? sub.expires_at : null, locked: lapsed, enforced: billingEnforced(),
       entitlements: entitlementsFor(user), aiUsedToday: quota.period === 'day' ? quota.used : null, aiUsedThisMonth: quota.period === 'month' ? quota.used : null, aiLimit: quota.limit, aiPeriod: quota.period, aiFreeDaily: freeDaily(),
     });
@@ -423,7 +442,15 @@ export function billingRouter() {
         db().prepare("UPDATE subscriptions SET status = 'refunded', expires_at = ? WHERE id = ?").run(now(), sub.id);
         audit(null, 'billing.refund.webhook', sub.id, { amount: rf.amount });
       }
-      try { if (rf.payment_id) db().prepare("UPDATE store_orders SET status = 'refunded', updated_at = ? WHERE razorpay_payment_id = ?").run(now(), rf.payment_id); } catch { /* no store */ }
+      try {
+        if (rf.payment_id) {
+          const r = db().prepare("UPDATE store_orders SET status = 'refunded', updated_at = ? WHERE razorpay_payment_id = ? AND status != 'refunded'").run(now(), rf.payment_id);
+          if (r.changes) {
+            db().prepare("UPDATE order_refund_requests SET status = 'refunded', resolved_at = ? WHERE status IN ('open', 'refund_pending') AND order_id IN (SELECT id FROM store_orders WHERE razorpay_payment_id = ?)").run(now(), rf.payment_id);
+            audit(null, 'order.refund.webhook', rf.payment_id, { amount: rf.amount });
+          }
+        }
+      } catch { /* no store tables on this instance */ }
     }
     res.json({ received: true });
   });
@@ -443,7 +470,7 @@ export function billingRouter() {
       }
     }
     const sub = activeSub(req.user.id);
-    res.json({ restored, plan: sub ? sub.plan : 'free', expiresAt: sub ? sub.expires_at : null });
+    res.json({ restored, plan: sub ? canonicalPlan(sub.plan) : 'free', expiresAt: sub ? sub.expires_at : null });
   }));
 
   // Admin refund (finance role): refunds through Razorpay, revokes access and writes an audit record.

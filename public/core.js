@@ -1,10 +1,10 @@
 // Shared UI core: state, language, formatting, API/AI plumbing, family profiles and navigation.
 import { chartFromKattam } from './shared/kattam.js';
 import { birthChart, RASIS, NAKSHATRAS, PLANETS } from './shared/astro.js';
-import { buildTaskPrompt } from './shared/narrator.js';
 import { placeTa, attachZone, zoneOffsetHours } from './shared/places.js';
 import { activeLocation, travelExpired, countryOfLoc, zoneLabel, inIndiaTime, locFromPlace } from './shared/residence.js';
 import { BRAND } from './shared/brand.js';
+import { backupPayload, mergeAccountFamily } from './shared/sync-policy.js';
 
 export { BRAND };
 /** Brand name in the current language. */
@@ -124,13 +124,18 @@ export const RELATIONS = [
 ];
 
 let syncTimer;
+/** "Back up family profiles to my account" (Privacy & data); on unless the person switched it off. */
+export const backupConsent = () => store.get('kj_consent', {}).backup ?? true;
+export { mergeAccountFamily };
 export function saveFamily() {
   store.set('kj_family', state.family);
   store.set('kj_active', state.activeId);
   store.set('kj_ancestors', state.ancestors);
   if (state.user && !STATIC) {
     clearTimeout(syncTimer);
-    syncTimer = setTimeout(() => api('/api/me/data', { method: 'PUT', body: { data: { family: state.family, activeId: state.activeId, ancestors: state.ancestors } } }).catch(() => {}), 600);
+    // Only with backup consent, and never private profiles (shared/sync-policy.js).
+    const data = backupPayload({ family: state.family, activeId: state.activeId, ancestors: state.ancestors }, { backup: backupConsent() });
+    if (data) syncTimer = setTimeout(() => api('/api/me/data', { method: 'PUT', body: { data } }).catch(() => {}), 600);
   }
 }
 export function saveSettings() {
@@ -224,31 +229,29 @@ export async function sse(path, body, handlers) {
   }
 }
 
-let samplePromise;
-const getSample = () => (samplePromise ||= (window.claude?.use ? window.claude.use('sample').catch(() => null) : Promise.resolve(null)));
-
 /**
  * Ask the AI Jothidar for a task ('chat' | 'porutham' | 'names').
- * onText receives the WHOLE text so far. Resolves { text, source: 'ai' | 'rules' }.
+ * onText receives the WHOLE text so far. Resolves { text, source: 'ai' | 'policy' | 'rules', meta }, where meta is the
+ * server's policy block (route, resources, notice, trace …) when the server sent one.
+ *
+ * STATIC (phone-only / artifact) builds never call a model: there is no server policy, evidence check or answer
+ * validator there, so free model text could not be checked for age, facilitation or prohibited claims before it is
+ * shown or read aloud. They answer with the validated on-device rules (fallbackText) and the "limited guidance" label.
  */
+// Protective session signals echoed back to the server (they can only make handling MORE protective) and a random
+// per-page session id for the server's short-lived memory. The place is sent rounded, only to pick help contacts.
+const aiSession = { id: `s-${Math.random().toString(36).slice(2, 12)}${Date.now().toString(36)}`, flags: {} };
+const coarseLoc = () => (state.loc && Number.isFinite(state.loc.lat) ? { lat: Math.round(state.loc.lat * 10) / 10, lon: Math.round(state.loc.lon * 10) / 10, tz: state.loc.tz } : undefined);
+
 export async function aiTask({ task, context, messages = [], fallbackText, onText }) {
   // The person can switch AI off (Privacy & data); then only built-in rules answer and nothing is sent.
-  if (store.get('kj_consent', {}).aiChat === false) { onText?.(fallbackText); return { text: fallbackText, source: 'rules' }; }
-  if (STATIC) {
-    const sample = await getSample();
-    if (sample) {
-      try {
-        const { text } = await sample(buildTaskPrompt(task, context, messages, state.lang), { cache: false, onText: ({ text: tx }) => onText?.(tx) });
-        return { text, source: 'ai' };
-      } catch { /* declined or unavailable */ }
-    }
-    onText?.(fallbackText);
-    return { text: fallbackText, source: 'rules' };
-  }
+  if (store.get('kj_consent', {}).aiChat === false || STATIC) { onText?.(fallbackText); return { text: fallbackText, source: 'rules', meta: null }; }
   let text = '';
   let source = 'rules';
+  let meta = null;
   try {
-    await sse(`/api/ai/${task}`, { context, messages, lang: state.lang, fallbackText }, {
+    await sse(`/api/ai/${task}`, { context, messages, lang: state.lang, fallbackText, loc: coarseLoc(), sessionId: aiSession.id, sessionFlags: aiSession.flags }, {
+      policy: (d) => { meta = d; if (d?.policy?.sessionFlags?.minorSignal) aiSession.flags = { ...aiSession.flags, ...d.policy.sessionFlags }; },
       delta: (d) => { text += d.text; onText?.(text); },
       reset: () => { text = ''; onText?.(''); },
       done: (d) => { source = d.source; },
@@ -257,7 +260,7 @@ export async function aiTask({ task, context, messages = [], fallbackText, onTex
     text = [401, 402, 429].includes(e.status) ? `${e.message}\n\n${fallbackText}` : fallbackText;
     onText?.(text);
   }
-  return { text, source };
+  return { text, source, meta };
 }
 
 // ---------------------------------------------------------------- UI helpers

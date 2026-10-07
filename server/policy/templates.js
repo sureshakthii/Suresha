@@ -20,6 +20,10 @@ export const TEMPLATES = Object.fromEntries([
   T('child_caregiver', 'child_guidance',
     REVIEWED_TEXT.child_caregiver.en,
     REVIEWED_TEXT.child_caregiver.ta),
+  T('child_feelings', 'child_guidance',
+    REVIEWED_TEXT.child_feelings.en,
+    REVIEWED_TEXT.child_feelings.ta,
+    { resources: ['child'] }),
   T('child_sensitive', 'child_guidance',
     'That is a big question. The grown-ups who care about you can help with it — talk to a parent, a teacher or another trusted grown-up. If anything feels scary or unsafe, tell them right away. I can share a fun fact about today\'s star or festival if you like.',
     'இது ஒரு பெரிய கேள்வி. உங்கள் மீது அக்கறை உள்ள பெரியவர்கள் இதற்கு உதவுவார்கள் — அம்மா, அப்பா, ஆசிரியர் அல்லது நம்பிக்கையான ஒரு பெரியவரிடம் பேசுங்கள். ஏதாவது பயமாகவோ பாதுகாப்பில்லாததாகவோ தோன்றினால், உடனே அவர்களிடம் சொல்லுங்கள். விரும்பினால், இன்றைய நட்சத்திரம் அல்லது பண்டிகை பற்றி ஒரு சுவாரசியமான தகவல் சொல்கிறேன்.'),
@@ -36,8 +40,8 @@ export const TEMPLATES = Object.fromEntries([
     REVIEWED_TEXT.minor_marriage.ta,
     { resources: ['child'] }),
   T('teen_adult_partner', 'safety_support',
-    'Thank you for sharing this. When an adult seeks a romantic or sexual relationship with someone under 18, that is not okay — even if it feels special. Keeping that boundary is the adult\'s responsibility, not yours. You deserve to feel safe and never pressured. Please talk to a trusted adult who is not involved, or contact the help listed below.',
-    'இதைப் பகிர்ந்ததற்கு நன்றி. 18 வயதுக்குக் குறைவான ஒருவருடன் ஒரு பெரியவர் காதல் அல்லது பாலியல் உறவை நாடுவது சரியல்ல — அது சிறப்பாகத் தோன்றினாலும் கூட. அந்த எல்லையைக் காப்பது அந்தப் பெரியவரின் பொறுப்பு, உங்களுடையது அல்ல. நீங்கள் பாதுகாப்பாகவும் எந்த அழுத்தமும் இல்லாமலும் இருக்க உரிமை உண்டு. இதில் சம்பந்தப்படாத நம்பிக்கையான ஒரு பெரியவரிடம் பேசுங்கள், அல்லது கீழே உள்ள உதவியைத் தொடர்புகொள்ளுங்கள்.',
+    REVIEWED_TEXT.teen_adult_partner.en,
+    REVIEWED_TEXT.teen_adult_partner.ta,
     { resources: ['child', 'emergency'] }),
 
   // ------------------------------------------------------------ guardians asking about a child
@@ -45,14 +49,14 @@ export const TEMPLATES = Object.fromEntries([
     REVIEWED_TEXT.guardian_minor_romance.en,
     REVIEWED_TEXT.guardian_minor_romance.ta),
   T('guardian_child_at_risk', 'safety_support',
-    'What you describe — an adult seeking a romantic or sexual relationship with someone under 18 — is a child-safety concern, and astrology does not change that. Please focus on keeping the child safe. Avoid confronting the adult alone if that could be dangerous, and contact the child helpline or police listed below. A counsellor or school counsellor can also help the child.',
-    'நீங்கள் சொல்வது — 18 வயதுக்குக் குறைவான ஒருவருடன் ஒரு பெரியவர் காதல் அல்லது பாலியல் உறவை நாடுவது — குழந்தைப் பாதுகாப்புப் பிரச்சினை; ஜோதிடம் அதை மாற்றாது. குழந்தையைப் பாதுகாப்பாக வைப்பதில் கவனம் செலுத்துங்கள். ஆபத்து இருக்கக்கூடும் என்றால் அந்தப் பெரியவரைத் தனியாக எதிர்கொள்ள வேண்டாம்; கீழே உள்ள குழந்தைகள் உதவி எண் அல்லது காவல் துறையைத் தொடர்புகொள்ளுங்கள். ஒரு ஆலோசகர் அல்லது பள்ளி ஆலோசகரும் குழந்தைக்கு உதவ முடியும்.',
+    REVIEWED_TEXT.guardian_child_at_risk.en,
+    REVIEWED_TEXT.guardian_child_at_risk.ta,
     { resources: ['child', 'emergency'] }),
 
   // ------------------------------------------------------------ adult–minor facilitation (Brief §20, §21 eighty-year-old)
   T('decline_minor_facilitation', 'decline_facilitation',
-    'I cannot help an adult pursue a romantic or sexual relationship with a child. Astrology does not change that boundary. I can help you seek appropriate companionship with consenting adults. If these feelings worry you, a qualified counsellor can help confidentially.',
-    'ஒரு பெரியவர் ஒரு குழந்தையுடன் காதல் அல்லது பாலியல் உறவைத் தேட நான் உதவ முடியாது. ஜோதிடம் இந்த எல்லையை மாற்றாது. ஒப்புதல் தரும் பெரியவர்களுடன் பொருத்தமான துணையைத் தேட நான் உதவ முடியும். இந்த உணர்வுகள் உங்களைக் கவலைப்படுத்தினால், தகுதியான ஆலோசகர் ரகசியமாக உதவ முடியும்.',
+    REVIEWED_TEXT.decline_minor_facilitation.en,
+    REVIEWED_TEXT.decline_minor_facilitation.ta,
     { resources: ['mental_health'] }),
 
   // ------------------------------------------------------------ adults and unknown age (Brief §21)
@@ -132,11 +136,11 @@ export const TEMPLATES = Object.fromEntries([
 
   // ------------------------------------------------------------ system texts
   T('no_ai_notice', 'any',
-    'Quick-answer mode: the detailed AI explanation is not available right now, so this answer comes only from the app\'s calculations and reviewed templates. It may not cover every part of your question.',
-    'சுருக்கப் பதில் முறை: விரிவான AI விளக்கம் இப்போது கிடைக்கவில்லை; எனவே இந்தப் பதில் செயலியின் கணக்கீடுகள் மற்றும் சரிபார்க்கப்பட்ட வார்ப்புருக்களிலிருந்து மட்டுமே வருகிறது. உங்கள் கேள்வியின் எல்லாப் பகுதிகளுக்கும் இது பதில் தராமல் இருக்கலாம்.'),
+    REVIEWED_TEXT.no_ai_notice.en,
+    REVIEWED_TEXT.no_ai_notice.ta),
   T('validation_fallback', 'any',
-    'I could not prepare a fully checked answer this time, so I am not showing an unverified one. In general: a chart shows tendencies, not fixed fate. Steady effort, practical planning and good advice from people you trust matter most. A simple free practice — lighting a lamp or a short prayer — can bring calm. Please try again later.',
-    'இந்த முறை முழுமையாகச் சரிபார்க்கப்பட்ட பதிலைத் தயாரிக்க முடியவில்லை; எனவே சரிபார்க்காத பதிலைக் காட்டவில்லை. பொதுவாக: ஜாதகம் போக்குகளைக் காட்டுகிறது, மாற்ற முடியாத விதியை அல்ல. தொடர்ந்த முயற்சி, நடைமுறைத் திட்டமிடல், நம்பிக்கையானவர்களின் நல்ல ஆலோசனை — இவையே முக்கியம். விளக்கேற்றுதல் அல்லது சிறு பிரார்த்தனை போன்ற எளிய இலவச வழிபாடு மன அமைதி தரும். சிறிது நேரம் கழித்து மீண்டும் முயலுங்கள்.'),
+    REVIEWED_TEXT.validation_fallback.en,
+    REVIEWED_TEXT.validation_fallback.ta),
 ].map((t) => [t.id, t]));
 
 // Deadline-first practical notes for Prasnam / timing answers (Brief §10). Shown BEFORE any timing guidance.

@@ -14,7 +14,7 @@ const facts = chartFacts(birthChart(suresh), timeReliability(suresh), new Date('
 const ask = (question, lang = /[\u0B80-\u0BFF]/.test(question) ? 'ta' : 'en', f = facts) => composeAnswer({ question, lang, facts: f, name: 'Suresh' });
 
 test('brand is configurable and complete', () => {
-  for (const k of ['name', 'nameTa', 'taglineTa', 'descriptorEn', 'assistantEn', 'premiumEn']) assert.ok(BRAND[k], k);
+  for (const k of ['name', 'nameTa', 'taglineTa', 'descriptorEn', 'assistantEn', 'personalEn']) assert.ok(BRAND[k], k);
   assert.equal(BRAND.taglineTa, 'உங்கள் வாழ்வின் வழித்துணை.');
   assert.equal(BRAND.descriptorEn, 'Personal Astrology & Spiritual Guidance');
   assert.match(ENGINE_VERSION, /calc \d+\.\d+\.\d+ · rules \d+\.\d+\.\d+/);

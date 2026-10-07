@@ -209,6 +209,7 @@ function drawResults(sec, info) {
       group.forEach((x) => f.delete(x));
       if (on) f.add(id);
       store.set(FAV_KEY, [...f]);
+      if (on) document.dispatchEvent(new CustomEvent('kj:task', { detail: 'names' })); // metrics: a name shortlisted (consent-gated, public/growth.js)
       e.currentTarget.textContent = on ? '⭐' : '☆';
       e.currentTarget.setAttribute('aria-pressed', String(on));
       const fb = $('#nmFavOnly', box);

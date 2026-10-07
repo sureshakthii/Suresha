@@ -1,5 +1,5 @@
 // App-shell cache so the Jathagam and live Panchangam work offline. API calls always go to the network.
-const CACHE = 'kj-v19';
+const CACHE = 'kj-v20';
 const SHELL = [
   '/', '/index.html', '/styles.css', '/app.js', '/core.js', '/screens-main.js', '/screens-tools.js', '/screens-world.js',
   '/screens-life.js', '/screens-plans.js', '/screens-couple.js', '/screens-guide.js', '/remind.js', '/screens-roadmap.js',
@@ -12,9 +12,9 @@ const SHELL = [
   '/shared/porutham.js', '/shared/remedies.js', '/shared/special.js', '/shared/analysis.js', '/shared/relations.js', '/shared/temples.js',
   '/shared/mantras.js', '/shared/predict.js', '/shared/packages.js', '/shared/couple.js', '/shared/lifecheck.js', '/shared/personal.js',
   '/shared/temple-info.js', '/shared/roadmap.js', '/shared/varga.js', '/shared/ashtakoota.js', '/shared/numerology.js',
-  '/shared/peyarchi.js', '/shared/health.js', '/shared/brand.js', '/shared/birthtime.js', '/shared/guidance.js', '/shared/journey.js',
+  '/shared/peyarchi.js', '/shared/health.js', '/shared/brand.js', '/shared/sync-policy.js', '/shared/birthtime.js', '/shared/guidance.js', '/shared/journey.js',
   '/shared/version.js', '/shared/temple-verified.js', '/shared/kattam.js', '/shared/daily.js', '/shared/today-plan.js', '/shared/faith.js',
-  '/today-lines.js', '/ask-thunai.js', '/shared/weather.js', '/shared/station.js', '/shared/love.js', '/shared/datetime.js', '/shared/age-guard.js', '/shared/lifespan-cap.js',
+  '/today-lines.js', '/ask-thunai.js', '/shared/weather.js', '/shared/station.js', '/shared/love.js', '/shared/datetime.js', '/shared/age-guard.js', '/shared/themes.js', '/shared/lifespan-cap.js',
   '/shared/rules/core.js', '/shared/rules/profiles.js', '/shared/rules/registry.js', '/shared/rules/chevvai.js', '/shared/rules/roles.js',
   '/shared/rules/yogas.js', '/shared/rules/disputed.js', '/shared/rules/define.js', '/vendor/astronomy-engine.js', '/icon.svg',
   '/phone-input.js', '/shared/countries.js', '/shared/country-data.js', '/shared/world-places.js', '/shared/currency.js',

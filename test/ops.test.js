@@ -202,8 +202,10 @@ test('plans: Personal (தனிநபர்) and Family; "coming soon" features
   assert.equal(personal.amount, 199);
   assert.equal(p.plans.find((x) => x.id === 'personal_year').amount, 1999);
   assert.ok(!JSON.stringify(p).match(/premium|பிரீமியம்/i), 'the old name is gone from what users see');
-  const soon = personal.features.filter((f) => f.soon).map((f) => f.en);
-  assert.deepEqual(soon.sort(), ['Saved goals', 'Weekly planning']);
+  // Saved goals and weekly planning are built now: no longer "coming soon"; weekly planning is free.
+  assert.deepEqual(personal.features.filter((f) => f.soon), []);
+  assert.ok(personal.features.some((f) => /^Saved goals/.test(f.en)));
+  assert.ok(p.plans.find((x) => x.id === 'free').features.some((f) => f.en === 'Weekly planning' && !f.soon));
   const fam = p.plans.find((x) => x.id === 'family_month');
   assert.ok(fam.features.some((f) => /8 family profiles/.test(f.en) && /permission/.test(f.en)));
   assert.equal(fam.amount, 399);

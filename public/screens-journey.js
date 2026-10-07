@@ -15,6 +15,7 @@ import {
 } from './core.js';
 import { reliabilityOf, setupVoiceInput } from './screens-main.js';
 import { placeSearch } from './account.js';
+import { gate } from './growth.js';
 import { remindBtn } from './remind.js';
 import { templeSearchField, attachTempleSearch } from './temple-search.js';
 import { sharePreview } from './screens-hubs.js';
@@ -422,6 +423,7 @@ function optionHtml(o, idx) {
     <div class="btn-row">
       <button class="chip-btn" data-save="${idx}">💾 ${L('Save', 'சேமி')}</button>
       <button class="chip-btn" data-share="${idx}">📤 ${L('Share', 'பகிர்')}</button>
+      <button class="chip-btn" data-print-gated='${esc(JSON.stringify({ journeyId: plan.savedId || '' }))}'>🖨️ ${L('Print plan', 'திட்டத்தை அச்சிடு')}</button>
       ${o.temples[0] ? `<button class="chip-btn" data-go="weather" data-param='${esc(JSON.stringify({ lat: o.temples[0].lat, lon: o.temples[0].lon, name: bi(o.temples[0].name), back: 'journey' }))}'>☁️ ${L('Weather', 'வானிலை')}</button>` : ''}
       <button class="chip-btn" disabled aria-disabled="true" title="${esc(L('No booking partner is operational yet', 'முன்பதிவுக் கூட்டாளர் இன்னும் இல்லை'))}">🎫 ${L('Booking not available yet', 'முன்பதிவு இன்னும் இல்லை')}</button>
     </div>
@@ -458,6 +460,7 @@ function showPlan(p) {
     ${(p.cur || cur()) !== 'INR' ? `<p class="small muted">💱 ${L(`Estimates in ${p.cur || cur()} with Indian rupees (₹) alongside — approximate exchange rate.`, `மதிப்பீடுகள் ${p.cur || cur()} நாணயத்தில், இந்திய ரூபாயுடன் (₹) — தோராய நாணய மாற்று விகிதம்.`)}</p>` : ''}
     ${p.options.map((o, i) => optionHtml(o, i)).join('')}`;
   $$('[data-save]').forEach((b) => b.addEventListener('click', () => {
+    if (!gate('journeys', { count: savedPlans().length, near: b })) return; // BILLING_ENFORCE: one saved journey is free (public/growth.js)
     const o = p.options[Number(b.dataset.save)];
     const id = Math.random().toString(36).slice(2, 10);
     const names = state.family.filter((m) => form.who.includes(m.id)).map((m) => displayName(m));

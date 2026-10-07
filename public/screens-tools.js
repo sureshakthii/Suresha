@@ -180,7 +180,7 @@ function sideData(who) {
   if (s.mode === 'member' && matchPool().length) {
     const m = matchPool().find((x) => x.id === s.memberId) || matchPool().find((x) => x.id === sideDefault(who));
     const c = chartOf(m);
-    return { name: displayName(m), star: c.janmaNakshatra.index, rasi: c.janmaRasi.index, doshams: doshams(c.planets, { stability: c.stability }), lagnaUnknown: !hasLagna(c), chart: c };
+    return { name: displayName(m), memberId: m.id, star: c.janmaNakshatra.index, rasi: c.janmaRasi.index, doshams: doshams(c.planets, { stability: c.stability }), lagnaUnknown: !hasLagna(c), chart: c };
   }
   return { name: who === 'girl' ? L('Bride', 'மணமகள்') : L('Groom', 'மணமகன்'), star: s.star, rasi: rasiOfStarPada(s.star, s.pada) };
 }
@@ -198,6 +198,7 @@ function computePorutham() {
     header: `<div class="muted small">${esc(g.name)} (${esc(nakName(g.star))}) · ${esc(b.name)} (${esc(nakName(b.star))})</div>`,
   })}
     ${discussionHtml()}
+    <button type="button" class="chip-btn por-full-link" data-go="couple"${g.memberId && b.memberId ? ` data-param="${esc(JSON.stringify({ bride: g.memberId, groom: b.memberId }))}"` : ''}>💞 ${L('See full five-card report', 'முழு ஐந்து அட்டை அறிக்கையைப் பார்')}</button>
     <button class="btn-gold" id="porExplain">✨ ${L('Thunai explains', 'துணை விளக்கம்')}</button>`;
   $('#porExplain').addEventListener('click', () => {
     const context = { bride: { name: g.name, star: NAKSHATRAS[g.star].en, rasi: RASIS[g.rasi].en }, groom: { name: b.name, star: NAKSHATRAS[b.star].en, rasi: RASIS[b.rasi].en },

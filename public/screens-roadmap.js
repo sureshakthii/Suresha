@@ -8,7 +8,7 @@ import {
   speak, displayName, aiTask, saveFamily, needsTimeNote, birthContext, stabilityChip,
 } from './core.js';
 import { REPORT_YEARS, horizonLabel } from './shared/report-horizon.js';
-import { isLocked, lockCard } from './growth.js';
+import { isLocked, lockCard, gate } from './growth.js';
 import { remindBtn } from './remind.js';
 
 const people = () => state.family.filter((m) => m.relation !== 'organization');
@@ -134,7 +134,7 @@ function drawRoadmap(m) {
     <div class="btn-row"><button class="chip-btn" id="rmPrint">🖨️ ${L('Print / save as PDF', 'அச்சிடு / PDF ஆக சேமி')}</button><button class="chip-btn" data-go="guide">🧭 ${L('My Guide', 'என் வழிகாட்டி')}</button><button class="chip-btn" data-go="analysis">📜 ${L('Full analysis', 'முழு ஆய்வு')}</button></div>
     <p class="muted small center">${L('A road map shows the seasons of life; your effort, family and faith drive the journey.', 'வரைபடம் வாழ்க்கையின் பருவங்களைக் காட்டுகிறது; பயணத்தை நடத்துவது உங்கள் உழைப்பும் குடும்பமும் நம்பிக்கையும்.')}</p>`;
   $('#rmSpeak').addEventListener('click', () => speak(spoken));
-  $('#rmPrint').addEventListener('click', () => { $$('#rmBody details').forEach((d) => { d.open = true; }); import('./core.js').then((c) => c.printPage()); });
+  $('#rmPrint').addEventListener('click', () => { if (!gate('printReports', { near: $('#rmPrint') })) return; $$('#rmBody details').forEach((d) => { d.open = true; }); import('./core.js').then((c) => c.printPage()); });
   $('#rmAi')?.addEventListener('click', async () => {
     $('#rmAiBox').hidden = false;
     const t = $('#rmAiText');

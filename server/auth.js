@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import express from 'express';
 import nodemailer from 'nodemailer';
 import { getDb } from './db.js';
+import { familyExport, deleteFamilyData } from './family.js';
 
 const OTP_TTL = 5 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
@@ -427,6 +428,7 @@ export function authRouter() {
       pushSubscriptions: tryAll('SELECT id, endpoint, prefs, created_at FROM push_subs WHERE user_id = ?')
         .map((p) => ({ id: p.id, service: endpointHost(p.endpoint), prefs: parse(p.prefs), createdAt: p.created_at })), // keys and the endpoint URL are secrets
       analyticsEvents: tryAll('SELECT type, screen, feature, platform, app_version, created_at FROM events WHERE user_id = ? ORDER BY created_at'),
+      family: (() => { try { return familyExport(user.id); } catch { return null; } })(), // memberships, invites, shares (no code hashes)
       pendingSignInCodes: tryAll('SELECT identifier, expires_at FROM otps WHERE identifier IN (?, ?)', account?.phone || '', account?.email || ''), // code hashes withheld
     });
   });
@@ -443,6 +445,7 @@ export function authRouter() {
     let priestIds = [];
     try { priestIds = d.prepare('SELECT id FROM priests WHERE user_id = ? OR (phone = ? AND ? <> \'\')').all(user.id, account.phone || '', account.phone || '').map((p) => p.id); } catch { /* no market tables */ }
     run('DELETE FROM user_data WHERE user_id = ?');
+    deleteFamilyData(user.id); // shares + server copies, invites, memberships; owned groups pass to an adult or go
     run('DELETE FROM sessions WHERE user_id = ?');
     run('DELETE FROM push_subs WHERE user_id = ?');
     run('DELETE FROM feedback WHERE user_id = ?');

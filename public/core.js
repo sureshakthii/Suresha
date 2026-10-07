@@ -182,7 +182,7 @@ export function saveFamily() {
   if (state.user && !STATIC) {
     clearTimeout(syncTimer);
     // Only with backup consent, and never private profiles (shared/sync-policy.js).
-    const data = backupPayload({ family: state.family, activeId: state.activeId, ancestors: state.ancestors }, { backup: backupConsent() });
+    const data = backupPayload({ family: state.family, activeId: state.activeId, ancestors: state.ancestors, goals: store.get('kj_goals', null) }, { backup: backupConsent() });
     if (data) syncTimer = setTimeout(() => api('/api/me/data', { method: 'PUT', body: { data } }).catch(() => {}), 600);
   }
 }

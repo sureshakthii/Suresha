@@ -25,6 +25,7 @@ export const TOOLS = [
   { id: 'live', group: 'today', en: 'Live sky & Horai', ta: 'நேரலை வானம் & ஓரை', k: 'horai hora orai planets now grahangal கிரகம் live sky lagnam' },
   { id: 'weather', group: 'today', en: 'Weather & travel', ta: 'வானிலை & பயணம்', k: 'weather vaanilai mazhai rain travel payanam' },
   { id: 'week', group: 'today', en: 'Weekly plan', ta: 'வாரத் திட்டம்', k: 'week weekly this week vaaram vaara plan thittam திட்டம் வாரம் இந்த வாரம் tasks appointment deadline' },
+  { id: 'goals', group: 'today', en: 'My goals', ta: 'என் இலக்குகள்', k: 'goal goals ilakku ilakkugal இலக்கு இலக்குகள் plan target checklist next steps marriage preparation thirumana erpadu career job preparation exam temple journey house deadline' },
   { id: 'reminders', group: 'today', en: 'Alarms & reminders', ta: 'அலாரம் & நினைவூட்டல்', k: 'alarm reminder ninaivootal notification' },
   { id: 'relations', group: 'today', en: 'Family relations today', ta: 'இன்று குடும்ப உறவு', k: 'relations uravu family today kudumbam' },
   // 2. Ask
@@ -91,6 +92,7 @@ export const ROUTES = {
   tools: 'home', // the launcher itself: Today's search bar, the header search button and the Services tab
   familyhub: 'tab', services: 'tab',
   login: 'more', // Sign in button on Settings
+  value: 'more', // "Your Thunai so far" — optional value summary on Settings (screens-plans.js)
   admin: 'about', // owner only: shown on Settings for admins; long-press the build number in About
 };
 

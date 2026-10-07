@@ -83,6 +83,9 @@ async function seedEverything() {
   await req('POST', '/api/events', { deviceId: 'device-privacy-1', events: [{ type: 'feature_use', feature: 'porutham' }] }, cookie);
   await req('POST', '/api/feedback', { deviceId: 'device-privacy-1', type: 'defect', comment: 'Button did nothing', report: { steps: 'tap', build: 'b1', viewport: '360x780', lang: 'ta' } }, cookie);
   await req('GET', '/api/referral', undefined, cookie); // creates my referral code
+  const fam = await (await req('POST', '/api/family/groups', { name: 'Fam' }, cookie)).json();
+  await req('POST', `/api/family/groups/${fam.group.id}/invites`, {}, cookie);
+  await req('POST', '/api/family/shares', { groupId: fam.group.id, profile: { id: 'amma', name: 'Amma', date: '1960-01-01', time: '06:00:00', lat: 13, lon: 80, tz: 5.5 } }, cookie);
   d.prepare('INSERT INTO gift_redemptions (code, user_id, redeemed_at) VALUES (?, ?, ?)').run('KJ-TEST-CODE', me.id, Date.now());
   d.prepare('INSERT INTO referral_claims (user_id, referrer_id, code, referrer_days, created_at) VALUES (?, ?, ?, 7, ?)').run('friend-1', me.id, 'ABCDEF', Date.now());
   d.prepare('INSERT INTO otps (identifier, code_hash, expires_at, attempts, sends, window_start) VALUES (?, ?, ?, 0, 1, ?)').run(phone, 'SECRET-HASH', Date.now() + 60000, Date.now());
@@ -114,6 +117,10 @@ test('export covers every table with account data and redacts secrets', async ()
   assert.equal(out.pushSubscriptions.length, 1);
   assert.equal(out.pushSubscriptions[0].service, 'push.example.com');
   assert.equal(out.pendingSignInCodes.length, 1);
+  assert.deepEqual(Object.keys(out.family).sort(), ['invitesCreated', 'memberships', 'sharesMade', 'sharesReceived'], 'shared-family records exported');
+  assert.equal(out.family.memberships.length, 1);
+  assert.equal(out.family.invitesCreated.length, 1);
+  assert.equal(out.family.sharesMade[0].sharedCopy.name, 'Amma');
   const raw = JSON.stringify(out);
   for (const secret of ['SECRET-ENDPOINT', 'SECRET-P256', 'SECRET-AUTH', 'SECRET-HASH']) assert.ok(!raw.includes(secret), `export leaks ${secret}`);
   assert.equal(out.account.id, me.id);
@@ -142,6 +149,9 @@ test('account deletion removes or de-identifies every table that held the accoun
   assert.equal(n('SELECT COUNT(*) AS n FROM push_subs WHERE user_id = ?', me.id), 0);
   assert.equal(n('SELECT COUNT(*) AS n FROM events WHERE user_id = ?', me.id), 0);
   assert.equal(n('SELECT COUNT(*) AS n FROM feedback WHERE user_id = ?', me.id), 0);
+  for (const sql of ['family_members WHERE user_id', 'family_groups WHERE owner_user_id', 'family_invites WHERE created_by', 'profile_shares WHERE owner_user_id']) {
+    assert.equal(n(`SELECT COUNT(*) AS n FROM ${sql} = ?`, me.id), 0, sql);
+  }
   const kept = d.prepare('SELECT user_id, contact_phone, notes FROM service_requests WHERE id = ?').get(reqIds[0]);
   assert.deepEqual({ ...kept }, { user_id: 'deleted', contact_phone: '', notes: '' });
   assert.equal(n("SELECT COUNT(*) AS n FROM store_orders WHERE user_id = ? OR address LIKE '%Main Street%'", me.id), 0);

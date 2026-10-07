@@ -65,8 +65,10 @@ export function businessMetrics({ days = 30, now = Date.now() } = {}) {
   const activePayers = one(`SELECT COUNT(DISTINCT user_id) AS n FROM subscriptions WHERE gateway IN ('razorpay', 'stripe') AND status = 'active' AND expires_at > ?`, now).n || 0;
 
   // Churn: paid periods that ended in the window and were not followed by another paid period within 7 days.
-  const ended = all(`SELECT user_id, expires_at FROM subscriptions WHERE gateway IN ('razorpay', 'stripe') AND status = 'expired' AND expires_at BETWEEN ? AND ?`, from, now - 7 * DAY);
-  const churned = ended.filter((e) => !one(`SELECT 1 AS ok FROM subscriptions WHERE user_id = ? AND gateway IN ('razorpay', 'stripe') AND status IN ('active', 'expired') AND starts_at BETWEEN ? AND ?`, e.user_id, e.expires_at - DAY, e.expires_at + 7 * DAY).ok).length;
+  // One-time packages end by design, so they are not churn.
+  const notPackage = "plan NOT IN ('marriage_package', 'journey_package')";
+  const ended = all(`SELECT user_id, expires_at FROM subscriptions WHERE gateway IN ('razorpay', 'stripe') AND status = 'expired' AND ${notPackage} AND expires_at BETWEEN ? AND ?`, from, now - 7 * DAY);
+  const churned = ended.filter((e) => !one(`SELECT 1 AS ok FROM subscriptions WHERE user_id = ? AND gateway IN ('razorpay', 'stripe') AND status IN ('active', 'expired') AND ${notPackage} AND starts_at BETWEEN ? AND ?`, e.user_id, e.expires_at - DAY, e.expires_at + 7 * DAY).ok).length;
 
   // AI cost.
   const ai = one('SELECT COUNT(*) AS calls, COALESCE(SUM(input_tokens), 0) AS tin, COALESCE(SUM(output_tokens), 0) AS tout FROM ai_cost WHERE at >= ?', from);

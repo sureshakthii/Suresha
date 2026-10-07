@@ -13,6 +13,9 @@ import {
   placeName, mergeAccountFamily,
 } from './core.js';
 import { track } from './growth.js';
+import { syncShares, pendingJoinCode, mountSharedFamily, pushSharedEdit } from './family-share.js';
+import { mergeGoals } from './shared/goals.js';
+import { isPrivateProfile } from './shared/sync-policy.js';
 
 startPhoneInputs(); // every mobile-number field in the app gets the country-code picker
 
@@ -28,6 +31,8 @@ export async function loadSession() {
     const { user } = await api('/api/auth/me');
     state.user = user;
     await pullAccountData();
+    await syncShares(); // profiles family members shared with me; revoked ones leave this phone
+    if (pendingJoinCode()) go('family'); // opened from an invite link
   } catch { state.user = null; }
 }
 
@@ -39,6 +44,11 @@ async function pullAccountData() {
     state.family = mergeAccountFamily(Array.isArray(data?.family) ? data.family : [], state.family);
     if (Array.isArray(data?.ancestors)) state.ancestors = data.ancestors;
     state.activeId = data?.activeId && state.family.some((m) => m.id === data.activeId) ? data.activeId : state.family[0]?.id || null;
+    // Backed-up goals come back right after sign-in, so Today's goal card shows them (goals.js mergeGoals rules).
+    if (data?.goals) {
+      const privateIds = new Set(state.family.filter(isPrivateProfile).map((m) => m.id));
+      store.set('kj_goals', mergeGoals(data.goals, store.get('kj_goals', null), { privateIds }));
+    }
     saveFamily();
   } catch { /* offline: keep local */ }
 }
@@ -46,6 +56,7 @@ async function pullAccountData() {
 export async function signOut() {
   if (STATIC) store.del('kj_demo_user'); else await api('/api/auth/logout', { method: 'POST' }).catch(() => {});
   state.user = null;
+  syncShares(); // signed out: profiles other accounts shared with me leave this phone
   toast(L('Signed out', 'வெளியேறினீர்கள்'));
   go('login');
 }
@@ -312,6 +323,7 @@ function memberForm(m, first) {
 function renderFamily(sec, params = {}) {
   if (params.add) editing = { name: params.name || state.user?.name || '' };
   else if (params.edit) editing = { ...state.family.find((m) => m.id === params.edit) };
+  if (editing?.shared && editing.shared.permission !== 'edit') editing = null; // shared with me view-only: no editing
   const first = params.first || !state.family.length;
   if (editing) {
     sec.innerHTML = `${first ? '' : subHeader(editing.id ? L('Edit details', 'விவரம் திருத்து') : L('Add a family member', 'குடும்ப உறுப்பினர் சேர்'), '', 'family')}
@@ -381,16 +393,23 @@ function renderFamily(sec, params = {}) {
     ${state.family.map((m) => { const c = chartOf(m); return `<div class="card glass fam-card${m.id === state.activeId ? ' active' : ''}">
       <span class="avatar">${esc(([...displayName(m)][0] || '').toUpperCase())}</span>
       <div style="flex:1"><b>${esc(displayName(m))}</b> <span class="pill">${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))}</span>
+        ${m.shared ? `<div class="small"><span class="tag ${m.shared.permission === 'edit' ? 'good' : 'warn'}">${L('Shared by', 'பகிர்ந்தவர்')} ${esc(m.shared.by || L('family', 'குடும்பம்'))} · ${m.shared.permission === 'edit' ? L('can edit', 'திருத்தலாம்') : L('view only', 'பார்வைக்கு மட்டும்')}</span></div>` : ''}
         <div class="muted small">${esc(m.date)} · ${certaintyOf(m) === 'unknown' ? L('time unknown', 'நேரம் தெரியாது') : `${esc(m.time.slice(0, 5))}${certaintyOf(m) === 'approx' ? ` (± ${m.timeWindowMin || 60} ${L('min', 'நிமி')})` : ''}`} · ${esc(placeName(m.place))}</div>
         <div class="small">${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}${certaintyOf(m) === 'exact' ? ` · ${L('Lagnam', 'லக்னம்')} ${esc(rasiName(c.lagna.rasi))}` : ''}</div></div>
       <div class="fam-actions">${m.id === state.activeId ? `<span class="tag good">${L('Active', 'தேர்வு')}</span>` : `<button class="chip-btn" data-use="${esc(m.id)}">${L('Use', 'தேர்வு')}</button>`}
-        <button class="link-btn" data-edit="${esc(m.id)}">${L('Edit', 'திருத்து')}</button></div></div>`; }).join('')}
+        ${!m.shared || m.shared.permission === 'edit' ? `<button class="link-btn" data-edit="${esc(m.id)}">${L('Edit', 'திருத்து')}</button>` : ''}</div></div>`; }).join('')}
     <button class="btn-gold" id="addMember">➕ ${L('Add family member', 'குடும்ப உறுப்பினர் சேர்')}</button>
     ${state.user ? '' : `<p class="muted small center">${L('Sign in to back up your family and use it on other phones.', 'குடும்ப விவரங்களைப் பாதுகாக்க, பிற கைப்பேசிகளில் பயன்படுத்த உள்நுழையவும்.')}</p>`}`;
   $$('[data-use]', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.use; saveFamily(); renderFamily(sec); }));
   $$('[data-edit]', sec).forEach((b) => b.addEventListener('click', () => { const mm = state.family.find((x) => x.id === b.dataset.edit); go(mm?.kattam ? 'kattam' : 'family', { edit: b.dataset.edit }); }));
   $('#addMember').addEventListener('click', () => go('family', { add: true }));
+  // Shared family: syncs on open; the list is re-drawn (keeping this card) when shared profiles arrive or go.
+  if (keepShareBox) { sec.append(keepShareBox); keepShareBox = null; return; }
+  sec.insertAdjacentHTML('beforeend', '<div id="sharedFamily"></div>');
+  const box = $('#sharedFamily', sec);
+  mountSharedFamily(box, { onChange: () => { if (state.view === 'family' && !editing && sec.contains(box)) { keepShareBox = box; renderFamily(sec); } } });
 }
+let keepShareBox = null;
 
 function saveMember(f) {
   const timeCertainty = f.elements.timeCertainty.value || 'exact';
@@ -411,11 +430,13 @@ function saveMember(f) {
     date: f.elements.date.value, time, place: f.elements.place.value.trim(),
     lat: Number(f.elements.lat.value), lon: Number(f.elements.lon.value), tz: Number(f.elements.tz.value),
     zone: isValidZone(f.elements.zone.value) ? f.elements.zone.value : undefined,
+    shared: editing.shared || undefined, // a profile someone shared with me (edit permission) stays theirs
   };
+  if (m.shared) m.private = undefined; // someone else's profile cannot be made private here
   if (m.zone) m.tz = birthOffset(m.zone, m.date, m.time, dstChoice || 'earlier') ?? m.tz;
   if (!m.lat && !m.lon) { $('#formErr').textContent = L('Please pick the place from the list, or enter latitude and longitude.', 'பட்டியலிலிருந்து இடத்தைத் தேர்வு செய்யவும் அல்லது அட்சரேகை, தீர்க்கரேகை உள்ளிடவும்.'); return; }
   const i = state.family.findIndex((x) => x.id === m.id);
-  if (i < 0 && m.relation !== 'organization' && state.family.filter((x) => x.relation !== 'organization').length >= 8) { $('#formErr').textContent = L('The Family plan holds up to 8 profiles.', 'குடும்பத் திட்டத்தில் 8 சுயவிவரங்கள் வரை.'); return; }
+  if (i < 0 && m.relation !== 'organization' && state.family.filter((x) => x.relation !== 'organization' && !x.shared).length >= 8) { $('#formErr').textContent = L('The Family plan holds up to 8 profiles.', 'குடும்பத் திட்டத்தில் 8 சுயவிவரங்கள் வரை.'); return; }
   if (i >= 0) state.family[i] = m; else state.family.push(m);
   const firstEver = state.family.length === 1;
   if (firstEver || !state.activeId) state.activeId = m.id;
@@ -423,6 +444,7 @@ function saveMember(f) {
   // place the person lives in (Settings → Location).
   editing = null;
   saveFamily();
+  if (m.shared) pushSharedEdit(m); else if (state.user) syncShares(); // my shared copies follow my edits
   toast(L('Saved', 'சேமிக்கப்பட்டது'));
   go(firstEver ? 'chart' : 'family');
 }
@@ -453,6 +475,7 @@ function renderMore(sec) {
       <button data-go="privacy">${iconChip('privacy', { size: 20, cls: 'mi-icon' })}<span>${L('Privacy & data — consent, export, delete', 'தனியுரிமை & தரவு — அனுமதி, ஏற்றுமதி, நீக்கம்')}</span></button>
       <button data-go="why">${iconChip('why', { size: 20, cls: 'mi-icon' })}<span>${L('How Thunai reads your chart', 'துணை ஜாதகத்தைப் படிக்கும் முறை')}</span></button>
       <button data-go="calc">${iconChip('calc', { size: 20, cls: 'mi-icon' })}<span>${L('Calculation methods', 'கணிப்பு முறைகள்')}</span></button>
+      <button data-go="value">${iconChip('plans', { size: 20, cls: 'mi-icon' })}<span>${L('Your Thunai so far (optional summary)', 'என் பயன் (விருப்பச் சுருக்கம்)')}</span></button>
       <button data-go="legal">${iconChip('legal', { size: 20, cls: 'mi-icon' })}<span>${L('Terms, renewals, cancellation & refunds', 'விதிமுறைகள், புதுப்பித்தல், ரத்து, பணத்திருப்பம்')}</span></button>
       <button data-go="feedback">${iconChip('feedback', { size: 20, cls: 'mi-icon' })}<span>${L('Rate & comment', 'மதிப்பீடு & கருத்து')}</span></button>
       <button data-go="invite">${iconChip('invite', { size: 20, cls: 'mi-icon' })}<span>${L('Invite family', 'குடும்பத்தினரை அழை')}</span></button>

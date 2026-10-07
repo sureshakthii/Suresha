@@ -162,6 +162,9 @@ const FAST_RE = /fast|skip rice|avoid non-vegetarian|விரதம்|அர�
  *  family: [{ id, name, relation?, birthStar?, birthTamilMonth?, dob? }]  (birthStar/month → star birthday; dob → birthday)
  *  ancestors: [{ id, name, date, time, lat, lon, tz }]  (thivasam)
  *  chosenObservances: ['ekadasi', 'pradosham', …] · tasks: stored tasks · reminders: [{ id, title, eventAt | alarmAt }]
+ *  goalSteps: dated next steps of saved goals (shared/goals.js weekSteps) — [{ id, goalId, title, date, time?,
+ *    type: 'deadline' | 'flexible', topic? }]. A deadline-type step is fixed; others get optional good times.
+ *    Their items carry goalId (and no taskId: they are corrected on the goal screen, not here).
  * @returns {{ start, end, minor, days: [{ date, weekday, isToday, tamil, fixed, family, observances, optional, line }], hidden }}
  */
 export function buildWeek(o = {}) {
@@ -176,7 +179,12 @@ export function buildWeek(o = {}) {
   const minor = Boolean(profile.minor);
   const faith = o.faith || 'hindu';
   const chosen = new Set((o.chosenObservances || []).filter((x) => OBS_IDS.has(x)));
-  const tasksIn = (o.tasks || []).map(normaliseTask).filter(Boolean);
+  const goalTasks = (o.goalSteps || []).map((x) => {
+    if (!x || !x.goalId) return null;
+    const t = normaliseTask({ id: `goal:${x.goalId}:${x.id}`, title: x.title, type: x.type === 'deadline' ? 'deadline' : 'flexible', date: x.date, time: x.time, topic: x.topic });
+    return t && t.date ? { ...t, goalId: String(x.goalId) } : null; // only dated steps belong in a week
+  }).filter(Boolean);
+  const tasksIn = [...(o.tasks || []).map(normaliseTask).filter(Boolean), ...goalTasks];
   const tasks = minor ? tasksIn.filter((t) => !isAdultTask(t)) : tasksIn;
   const hidden = tasksIn.length - tasks.length;
 
@@ -193,7 +201,7 @@ export function buildWeek(o = {}) {
     if (!isFixedType(t.type) || !byDate.has(t.date)) continue;
     const at = t.time ? instantAt(t.date, t.time, loc) : null;
     byDate.get(t.date).fixed.push({
-      id: `task:${t.id}`, taskId: t.id, kind: 'fixed', type: t.type, title: t.title, date: t.date, time: t.time, at: at ? at.toISOString() : null,
+      id: `task:${t.id}`, taskId: t.goalId ? null : t.id, goalId: t.goalId || null, kind: 'fixed', type: t.type, title: t.title, date: t.date, time: t.time, at: at ? at.toISOString() : null,
       // A reminder instant: the time given, or 9 AM on the day for an all-day deadline.
       remindAt: (at || instantAt(t.date, '09:00', loc)).toISOString(), note: t.note || null,
     });
@@ -289,7 +297,7 @@ export function buildWeek(o = {}) {
       if (!day) day = days[0];
     }
     day.optional.push({
-      id: `opt:${t.id}`, taskId: t.id, kind: 'optional', optional: true, type: 'flexible', title: t.title, date: day.date, preferred: t.date,
+      id: `opt:${t.id}`, taskId: t.goalId ? null : t.id, goalId: t.goalId || null, kind: 'optional', optional: true, type: 'flexible', title: t.title, date: day.date, preferred: t.date,
       windows: wins.slice(0, 2).map((w) => ({ start: w.start.toISOString(), end: w.end.toISOString(), from: hmAt(w.start, loc), to: hmAt(w.end, loc) })),
       label: OPTIONAL_NOTE,
     });

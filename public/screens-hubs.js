@@ -7,6 +7,7 @@ import {
 import { icon, iconChip } from './icons.js';
 import { GROUPS, TOOLS, toolById, searchTools } from './tool-registry.js';
 import { savedJourneysHtml } from './screens-journey.js';
+import { syncShares, sharedHubLine } from './family-share.js';
 
 export { GROUPS, TOOLS, searchTools };
 
@@ -79,25 +80,31 @@ function renderTools(sec, params = {}) {
 registerScreen('tools', { render: renderTools, parent: 'home' });
 
 // ================================================================ FAMILY HUB
-function renderFamilyHub(sec) {
+function renderFamilyHub(sec, opts = {}) {
   const fam = state.family;
-  const people = fam.filter((m) => m.relation !== 'organization');
+  const people = fam.filter((m) => m.relation !== 'organization' && !m.shared); // shared with me: not in my 8
   sec.innerHTML = `<div class="sub-head hub-head"><div><h2>${L('Family', 'குடும்பம்')}</h2></div></div>
     <div class="card glass">
       <div class="card-title"><span>${L('Profiles', 'சுயவிவரங்கள்')} (${people.length}/8)</span><button class="link-btn" data-go="family">${L('Manage', 'நிர்வகி')}</button></div>
       ${fam.length ? fam.map((m) => { const c = chartOf(m); return `<button class="fam-row${m.id === state.activeId ? ' active' : ''}" data-id="${esc(m.id)}">
         <span class="avatar">${esc(([...displayName(m)][0] || '').toUpperCase())}</span>
-        <span class="fam-name">${esc(displayName(m))}${m.private ? ' 🔒' : ''}<small>${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))} · ${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}</small></span>
+        <span class="fam-name">${esc(displayName(m))}${m.private ? ' 🔒' : ''}<small>${m.shared ? `${L('Shared by', 'பகிர்ந்தவர்')} ${esc(m.shared.by || L('family', 'குடும்பம்'))}${m.shared.permission === 'edit' ? '' : ` (${L('view only', 'பார்வைக்கு மட்டும்')})`} · ` : `${esc(bi(RELATIONS.find((r) => r.id === m.relation) || RELATIONS[6]))} · `}${esc(nakName(c.janmaNakshatra.index))} · ${esc(rasiName(c.janmaRasi.index))}</small></span>
         ${m.id === state.activeId ? `<span class="tag good">${L('Active', 'தேர்வு')}</span>` : ''}</button>`; }).join('')
     : `<p class="muted">${L('No profiles yet. The calendar works without one; add birth details for personal guidance.', 'இன்னும் சுயவிவரம் இல்லை. நாட்காட்டிக்குத் தேவையில்லை; தனிப்பட்ட வழிகாட்டலுக்குப் பிறப்பு விவரம் சேர்க்கவும்.')}</p>`}
       ${people.length < 8 ? `<button class="btn-gold" data-go="family" data-param='{"add":true}'>${icon('plus', { size: 18 })} ${L('Add a family member', 'குடும்ப உறுப்பினர் சேர்')}</button>` : `<p class="small muted">${L('8 of 8 profiles used.', '8 சுயவிவரங்களும் பயன்பாட்டில்.')}</p>`}
       <p class="small muted">${L(`Up to 8 profiles on the ${BRAND.familyEn} plan · private by default`, `${BRAND.familyTa} திட்டத்தில் 8 பேர் வரை · இயல்பாகத் தனிப்பட்டது`)}</p>
+      ${sharedHubLine()}
     </div>
     ${groupList('family', { exclude: ['family'] })}
     ${groupList('subha')}
     <div class="note-box">${L('Matching results are traditional interpretations to support a family conversation. They are never a verdict on anyone’s worth or suitability.', 'பொருத்த முடிவுகள் குடும்ப உரையாடலுக்கு உதவும் பாரம்பரிய விளக்கம் மட்டுமே. யாருடைய மதிப்பையும் தகுதியையும் தீர்மானிப்பவை அல்ல.')}</div>
     ${copyright()}`;
-  $$('.fam-row', sec).forEach((r) => r.addEventListener('click', () => { state.activeId = r.dataset.id; saveFamily(); renderFamilyHub(sec); }));
+  $$('.fam-row', sec).forEach((r) => r.addEventListener('click', () => { state.activeId = r.dataset.id; saveFamily(); renderFamilyHub(sec, { synced: true }); }));
+  // Sync shared-family profiles on open; re-draw once if any arrived or were revoked.
+  if (!opts.synced && state.user && !STATIC) {
+    const before = JSON.stringify(state.family);
+    syncShares().then(() => { if (state.view === 'familyhub' && before !== JSON.stringify(state.family)) renderFamilyHub(sec, { synced: true }); });
+  }
 }
 registerScreen('familyhub', { render: renderFamilyHub });
 

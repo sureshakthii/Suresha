@@ -152,3 +152,123 @@ test('unknown birth time: Lagna-based dosha observations are withheld, uncertain
   assert.ok(r.uncertainty.some((u) => /approximate or unknown/.test(u.en)));
   assert.ok(r.traditionalFactorResults.every((f) => f.birthDataLimitation));
 });
+
+// ------------------------------------------------------------------ UI render helpers (public/couple-cards.js)
+const cardsUi = await import('../public/couple-cards.js');
+const eph = { ephemeral: true, requesterId: 'self' };
+const VERDICT_WORDS = /verdict|not recommended|recommended match|reject|perfect match|excellent match|bad match|good match|unsuitable|compatib\w* score|success rate|பொருத்தம் இல்லை|திருமணம் செய்ய வேண்டாம்|உத்தமப் பொருத்தம்/i;
+const allHtml = (r, lang) => cardsUi.summaryHtml(r, { lang }) + cardsUi.resultCardsHtml(r, { lang }) + cardsUi.ashtakootaLinkHtml(lang);
+const textOnly = (html) => html.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, ' ');
+
+test('UI: five icon-and-text cards in order, each with a visible text title (never icon / colour only)', () => {
+  const r = buildMatchingReport({ bride: A, groom: B, consent: eph, now });
+  assert.equal(r.status, 'ok');
+  for (const lang of ['en', 'ta']) {
+    const html = cardsUi.resultCardsHtml(r, { lang });
+    const cards = [...html.matchAll(/<details class="card glass mc-card" data-card="([a-z_]+)"[\s\S]*?<\/details>/g)];
+    assert.deepEqual(cards.map((m) => m[1]), ['traditional', 'expectations', 'money', 'family', 'next_steps']);
+    for (const [block, id] of cards) {
+      const c = r.cards.find((x) => x.cardId === id);
+      assert.match(block, /<svg class="ic"[^>]*>.*<(path|circle|rect|line)/, `${id} has an icon`);
+      assert.ok(textOnly(block).includes(lang === 'ta' ? c.title.ta : c.title.en.replace('&', '&amp;')), `${id} has its text title`);
+      assert.match(block, /<b class="mc-title">\d\. /, `${id} is numbered`);
+    }
+    // Card 1 shows all ten poruthams with a text result label, Rajju / Vedhai as key factors first.
+    const trad = cards[0][0];
+    assert.equal([...trad.matchAll(/data-factor="/g)].length, 10);
+    assert.match(trad, /key-factors[\s\S]*data-factor="rajju"[\s\S]*data-factor="vedhai"[\s\S]*mini-label/);
+    for (const f of r.traditionalFactorResults) assert.ok(trad.includes(cardsUi.factorRowHtml(f, lang)), f.factorId);
+    // Cards 2–4 are optional prompts only.
+    for (const [block, id] of cards.slice(1, 4)) { assert.match(block, /class="pill"/, id); assert.match(block, /<ul class="mc-prompts">/, id); }
+  }
+  assert.deepEqual(r.cards.map((c) => c.iconName), ['scroll-text', 'message-circle', 'coins', 'house-heart', 'calendar-check']);
+});
+
+test('UI: switching either person\'s marriage context never changes a factor, dosha or card 1', () => {
+  const base = buildMatchingReport({ bride: A, groom: B, consent: eph, now });
+  const baseHtml = cardsUi.resultCardsHtml(base, { lang: 'en' });
+  const modes = Object.keys(MARRIAGE_MODES);
+  for (const ma of modes) for (const mb of modes) for (const priv of [false, true]) {
+    const r = buildMatchingReport({ bride: A, groom: B, consent: eph, now, modes: { a: { mode: ma, historyPrivate: priv }, b: { mode: mb } } });
+    assert.deepEqual(r.traditionalFactorResults, base.traditionalFactorResults, `${ma}/${mb}`);
+    assert.deepEqual(r.doshaReview, base.doshaReview, `${ma}/${mb}`);
+    assert.equal(cardsUi.summaryHtml(r, { lang: 'en' }), cardsUi.summaryHtml(base, { lang: 'en' }));
+    const html = cardsUi.resultCardsHtml(r, { lang: 'en' });
+    const remarriage = [ma, mb].some((m) => m === 'widowed' || m === 'remarriage_after_divorce');
+    assert.equal(html.includes('data-card="remarriage"'), remarriage, `${ma}/${mb}`);
+    // Removing the optional remarriage card leaves the five standard cards byte-for-byte the same.
+    assert.equal(html.replace(/<details class="card glass mc-card" data-card="remarriage"[\s\S]*?<\/details>/, ''), baseHtml);
+  }
+});
+
+test('UI: remarriage card is neutral prompts only — no tradition-specific rule (expert approval pending)', () => {
+  const r = buildMatchingReport({ bride: A, groom: B, consent: eph, now, modes: { a: { mode: 'widowed' }, b: { mode: 'remarriage_after_divorce' } } });
+  const card = r.cards.find((c) => c.cardId === 'remarriage');
+  assert.equal(card.traditionRule, null);
+  assert.equal(card.traditionRuleStatus, 'expert-approval-pending');
+  assert.equal(card.iconName, 'sprout');
+  // The tradition-specific remarriage question is held back (expert approval pending) and filtered out of the screen.
+  assert.ok(r.expertReviewQuestions.filter((q) => /remarriage/i.test(q.en)).every((q) => q.expertApprovalPending === true));
+  const html = cardsUi.resultCardsHtml(r, { lang: 'en' });
+  const block = /data-card="remarriage"[\s\S]*?<\/details>/.exec(html)[0];
+  assert.match(block, /children from an earlier marriage/);
+  assert.match(block, /blended-family/);
+  assert.match(block, /timing feel comfortable/);
+  assert.doesNotMatch(block, /house|bhava|7th|8th|dosha|samyam|Mangal|widow|death|die|infertil/i);
+  assert.deepEqual(findProhibited(textOnly(html)), []);
+});
+
+test('UI: no verdict words, no percentage and Ashtakoota kept as its own separate link', () => {
+  for (const [ma, mb] of [['first', 'first'], ['remarriage_after_divorce', 'first'], ['widowed', 'remarriage_after_divorce']]) {
+    const r = buildMatchingReport({ bride: A, groom: B, consent: eph, now, modes: { a: { mode: ma }, b: { mode: mb } } });
+    for (const lang of ['en', 'ta']) {
+      const text = textOnly(allHtml(r, lang));
+      assert.doesNotMatch(text, VERDICT_WORDS, `${ma}/${mb}/${lang}`);
+      assert.doesNotMatch(text, /%|\/ ?36|\/ ?100|சதவீத/, `${ma}/${mb}/${lang}`);
+      assert.deepEqual(findProhibited(text), []);
+    }
+  }
+  const r = buildMatchingReport({ bride: A, groom: B, consent: eph, now });
+  const cards = cardsUi.resultCardsHtml(r, { lang: 'en' });
+  assert.doesNotMatch(cards, /Ashtakoota|gunamilan|guna/i, 'Ashtakoota is never inside the porutham cards');
+  const ashta = cardsUi.ashtakootaLinkHtml('en');
+  assert.match(ashta, /data-go="gunamilan"/);
+  assert.match(ashta, /36-point Ashtakoota/);
+  assert.match(ashta, /never added to the 10 poruthams/);
+  assert.doesNotMatch(cardsUi.summaryHtml(r, { lang: 'en' }), new RegExp(String(r.ashtakoota.total)));
+});
+
+test('UI: unknown birth time shows the uncertainty notes inside card 1', () => {
+  const U = { id: 'b', chart: birthChart({ name: 'U', date: '1994-02-18', time: '12:00', lat: 13.08, lon: 80.27, tz: 5.5, timePrecision: 'unknown' }) };
+  const r = buildMatchingReport({ bride: A, groom: U, consent: eph, now });
+  const html = cardsUi.traditionalBodyHtml(r, 'en', '<div id="dosha-slot"></div>');
+  assert.match(html, /mc-unc[\s\S]*confirm both birth stars first/);
+  assert.match(html, /mc-unc[\s\S]*approximate or unknown/);
+  assert.ok(html.includes('<div id="dosha-slot"></div>'));
+  assert.equal([...html.matchAll(/confirm both birth stars first/g)].length, 1, 'the birth-time limit is shown once, not on every row');
+});
+
+test('consent: an on-phone private look ("self") can be read but never saved, shared or exported', () => {
+  const r = buildMatchingReport({ bride: A, groom: B, consent: eph, now, audience: 'both_participants' });
+  assert.equal(r.status, 'ok');
+  assert.deepEqual([r.exportPermissions.save, r.exportPermissions.share, r.exportPermissions.export], [false, false, false]);
+  assert.equal(r.effectiveAudience, 'self_private');
+  assert.equal(buildMatchingReport({ bride: A, groom: B, consent: { ephemeral: true, requesterId: 'someone-else' }, now }).status, 'refused');
+  // Share needs BOTH people's own grant; one revoke stops it again.
+  let l = createConsentLedger('pair');
+  l = recordConsent(l, { participantId: 'bride', scopes: ['share', 'export'] });
+  assert.equal(hasConsent(l, ['bride', 'groom'], 'share'), false);
+  l = recordConsent(l, { participantId: 'groom', scopes: ['share', 'export'] });
+  assert.equal(hasConsent(l, ['bride', 'groom'], 'share'), true);
+  l = revokeConsent(l, { participantId: 'groom', scopes: ['share', 'export'] });
+  assert.equal(hasConsent(l, ['bride', 'groom'], 'export'), false);
+});
+
+test('marriage context choices: four modes with the approved bilingual labels', () => {
+  assert.deepEqual(MARRIAGE_MODES.first, { en: 'First marriage', ta: 'முதல் திருமணம்' });
+  assert.deepEqual(MARRIAGE_MODES.remarriage_after_divorce, { en: 'Remarriage after divorce', ta: 'விவாகரத்துக்குப் பின் மறுமணம்' });
+  assert.deepEqual(MARRIAGE_MODES.widowed, { en: 'Widowed, considering remarriage', ta: 'கணவர்/மனைவியை இழந்தவர், மறுமணம்' });
+  assert.deepEqual(MARRIAGE_MODES.undisclosed, { en: 'Prefer not to say', ta: 'சொல்ல விரும்பவில்லை' });
+  assert.equal(marriageContext({}).mode, 'undisclosed', 'unselected is treated as not disclosed');
+  assert.equal(marriageContext({ mode: 'bogus' }).mode, 'undisclosed');
+});

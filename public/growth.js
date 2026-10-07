@@ -1,7 +1,8 @@
 // Growth: usage analytics (installs, opens, screens), subscription lock state, free-trial codes,
 // ratings & comments, referrals, and the owner's admin dashboard.
-import { state, $, $$, L, esc, bi, api, STATIC, store, registerScreen, subHeader, go, toast, fmtIsoDate, copyright, BRAND } from './core.js';
+import { state, $, $$, L, esc, bi, api, STATIC, store, registerScreen, subHeader, go, toast, fmtIsoDate, copyright, BRAND, printPage } from './core.js';
 import { TOOLS } from './tool-registry.js';
+import { GATE_ADDS, gateAllows, pairKey } from './shared/plan-gates.js';
 
 // ---------------------------------------------------------------- analytics
 const deviceId = (() => {
@@ -49,7 +50,20 @@ const tag = (v) => String(v || '').replace(/[^\w./:-]/g, '_').slice(0, 60);
  * Screens may call this directly or dispatch `new CustomEvent('kj:task', { detail: 'porutham' })` on document.
  */
 export function taskDone(task) { track('task_complete', { feature: tag(task) }); }
-document.addEventListener('kj:task', (e) => taskDone(e.detail));
+document.addEventListener('kj:task', (e) => { taskDone(e.detail); logTask(e.detail); });
+
+// ---------------------------------------------------------------- value summary log (this phone only)
+// Counts of finished tasks for "Your Thunai so far" (Settings). Kept only in this phone's storage, never sent,
+// and shown only if the person switches the summary on. Factual counts — no money or risk claims.
+const TASK_LOG = 'kj_task_log';
+export const taskLog = () => store.get(TASK_LOG, {}) || {};
+function logTask(task) {
+  const k = tag(task);
+  if (!k) return;
+  const log = taskLog();
+  log[k] = (Number(log[k]) || 0) + 1;
+  store.set(TASK_LOG, log);
+}
 
 /**
  * "Was this clear?" 👍 / 👎 under an answer: clarityPrompt('prasnam') returns the HTML; the click is recorded as
@@ -138,14 +152,56 @@ export async function loadBilling() {
     store.del('kj_ref');
   }
 }
-/** True when a paid-plan (Personal / Family) feature should be locked for this user. */
-export const isLocked = (feature = 'predictions') => Boolean(state.billing?.enforced && !state.billing?.entitlements?.[feature]);
-export function lockCard(what) {
+/**
+ * True when a paid-plan feature should be locked for this user (only when the server enforces billing).
+ * opts: { count } items already saved (goals / shortlist / journeys / familyProfiles), { scope: { pairId | journeyId } }
+ * for what a one-time package covers. Rules: shared/plan-gates.js.
+ */
+const lastScope = {}; // the couple / journey a locked task was about, so its lock card can offer that package
+export const isLocked = (feature = 'predictions', opts = {}) => {
+  lastScope[feature] = opts.scope || null;
+  return !gateAllows(state.billing?.entitlements || null, Boolean(state.billing?.enforced), feature, opts);
+};
+export { pairKey };
+/**
+ * Lock card shown next to the specific task (never a blanket paywall). `what` says what the task needs;
+ * `feature` adds the exact "What this adds" list from shared/plan-gates.js. No countdowns, no fear, no pressure.
+ */
+export function lockCard(what, feature = 'predictions') {
   const trialOver = state.billing?.locked;
-  track('paywall_view', { feature: tag(state.view) });
-  return `<div class="card glass lock-card"><div class="lock-icon">🔒</div><b>${trialOver ? L('Your free trial has ended', 'உங்கள் இலவசச் சோதனைக் காலம் முடிந்தது') : L('Part of the Personal plan', 'தனிநபர் திட்ட வசதி')}</b>
-    <p class="small">${what}</p><button class="btn-gold" data-go="plans">👑 ${L('See plans', 'திட்டங்களைப் பார்')}</button>
+  const g = GATE_ADDS[feature] || GATE_ADDS.predictions;
+  track('paywall_view', { feature: tag(`${state.view}:${feature}`) });
+  const planName = g.plan === 'family' ? L(`Part of ${BRAND.familyEn}`, `${BRAND.familyTa} திட்ட வசதி`) : L('Part of the Personal plan', 'தனிநபர் திட்ட வசதி');
+  return `<div class="card glass lock-card" data-lock="${esc(feature)}"><div class="lock-icon">🔒</div><b>${trialOver ? L('Your free trial has ended', 'உங்கள் இலவசச் சோதனைக் காலம் முடிந்தது') : planName}</b>
+    <p class="small">${what}</p>
+    <div class="mini-label">${L('What this adds', 'இது சேர்ப்பது')}</div><ul class="small lock-adds" style="text-align:start;display:inline-block;margin:4px auto 8px;padding-inline-start:20px">${g.adds.map((a) => `<li>${esc(bi(a))}</li>`).join('')}</ul>
+    <p class="small muted">${L('Everything you already use stays free. Same calculations and privacy on every plan.', 'நீங்கள் பயன்படுத்துவது இலவசமாகவே தொடரும். எல்லாத் திட்டங்களிலும் அதே கணிப்பு, அதே தனியுரிமை.')}</p>
+    <button class="btn-gold" data-go="plans">👑 ${L('See plans', 'திட்டங்களைப் பார்')}</button>
+    ${pkgBtn(feature)}
     <button class="link-btn center-block" data-go="plans" data-param='{"redeem":true}'>🎁 ${L('Have a gift / trial code?', 'பரிசு / சோதனைக் குறியீடு உள்ளதா?')}</button></div>`;
+}
+/** "Just this couple / journey" — a one-time package button when the locked task names its scope. */
+function pkgBtn(feature) {
+  const sc = lastScope[feature] || {};
+  if (sc.pairId) return `<button class="chip-btn center-block" data-go="plans" data-param='${esc(JSON.stringify({ pkg: 'marriage_package', pairId: sc.pairId }))}'>💍 ${L('Only for this couple: Marriage package (one-time)', 'இந்த ஜோடிக்கு மட்டும்: திருமணத் தொகுப்பு (ஒருமுறை)')}</button>`;
+  if (sc.journeyId) return `<button class="chip-btn center-block" data-go="plans" data-param='${esc(JSON.stringify({ pkg: 'journey_package', journeyId: sc.journeyId }))}'>🛕 ${L('Only for this journey: Journey package (one-time)', 'இந்தப் பயணத்திற்கு மட்டும்: யாத்திரைத் தொகுப்பு (ஒருமுறை)')}</button>`;
+  return '';
+}
+/**
+ * One-line gate for a save / print button: `if (!gate('shortlist', { count, near: btn })) return;`.
+ * Allowed → true. Locked → shows the lock card right after the task's card (replacing an earlier one) and returns false.
+ */
+export function gate(feature, { count = 0, scope = {}, near = null, what = '' } = {}) {
+  if (!isLocked(feature, { count, scope })) return true;
+  const host = near?.closest?.('.card') || near;
+  const html = lockCard(what || L('This step needs a paid plan or package. Your result above stays free.', 'இந்தப் படிக்குக் கட்டணத் திட்டம் / தொகுப்பு தேவை. மேலே உள்ள முடிவு இலவசமே.'), feature);
+  if (host?.insertAdjacentHTML) {
+    const old = host.parentElement?.querySelector(`:scope > .lock-card[data-lock="${feature}"]`);
+    old?.remove();
+    host.insertAdjacentHTML('afterend', html);
+    host.nextElementSibling?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+  } else toast(L('This needs a paid plan — see Plans', 'இதற்குக் கட்டணத் திட்டம் தேவை — திட்டங்களைப் பார்க்கவும்'), 4000);
+  return false;
 }
 export function trialBanner() {
   const b = state.billing;
@@ -153,6 +209,21 @@ export function trialBanner() {
   const hrs = Math.max(0, Math.round((Date.parse(b.trialEndsAt) - Date.now()) / 3600000));
   return `<div class="card glass trial-banner" data-go="plans">🎁 ${L(`Free trial of the paid plan — ${hrs} hours left`, `கட்டணத் திட்டத்தின் இலவசச் சோதனை — இன்னும் ${hrs} மணி நேரம்`)} ›</div>`;
 }
+
+/**
+ * Printable reports: `<button data-print-gated='{"journeyId":"…"}'>` (or {"pairId":"…"} for a couple, {} for others).
+ * Prints the current screen with every section open; under BILLING_ENFORCE it needs a paid plan or the package
+ * that covers that couple / journey, and otherwise shows the lock card next to the button.
+ */
+document.addEventListener('click', (e) => {
+  const b = e.target.closest?.('[data-print-gated]');
+  if (!b) return;
+  let scope = {};
+  try { scope = JSON.parse(b.dataset.printGated || '{}') || {}; } catch { scope = {}; }
+  if (!gate('printReports', { scope, near: b })) return;
+  document.querySelectorAll('.view:not([hidden]) details').forEach((d) => { d.open = true; });
+  printPage();
+});
 
 /** Gift / trial code box (used on the Plans screen). */
 export function redeemBox() {

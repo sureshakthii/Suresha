@@ -2244,3 +2244,92 @@ body.ta .zone-line, body.ta .zone-sub, body.ta .res-card p, body.ta .flight-leg,
 
 /* Section titles may wrap (e.g. "ஆண்டுவாரியாக அடுத்த 10 ஆண்டுகள்" at 360px) */
 .section-title { white-space: normal; overflow-wrap: break-word; min-width: 0; }
+
+/* ---- My goals (screens-goals.js): Today card / subtle row, goal list, steps checklist, optional periods ---- */
+.goal-set-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 0 0 12px; padding: 10px 14px; border-radius: 14px; border: 1px dashed rgba(var(--ink-rgb), .18); background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-sm, 14px); line-height: 1.45; text-align: start; cursor: pointer; }
+.goal-set-row span:first-of-type { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.goal-today { display: grid; gap: 3px; width: 100%; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: start; cursor: pointer; line-height: 1.45; min-width: 0; }
+.goal-today .goal-t, .goal-today .goal-next { overflow-wrap: anywhere; }
+.goal-today .bar { margin-top: 4px; }
+.goal-list { list-style: none; margin: 0; padding: 0; }
+.goal-list li + li { border-top: 1px solid rgba(var(--ink-rgb), .06); }
+.goal-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 0; border: 0; background: none; color: var(--text); font: inherit; text-align: start; cursor: pointer; min-width: 0; }
+.goal-ic { flex: none; font-size: 22px; width: 28px; text-align: center; }
+.goal-main { flex: 1; min-width: 0; display: grid; gap: 2px; line-height: 1.45; overflow-wrap: anywhere; }
+.goal-main .bar { margin-top: 4px; }
+.goal-main .tag { margin: 0 0 0 4px; }
+.goal-chev { flex: none; color: var(--muted); font-size: 20px; }
+.goal-done > summary { cursor: pointer; color: var(--text); line-height: 1.5; }
+.goal-tpls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.goal-tpl { flex: 1 1 140px; min-height: 44px; padding: 8px 12px; border-radius: 14px; border: 1px solid var(--glass-b); background: rgba(var(--ink-rgb), .03); color: var(--text); font: inherit; font-size: 14px; line-height: 1.4; text-align: start; cursor: pointer; overflow-wrap: anywhere; }
+.goal-tpl:hover, .goal-tpl:focus-visible { border-color: var(--gold); }
+.goal-consent { line-height: 1.5; margin: 6px 4px 12px; }
+.inline-link { display: inline; padding: 0; min-height: 0; font-size: inherit; }
+.goal-head p { margin: 0 0 4px; line-height: 1.5; overflow-wrap: anywhere; }
+.goal-dl { font-size: 16px; }
+.goal-steps { list-style: none; margin: 0 0 8px; padding: 0; }
+.goal-step { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px; padding: 6px 0; border-bottom: 1px solid rgba(var(--ink-rgb), .06); min-width: 0; }
+.goal-step:last-child { border-bottom: 0; }
+.goal-step .goal-check { flex: 1 1 180px; margin: 4px 0; min-width: 0; }
+.goal-step .goal-check span { min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
+.goal-step .goal-check .tag { margin: 0 0 0 4px; vertical-align: 1px; }
+.goal-step.done .goal-check > span { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(var(--ink-rgb), .35); }
+.goal-step.editing { display: block; }
+.goal-step .wk-acts .chip-btn[disabled] { opacity: .35; cursor: default; }
+.goal-stepform { margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(var(--ink-rgb), .12); }
+.goal-step.editing .goal-stepform { border-top: 0; margin-top: 0; padding-top: 0; }
+.goal-periods { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 8px; }
+.goal-periods li { display: grid; gap: 2px; padding: 8px 10px; border-radius: 12px; border-inline-start: 3px dashed rgba(var(--warn-rgb), .55); background: rgba(var(--ink-rgb), .03); line-height: 1.45; overflow-wrap: anywhere; }
+.goal-opt .card-title .tag { margin-top: 0; }
+.goal-links .chip-btn { white-space: normal; text-align: start; }
+.goal-form .err-line { color: var(--bad-text, var(--bad)); margin: 4px 0 0; min-height: 0; }
+.goal-form .err-line:empty { display: none; }
+.tag.goal-tag { background: rgba(var(--gold-rgb), .15); color: var(--gold2, var(--gold)); }
+
+/* ---- Marriage porutham: summary + five icon-and-text cards + separate Ashtakoota + expert view (screens-couple.js / couple-cards.js) ---- */
+.mc-cards { display: grid; gap: 0; }
+.mc-card > summary { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; list-style: none; color: var(--text); min-height: 44px; }
+.mc-card > summary::-webkit-details-marker { display: none; }
+.mc-card > summary::after { content: '▾'; margin-left: auto; padding-left: 6px; color: var(--muted); font-size: 16px; line-height: 1.4; transition: transform .2s; flex: 0 0 auto; }
+.mc-card[open] > summary::after { transform: rotate(180deg); }
+.mc-card[open] > summary { margin-bottom: 10px; }
+.mc-ic { width: 40px; height: 40px; border-radius: 12px; flex: 0 0 auto; }
+.mc-head { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; line-height: 1.45; }
+.mc-head .pill { align-self: flex-start; }
+.mc-title { font-size: 15.5px; color: var(--gold); overflow-wrap: anywhere; }
+.mc-sum { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.mc-body { min-width: 0; overflow-wrap: anywhere; }
+.mc-sub { margin: 4px 0 10px; }
+.mc-sub.key-factors { border-left: 3px solid var(--gold); padding-left: 10px; }
+.mc-prompts { margin: 4px 0 8px; padding-left: 20px; font-size: 14px; line-height: 1.55; color: var(--text); }
+.mc-prompts li { margin: 0 0 6px; }
+.mc-unc { margin-top: 8px; }
+.mc-unc ul { margin: 4px 0 0; padding-left: 18px; }
+.mc-unc li { margin: 0 0 4px; line-height: 1.5; }
+.mc-ashta-row { display: flex; gap: 12px; align-items: flex-start; line-height: 1.5; margin-bottom: 8px; }
+.mc-ashta-row > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.mc-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.mc-links .btn-gold { width: auto; flex: 1 1 160px; margin: 0; }
+.mc-expert .deep-row { padding: 6px 0; }
+.mc-context { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(var(--ink-rgb), .14); }
+.mc-context select { width: 100%; }
+.mc-context .check-row { font-size: 13px; line-height: 1.45; }
+.perm-saved { line-height: 1.6; margin: -4px 0 8px; }
+.por-full-link { margin: 4px 0 10px; }
+
+/* Written jathagam — automatic import (screens-kattam.js). Gold edge = filled automatically; amber = unclear. */
+.kt-import-btns { flex-wrap: wrap; gap: 8px; }
+.kt-ocr { margin: 10px 0 4px; }
+.kt-ocr progress { width: 100%; height: 8px; accent-color: var(--btn-gold); }
+.kt-auto > input, .kt-auto > select, .place-wrap.kt-auto > input { border-color: var(--gold) !important; box-shadow: 0 0 0 1px var(--gold); }
+.kt-low > input, .kt-low > select, .place-wrap.kt-low > input { border-color: var(--warn) !important; box-shadow: 0 0 0 2px rgba(var(--warn-rgb), .45); background: rgba(var(--warn-rgb), .08); }
+fieldset.kt-auto { border-color: var(--gold); } fieldset.kt-low { border-color: var(--warn); background: rgba(var(--warn-rgb), .06); }
+.kt-box.kt-auto { box-shadow: inset 0 0 0 2px var(--gold); }
+.kt-auto-card { border: 1px solid rgba(var(--warn-rgb), .55); }
+.kt-auto-card .card-title { line-height: 1.4; }
+.kt-low-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; background: rgba(var(--warn-rgb), .35); border: 2px solid var(--warn); }
+.kt-ocr-text summary { cursor: pointer; font-size: 13px; margin: 6px 0; }
+.kt-ocr-text pre { white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow: auto; font-size: 12px; line-height: 1.5; padding: 8px; border-radius: 8px; background: rgba(var(--ink-rgb, 0, 0, 0), .06); margin: 0; }
+.kt-kv dd.kt-low { border-left: 3px solid var(--warn); padding-left: 8px; background: rgba(var(--warn-rgb), .07); border-radius: 0 6px 6px 0; }
+.kt-auto-note { margin-bottom: 8px; }
+.kt-auto-note .kt-flag { margin: 6px 0 0; }

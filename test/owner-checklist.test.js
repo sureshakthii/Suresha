@@ -31,6 +31,24 @@ test('matching screens: factor count, key factors, detailed view, exceptions, bi
   for (const needle of ['traditional factors agree', 'KEY_FACTORS_TITLE', 'DETAILED_VIEW_TITLE', 'c.exceptions', 'e.reason', 'needs birth time', 'DISCUSSION_TOPICS', 'reportHorizon.label']) {
     assert.ok(couple.includes(needle), needle);
   }
+  // Complete marriage porutham (§6 / §1h): summary + five icon-and-text cards + separate Ashtakoota link + expert view.
+  const show = between(couple, 'function showCouple(', '\n}\n');
+  for (const needle of ['summaryHtml(mr', 'resultCardsHtml(mr', 'ashtakootaLinkHtml(lang)', 'Expert view', 'doshaBlockHtml(', 'momentsHtml(r.moments)', 'data-go="muhurtham"', 'expertReviewQuestions']) {
+    assert.ok(show.includes(needle), needle);
+  }
+  assert.match(show, /expertReviewQuestions\.filter\(\(q\) => !q\.expertApprovalPending\)/);
+  assert.ok(show.indexOf('resultCardsHtml(') < show.indexOf('ashtakootaLinkHtml(') && show.indexOf('ashtakootaLinkHtml(') < show.indexOf('Expert view'));
+  // The older stacked blocks are gone from the result (no second porutham view, no separate talking-points list).
+  assert.doesNotMatch(show, /poruthamView\(|discussionHtml\(\)|Key moments/);
+  // Marriage context: asked separately for both people, unselected = not disclosed, never fed to a calculation or the AI reading.
+  assert.match(couple, /personBlock\('bride', [^\n]*context: true/);
+  assert.match(couple, /personBlock\('groom', [^\n]*context: true/);
+  assert.match(couple, /ctxMode \|\| 'undisclosed'/);
+  assert.doesNotMatch(between(show, "$('#coupleRead')", 'aiTask('), /ctxMode|modesFor|marriageContext|MARRIAGE_MODES/);
+  assert.doesNotMatch(between(couple, 'export function coupleMatchingReport', '\n}\n'), /marriageReport\(/);
+  // Quick porutham stays simple and links to the full five-card report, prefilled with both family members.
+  const quick = MATCH_SCREENS.porutham();
+  assert.match(quick, /data-go="couple"[^\n]*bride: g\.memberId, groom: b\.memberId[^\n]*See full five-card report/);
   assert.doesNotMatch(couple, /e\.status|proposed/, 'exception status is not shown — only the condition and reason');
   const por = MATCH_SCREENS.porutham();
   assert.match(por, /poruthamView\(/);
@@ -49,6 +67,22 @@ test('permission: saving another adult or sharing a pair result needs "I have th
   assert.ok(resolve.indexOf('f.save && !f.consent') >= 0 && resolve.indexOf('f.save && !f.consent') < resolve.indexOf('saveWithConsent('));
   assert.match(between(couple, 'export function saveWithConsent', '\n}\n'), /consentAt: new Date\(\)\.toISOString\(\)/);
   assert.doesNotMatch(couple.replace(between(couple, 'export function saveWithConsent', '\n}\n'), ''), /state\.family\.push/);
+  // The permission is a consent-ledger record on the saved profile, and can be withdrawn from that profile.
+  assert.match(between(couple, 'export function saveWithConsent', '\n}\n'), /consentLedger = recordConsent\(createConsentLedger/);
+  const revoke = between(couple, 'export function revokeProfileConsent', '\n}\n');
+  assert.ok(revoke.indexOf('revokeConsent(') >= 0 && revoke.indexOf('revokeConsent(') < revoke.indexOf('state.family = state.family.filter'));
+  assert.match(couple, /data-revoke=/);
+  // Pair report: share needs hasConsent(…, 'share') and print/PDF needs 'export' for BOTH people, checked before acting.
+  const show = between(couple, 'function showCouple(', '\n}\n');
+  const pairShare = between(show, "$('#mcShare')", '\n  });');
+  assert.ok(pairShare.indexOf("consented('share')") >= 0 && pairShare.indexOf("consented('share')") < pairShare.indexOf('navigator.share'));
+  const print = between(show, "$('#mcPrint')", '\n  });');
+  assert.ok(print.indexOf("consented('export')") >= 0 && print.indexOf("consented('export')") < print.indexOf('window.print'));
+  assert.match(between(show, 'const consented', '};'), /hasConsent\(coupleUi\.ledger, coupleUi\.ids, scope\)/);
+  assert.match(show, /recordConsent\(coupleUi\.ledger, \{ participantId: slot, scopes: \['share', 'export'\] \}\)/);
+  assert.match(show, /revokeConsent\(coupleUi\.ledger/);
+  // The on-phone report is a private ephemeral look — never saved or shared by itself.
+  assert.match(couple, /consent: \{ ephemeral: true, requesterId: 'self' \}/);
   const love = MATCH_SCREENS.love();
   assert.match(love, /if \(f\.save && !f\.consent\) throw/);
   assert.doesNotMatch(love, /state\.family\.push/);

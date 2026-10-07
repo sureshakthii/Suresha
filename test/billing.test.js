@@ -74,7 +74,7 @@ async function buyWithRazorpay(cookie, plan, orderId, paymentId) {
 test('plans in INR (default) and USD', async () => {
   const inr = await (await req('GET', '/api/billing/plans')).json();
   assert.equal(inr.currency, 'INR');
-  assert.deepEqual(inr.plans.map((p) => p.id), ['free', 'personal_month', 'personal_year', 'family_month', 'family_year']);
+  assert.deepEqual(inr.plans.map((p) => p.id), ['free', 'personal_month', 'personal_year', 'family_month', 'family_year', 'marriage_package', 'journey_package']);
   for (const p of inr.plans) {
     assert.ok(p.name.en && p.name.ta && p.features.length && p.features.every((x) => x.en && x.ta));
     assert.ok(['month', 'year', null].includes(p.interval));
@@ -92,7 +92,10 @@ test('me when signed out is free', async () => {
   const m = await me();
   assert.equal(m.plan, 'free');
   assert.equal(m.expiresAt, null);
-  assert.deepEqual(m.entitlements, { unlimitedAi: false, aiMonthly: null, predictions: false, familyProfiles: 1 });
+  assert.deepEqual(m.entitlements, {
+    unlimitedAi: false, aiMonthly: null, predictions: false, familyProfiles: 1, goalsMax: 1, shortlistMax: 10, journeysMax: 1,
+    printReports: false, familyCollab: false, sharedPlanning: false, packages: [], matchingPairs: [], journeyIds: [],
+  });
   assert.equal(m.aiFreeDaily, 5);
   assert.equal(m.aiUsedToday, 0);
 });
@@ -146,7 +149,10 @@ test('Razorpay checkout + verify activates premium for a month; bad signature 40
   assert.equal(m.plan, 'personal_month');
   assert.equal(m.status, 'active');
   assert.equal(m.expiresAt, subscription.expiresAt);
-  assert.deepEqual(m.entitlements, { unlimitedAi: false, aiMonthly: 100, predictions: true, familyProfiles: 1 });
+  assert.deepEqual(m.entitlements, {
+    unlimitedAi: false, aiMonthly: 100, predictions: true, familyProfiles: 1, goalsMax: null, shortlistMax: null, journeysMax: null,
+    printReports: true, familyCollab: false, sharedPlanning: false, packages: [], matchingPairs: [], journeyIds: [],
+  });
 
   // Gateway failure → 502
   billing.setBillingFetch(async () => new Response('{"error":{}}', { status: 500 }));

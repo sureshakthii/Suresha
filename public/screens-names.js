@@ -7,6 +7,7 @@ import {
   state, store, $, $$, L, ta, esc, bi, chartOf, registerScreen, subHeader, speak, starOptions, displayName, planetName,
 } from './core.js';
 import { placeSearch } from './account.js';
+import { gate } from './growth.js';
 import { sharePreview } from './screens-hubs.js';
 
 const FAV_KEY = 'kj_name_favs';
@@ -206,6 +207,7 @@ function drawResults(sec, info) {
       const group = [id, ...(card.dataset.alt ? card.dataset.alt.split(',') : [])];
       const f = favs();
       const on = !group.some((x) => f.has(x));
+      if (on && !gate('shortlist', { count: f.size, near: card })) return; // BILLING_ENFORCE: free shortlist holds 10 (public/growth.js)
       group.forEach((x) => f.delete(x));
       if (on) f.add(id);
       store.set(FAV_KEY, [...f]);

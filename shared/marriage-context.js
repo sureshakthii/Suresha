@@ -26,9 +26,14 @@ export const ADULT_AGE_BASELINE = 18;
 export const MARRIAGE_MODES = {
   first: T('First marriage', 'முதல் திருமணம்'),
   remarriage_after_divorce: T('Remarriage after divorce', 'விவாகரத்துக்குப் பின் மறுமணம்'),
-  widowed: T('Widowed and considering remarriage', 'வாழ்க்கைத் துணையை இழந்து மறுமணம் பரிசீலனை'),
-  undisclosed: T('Other / prefer not to say', 'மற்றவை / சொல்ல விரும்பவில்லை'),
+  widowed: T('Widowed, considering remarriage', 'கணவர்/மனைவியை இழந்தவர், மறுமணம்'),
+  undisclosed: T('Prefer not to say', 'சொல்ல விரும்பவில்லை'),
 };
+
+/** Order of the choices in the input step; an unselected choice is treated as 'undisclosed'. */
+export const MARRIAGE_MODE_ORDER = ['first', 'remarriage_after_divorce', 'widowed', 'undisclosed'];
+export const MARRIAGE_CONTEXT_TITLE = T('Marriage context', 'திருமண நிலை');
+export const KEEP_PRIVATE_LABEL = T('Keep this private (not shown when the report is shared)', 'இதைத் தனிப்பட்டதாக வை (பகிரும் அறிக்கையில் காட்டப்படாது)');
 
 /**
  * Per-person marriage context. mode defaults to 'undisclosed'; historyPrivate hides it from any shared view.
@@ -166,13 +171,16 @@ const EXPERT_QUESTIONS = [
   T('Are both birth times reliable enough for Lagna-based Chevvai and Rahu–Ketu observations?', 'லக்னம் சார்ந்த செவ்வாய், ராகு–கேது கணிப்புக்கு இருவரின் பிறந்த நேரமும் போதுமான துல்லியமா?'),
   T('Which dosha samyam rules does your tradition use, and why?', 'உங்கள் மரபு எந்த தோஷ சாம்ய விதிகளைப் பயன்படுத்துகிறது, ஏன்?'),
 ];
+// Tradition-specific remarriage questions stay out of the app until an expert approves them (owner §6).
 const REMARRIAGE_EXPERT_Q = T('If your tradition treats remarriage differently, which houses and reference points does it use, and from which cited school?', 'உங்கள் மரபு மறுமணத்தை வேறுவிதமாகப் பார்க்கிறது என்றால், எந்த பாவங்கள், எந்தக் குறிப்புப் புள்ளிகள், எந்த ஆதாரபூர்வ பள்ளியிலிருந்து?');
 
 const RECOMMENDATION = T('Talk these factors through together; the decision rests with the two of you and your families.',
   'இந்தக் காரணிகளைச் சேர்ந்து பேசுங்கள்; முடிவு நீங்கள் இருவரும் உங்கள் குடும்பங்களும் எடுப்பது.');
 
 // ------------------------------------------------------------------------------------------ cards
-const card = (cardId, icon, iconLabel, title, summary, prompts, extra = {}) => ({ cardId, icon, iconLabel, title, summary, prompts, ...extra });
+/** Lucide icon (public/icons.js) per card; the card title is always shown next to it, so meaning never rests on the icon or colour. */
+export const CARD_ICON_NAMES = { traditional: 'scroll-text', expectations: 'message-circle', money: 'coins', family: 'house-heart', next_steps: 'calendar-check', remarriage: 'sprout' };
+const card = (cardId, icon, iconLabel, title, summary, prompts, extra = {}) => ({ cardId, icon, iconName: CARD_ICON_NAMES[cardId], iconLabel, title, summary, prompts, ...extra });
 
 function buildCards(factors) {
   const review = factors.filter((f) => f.expertReview && f.result !== 'uttamam').map((f) => f.name);
@@ -201,9 +209,9 @@ function buildCards(factors) {
         T('How involved will each family be in decisions?', 'முடிவுகளில் ஒவ்வொரு குடும்பமும் எவ்வளவு ஈடுபடும்?')],
       { optional: true, consent: 'separate', answersPrivateByDefault: true }),
     card('next_steps', '🗓️', T('Calendar icon: timing and next steps', 'நாள்காட்டி அடையாளம்: நேரமும் அடுத்த படிகளும்'), T('Timing & Next Steps', 'நேரமும் அடுத்த படிகளும்'),
-      RECOMMENDATION,
+      T('Supportive periods for the two of you within the report window, and simple next steps.', 'அறிக்கைக் காலத்தில் உங்கள் இருவருக்குமான ஆதரவுக் காலங்களும் எளிய அடுத்த படிகளும்.'),
       [T('Take the time you both need — there is no deadline from this report.', 'உங்கள் இருவருக்கும் தேவையான நேரத்தை எடுத்துக்கொள்ளுங்கள் — இந்த அறிக்கையிலிருந்து எந்தக் காலக்கெடுவும் இல்லை.'),
-        T('The detailed view lists the deeper questions tradition looks at for this match.', 'இந்தப் பொருத்தத்திற்கு மரபு பார்க்கும் ஆழமான கேள்விகள் விரிவான பார்வையில் உள்ளன.'),
+        T('The expert view lists questions you may want to ask an astrologer about this match.', 'இந்தப் பொருத்தம் பற்றி ஜோதிடரிடம் கேட்கக்கூடிய கேள்விகள் நிபுணர் பார்வையில் உள்ளன.'),
         T('A Muhurtham can be chosen later, around your real plans.', 'உங்கள் உண்மையான திட்டங்களுக்கு ஏற்ப முகூர்த்தத்தைப் பின்னர் தேர்வு செய்யலாம்.')],
       { consent: 'pair' }),
   ];
@@ -211,12 +219,13 @@ function buildCards(factors) {
 
 const REMARRIAGE_CARD = card('remarriage', '🌱', T('Sprout icon: remarriage discussion', 'தளிர் அடையாளம்: மறுமண உரையாடல்'), T('Remarriage — optional discussion', 'மறுமணம் — விருப்ப உரையாடல்'),
   T('Optional prompts only. Nothing here is required, and there is no fixed time after a divorce or a loss.', 'விருப்பத் தூண்டுகோல்கள் மட்டுமே. எதுவும் கட்டாயமில்லை; விவாகரத்து அல்லது இழப்புக்குப் பின் குறிப்பிட்ட கால வரம்பு எதுவும் இல்லை.'),
-  [T('How ready does each of you feel right now?', 'இப்போது நீங்கள் ஒவ்வொருவரும் எவ்வளவு தயாராக உணர்கிறீர்கள்?'),
-    T('If there are children, how will step-family life and co-parenting work?', 'குழந்தைகள் இருந்தால், புதிய குடும்ப வாழ்க்கையும் இணைப் பெற்றோர் பொறுப்பும் எப்படி அமையும்?'),
+  [T('Does the timing feel comfortable for each of you right now?', 'இந்த நேரம் உங்கள் ஒவ்வொருவருக்கும் இப்போது வசதியாக உள்ளதா?'),
+    T('If either of you has children from an earlier marriage, how will blended-family life and co-parenting work?', 'உங்களில் யாருக்காவது முந்தைய திருமணத்தில் குழந்தைகள் இருந்தால், இணைந்த குடும்ப வாழ்க்கையும் இணைப் பெற்றோர் பொறுப்பும் எப்படி அமையும்?'),
     T('What caregiving and financial responsibilities does each of you carry?', 'உங்கள் ஒவ்வொருவரின் பராமரிப்பு, நிதிப் பொறுப்புகள் என்ன?'),
     T('What boundaries with previous relationships feel right to both of you?', 'முந்தைய உறவுகளுடன் இருவருக்கும் ஏற்ற எல்லைகள் என்ன?'),
     T('Grief support is available if either of you would like it.', 'உங்களில் யாருக்காவது துயர ஆதரவு தேவைப்பட்டால் கிடைக்கும்.')],
-  { optional: true, neverForced: true, consent: 'separate', answersPrivateByDefault: true });
+  // No tradition-specific remarriage rule is applied: any such rule needs expert approval first (owner §6).
+  { optional: true, neverForced: true, consent: 'separate', answersPrivateByDefault: true, traditionRule: null, traditionRuleStatus: 'expert-approval-pending' });
 
 // ------------------------------------------------------------------------------------------ report
 const sideOf = (p) => ({
@@ -276,7 +285,8 @@ export function buildMatchingReport({ bride, groom, modes = {}, consent = null, 
   if (elig.status === 'needs-clarification') return assertNoProhibited(refusal('eligibility-unclear', elig.message, { pairId: id, eligibilityStatus: elig }));
 
   // 2. Consent — both adults, or a private ephemeral comparison. An uploaded chart is ignored as consent.
-  const ephemeral = consent?.ephemeral === true && ids.includes(consent.requesterId);
+  // requesterId is one of the two adults, or 'self' — the app user running a private look on their own phone.
+  const ephemeral = consent?.ephemeral === true && (ids.includes(consent.requesterId) || consent.requesterId === 'self');
   const ledger = consent?.entries ? consent : null;
   const bothCalculate = ledger ? hasConsent(ledger, ids, 'calculate') : false;
   if (!bothCalculate && !ephemeral) {
@@ -313,7 +323,7 @@ export function buildMatchingReport({ bride, groom, modes = {}, consent = null, 
     expertReview: !!FACTOR_BASIS[r.key]?.expert,
     exceptions: [],
     birthDataLimitation: certainty.some((c) => c !== 'exact')
-      ? T('If either birth time is uncertain near a star boundary, this factor may change — confirm both birth stars first.', 'நட்சத்திர எல்லைக்கு அருகில் பிறந்த நேரம் உறுதியில்லையெனில் இந்தக் காரணி மாறலாம் — முதலில் இருவரின் நட்சத்திரத்தையும் உறுதிப்படுத்துங்கள்.')
+      ? T('If either birth time is uncertain near a star boundary, the porutham results may change — confirm both birth stars first.', 'நட்சத்திர எல்லைக்கு அருகில் பிறந்த நேரம் உறுதியில்லையெனில் பொருத்த முடிவுகள் மாறலாம் — முதலில் இருவரின் நட்சத்திரத்தையும் உறுதிப்படுத்துங்கள்.')
       : null,
   }));
 
@@ -340,7 +350,7 @@ export function buildMatchingReport({ bride, groom, modes = {}, consent = null, 
 
   const cards = buildCards(traditionalFactorResults);
   if (ctx.some(isRemarriage)) cards.push(REMARRIAGE_CARD);
-  const expertReviewQuestions = [...EXPERT_QUESTIONS, ...(ctx.some(isRemarriage) ? [REMARRIAGE_EXPERT_Q] : [])];
+  const expertReviewQuestions = [...EXPERT_QUESTIONS, ...(ctx.some(isRemarriage) ? [{ ...REMARRIAGE_EXPERT_Q, expertApprovalPending: true }] : [])];
   const optionalSharedDiscussionTopics = cards.filter((c) => c.optional).map((c) => ({ cardId: c.cardId, title: c.title, prompts: c.prompts }));
 
   const report = {

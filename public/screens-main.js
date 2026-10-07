@@ -29,6 +29,7 @@ import { todayLines } from './today-lines.js';
 import { ageProfile, suggestionsFor, categoryAllowed, childSafe } from './shared/age-guard.js';
 import { compatCardHtml, bindCompatCard } from './compat-card.js';
 import { weekCardHtml, fillWeekCard } from './screens-week.js';
+import { goalsCardHtml } from './screens-goals.js';
 
 /** Age profile of a family member (calendar age today at the selected place) — the top-most filter on every card. */
 export const ageOf = (m) => ageProfile(m, { tz: state.loc?.tz });
@@ -250,6 +251,7 @@ function renderHome(sec) {
     ${todayPlanCard(m, snap, loc, td)}
     ${timeStrip(td, snap, loc)}
     ${weekCardHtml()}
+    ${goalsCardHtml()}
     ${dailyCard(m, snap, loc)}
     </div><div class="dsk-col">
     ${healthTodayCard(m)}

@@ -10,8 +10,9 @@ import { authRouter, currentUser } from './auth.js';
 import { weatherRouter } from './weather.js';
 import { pushRouter, startPushScheduler } from './push.js';
 import { marketRouter } from './market.js';
-import { billingEnforced, billingRouter, checkAiQuota, recordAiUsage } from './billing.js';
+import { billingEnforced, billingRouter, checkAiQuota, familyProfileGuard, recordAiUsage } from './billing.js';
 import { growthRouter } from './growth.js';
+import { familyRouter } from './family.js';
 import { rateLimit, requireAdmin, auditLog } from './admin.js';
 import { businessMetrics, recordAiCost } from './metrics.js';
 import { startBackupSchedule } from './backup.js';
@@ -100,12 +101,14 @@ export function createApp() {
     const writes = rateLimit({ windowMs: 10 * 60000, max: Number(process.env.RATE_WRITE_PER_10MIN) || 30 });
     app.use(['/api/store/orders', '/api/requests', '/api/billing/redeem', '/api/billing/checkout', '/api/billing/restore'], (req, res, next) => (req.method === 'POST' ? writes(req, res, next) : next()));
   }
+  app.put('/api/me/data', familyProfileGuard); // BILLING_ENFORCE: account backup keeps the plan's profile count
   app.use('/api', authRouter());
   app.use('/api', weatherRouter());
   app.use('/api', pushRouter());
   app.use('/api', marketRouter());
   app.use('/api', billingRouter());
   app.use('/api', growthRouter());
+  app.use('/api', familyRouter());
   app.use('/api', policyRouter());
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, ai: aiEnabled() }));

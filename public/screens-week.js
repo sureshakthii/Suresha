@@ -7,6 +7,7 @@ import {
   TASK_TYPES, OBSERVANCES, OPTIONAL_NOTE, isFixedType, isoAt,
 } from './shared/week-plan.js';
 import { birthTamilMonth } from './shared/special.js';
+import { weekSteps } from './shared/goals.js';
 import { ageProfile } from './shared/age-guard.js';
 import { state, $, $$, L, ta, esc, bi, store, toast, registerScreen, subHeader, activeMember, chartOf, displayName, fmtTime, fmtIsoDate } from './core.js';
 import { remindBtn, upcomingReminders } from './remind.js';
@@ -54,11 +55,13 @@ export function currentWeek() {
   const profile = o ? ageProfile(o, { tz: loc.tz }) : { minor: false, age: null };
   const reminders = (() => { try { return upcomingReminders(200); } catch { return []; } })();
   const today = isoAt(new Date(), loc);
-  const key = JSON.stringify([today, loc, plan.tasks, plan.observances, state.family.map((m) => [m.id, m.date, m.time, m.name, m.relation]), state.ancestors, reminders.map((r) => r.id), profile.band, state.lang, Math.floor(Date.now() / 600000)]);
+  // Dated next steps of saved goals (screens-goals.js, kj_goals) — corrected on the goal screen, shown here.
+  const goalSteps = (() => { try { return weekSteps(store.get('kj_goals', null), { lang: ta() ? 'ta' : 'en', profileOf: (id) => { const p = state.family.find((m) => m.id === id) || o; return p ? ageProfile(p, { tz: loc.tz }) : null; } }); } catch { return []; } })();
+  const key = JSON.stringify([today, loc, plan.tasks, goalSteps, plan.observances, state.family.map((m) => [m.id, m.date, m.time, m.name, m.relation]), state.ancestors, reminders.map((r) => r.id), profile.band, state.lang, Math.floor(Date.now() / 600000)]);
   if (cache && cache.key === key) return cache.week;
   const week = buildWeek({
     start: today, loc, now: new Date(), profile: { minor: profile.minor, age: profile.age ?? 30 },
-    family: familyInputs(), ancestors: state.ancestors || [], chosenObservances: plan.observances, tasks: plan.tasks, reminders,
+    family: familyInputs(), ancestors: state.ancestors || [], chosenObservances: plan.observances, tasks: plan.tasks, reminders, goalSteps,
   });
   cache = { key, week };
   return week;
@@ -92,6 +95,7 @@ export function fillWeekCard(root = document) {
   }, 30);
 }
 function kindIcon(x) {
+  if (x.goalId) return '🎯';
   if (x.kind === 'fixed') return typeOf(x.type).icon;
   if (x.kind === 'family') return { 'star-birthday': '⭐', birthday: '🎂', thivasam: '🪔', reminder: '🔔' }[x.type] || '👪';
   if (x.kind === 'observance') return x.icon || '🙏';
@@ -124,6 +128,7 @@ const TYPE_HELP = {
 function itemActions(x) {
   const btns = [];
   if (x.kind === 'fixed' || x.kind === 'family' || x.kind === 'observance') btns.push(remindBtn({ title: tx(x.title), at: x.at || x.remindAt }));
+  if (x.goalId) btns.push(`<button type="button" class="chip-btn icon-only" data-go="goals" data-param='${esc(JSON.stringify({ open: x.goalId }))}' aria-label="${esc(L('Open goal', 'இலக்கைத் திற'))}">🎯</button>`);
   if (x.taskId) {
     btns.push(`<button type="button" class="chip-btn icon-only" data-edit="${esc(x.taskId)}" aria-label="${esc(L('Edit', 'திருத்து'))}">✏️</button>`);
     btns.push(`<button type="button" class="chip-btn icon-only" data-del="${esc(x.taskId)}" aria-label="${esc(L('Delete', 'நீக்கு'))}">🗑️</button>`);
@@ -146,7 +151,7 @@ function rowHtml(x) {
     tag = `<span class="tag warn">${L('Optional', 'விருப்பம்')}</span>`;
   }
   return `<li class="wk-item wk-${x.kind}"><span class="wk-ic" aria-hidden="true">${kindIcon(x)}</span>
-    <div class="wk-main">${when ? `<span class="wk-time">${esc(when)}</span> ` : ''}<b>${esc(tx(x.title))}</b> ${tag}${extra}</div>${itemActions(x)}</li>`;
+    <div class="wk-main">${when ? `<span class="wk-time">${esc(when)}</span> ` : ''}<b>${esc(tx(x.title))}</b> ${tag}${x.goalId ? ` <span class="tag goal-tag">${L('Goal step', 'இலக்குப் படி')}</span>` : ''}${extra}</div>${itemActions(x)}</li>`;
 }
 function sectionHtml(cls, title, items, foot = '') {
   if (!items.length) return '';

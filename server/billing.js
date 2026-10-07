@@ -4,6 +4,7 @@ import express from 'express';
 import { getDb } from './db.js';
 import { requireAdmin as adminRole, audit } from './admin.js';
 import { currentUser } from './auth.js';
+import { FREE_LIMITS } from '../shared/plan-gates.js';
 
 // Subscriptions: plans, Razorpay (INR) / Stripe Checkout (USD) payments, entitlements and the free AI quota.
 
@@ -33,13 +34,17 @@ export const PLAN_TERMS = {
   renewal: f('One-time payment for the chosen period. It does not renew automatically — you choose whether to buy again.', 'தேர்ந்த காலத்திற்கான ஒருமுறைக் கட்டணம். தானாகப் புதுப்பிக்கப்படாது — மீண்டும் வாங்குவது உங்கள் முடிவு.'),
   cancellation: f('Nothing to cancel: access simply ends on the expiry date. Contact us within 7 days for a refund if the service did not work for you.', 'ரத்து செய்ய வேண்டியதில்லை: காலாவதி நாளில் அணுகல் முடியும். சேவை சரியாக இயங்கவில்லை எனில் 7 நாட்களுக்குள் பணத்திருப்பம் கோரலாம்.'),
   refund: f('Full refund within 7 days of purchase on request; after that, a pro-rata refund for unused months of a yearly plan. Refunds go back to the original payment method in 5–7 working days.', 'வாங்கிய 7 நாட்களுக்குள் கோரினால் முழுப் பணத்திருப்பம்; அதன் பின் ஆண்டுத் திட்டத்தில் பயன்படுத்தாத மாதங்களுக்கு விகிதாசாரப் பணத்திருப்பம். 5–7 வேலை நாட்களில் அசல் கட்டண முறைக்குத் திரும்பும்.'),
+  packages: f('One-time packages (Marriage, Journey) cover one couple or one journey for a fixed number of days and then end — nothing renews. Same refund policy: full refund on request within 7 days of purchase.', 'ஒருமுறைத் தொகுப்புகள் (திருமணம், யாத்திரை) ஒரு ஜோடி / ஒரு பயணத்திற்குக் குறிப்பிட்ட நாட்கள் மட்டும்; பிறகு முடியும் — எதுவும் புதுப்பிக்கப்படாது. அதே பணத்திருப்பக் கொள்கை: வாங்கிய 7 நாட்களுக்குள் கோரினால் முழுப் பணத்திருப்பம்.'),
 };
 const FREE_FEATURES = [
   f('Daily panchangam & 12 rasi palan', 'தினசரி பஞ்சாங்கம் & 12 ராசி பலன்'),
+  f('Baby names: browsing, meanings and star-letter suggestions', 'குழந்தைப் பெயர்கள்: தேடல், பொருள், நட்சத்திர எழுத்துப் பரிந்துரைகள்'),
+  f('Weekly planning', 'வாராந்திரத் திட்டமிடல்'),
+  f('One saved goal, one saved journey and up to 10 shortlisted names', 'ஒரு சேமித்த இலக்கு, ஒரு சேமித்த பயணம், 10 பெயர்கள் வரை பட்டியல்'),
   f('Daily colour, lucky number & Ishta Theivam', 'தினசரி நிறம், அதிர்ஷ்ட எண், இஷ்ட தெய்வம்'),
   f('Birth charts (jathagam)', 'ஜாதகக் கட்டங்கள்'),
   f('Tamil calendar', 'தமிழ் நாட்காட்டி'),
-  f('Porutham table', 'திருமணப் பொருத்த அட்டவணை'),
+  f('Porutham table (basic matching)', 'திருமணப் பொருத்த அட்டவணை (அடிப்படைப் பொருத்தம்)'),
   f('Built-in explainable guidance, unlimited', 'உள்ளமைந்த விளக்க வழிகாட்டல், வரம்பின்றி'),
   f('A few detailed answers per day', 'நாளொன்றுக்குச் சில விரிவான பதில்கள்'),
 ];
@@ -50,16 +55,56 @@ const PERSONAL_FEATURES = [
   f('Detailed reports — life-timing periods, full chart analysis, detailed marriage matching, business partner porutham', 'விரிவான அறிக்கைகள் — வாழ்க்கை நேரக் காலங்கள், முழு ஜாதக ஆய்வு, விரிவான திருமணப் பொருத்தம், வணிகக் கூட்டாளி பொருத்தம்'),
   f('My Guide — gemstones, Siddhar and personal mantra playlist', 'என் வழிகாட்டி — ரத்தினம், சித்தர், தனிப்பட்ட மந்திரப் பட்டியல்'),
   f(`Up to ${aiAllowance('personal')} detailed answers per month (everyday guidance is unlimited)`, `மாதம் ${aiAllowance('personal')} விரிவான பதில்கள் வரை (அன்றாட வழிகாட்டல் வரம்பின்றி)`),
-  f('Saved journey plans and printable reports', 'சேமித்த பயணத் திட்டங்கள், அச்சிடக்கூடிய அறிக்கைகள்'),
-  soon('Weekly planning', 'வாராந்திரத் திட்டமிடல்'),
-  soon('Saved goals', 'சேமித்த இலக்குகள்'),
+  f('Saved goals — as many as you like (one is free)', 'சேமித்த இலக்குகள் — வரம்பின்றி (ஒன்று இலவசம்)'),
+  f('More saved journeys and name shortlists longer than 10', 'கூடுதல் சேமித்த பயணங்கள், 10-க்கு மேற்பட்ட பெயர்ப் பட்டியல்'),
+  f('Printable / PDF reports — life roadmap, matching report, journey plan', 'அச்சிடக்கூடிய / PDF அறிக்கைகள் — வாழ்க்கை வரைபடம், பொருத்த அறிக்கை, பயணத் திட்டம்'),
 ];
 const FAMILY_FEATURES = [
   f('Everything in Personal', 'தனிநபர் திட்டத்தின் அனைத்து வசதிகளும்'),
   f('Up to 8 family profiles, each shared only with permission (private profiles stay private)', '8 குடும்ப உறுப்பினர்கள் வரை — ஒவ்வொருவரின் அனுமதியுடன் மட்டுமே பகிர்வு (தனிப்பட்ட சுயவிவரம் தனிப்பட்டதாகவே)'),
+  f('Family collaboration — share goals, plans and events with members who agree', 'குடும்பக் கூட்டுழைப்பு — ஒப்புக்கொள்ளும் உறுப்பினர்களுடன் இலக்குகள், திட்டங்கள், நிகழ்வுகள் பகிர்வு'),
   f('Shared event and journey planning', 'பகிர்ந்த நிகழ்வு, பயணத் திட்டமிடல்'),
   f(`Up to ${aiAllowance('family')} detailed answers per month, shared by the family`, `குடும்பத்திற்குப் பகிர்ந்து மாதம் ${aiAllowance('family')} விரிவான பதில்கள் வரை`),
 ];
+
+/**
+ * One-time packages for occasional users (kind 'package'): no subscription, no automatic renewal, scoped to ONE
+ * couple (pairId) or ONE saved journey (journeyId) captured at purchase. Initial test prices, configurable:
+ *   PRICE_INR_MARRIAGE_PACKAGE (499) · PRICE_USD_MARRIAGE_PACKAGE (9) · PRICE_INR_JOURNEY_PACKAGE (299) · PRICE_USD_JOURNEY_PACKAGE (6)
+ * Answer allowances: PACKAGE_MARRIAGE_ANSWERS (30) · PACKAGE_JOURNEY_ANSWERS (15). Costed in docs/COSTING.md.
+ */
+const count = (k, dflt) => { const v = Number(process.env[k]); return Number.isInteger(v) && v > 0 ? v : dflt; };
+export const packageAnswers = (id) => (id === 'marriage_package' ? count('PACKAGE_MARRIAGE_ANSWERS', 30) : count('PACKAGE_JOURNEY_ANSWERS', 15));
+const PACKAGES = [
+  {
+    id: 'marriage_package', kind: 'package', interval: null, durationDays: 90, scopeKind: 'pair', answers: packageAnswers('marriage_package'),
+    name: f('Marriage package — one couple, 90 days', 'திருமணத் தொகுப்பு — ஒரு ஜோடி, 90 நாள்'),
+    price: { INR: price('INR', 'MARRIAGE_PACKAGE', 499), USD: price('USD', 'MARRIAGE_PACKAGE', 9) },
+    features: [
+      f('One-time payment — no subscription, nothing renews', 'ஒருமுறைக் கட்டணம் — சந்தா இல்லை, எதுவும் தானாகப் புதுப்பிக்கப்படாது'),
+      f('90 days of access for ONE couple you choose at purchase', 'வாங்கும்போது நீங்கள் தேர்ந்தெடுக்கும் ஒரு ஜோடிக்கு 90 நாள் அணுகல்'),
+      f('The full five-card matching report for that couple', 'அந்த ஜோடிக்கான முழு ஐந்து-அட்டைப் பொருத்த அறிக்கை'),
+      f('Printable / exportable matching report', 'அச்சிட / ஏற்றுமதி செய்யக்கூடிய பொருத்த அறிக்கை'),
+      f(`${packageAnswers('marriage_package')} detailed answers`, `${packageAnswers('marriage_package')} விரிவான பதில்கள்`),
+      soon('Saved muhurtham shortlist for up to 3 events, checked for both (the muhurtham finder itself stays free)', 'இருவருக்கும் சரிபார்த்த 3 நிகழ்வுகள் வரை சேமித்த முகூர்த்தப் பட்டியல் (முகூர்த்தத் தேடல் இலவசமே)'),
+    ],
+  },
+  {
+    id: 'journey_package', kind: 'package', interval: null, durationDays: 60, scopeKind: 'journey', answers: packageAnswers('journey_package'),
+    name: f('Journey package — one journey, 60 days', 'யாத்திரைத் தொகுப்பு — ஒரு பயணம், 60 நாள்'),
+    price: { INR: price('INR', 'JOURNEY_PACKAGE', 299), USD: price('USD', 'JOURNEY_PACKAGE', 6) },
+    features: [
+      f('One-time payment — no subscription, nothing renews', 'ஒருமுறைக் கட்டணம் — சந்தா இல்லை, எதுவும் தானாகப் புதுப்பிக்கப்படாது'),
+      f('60 days for ONE saved journey you choose at purchase', 'வாங்கும்போது தேர்ந்தெடுக்கும் ஒரு சேமித்த பயணத்திற்கு 60 நாள்'),
+      f('Saved itinerary with live weather and timing re-checks when you open it', 'திறக்கும்போது நேரலை வானிலை, நேர மறுசரிபார்ப்புடன் சேமித்த பயணத் திட்டம்'),
+      f('Printable journey plan', 'அச்சிடக்கூடிய பயணத் திட்டம்'),
+      f(`${packageAnswers('journey_package')} detailed answers`, `${packageAnswers('journey_package')} விரிவான பதில்கள்`),
+    ],
+  },
+];
+/** Package ids (one-time, scoped). Never accepted by gift codes, trials or referrals. */
+export const PACKAGE_IDS = PACKAGES.map((p) => p.id);
+const PKG_SQL = PACKAGE_IDS.map((id) => `'${id}'`).join(', ');
 
 /**
  * Plans. Prices are INITIAL TEST PRICES and are configurable without code changes:
@@ -70,11 +115,12 @@ const FAMILY_FEATURES = [
  * aliases (PLAN_ALIASES), so existing subscription rows, gift codes, webhooks and referral grants keep working.
  */
 export const PLANS = [
-  { id: 'free', name: f('Free', 'இலவசம்'), interval: null, price: { INR: 0, USD: 0 }, features: FREE_FEATURES },
-  { id: 'personal_month', name: f('Personal — monthly', 'தனிநபர் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'PERSONAL_MONTH', 199), USD: price('USD', 'PERSONAL_MONTH', 4.99) }, features: PERSONAL_FEATURES },
-  { id: 'personal_year', name: f('Personal — yearly', 'தனிநபர் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'PERSONAL_YEAR', 1999), USD: price('USD', 'PERSONAL_YEAR', 49) }, features: PERSONAL_FEATURES },
-  { id: 'family_month', name: f('Family — monthly', 'குடும்பம் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'FAMILY_MONTH', 399), USD: price('USD', 'FAMILY_MONTH', 9.99) }, features: FAMILY_FEATURES },
-  { id: 'family_year', name: f('Family — yearly', 'குடும்பம் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'FAMILY_YEAR', 3999), USD: price('USD', 'FAMILY_YEAR', 99) }, features: FAMILY_FEATURES },
+  { id: 'free', kind: 'free', name: f('Free', 'இலவசம்'), interval: null, price: { INR: 0, USD: 0 }, features: FREE_FEATURES },
+  { id: 'personal_month', kind: 'subscription', name: f('Personal — monthly', 'தனிநபர் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'PERSONAL_MONTH', 199), USD: price('USD', 'PERSONAL_MONTH', 4.99) }, features: PERSONAL_FEATURES },
+  { id: 'personal_year', kind: 'subscription', name: f('Personal — yearly', 'தனிநபர் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'PERSONAL_YEAR', 1999), USD: price('USD', 'PERSONAL_YEAR', 49) }, features: PERSONAL_FEATURES },
+  { id: 'family_month', kind: 'subscription', name: f('Family — monthly', 'குடும்பம் — மாதாந்திரம்'), interval: 'month', price: { INR: price('INR', 'FAMILY_MONTH', 399), USD: price('USD', 'FAMILY_MONTH', 9.99) }, features: FAMILY_FEATURES },
+  { id: 'family_year', kind: 'subscription', name: f('Family — yearly', 'குடும்பம் — ஆண்டுக்கு'), interval: 'year', price: { INR: price('INR', 'FAMILY_YEAR', 3999), USD: price('USD', 'FAMILY_YEAR', 99) }, features: FAMILY_FEATURES },
+  ...PACKAGES,
 ];
 /** Old plan id → current id. */
 export const PLAN_ALIASES = Object.freeze({ premium_month: 'personal_month', premium_year: 'personal_year' });
@@ -84,6 +130,8 @@ const PLAN = new Map([...PLANS.map((p) => [p.id, p]), ...Object.entries(PLAN_ALI
 /** Paid plan ids accepted from callers (current ids first, then the old aliases). */
 export const PAID_PLAN_IDS = [...PLANS.filter((p) => p.interval).map((p) => p.id), ...Object.keys(PLAN_ALIASES)];
 const PAID = PAID_PLAN_IDS;
+/** Everything that can be bought at checkout: subscriptions (and their aliases) plus one-time packages. */
+const BUYABLE = [...PAID, ...PACKAGE_IDS];
 const CURRENCIES = ['INR', 'USD'];
 
 const SCHEMA = `
@@ -99,7 +147,8 @@ const SCHEMA = `
     payment_ref TEXT,
     starts_at INTEGER,
     expires_at INTEGER,
-    created_at INTEGER
+    created_at INTEGER,
+    scope TEXT
   );
   CREATE INDEX IF NOT EXISTS subscriptions_user ON subscriptions(user_id);
   CREATE TABLE IF NOT EXISTS webhook_events (
@@ -129,7 +178,12 @@ export function setBillingFetch(fn) { billingFetch = fn || ((...a) => fetch(...a
 const ready = new WeakSet();
 function db() {
   const d = getDb();
-  if (!ready.has(d)) { d.exec(SCHEMA); ready.add(d); }
+  if (!ready.has(d)) {
+    d.exec(SCHEMA);
+    // Older databases: add the package scope column (JSON {pairId} / {journeyId}; NULL for subscriptions).
+    if (!d.prepare('PRAGMA table_info(subscriptions)').all().some((c) => c.name === 'scope')) d.exec('ALTER TABLE subscriptions ADD COLUMN scope TEXT');
+    ready.add(d);
+  }
   return d;
 }
 
@@ -152,12 +206,20 @@ function addInterval(from, interval) {
 
 // ---- subscription state ----
 
-/** The user's current paid subscription (latest expiry), marking lapsed ones expired. */
+/** The user's current paid subscription (latest expiry; one-time packages excluded), marking lapsed rows expired. */
 function activeSub(userId) {
   if (!userId) return null;
   const d = db();
   d.prepare("UPDATE subscriptions SET status = 'expired' WHERE user_id = ? AND status = 'active' AND expires_at <= ?").run(userId, now());
-  return d.prepare("SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY expires_at DESC LIMIT 1").get(userId) || null;
+  return d.prepare(`SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' AND plan NOT IN (${PKG_SQL}) ORDER BY expires_at DESC LIMIT 1`).get(userId) || null;
+}
+
+const parseScope = (s) => { try { const o = JSON.parse(s || 'null'); return o && typeof o === 'object' ? o : {}; } catch { return {}; } };
+/** The user's active one-time packages (each scoped to one couple or one journey). */
+function activePackages(userId) {
+  if (!userId) return [];
+  activeSub(userId); // expires lapsed rows
+  return db().prepare(`SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' AND plan IN (${PKG_SQL}) ORDER BY expires_at`).all(userId);
 }
 
 /** Activate a pending (or new admin) subscription; extends from the current active expiry if later than now. */
@@ -166,7 +228,9 @@ function activate(sub, { paymentRef = null, days = null } = {}) {
   const cur = activeSub(sub.user_id);
   const t = now();
   const base = cur && cur.id !== sub.id ? Math.max(t, cur.expires_at) : t;
-  const expires = days ? base + days * DAY : addInterval(base, PLAN.get(sub.plan).interval);
+  const plan = PLAN.get(sub.plan);
+  // A package runs its own fixed term from the moment it is paid; it never stacks on a subscription.
+  const expires = days ? base + days * DAY : plan.kind === 'package' ? t + plan.durationDays * DAY : addInterval(base, plan.interval);
   db().prepare("UPDATE subscriptions SET status = 'active', payment_ref = COALESCE(?, payment_ref), starts_at = ?, expires_at = ? WHERE id = ?")
     .run(paymentRef, t, expires, sub.id);
   return db().prepare('SELECT * FROM subscriptions WHERE id = ?').get(sub.id);
@@ -174,15 +238,48 @@ function activate(sub, { paymentRef = null, days = null } = {}) {
 
 const subOut = (s, admin = false) => ({
   id: s.id, plan: canonicalPlan(s.plan), status: s.status, currency: s.currency, amountMinor: s.amount_minor, gateway: s.gateway,
-  startsAt: s.starts_at, expiresAt: s.expires_at, createdAt: s.created_at, ...(admin ? { userId: s.user_id, gatewayRef: s.gateway_ref } : {}),
+  startsAt: s.starts_at, expiresAt: s.expires_at, createdAt: s.created_at, ...(s.scope ? { scope: parseScope(s.scope) } : {}), ...(admin ? { userId: s.user_id, gatewayRef: s.gateway_ref } : {}),
 });
 
-/** Feature flags for a user (null → signed-out / free). */
+/**
+ * Feature flags for a user (null → signed-out / free). Gates are applied only under BILLING_ENFORCE=1
+ * (shared/plan-gates.js explains each one). null for a *Max means "no limit". Active one-time packages add
+ * scoped rights: matchingPairs (couples with the full matching report + print) and journeyIds (journeys that may
+ * be saved and printed); they never unlock anything outside their scope.
+ */
 export function entitlementsFor(user) {
   const sub = activeSub(user?.id);
   const paid = !!sub;
   const family = !!sub?.plan.startsWith('family');
-  return { unlimitedAi: false, aiMonthly: paid ? aiAllowance(family ? 'family' : 'personal') : null, predictions: paid, familyProfiles: family ? 8 : 1 };
+  const pk = activePackages(user?.id).map((p) => ({ id: p.id, plan: p.plan, scope: parseScope(p.scope), startsAt: p.starts_at, expiresAt: p.expires_at, answers: packageAnswers(p.plan) }));
+  return {
+    unlimitedAi: false, aiMonthly: paid ? aiAllowance(family ? 'family' : 'personal') : null, predictions: paid, familyProfiles: family ? 8 : 1,
+    goalsMax: paid ? null : FREE_LIMITS.goals, shortlistMax: paid ? null : FREE_LIMITS.shortlist, journeysMax: paid ? null : FREE_LIMITS.journeys,
+    printReports: paid, familyCollab: family, sharedPlanning: family,
+    packages: pk,
+    matchingPairs: [...new Set(pk.filter((p) => p.plan === 'marriage_package' && p.scope.pairId).map((p) => p.scope.pairId))],
+    journeyIds: [...new Set(pk.filter((p) => p.plan === 'journey_package' && p.scope.journeyId).map((p) => p.scope.journeyId))],
+  };
+}
+
+/**
+ * PUT /api/me/data guard (mounted before the auth router): under BILLING_ENFORCE=1 the account backup keeps at most
+ * `familyProfiles` profiles (the active one first). Nothing on the phone is touched — extra profiles simply stay
+ * device-only — and the response says how many were left out so the app can explain what the Family plan adds.
+ */
+export function familyProfileGuard(req, res, next) {
+  const data = req.body?.data;
+  if (!billingEnforced() || !data || !Array.isArray(data.family)) return next();
+  const user = currentUser(req);
+  if (!user) return next();
+  const limit = entitlementsFor(user).familyProfiles;
+  if (data.family.length <= limit) return next();
+  const ordered = [...data.family.filter((m) => m?.id === data.activeId), ...data.family.filter((m) => m?.id !== data.activeId)];
+  const left = ordered.length - limit;
+  req.body.data = { ...data, family: ordered.slice(0, limit) };
+  const json = res.json.bind(res);
+  res.json = (body) => json(body && body.ok ? { ...body, familyLimit: { limit, notBackedUp: left, upgrade: 'family' } } : body);
+  next();
 }
 
 // ---- complimentary access (used by server/growth.js: gift codes, trials, referrals) ----
@@ -216,12 +313,24 @@ const usedToday = (key) => db().prepare('SELECT count FROM ai_usage WHERE usage_
 const month = () => today().slice(0, 7);
 const usedThisMonth = (key) => db().prepare("SELECT COALESCE(SUM(count), 0) AS n FROM ai_usage WHERE usage_key = ? AND day LIKE ?").get(key, `${month()}-%`)?.n || 0;
 
-/** { allowed, used, limit, period } — paid plans have a monthly allowance; free has a daily one. */
+const dayOf = (t) => new Date(t + IST).toISOString().slice(0, 10);
+const usedSince = (key, day) => db().prepare('SELECT COALESCE(SUM(count), 0) AS n FROM ai_usage WHERE usage_key = ? AND day >= ?').get(key, day)?.n || 0;
+
+/**
+ * { allowed, used, limit, period } — paid plans have a monthly allowance; free has a daily one. An active package
+ * adds its answer pool (counted from the day it started): while the pool lasts period is 'package'; when it is
+ * used up the free daily allowance still applies.
+ */
 export function checkAiQuota(req) {
   const ent = entitlementsFor(currentUser(req));
   if (ent.aiMonthly) { const used = usedThisMonth(usageKey(req)); return { allowed: used < ent.aiMonthly, used, limit: ent.aiMonthly, period: 'month' }; }
   const used = usedToday(usageKey(req));
   const limit = freeDaily();
+  if (ent.packages.length) {
+    const pool = ent.packages.reduce((s, p) => s + p.answers, 0);
+    const since = usedSince(usageKey(req), dayOf(Math.min(...ent.packages.map((p) => p.startsAt))));
+    if (since < pool) return { allowed: true, used: since, limit: pool, period: 'package' };
+  }
   return { allowed: used < limit, used, limit, period: 'day' };
 }
 
@@ -322,6 +431,19 @@ const handle = (fn) => async (req, res, next) => {
 
 const body = (req) => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) && !Buffer.isBuffer(req.body) ? req.body : {});
 const paidPlan = (id) => (PAID.includes(id) ? PLAN.get(id) : fail(`plan must be one of: ${PAID.join(', ')}`)); // aliases → the current plan
+const buyablePlan = (id) => (BUYABLE.includes(id) ? PLAN.get(id) : fail(`plan must be one of: ${BUYABLE.join(', ')}`));
+const SCOPE_ID = /^[\w.:+-]{1,130}$/;
+/** The scope a package is bought for: {pairId} for the Marriage package, {journeyId} for the Journey package. */
+function scopeFor(plan, raw) {
+  if (plan.kind !== 'package') return null;
+  const s = raw && typeof raw === 'object' ? raw : {};
+  const key = plan.scopeKind === 'pair' ? 'pairId' : 'journeyId';
+  const v = s[key];
+  if (typeof v !== 'string' || !SCOPE_ID.test(v) || (key === 'pairId' && !/^[^+]+\+[^+]+$/.test(v))) {
+    fail(key === 'pairId' ? 'Choose the couple this package is for (scope.pairId)' : 'Choose the saved journey this package is for (scope.journeyId)');
+  }
+  return { [key]: v };
+}
 const currencyOf = (v, dflt) => {
   const c = v === undefined || v === null || v === '' ? dflt : String(v).toUpperCase();
   return CURRENCIES.includes(c) ? c : fail('currency must be INR or USD');
@@ -347,17 +469,18 @@ export function billingRouter() {
     const sub = activeSub(user?.id);
     const quota = checkAiQuota(req);
     // locked: had paid/gift/trial access that has now lapsed (expiry is enforced via activeSub).
-    const lapsed = !sub && !!user && !!db().prepare("SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'expired' LIMIT 1").get(user.id);
+    const lapsed = !sub && !!user && !!db().prepare(`SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'expired' AND plan NOT IN (${PKG_SQL}) LIMIT 1`).get(user.id);
     res.json({
       plan: sub ? canonicalPlan(sub.plan) : 'free', status: sub ? sub.status : 'active', expiresAt: sub ? sub.expires_at : null,
       trialEndsAt: sub && ['gift', 'trial'].includes(sub.gateway) ? sub.expires_at : null, locked: lapsed, enforced: billingEnforced(),
-      entitlements: entitlementsFor(user), aiUsedToday: quota.period === 'day' ? quota.used : null, aiUsedThisMonth: quota.period === 'month' ? quota.used : null, aiLimit: quota.limit, aiPeriod: quota.period, aiFreeDaily: freeDaily(),
+      entitlements: entitlementsFor(user), aiUsedToday: quota.period === 'day' ? quota.used : null, aiUsedThisMonth: quota.period === 'month' ? quota.used : null, aiUsedPackage: quota.period === 'package' ? quota.used : null, aiLimit: quota.limit, aiPeriod: quota.period, aiFreeDaily: freeDaily(),
     });
   });
 
   r.post('/billing/checkout', requireUser, handle(async (req, res) => {
     const b = body(req);
-    const plan = paidPlan(b.plan);
+    const plan = buyablePlan(b.plan);
+    const scope = scopeFor(plan, b.scope);
     const currency = currencyOf(b.currency, 'INR');
     const amount = minor(plan, currency);
     const id = crypto.randomUUID();
@@ -378,9 +501,9 @@ export function billingRouter() {
       console.error('Billing checkout failed:', err.message);
       return res.status(502).json({ error: 'Payment gateway is unavailable right now. Please try again.' });
     }
-    db().prepare(`INSERT INTO subscriptions (id, user_id, plan, status, currency, amount_minor, gateway, gateway_ref, created_at)
-      VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)`).run(id, req.user.id, plan.id, currency, amount, gateway, ref, now());
-    res.json(out);
+    db().prepare(`INSERT INTO subscriptions (id, user_id, plan, status, currency, amount_minor, gateway, gateway_ref, created_at, scope)
+      VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`).run(id, req.user.id, plan.id, currency, amount, gateway, ref, now(), scope ? JSON.stringify(scope) : null);
+    res.json(scope ? { ...out, scope } : out);
   }));
 
   r.post('/billing/verify', requireUser, handle((req, res) => {

@@ -1,8 +1,15 @@
 // Married-life analysis (திருமண வாழ்க்கை ஆய்வு) and business-partner matching (வணிகக் கூட்டாளி பொருத்தம்):
 // full birth details of both people, the traditional factors shown separately and a year-by-year timeline for an
 // explicit report horizon ("first 25 years of marriage"). No marry / reject verdict and no combined score.
-// Saving another adult's profile needs that person's permission (consentAt is stored with the profile).
+// Saving another adult's profile needs that person's permission (consentAt and a consent ledger are stored with the
+// profile; the permission can be withdrawn from the profile). The marriage result is a short summary, five icon-and-text
+// cards (shared/marriage-context.js buildMatchingReport, rendered by couple-cards.js), a separate Ashtakoota link and an
+// expandable expert view. Each person's marriage context is real-life context only: it never changes any factor.
 import { birthChart } from './shared/astro.js';
+import {
+  buildMatchingReport, createConsentLedger, recordConsent, revokeConsent, hasConsent, MARRIAGE_MODES, MARRIAGE_MODE_ORDER, MARRIAGE_CONTEXT_TITLE, KEEP_PRIVATE_LABEL,
+} from './shared/marriage-context.js';
+import { summaryHtml, resultCardsHtml, ashtakootaLinkHtml, factorCounts } from './couple-cards.js';
 import { marriageReport, partnershipReport, HORIZON_LINES } from './shared/couple.js';
 import { KEY_FACTORS_TITLE, DETAILED_VIEW_TITLE, DISCUSSION_TOPICS, DISCUSSION_TITLE } from './shared/porutham.js';
 import {
@@ -10,7 +17,7 @@ import {
   displayName, saveFamily, placeName,
 } from './core.js';
 import { placeSearch } from './account.js';
-import { isLocked, lockCard } from './growth.js';
+import { isLocked, lockCard, pairKey } from './growth.js';
 import { isAdult, MATCH_ADULTS_NOTE, PARTNER_ADULTS_NOTE } from './shared/age-guard.js';
 
 // Marriage, love and partner matching are for adults only (shared/age-guard.js): people under 18 — or without a
@@ -31,23 +38,54 @@ export function permissionCheckbox(id, label = PERMISSION_LABEL(), checked = fal
   return `<label class="adult-confirm perm-confirm"><input type="checkbox" id="${id}"${checked ? ' checked' : ''}> <span>${esc(label)}</span></label>
     <p class="small adult-confirm-err" id="${id}Err" role="alert" hidden>${esc(permissionError())}</p>`;
 }
-/** Save another adult's profile to the family list with the time the user confirmed that person's permission. */
+/**
+ * Save another adult's profile to the family list with the time the user confirmed that person's permission and a
+ * consent ledger (shared/marriage-context.js) holding that grant, so it can be checked (hasConsent) and withdrawn.
+ */
 export function saveWithConsent(m) {
-  state.family.push({ ...m, id: Math.random().toString(36).slice(2, 10), consentAt: new Date().toISOString(), consentBy: 'in-app-confirmation' });
+  const id = Math.random().toString(36).slice(2, 10);
+  const consentLedger = recordConsent(createConsentLedger(`profile:${id}`), { participantId: id, scopes: ['calculate', 'save'] });
+  state.family.push({ ...m, id, consentAt: new Date().toISOString(), consentBy: 'in-app-confirmation', consentLedger });
   saveFamily();
   toast(L('Saved to family', 'குடும்பத்தில் சேமிக்கப்பட்டது'));
+  return id;
+}
+/** true / false for a profile saved here with another adult's permission; null for profiles without a ledger. */
+export const profileConsent = (m) => (m?.consentLedger ? hasConsent(m.consentLedger, [m.id], 'save') : null);
+/** Withdraw a saved adult's permission from their profile: the revoke is recorded and their details leave this phone. */
+export function revokeProfileConsent(id) {
+  const m = state.family.find((x) => x.id === id);
+  if (!m?.consentLedger) return false;
+  if (!confirm(L(`Withdraw permission for ${displayName(m)}? Their saved birth details will be removed from this phone.`, `${displayName(m)} அவர்களின் அனுமதியைத் திரும்பப் பெறவா? சேமித்த பிறப்பு விவரங்கள் இந்தக் கைப்பேசியிலிருந்து நீக்கப்படும்.`))) return false;
+  const ledger = revokeConsent(m.consentLedger, { participantId: id });
+  if (hasConsent(ledger, [id], 'save')) return false;
+  state.family = state.family.filter((x) => x.id !== id);
+  if (state.activeId === id) state.activeId = state.family[0]?.id || null;
+  saveFamily();
+  toast(L('Permission withdrawn — details removed', 'அனுமதி திரும்பப் பெறப்பட்டது — விவரங்கள் நீக்கப்பட்டன'));
+  return true;
+}
+
+/** Marriage context for one person (couple screen only): four choices, unselected = not disclosed, plus "keep private". */
+function contextField(f) {
+  return `<div class="mc-context"><label>${esc(bi(MARRIAGE_CONTEXT_TITLE))} <span class="pill">${L('optional', 'விருப்பம்')}</span>
+      <select data-f="ctxMode"><option value=""${f.ctxMode ? '' : ' selected'}>${L('— Not chosen (not disclosed) —', '— தேர்வு செய்யவில்லை (சொல்லப்படவில்லை) —')}</option>${MARRIAGE_MODE_ORDER.map((k) => `<option value="${k}"${f.ctxMode === k ? ' selected' : ''}>${esc(bi(MARRIAGE_MODES[k]))}</option>`).join('')}</select></label>
+    <label class="check-row"><input type="checkbox" data-f="ctxPrivate"${f.ctxPrivate ? ' checked' : ''}> ${esc(bi(KEEP_PRIVATE_LABEL))}</label>
+    <p class="small muted">${L('Real-life context only — it never changes any porutham or dosha result.', 'வாழ்க்கைச் சூழல் மட்டுமே — எந்தப் பொருத்தம் அல்லது தோஷ முடிவையும் மாற்றாது.')}</p></div>`;
 }
 
 /** Person input: pick a family member or enter full birth details. */
-export function personBlock(slot, title, { gender, nth = 0, business = false } = {}) {
+export function personBlock(slot, title, { gender, nth = 0, business = false, context = false } = {}) {
   const pool = adultPool();
   const f = forms[slot] ||= { mode: pool.length ? 'family' : 'new', memberId: (gender ? pool.find((m) => m.gender === gender) || pool[0] : pool[nth] || pool[0])?.id || null, gender: gender || 'male' };
   if (f.mode === 'family' && !pool.length) f.mode = 'new';
   if (f.mode === 'family' && !pool.some((m) => m.id === f.memberId)) f.memberId = (gender ? pool.find((m) => m.gender === gender) || pool[0] : pool[nth] || pool[0])?.id || null;
+  const picked = f.mode === 'family' ? pool.find((m) => m.id === f.memberId) : null;
+  const permLine = profileConsent(picked) ? `<p class="small muted perm-saved">🔒 ${L('Saved with this person’s permission', 'இவரின் அனுமதியுடன் சேமிக்கப்பட்டது')}${picked.consentAt ? ` · ${esc(fmtIsoDate(picked.consentAt.slice(0, 10)))}` : ''} <button type="button" class="link-btn" data-revoke="${esc(picked.id)}">${L('Withdraw permission', 'அனுமதியைத் திரும்பப் பெறு')}</button></p>` : '';
   return `<div class="card glass person-block" data-slot="${slot}"><div class="card-title">${title}</div>${adultsNote(business)}
     ${pool.length ? `<div class="seg"><button type="button" data-mode="family" class="${f.mode === 'family' ? 'sel' : ''}">${L('From family', 'குடும்பத்திலிருந்து')}</button><button type="button" data-mode="new" class="${f.mode === 'new' ? 'sel' : ''}">${L('Enter details', 'விவரம் உள்ளிடு')}</button></div>` : ''}
     ${f.mode === 'family' && pool.length
-    ? `<label>${gender === 'female' ? L('Bride', 'மணமகள்') : gender === 'male' ? L('Groom', 'மணமகன்') : business ? L('Partner', 'கூட்டாளி') : L('Name', 'பெயர்')}<select data-f="memberId">${pool.map((m) => `<option value="${esc(m.id)}"${m.id === f.memberId ? ' selected' : ''}>${esc(displayName(m))}</option>`).join('')}</select></label>`
+    ? `<label>${gender === 'female' ? L('Bride', 'மணமகள்') : gender === 'male' ? L('Groom', 'மணமகன்') : business ? L('Partner', 'கூட்டாளி') : L('Name', 'பெயர்')}<select data-f="memberId">${pool.map((m) => `<option value="${esc(m.id)}"${m.id === f.memberId ? ' selected' : ''}>${esc(displayName(m))}</option>`).join('')}</select></label>${permLine}`
     : `<div class="row2"><label>${L('Name', 'பெயர்')}<input data-f="name" value="${esc(f.name || '')}" maxlength="60"></label>
         <label>${L('Gender', 'பாலினம்')}<select data-f="gender">${[['male', 'Male', 'ஆண்'], ['female', 'Female', 'பெண்']].map(([id, en, tx]) => `<option value="${id}"${(f.gender || gender) === id ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label></div>
       <div class="row2"><label>${L('Date of birth', 'பிறந்த தேதி')}<input type="date" data-f="date" value="${esc(f.date || '')}"></label>
@@ -56,6 +94,7 @@ export function personBlock(slot, title, { gender, nth = 0, business = false } =
       ${f.lat != null ? `<p class="muted small">📍 ${esc(placeName(f.place))} · ${Number(f.lat).toFixed(2)}, ${Number(f.lon).toFixed(2)} · ${L('UTC', 'நேர மண்டலம்')}${f.tz >= 0 ? '+' : ''}${f.tz}</p>` : ''}
       <label class="check-row"><input type="checkbox" data-f="save"${f.save ? ' checked' : ''}> ${L('Save to my family list', 'என் குடும்பப் பட்டியலில் சேமி')}</label>
       <label class="adult-confirm perm-confirm"${f.save ? '' : ' hidden'} data-perm><input type="checkbox" data-f="consent"${f.consent ? ' checked' : ''}> <span>${esc(PERMISSION_LABEL())} — ${L('needed to save another adult’s details', 'மற்றொருவரின் விவரங்களைச் சேமிக்கத் தேவை')}</span></label>`}
+    ${context ? contextField(f) : ''}
   </div>`;
 }
 
@@ -72,6 +111,8 @@ export function wirePersonBlocks(sec, rerender) {
       el.addEventListener('change', set);
       el.addEventListener('input', set);
     });
+    $('[data-f="memberId"]', blk)?.addEventListener('change', rerender); // refreshes the "saved with permission" line
+    $$('[data-revoke]', blk).forEach((b) => b.addEventListener('click', () => { if (revokeProfileConsent(b.dataset.revoke)) rerender(); }));
     const place = $('[data-f="place"]', blk);
     if (place) placeSearch(place, $('.suggest', blk), (p) => { Object.assign(f, { place: p.text || p.name, lat: p.lat, lon: p.lon, tz: p.tz, zone: p.zone }); rerender(); });
   });
@@ -137,10 +178,15 @@ export function poruthamView(r, { names, doshas = null, charts = [null, null], l
     ${birthNotes.length ? `<div class="note-box" role="note">🕰️ ${birthNotes.map(esc).join('<br>')}</div>` : ''}
     <details class="card glass match-detail"><summary><b>📋 ${esc(bi(DETAILED_VIEW_TITLE))}</b> <span class="pill">${L('10 poruthams · doshams', '10 பொருத்தங்கள் · தோஷங்கள்')}</span></summary>
       ${r.rows.map(factorRow).join('')}
-      ${doshas ? `<div class="mini-label" style="margin-top:12px">${L('Chevvai & Rahu–Ketu (each chart on its own)', 'செவ்வாய் & ராகு–கேது (ஒவ்வொரு ஜாதகமும் தனியாக)')}</div>
-        ${doshas.map((d, i) => doshaPersonHtml(d, names[i], lagnaUnknown[i], charts[i])).join('')}` : ''}
-      ${samyam?.length ? `<div class="mini-label" style="margin-top:12px">${L('Dosha samyam (like with like)', 'தோஷ சாம்யம் (ஒன்றுக்கொன்று ஒப்பீடு)')}</div>${samyam.map((n) => `<div class="factor"><span>${esc(bi(n))}<br><small class="muted">${esc(bi(n.comparison))}</small></span></div>`).join('')}` : ''}
+      ${doshaBlockHtml({ doshas, names, lagnaUnknown, charts, samyam })}
     </details>`;
+}
+
+/** Chevvai / Rahu–Ketu for each chart on its own (exceptions, Moon-only reference, needs-birth-time) and dosha samyam. */
+function doshaBlockHtml({ doshas, names, lagnaUnknown = [false, false], charts = [null, null], samyam = null }) {
+  return `${doshas ? `<div class="mini-label" style="margin-top:12px">${L('Chevvai & Rahu–Ketu (each chart on its own)', 'செவ்வாய் & ராகு–கேது (ஒவ்வொரு ஜாதகமும் தனியாக)')}</div>
+        ${doshas.map((d, i) => doshaPersonHtml(d, names[i], lagnaUnknown[i], charts[i])).join('')}` : ''}
+      ${samyam?.length ? `<div class="mini-label" style="margin-top:12px">${L('Dosha samyam (like with like)', 'தோஷ சாம்யம் (ஒன்றுக்கொன்று ஒப்பீடு)')}</div>${samyam.map((n) => `<div class="factor"><span>${esc(bi(n))}<br><small class="muted">${esc(bi(n.comparison))}</small></span></div>`).join('')}` : ''}`;
 }
 
 /** Optional practical discussion prompts — no scoring. */
@@ -185,13 +231,16 @@ function momentsHtml(moments) {
 }
 
 // ================================================================ MARRIED LIFE
-const coupleUi = { wedding: null };
-function renderCouple(sec) {
+const coupleUi = { wedding: null, ledger: null, ids: null };
+const SLOTS = ['bride', 'groom'];
+function renderCouple(sec, params = {}) {
   coupleUi.wedding ||= iso(new Date());
+  // Prefilled from the quick porutham ("See full five-card report"): both people picked from Family.
+  for (const slot of SLOTS) if (params[slot] && adultPool().some((m) => m.id === params[slot])) forms[slot] = { ...(forms[slot] || {}), mode: 'family', memberId: params[slot], gender: slot === 'bride' ? 'female' : 'male' };
   const rerender = () => renderCouple(sec);
   sec.innerHTML = `${subHeader(L('Complete Marriage Porutham', 'முழுமையான திருமணப் பொருத்தம்'), L('Not only 10 poruthams — birth date, time and place of both: papa samyam, dasa sandhi, lagna, the marriage houses, mana porutham and the first years of marriage', '10 பொருத்தம் மட்டுமல்ல — இருவரின் பிறந்த தேதி, நேரம், இடம்: பாப சாம்யம், தசா சந்தி, லக்னம், திருமண பாவங்கள், மனப் பொருத்தம், திருமணத்தின் முதல் ஆண்டுகள்'), 'home')}
-    ${personBlock('bride', `👰 ${L('Bride', 'மணமகள்')}`, { gender: 'female' })}
-    ${personBlock('groom', `🤵 ${L('Groom', 'மணமகன்')}`, { gender: 'male' })}
+    ${personBlock('bride', `👰 ${L('Bride', 'மணமகள்')}`, { gender: 'female', context: true })}
+    ${personBlock('groom', `🤵 ${L('Groom', 'மணமகன்')}`, { gender: 'male', context: true })}
     <div class="card glass"><label>${L('Wedding date (done or planned)', 'திருமண தேதி (நடந்தது அல்லது திட்டமிட்டது)')}<input type="date" id="wedDate" value="${esc(coupleUi.wedding)}"></label>
       <button class="btn-gold" id="coupleBtn">💞 ${L('Analyse married life', 'திருமண வாழ்க்கையை ஆய்வு செய்')}</button><p class="err" id="coupleErr"></p></div>
     <div id="coupleOut"></div>`;
@@ -206,43 +255,110 @@ function renderCouple(sec) {
   });
 }
 
+/** Each person's chosen marriage context (unselected = not disclosed) — never passed to any calculation. */
+const modesFor = () => Object.fromEntries(SLOTS.map((slot) => [slot, { mode: forms[slot]?.ctxMode || 'undisclosed', historyPrivate: !!forms[slot]?.ctxPrivate }]));
+
+/**
+ * The traditional-matching report for the two people, built by shared/marriage-context.js. On this phone it is a private
+ * look (ephemeral, requester 'self'): nothing is saved or shared until both people's permission is recorded below.
+ */
+export function coupleMatchingReport(bride, groom, modes = modesFor()) {
+  const person = (p, slot) => ({
+    id: slot, name: bi(p.name), chart: p.chart, birthDate: p.member?.date, adultConfirmed: true,
+    birthTimeCertainty: hasLagna(p.chart) ? (p.chart.timePrecision || 'exact') : 'unknown',
+  });
+  return buildMatchingReport({ bride: person(bride, 'bride'), groom: person(groom, 'groom'), modes, consent: { ephemeral: true, requesterId: 'self' }, pairId: `${bride.member?.id || 'a'}~${groom.member?.id || 'b'}` });
+}
+
+/** Share text: the factor results only; a marriage context is included only when that person chose to disclose it and did not keep it private. */
+function shareText(mr, nm) {
+  const modes = modesFor();
+  const ctx = SLOTS.map((slot, i) => (modes[slot].mode !== 'undisclosed' && !modes[slot].historyPrivate ? `${nm[i]}: ${bi(MARRIAGE_MODES[modes[slot].mode])}` : null)).filter(Boolean);
+  const { agree, total } = factorCounts(mr);
+  return [`💞 ${nm[0]} · ${nm[1]} — ${L('Thirumana Porutham', 'திருமணப் பொருத்தம்')}`, L(`${agree} of ${total} traditional factors agree`, `${total} மரபுக் காரணிகளில் ${agree} பொருந்துகின்றன`),
+    ...mr.traditionalFactorResults.map((f) => `• ${bi(f.name)}: ${bi(f.resultLabel)}`), ...ctx, '', bi(mr.summary.recommendation)].join('\n');
+}
+
 function showCouple(bride, groom) {
   const [y, mo, d] = coupleUi.wedding.split('-').map(Number);
   const wedding = new Date(Date.UTC(y, mo - 1, d, 6));
   const names = [bride.name, groom.name];
+  const nm = names.map((n) => bi(n));
+  const mr = coupleMatchingReport(bride, groom);
+  if (mr.status !== 'ok') { $('#coupleOut').innerHTML = `<div class="card glass note-box" role="alert">🌱 ${esc(bi(mr.message))}</div>`; return; }
   const r = marriageReport(bride.chart, groom.chart, { weddingDate: wedding, names });
   const locked = isLocked('predictions');
   const hz = bi(r.reportHorizon.label);
-  const nm = names.map((n) => bi(n));
+  const lang = ta() ? 'ta' : 'en';
   const houseScore = (h) => (h.available === false || h.score == null ? L('needs birth time', 'பிறந்த நேரம் தேவை') : h.score);
+  // Pair consent ledger for this report: each person's own share/export permission (recorded via the checkboxes below).
+  coupleUi.ledger = createConsentLedger(mr.pairId);
+  coupleUi.ids = [...SLOTS];
+  const dosha = doshaBlockHtml({ doshas: [r.doshams.bride, r.doshams.groom], names: nm, lagnaUnknown: [!hasLagna(bride.chart), !hasLagna(groom.chart)], charts: [bride.chart, groom.chart], samyam: r.samyam });
+  const timing = { before: `${locked ? lockCard(L(`Supportive periods for the two of you (${hz}) are part of the Personal plan.`, `உங்கள் இருவருக்குமான ஆதரவுக் காலங்கள் (${hz}) தனிநபர் திட்டத்தில் உள்ளன.`))
+    : `<div class="mini-label">🌟 ${L('Supportive periods for the two of you', 'உங்கள் இருவருக்குமான ஆதரவுக் காலங்கள்')} <span class="pill">${esc(hz)}</span></div>${momentsHtml(r.moments)}`}
+    <div class="mini-label" style="margin-top:12px">👣 ${L('Next steps', 'அடுத்த படிகள்')}</div>`,
+  after: `<div class="mc-links"><button type="button" class="chip-btn" data-go="muhurtham">🗓️ ${L('Find a wedding muhurtham', 'திருமண முகூர்த்தம் தேடு')}</button></div>` };
   $('#coupleOut').innerHTML = `
-    ${poruthamView(r.porutham, {
-    names: nm, doshas: [r.doshams.bride, r.doshams.groom], charts: [bride.chart, groom.chart], lagnaUnknown: [!hasLagna(bride.chart), !hasLagna(groom.chart)], samyam: r.samyam,
-    header: `<div class="muted small">${esc(nm[0])} (${esc(nakName(bride.chart.janmaNakshatra.index))}) · ${esc(nm[1])} (${esc(nakName(groom.chart.janmaNakshatra.index))})</div>`,
-  })}
-    <div class="note-box" role="note">${L('This is a traditional interpretation to support a family conversation — not a verdict on anyone’s worth or suitability, and no guarantee of a happy or unhappy marriage. Health is never judged from a chart: a pre-marriage medical check-up is the reliable way.', 'இது குடும்ப உரையாடலுக்கு உதவும் பாரம்பரிய விளக்கம் மட்டுமே — யாருடைய மதிப்பையோ தகுதியையோ தீர்மானிப்பதல்ல; மகிழ்ச்சியான அல்லது மகிழ்ச்சியற்ற திருமணத்திற்கு உத்தரவாதமும் அல்ல. உடல்நலம் ஜாதகத்திலிருந்து மதிப்பிடப்படாது; திருமணத்திற்கு முன் மருத்துவப் பரிசோதனையே நம்பகமானது.')}</div>
-    <div class="card glass"><div class="card-title">🛡️ ${L('Beyond the 10 poruthams', '10 பொருத்தத்திற்கும் மேலான ஆய்வு')}</div>
+    ${summaryHtml(mr, { lang, keyNote: r.porutham.keyNote, header: `<div class="muted small">${esc(nm[0])} (${esc(nakName(bride.chart.janmaNakshatra.index))}) · ${esc(nm[1])} (${esc(nakName(groom.chart.janmaNakshatra.index))})</div>` })}
+    ${resultCardsHtml(mr, { lang, slots: { traditional: dosha, next_steps: timing }, open: ['traditional'] })}
+    ${ashtakootaLinkHtml(lang)}
+    <details class="card glass match-detail mc-expert"><summary><b>📋 ${L('Expert view', 'நிபுணர் பார்வை')}</b> <span class="pill">${L('full detail', 'முழு விவரம்')}</span></summary>
+      <div class="note-box" role="note">${L('A traditional interpretation to support a family conversation — not a judgement of anyone’s worth or suitability, and no guarantee of how a marriage will go. Health is never judged from a chart: a pre-marriage medical check-up is the reliable way.', 'குடும்ப உரையாடலுக்கு உதவும் பாரம்பரிய விளக்கம் மட்டுமே — யாருடைய மதிப்பையோ தகுதியையோ தீர்மானிப்பதல்ல; திருமணம் எப்படி அமையும் என்பதற்கான உத்தரவாதமும் அல்ல. உடல்நலம் ஜாதகத்திலிருந்து மதிப்பிடப்படாது; திருமணத்திற்கு முன் மருத்துவப் பரிசோதனையே நம்பகமானது.')}</div>
+      <div class="mini-label" style="margin-top:12px">🛡️ ${L('Beyond the 10 poruthams', '10 பொருத்தத்திற்கும் மேலான ஆய்வு')}</div>
       ${r.deep.checks.map((c) => `<div class="deep-row"><span>${c.ok ? '✅' : '🟡'} <b>${esc(bi(c.name))}</b><br><small class="muted">${esc(bi(c.note))}</small></span></div>`).join('')}
-      ${(r.deep.needsBirthTime || []).length ? `<div class="deep-row"><span>🕰️ <b>${L('Lagna porutham and the marriage houses', 'லக்னப் பொருத்தம், திருமண பாவங்கள்')}</b> ${NEEDS_TIME_TAG()}</span></div>` : ''}</div>
-    ${locked ? lockCard(L(`Mana porutham, home and wealth timing and the year-by-year timeline (${hz}) are part of the Personal plan.`, `மனப் பொருத்தம், வீடு & செல்வ காலம், ஆண்டுவாரிக் காலவரிசை (${hz}) தனிநபர் திட்டத்தில் உள்ளன.`)) : `
-    <div class="card glass"><div class="card-title">💗 ${L('Mana Porutham — mind & life compatibility', 'மனப் பொருத்தம் — மனமும் வாழ்க்கையும்')}</div>${areaRows(r.mana.areas)}
-      ${r.mana.karmic ? `<p class="small">✨ ${L('Rahu/Ketu link your charts — tradition calls this a karmic bond; keep honesty and shared prayer at the centre.', 'ராகு/கேது உங்கள் ஜாதகங்களை இணைக்கிறது — மரபு இதைக் கர்ம பந்தம் என்கிறது; நேர்மையும் சேர்ந்த வழிபாடும் மையமாக இருக்கட்டும்.')}</p>` : ''}</div>
-    <div class="card glass"><div class="card-title">🏠 ${L('Marriage houses of each person', 'ஒவ்வொருவரின் திருமண பாவங்கள்')}</div>
+      ${(r.deep.needsBirthTime || []).length ? `<div class="deep-row"><span>🕰️ <b>${L('Lagna porutham and the marriage houses', 'லக்னப் பொருத்தம், திருமண பாவங்கள்')}</b> ${NEEDS_TIME_TAG()}</span></div>` : ''}
+      ${locked ? lockCard(L(`Mana porutham, the marriage houses and the year-by-year timeline (${hz}) are part of the Personal plan.`, `மனப் பொருத்தம், திருமண பாவங்கள், ஆண்டுவாரிக் காலவரிசை (${hz}) தனிநபர் திட்டத்தில் உள்ளன.`)) : `
+      <div class="mini-label" style="margin-top:12px">💗 ${L('Mana Porutham — mind & life compatibility', 'மனப் பொருத்தம் — மனமும் வாழ்க்கையும்')}</div>${areaRows(r.mana.areas)}
+      ${r.mana.karmic ? `<p class="small">✨ ${L('Rahu/Ketu link your charts — tradition calls this a karmic bond; keep honesty and shared prayer at the centre.', 'ராகு/கேது உங்கள் ஜாதகங்களை இணைக்கிறது — மரபு இதைக் கர்ம பந்தம் என்கிறது; நேர்மையும் சேர்ந்த வழிபாடும் மையமாக இருக்கட்டும்.')}</p>` : ''}
+      ${r.strengths.length ? `<p class="small">💪 <b>${L('Strengths', 'பலங்கள்')}:</b> ${r.strengths.map((x) => esc(bi(x))).join(', ')}</p>` : ''}${r.challenges.length ? `<p class="small">🌱 <b>${L('Grow together in', 'சேர்ந்து வளர வேண்டியவை')}:</b> ${r.challenges.map((x) => esc(bi(x))).join(', ')}</p>` : ''}
+      <div class="mini-label" style="margin-top:12px">🏠 ${L('Marriage houses of each person', 'ஒவ்வொருவரின் திருமண பாவங்கள்')}</div>
       ${r.deep.houses.bride.map((h, i) => { const g = r.deep.houses.groom[i]; return `<details class="area-row"><summary><span class="gb-name">${esc(bi(h.name))}</span><small>👰 ${houseScore(h)} · 🤵 ${houseScore(g)}</small></summary><div class="small"><b>${esc(nm[0])}</b></div>${h.notes.map((x) => `<div class="small">• ${esc(bi(x))}</div>`).join('')}<div class="small"><b>${esc(nm[1])}</b></div>${g.notes.map((x) => `<div class="small">• ${esc(bi(x))}</div>`).join('')}</details>`; }).join('')}
-      <p class="small">⚖️ ${L('Papa samyam points', 'பாப சாம்யப் புள்ளிகள்')}: 👰 ${r.deep.papa.bride.total} · 🤵 ${r.deep.papa.groom.total}</p></div>
-    <div class="card glass"><div class="card-title">🌟 ${L('Key moments', 'முக்கிய தருணங்கள்')} <span class="pill">${esc(hz)}</span></div>
-      ${momentsHtml(r.moments)}</div>
-    ${r.strengths.length || r.challenges.length ? `<div class="card glass">${r.strengths.length ? `<p>💪 <b>${L('Strengths', 'பலங்கள்')}:</b> ${r.strengths.map((x) => esc(bi(x))).join(', ')}</p>` : ''}${r.challenges.length ? `<p>🌱 <b>${L('Grow together in', 'சேர்ந்து வளர வேண்டியவை')}:</b> ${r.challenges.map((x) => esc(bi(x))).join(', ')}</p>` : ''}</div>` : ''}
-    <div class="section-title">📅 ${L('Year by year', 'ஆண்டுவாரியாக')} — ${esc(hz)}</div>${timelineHtml(r.timeline, names)}
-    <div class="card glass"><div class="card-title">🪔 ${L('Optional practices for the couple', 'தம்பதியருக்கான விருப்ப வழிபாடுகள்')}</div>${r.remedies.map((x) => `<p class="small">• ${esc(bi(x))}</p>`).join('')}</div>
-    <button class="btn-gold" id="coupleRead">📜 ${L('Detailed explanation', 'விரிவான விளக்கம்')}</button>
-    <div class="card glass" id="coupleAi" hidden><div class="card-title"><span>📜 ${L('Reading', 'பலன்')}</span><button class="link-btn" id="coupleSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="coupleText"></div></div>`}
-    ${discussionHtml()}
+      <p class="small">⚖️ ${L('Papa samyam points', 'பாப சாம்யப் புள்ளிகள்')}: 👰 ${r.deep.papa.bride.total} · 🤵 ${r.deep.papa.groom.total}</p>
+      <div class="mini-label" style="margin-top:12px">📅 ${L('Year by year', 'ஆண்டுவாரியாக')} — ${esc(hz)}</div>${timelineHtml(r.timeline, names)}
+      <div class="mini-label" style="margin-top:12px">🪔 ${L('Optional practices for the couple', 'தம்பதியருக்கான விருப்ப வழிபாடுகள்')}</div>${r.remedies.map((x) => `<p class="small">• ${esc(bi(x))}</p>`).join('')}`}
+      <div class="mini-label" style="margin-top:12px">❓ ${L('Questions to ask an astrologer', 'ஜோதிடரிடம் கேட்க வேண்டியவை')}</div>
+      <ul class="mc-prompts">${mr.expertReviewQuestions.filter((q) => !q.expertApprovalPending).map((q) => `<li>${esc(bi(q))}</li>`).join('')}</ul>
+      <p class="small muted">ℹ️ ${esc(bi(mr.calculationEvidence.method))}</p>
+      ${locked ? '' : `<button class="btn-gold" id="coupleRead">📜 ${L('Detailed explanation', 'விரிவான விளக்கம்')}</button>
+      <div class="card glass" id="coupleAi" hidden><div class="card-title"><span>📜 ${L('Reading', 'பலன்')}</span><button class="link-btn" id="coupleSpeak" aria-label="Read aloud">🔊</button></div><div class="reply" id="coupleText"></div></div>`}
+    </details>
+    <div class="card glass mc-share"><div class="card-title">🔒 ${L('Share or print this report', 'இந்த அறிக்கையைப் பகிர் அல்லது அச்சிடு')}</div>
+      <p class="small muted">${L('Only after both people agree. A marriage context marked private is never included.', 'இருவரும் ஒப்புக்கொண்ட பின்பே. தனிப்பட்டதாகக் குறித்த திருமண நிலை ஒருபோதும் சேர்க்கப்படாது.')}</p>
+      ${SLOTS.map((slot, i) => permissionCheckbox(`mcPerm_${slot}`, `${nm[i]}: ${PERMISSION_LABEL()}`)).join('')}
+      <div class="mc-links"><button type="button" class="btn-gold" id="mcShare">📤 ${L('Share summary', 'சுருக்கத்தைப் பகிர்')}</button><button type="button" class="chip-btn" id="mcPrint">🖨️ ${L('Print / PDF', 'அச்சிடு / PDF')}</button></div></div>
     <p class="muted small center">${L('Marriage is made by love, respect and effort; astrology shows the seasons so you can prepare together.', 'திருமணம் அன்பு, மரியாதை, முயற்சியால் நிலைக்கிறது; ஜோதிடம் பருவங்களைக் காட்டி சேர்ந்து தயாராக உதவுகிறது.')}</p>`;
+  // Each checkbox is that person's own permission in the pair ledger; unticking revokes it.
+  SLOTS.forEach((slot) => $(`#mcPerm_${slot}`)?.addEventListener('change', (e) => {
+    coupleUi.ledger = e.target.checked
+      ? recordConsent(coupleUi.ledger, { participantId: slot, scopes: ['share', 'export'] })
+      : revokeConsent(coupleUi.ledger, { participantId: slot, scopes: ['share', 'export'] });
+    if (e.target.checked) $(`#mcPerm_${slot}Err`).hidden = true;
+  }));
+  /** hasConsent before any share / print: shows the first missing person's permission line. */
+  const consented = (scope) => {
+    if (hasConsent(coupleUi.ledger, coupleUi.ids, scope)) return true;
+    const miss = coupleUi.ids.find((id) => !hasConsent(coupleUi.ledger, [id], scope));
+    $(`#mcPerm_${miss}Err`).hidden = false;
+    $(`#mcPerm_${miss}`)?.focus();
+    return false;
+  };
+  $('#mcShare').addEventListener('click', () => {
+    if (!consented('share')) return;
+    const text = shareText(mr, nm);
+    if (navigator.share) { navigator.share({ text }).catch(() => {}); return; }
+    navigator.clipboard?.writeText(text).then(() => toast(L('Copied', 'நகலெடுக்கப்பட்டது'))).catch(() => {});
+  });
+  $('#mcPrint').addEventListener('click', () => {
+    if (!consented('export')) return;
+    $$('#coupleOut details').forEach((x) => { x.open = true; });
+    window.print();
+  });
   $('#coupleRead')?.addEventListener('click', async () => {
     $('#coupleAi').hidden = false;
     const t = $('#coupleText');
     t.classList.add('typing');
+    // The marriage context is never sent to the reading: it is not an astrological input.
     const context = {
       bride: { name: names[0].en, star: bride.chart.janmaNakshatra.name, rasi: bride.chart.janmaRasi.name, lagna: bride.chart.lagna?.rasiName },
       groom: { name: names[1].en, star: groom.chart.janmaNakshatra.name, rasi: groom.chart.janmaRasi.name, lagna: groom.chart.lagna?.rasiName },

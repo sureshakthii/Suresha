@@ -120,7 +120,7 @@ function splash() {
 
 function applyLang() {
   document.body.classList.toggle('ta', ta());
-  document.documentElement.lang = state.lang;
+  document.documentElement.lang = state.lang; document.documentElement.setAttribute('translate', 'no'); document.documentElement.classList.add('notranslate');
   $$('[data-i18n-en]').forEach((el) => { el.textContent = ta() ? el.dataset.i18nTa : el.dataset.i18nEn; });
   const text = { ta: BRAND.nameTa, upper: BRAND.nameUpper, tagline: BRAND.taglineTa, descriptor: BRAND.descriptorEn,
     'tagline-auto': ta() ? BRAND.taglineTa : BRAND.descriptorEn,

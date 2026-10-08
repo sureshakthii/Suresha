@@ -2735,3 +2735,7 @@ body.ta .easy-tm { grid-template-columns: minmax(0, .85fr) minmax(0, .85fr) minm
 
 /* Toast: a rounded box (not a pill) so wrapped text never turns it into a circle. */
 #toast { border-radius: 14px; width: max-content; line-height: 1.45; }
+
+/* Sidebar brand never spills into the page header, whatever the text length. */
+.sn-brand { max-width: 100%; overflow: hidden; }
+.sn-brand-txt, .sn-brand-txt * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

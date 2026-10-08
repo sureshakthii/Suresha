@@ -49,8 +49,9 @@ function appUrlFromEnv() {
 function launcherHtml(appUrl) {
   const target = appUrl.href.replace(/\/$/, '');
   return `<!doctype html>
-<html lang="ta">
+<html lang="ta" translate="no" class="notranslate">
 <head>
+<meta name="google" content="notranslate" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#3d0d1f" />
@@ -137,8 +138,9 @@ function wrapArtifactPage(page) {
   const head = page.slice(0, cut + '</style>'.length);
   const body = page.slice(cut + '</style>'.length);
   return `<!doctype html>
-<html lang="ta">
+<html lang="ta" translate="no" class="notranslate">
 <head>
+<meta name="google" content="notranslate" />
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#18131a" />

@@ -74,12 +74,12 @@ function renderPrivacy(sec) {
     <div class="card glass"><div class="card-title">${L('Your choices', 'உங்கள் தேர்வுகள்')}</div>
       ${CONSENT_KEYS.map((k) => `<label class="set-row"><span>${L(k.en, k.ta)}</span><input type="checkbox" data-consent="${k.id}"${(c[k.id] ?? k.def) ? ' checked' : ''}></label>`).join('')}
       <p class="small muted">${L('Microphone and location are requested only when you tap the mic or “use my location”.', 'மைக் அல்லது “என் இருப்பிடம்” அழுத்தும்போது மட்டுமே அனுமதி கேட்கப்படும்.')}</p></div>
-    <div class="card glass"><div class="card-title">${L('Your data', 'உங்கள் தரவு')}</div>
-      <button class="btn-soft" id="exportData">⬇️ ${L('Export all my data (JSON file)', 'என் அனைத்துத் தரவையும் ஏற்றுமதி செய் (JSON)')}</button>
-      <label>${L('Delete one profile', 'ஒரு சுயவிவரத்தை நீக்கு')}<select id="delWho">${state.family.map((m) => `<option value="${esc(m.id)}">${esc(displayName(m))}</option>`).join('')}</select></label>
-      <button class="btn-soft" id="delProfile"${state.family.length ? '' : ' disabled'}>🗑️ ${L('Delete selected profile', 'தேர்ந்த சுயவிவரத்தை நீக்கு')}</button>
-      <button class="btn-soft danger" id="delAll">⚠️ ${L('Delete everything on this phone' + (STATIC ? '' : ' and my account'), 'இந்தக் கைப்பேசியிலுள்ள அனைத்தையும்' + (STATIC ? '' : ', என் கணக்கையும்') + ' நீக்கு')}</button>
-      <p class="small muted">${L('Children’s profiles are kept on the phone and in your private backup only; they are never shared or used for analytics.', 'குழந்தைகளின் சுயவிவரங்கள் கைப்பேசியிலும் உங்கள் தனிப்பட்ட காப்பிலும் மட்டுமே; பகிரப்படாது, பகுப்பாய்வுக்குப் பயன்படாது.')}</p></div>
+    <details class="card glass"><summary class="card-title">${L('Your data & rights', 'உங்கள் தரவு & உரிமைகள்')}</summary>
+      <p class="small muted">${L('Your details stay on this phone. You can take a copy or remove everything at any time — this is your right under India’s data protection law.', 'உங்கள் விவரங்கள் இந்தக் கைப்பேசியிலேயே இருக்கும். எப்போது வேண்டுமானாலும் நகல் எடுக்கலாம் அல்லது அனைத்தையும் நீக்கலாம் — இது இந்தியத் தரவுப் பாதுகாப்புச் சட்டப்படி உங்கள் உரிமை.')}</p>
+      <button class="btn-soft" id="exportData">⬇️ ${L('Download a copy of my data', 'என் தரவின் நகலைப் பதிவிறக்குங்கள்')}</button>
+      <p class="small muted">${L('To remove one person, open Family and tap 🗑 next to their name.', 'ஒருவரை மட்டும் நீக்க, குடும்பம் பக்கத்தில் அவர் பெயருக்கு அருகிலுள்ள 🗑 அழுத்துங்கள்.')}</p>
+      <button class="btn-soft danger" id="delAll">⚠️ ${L('Delete everything on this phone' + (STATIC ? '' : ' and my account'), 'இந்தக் கைப்பேசியிலுள்ள அனைத்தையும்' + (STATIC ? '' : ', என் கணக்கையும்') + ' நீக்குங்கள்')}</button>
+      <p class="small muted">${L('Children’s profiles are kept on the phone and in your private backup only; they are never shared or used for analytics.', 'குழந்தைகளின் விவரங்கள் கைப்பேசியிலும் உங்கள் தனிப்பட்ட காப்பிலும் மட்டுமே; பகிரப்படாது, பகுப்பாய்வுக்குப் பயன்படாது.')}</p></details>
     <p class="small muted center">${L('Questions', 'கேள்விகள்')}: ${esc(L(supportContact('en'), supportContact('ta')))}</p>`;
   $$('[data-consent]', sec).forEach((x) => x.addEventListener('change', async () => {
     const cur = store.get('kj_consent', {}); cur[x.dataset.consent] = x.checked; store.set('kj_consent', cur);
@@ -100,13 +100,6 @@ function renderPrivacy(sec) {
     if (!STATIC && state.user) { try { account = await api('/api/me/export'); } catch { account = { error: 'server export unavailable' }; } }
     const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), app: BRAND.name, device: local, account }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'thunai-my-data.json'; a.click(); URL.revokeObjectURL(a.href);
-  });
-  $('#delProfile').addEventListener('click', () => {
-    const id = $('#delWho').value; const m = state.family.find((x) => x.id === id);
-    if (!m || !confirm(L(`Delete ${displayName(m)}'s profile? This cannot be undone.`, `${displayName(m)} சுயவிவரத்தை நீக்கவா? இதைத் திரும்பப் பெற முடியாது.`))) return;
-    state.family = state.family.filter((x) => x.id !== id);
-    if (state.activeId === id) state.activeId = state.family[0]?.id || null;
-    saveFamily(); toast(L('Profile deleted', 'சுயவிவரம் நீக்கப்பட்டது')); renderPrivacy(sec);
   });
   $('#delAll').addEventListener('click', async () => {
     if (!confirm(L('Delete all profiles, plans, reminders and settings from this phone' + (STATIC ? '' : ', and delete your account on our server') + '? This cannot be undone.', 'இந்தக் கைப்பேசியிலுள்ள அனைத்து சுயவிவரம், திட்டம், நினைவூட்டல், அமைப்புகளை' + (STATIC ? '' : ', சேவையகத்திலுள்ள உங்கள் கணக்கையும்') + ' நீக்கவா? இதைத் திரும்பப் பெற முடியாது.'))) return;

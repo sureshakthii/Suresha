@@ -1,5 +1,4 @@
 // Account: login (mobile OTP, email OTP, Facebook), family profiles and settings.
-import { FAITHS } from './shared/faith.js';
 import { searchLocalPlaces, placeLabel, placeText, offsetLabel, fromNominatim, nominatimUrl, zoneOffsetHours, nearestPlace, resolveTypedPlace } from './shared/places.js';
 import { initialOf } from './shared/relations.js';
 import { fmtBirth, fmtDay } from './shared/fmt.js';
@@ -387,7 +386,6 @@ function memberForm(m, first) {
       <label class="tw"${(m.timeCertainty || 'exact') === 'approx' ? '' : ' hidden'}>${L('Unsure by about', 'சுமார் எவ்வளவு மாறலாம்')}<select name="timeWindowMin">${[[15, '± 15 min', '± 15 நிமி'], [30, '± 30 min', '± 30 நிமி'], [60, '± 1 hour', '± 1 மணி'], [120, '± 2 hours', '± 2 மணி'], [240, '± 4 hours', '± 4 மணி']].map(([v, en, tx]) => `<option value="${v}"${Number(m.timeWindowMin || 60) === v ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label>
       <p class="small muted">${L('If you are not sure, say so — we will not guess a time. Calendar, temple and family tools work without it; time-sensitive results are limited or clearly marked.', 'உறுதியில்லையெனில் அப்படியே குறிப்பிடுங்கள் — நேரத்தை நாங்கள் ஊகிக்க மாட்டோம். நாட்காட்டி, கோவில், குடும்பக் கருவிகள் நேரமின்றி இயங்கும்; நேரம் சார்ந்த பலன்கள் வரம்புடன் / குறிப்புடன் காட்டப்படும்.')} <button type="button" class="link-btn" data-go="birthtime">${L('What depends on it?', 'எது இதைச் சார்ந்தது?')}</button></p>
     </fieldset>
-    <label>${L('Faith (optional — only changes greetings and prayer wording)', 'நம்பிக்கை (விருப்பம் — வாழ்த்து, பிரார்த்தனை சொற்கள் மட்டும் மாறும்)')}<select name="faith">${FAITHS.map(([v, en, tx]) => `<option value="${v}"${(m.faith || 'auto') === v ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label>
     <details class="life-details"${m.maritalStatus || m.children ? ' open' : ''}><summary>${L('Life details (optional — makes marriage and children answers accurate)', 'வாழ்க்கை விவரம் (விருப்பம் — திருமணம், குழந்தை பதில்களைத் துல்லியமாக்கும்)')}</summary>
       <div class="row2">
         <label>${L('Marital status', 'திருமண நிலை')}<select name="maritalStatus">${[['', '—', '—'], ['single', 'Not married', 'திருமணமாகவில்லை'], ['married', 'Married', 'திருமணமானவர்'], ['other', 'Separated / widowed', 'பிரிந்தவர் / துணையை இழந்தவர்']].map(([v, en, tx]) => `<option value="${v}"${(m.maritalStatus || '') === v ? ' selected' : ''}>${L(en, tx)}</option>`).join('')}</select></label>
@@ -706,7 +704,6 @@ function saveMember(f, names) {
   const m = {
     timeCertainty, timeWindowMin: timeCertainty === 'approx' ? Number(f.elements.timeWindowMin.value) : undefined, dstChoice, private: f.elements.private.checked || undefined,
     maritalStatus: f.elements.maritalStatus.value || undefined,
-    faith: f.elements.faith.value && f.elements.faith.value !== 'auto' ? f.elements.faith.value : undefined,
     marriedYear: /^(19|20)\d{2}$/.test(f.elements.marriedYear.value.trim()) ? Number(f.elements.marriedYear.value.trim()) : undefined,
     children: /^\d{1,2}$/.test(f.elements.children.value.trim()) ? Number(f.elements.children.value.trim()) : undefined,
     firstChildYear: /^(19|20)\d{2}$/.test(f.elements.firstChildYear.value.trim()) ? Number(f.elements.firstChildYear.value.trim()) : undefined,

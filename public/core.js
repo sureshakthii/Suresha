@@ -31,7 +31,10 @@ const legacy = store.get('kj_profile', null);
 // Old profiles saved only a UTC offset: attach the IANA zone when the place is in the built-in list (historical offsets).
 // Every profile carries its name in both scripts (shared/name-translit.js): older ones get the Tamil (or English)
 // spelling generated here; a Tamil spelling the person typed is never overwritten.
-const initialFamily = store.get('kj_family', legacy ? [{ id: 'me', relation: 'self', ...legacy }] : []).map((m) => withNameForms(attachZone(m)));
+// Thunai is a Hindu astrology app for everyone (owner decision, Oct 2026): a faith saved by older versions is ignored
+// and dropped here, so every profile gets the same Hindu content.
+export const dropFaith = (m) => { if (!m || typeof m !== 'object' || !('faith' in m)) return m; const { faith, ...rest } = m; return rest; };
+const initialFamily = store.get('kj_family', legacy ? [{ id: 'me', relation: 'self', ...legacy }] : []).map((m) => withNameForms(attachZone(dropFaith(m))));
 // Residence (kj_loc — where the person lives now) and an optional temporary travelling place (kj_travel).
 // Neither is ever a birth place: charts use each member's own birth place and zone. Every daily feature reads
 // state.loc = the travelling place while it is active, else the residence (shared/residence.js).
@@ -211,7 +214,7 @@ export const backupConsent = () => store.get('kj_consent', {}).backup ?? true;
 export { mergeAccountFamily };
 export function saveFamily() {
   // Fill the other-script name of any profile that lacks it (written-chart form, shared or restored profiles).
-  state.family.forEach((m, i) => { const n = withNameForms(m); if (n !== m) state.family[i] = n; });
+  state.family.forEach((m, i) => { const n = withNameForms(dropFaith(m)); if (n !== m) state.family[i] = n; });
   store.set('kj_family', state.family);
   store.set('kj_active', state.activeId);
   store.set('kj_ancestors', state.ancestors);

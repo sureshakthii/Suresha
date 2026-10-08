@@ -1,4 +1,4 @@
-// Daily companion: morning brief (age / faith rules, honest wording), Thunai diary storage and backup policy,
+// Daily companion: morning brief (age rules, Hindu content for everyone, honest wording), Thunai diary storage and backup policy,
 // share-card layout, prompt frequency caps and the one settings page that switches everything off.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -75,18 +75,22 @@ test('morning brief: minors get no adult topics and no fasting advice; a baby’
   assert.match(t.lines[1].text.ta, /பாடம்/, 'study window for a student');
 });
 
-test('morning brief: faith rules — other faiths never get a deity puja, mantra or fasting rule', () => {
+test('morning brief: Hindu-only — a profile once stored as Christian gets the same Hindu spiritual line as everyone', () => {
   for (const iso of DAYS) {
     const b = brief(MARY, iso);
     const s = b.lines[2];
     assert.equal(s.key, 'spirit');
-    assert.doesNotMatch(`${s.text.en} ${s.text.ta}`, /\bOm\b|ஓம்|puja|pooja|பூஜை|God of the day|இன்றைய தெய்வம்|temple|கோவில்|விரதம்|fast/i, `christian ${iso}: ${s.text.en}`);
-    assert.equal(b.faith, 'christian');
-    assert.ok(b.blessing && /God|கர்த்தர்/.test(b.blessing.en + b.blessing.ta));
+    assert.equal(s.icon, '🪔');
+    const plainMary = morningBrief({ chart: MARY.chart, member: { ...MARY, faith: undefined }, name: MARY.name, loc: LOC, now: instantAt(iso, '06:30', 5.5) });
+    assert.deepEqual(b, plainMary, `stored faith is ignored ${iso}`);
+    assert.ok(!('blessing' in b) && !('faith' in b), 'no other-faith blessing');
+    assert.doesNotMatch(`${s.text.en} ${s.text.ta}`, /own faith|God bless|கர்த்தர்|நம்பிக்கைப்படி/);
   }
-  // A Hindu person on an ordinary day gets the day's deity and mantra.
+  // On an ordinary day everyone gets the day's deity and mantra.
   const plain = DAYS.map((iso) => brief(ADULT, iso)).find((b) => !b.festival);
   assert.match(plain.lines[2].text.ta, /இன்றைய தெய்வம்/);
+  const maryPlain = DAYS.map((iso) => brief(MARY, iso)).find((b) => !b.festival);
+  assert.match(maryPlain.lines[2].text.ta, /இன்றைய தெய்வம்/);
   // Elders: fasting only if health allows.
   const ek = DAYS.map((iso) => brief(ELDER, iso)).find((b) => b.festival && /Ekadasi/.test(b.festival.name.en));
   if (ek) assert.match(ek.lines[2].text.en, /simple prayer is enough/);
@@ -98,15 +102,15 @@ test('morning brief without birth details: a general line that invites adding th
   assert.match(b.lines[0].text.ta, /பிறப்பு விவரம் சேர்த்தால்/);
 });
 
-test('evening lamp time is the sunset of the day and faith-aware', () => {
-  const r = sandhyaReminder({ loc: LOC, date: '2026-10-08', faith: 'hindu' });
+test('evening lamp time is the sunset of the day — the same sandhya deepam line for everyone', () => {
+  const r = sandhyaReminder({ loc: LOC, date: '2026-10-08' });
   const td = tamilDay(instantAt('2026-10-08', '12:00', 5.5), LOC.lat, LOC.lon, 5.5);
   assert.equal(r.at.getTime(), new Date(td.sunset).getTime());
   assert.match(r.text.ta, /விளக்கேற்றும்/);
-  assert.doesNotMatch(sandhyaReminder({ loc: LOC, date: '2026-10-08', faith: 'muslim' }).text.en, /deepam|lamp/i);
+  assert.match(sandhyaReminder({ loc: LOC, date: '2026-10-08', faith: 'muslim' }).text.en, /sandhya deepam/, 'an old faith option is ignored');
 });
 
-test('week ahead and month summaries: own good / care days, festivals for Hindus only, honest wording', () => {
+test('week ahead and month summaries: own good / care days, festivals for everyone, honest wording', () => {
   const w = weekAhead({ chart: ADULT.chart, loc: LOC, start: '2026-10-04', faith: 'hindu', member: ADULT, now: instantAt('2026-10-04', '06:30', 5.5) });
   assert.equal(w.start, '2026-10-04'); assert.equal(w.end, '2026-10-10');
   for (const d of w.care) assert.ok(d >= w.start && d <= w.end);
@@ -116,7 +120,8 @@ test('week ahead and month summaries: own good / care days, festivals for Hindus
   assert.ok(m.lines.some((l) => /தசை/.test(l.text.ta)), 'running dasa line for adults');
   assert.ok(m.festivals.some((f) => /Deepavali/.test(f.name.en)));
   const mm = monthAhead({ chart: MARY.chart, loc: LOC, month: '2026-11', faith: 'christian', member: MARY });
-  assert.ok(!mm.lines.some((l) => /Deepavali|தீபாவளி/.test(l.text.en + l.text.ta)), 'no Hindu festival list for other faiths');
+  assert.ok(mm.festivals.some((f) => /Deepavali/.test(f.name.en)), 'festival list for everyone (old stored faith ignored)');
+  assert.deepEqual(mm.lines, monthAhead({ chart: MARY.chart, loc: LOC, month: '2026-11', member: MARY }).lines);
   const tm = monthAhead({ chart: TEEN.chart, loc: LOC, month: '2026-11', faith: 'hindu', member: TEEN });
   assert.ok(!tm.lines.some((l) => /Dasa|தசை/.test(l.text.en + l.text.ta)), 'minor: no dasa line');
   for (const x of [w, m, mm, tm]) assert.deepEqual(findProhibited(x), []);

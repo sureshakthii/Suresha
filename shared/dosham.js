@@ -1,7 +1,7 @@
 // Dosham diagnosis & Nivarthi engine (தோஷங்கள் & நிவர்த்தி).
 // Reads a natal chart the way a senior Tamil jothidar would: which traditional doshams are present, how strong
 // (mild / moderate / strong — counted from house, dignity, aspects and cancellations), what each is traditionally read
-// as delaying, whether it is "active now" in the running Dasa / Bhukti and when it eases — and a faith-aware Nivarthi
+// as delaying, whether it is "active now" in the running Dasa / Bhukti and when it eases — and a Nivarthi
 // plan (parigara sthalam, day / time, best period, home practice, charity, what NOT to do).
 //
 // Product rules (docs/AI-SAFETY-POLICY.md §"Dosham & remedy framing"): no fear wording ("தோஷம் சாபம் அல்ல — நிவர்த்தி
@@ -22,8 +22,8 @@ import { transitStatus } from './analysis.js';
 import { runningDasa } from './daily.js';
 import { NAVAGRAHA } from './remedies.js';
 import { TEMPLES } from './temples.js';
-import { isHinduFaith, universalPractice, faithBlessing, TRADITIONAL_OPTIONAL, CHILD_PRACTICE } from './faith.js';
-import { AREAS, PLANET_NIVARTHI, DOSHAM_KINDS, AVOID, FRAMING, SEVERITY, WEEKDAY, DOSHAM_DATA_VERSION } from './dosham-data.js';
+import { CHILD_PRACTICE } from './age-guard.js';
+import { AREAS, PLANET_NIVARTHI, DOSHAM_KINDS, AVOID, FRAMING, SEVERITY, DOSHAM_DATA_VERSION } from './dosham-data.js';
 
 export { AREAS, FRAMING, SEVERITY, AVOID, DOSHAM_KINDS, PLANET_NIVARTHI };
 export const DOSHAM_ENGINE_VERSION = 'dosham-0.1-proposed';
@@ -512,12 +512,10 @@ function sthalam(id, why, todo) {
 }
 
 /**
- * The Nivarthi plan for one diagnosed item. opts: { faith, traditional (another faith opted into Hindu content) }.
- * Hindu (or Auto): sthalams (dosham-specific first, then each planet's Navagraha sthalam), day / time, best period,
- * home hymn & practice, charity, avoid-list. Another faith: own-faith practice per planet + charity + avoid-list;
- * the Hindu sthalams only as `traditional` (marked optional) when opted in.
+ * The Nivarthi plan for one diagnosed item, the same for every person: sthalams (dosham-specific first, then each
+ * planet's Navagraha sthalam), day / time, best period, home hymn & practice, charity, avoid-list.
  */
-export function nivarthiPlan(it, { faith = 'hindu', traditional = false } = {}) {
+export function nivarthiPlan(it) {
   const def = DOSHAM_KINDS[it.kind];
   const planets = it.planets.filter((k) => PLANET_NIVARTHI[k]);
   const temples = [];
@@ -542,31 +540,22 @@ export function nivarthiPlan(it, { faith = 'hindu', traditional = false } = {}) 
     : it.timing?.next ? T(`Before ${periodName(it.timing.next).en} begins (${monthYear(it.timing.next.start).en}).`, `${periodName(it.timing.next).ta} தொடங்கும் முன் (${monthYear(it.timing.next.start).ta}).`)
       : T('Any time — a steady weekly practice matters more than one big visit.', 'எப்போது வேண்டுமானாலும் — ஒரு பெரிய பயணத்தைவிட வாராந்திர வழக்கமே முக்கியம்.');
   const doctor = it.areas.includes('children') ? DOSHAM_KINDS.putra.doctor : null;
-  const hindu = isHinduFaith(faith);
-  const plan = { kind: it.kind, faith: hindu ? 'hindu' : faith, day, period, charity, avoid: AVOID, doctor, framing: [FRAMING.notCurse, FRAMING.belief] };
-  if (hindu) return { ...plan, sthalams: temples, home, yatra: temples.map((t) => t.id).slice(0, 4), universal: [] };
-  return {
-    ...plan, sthalams: [], home: [], yatra: [], day: lead && PLANET_NIVARTHI[lead].day != null ? WEEKDAY[PLANET_NIVARTHI[lead].day] : null,
-    universal: uniq(planets).map((k) => ({ planet: k, ...universalPractice(k) })), blessing: faithBlessing(faith) || faithBlessing('other'),
-    traditional: traditional ? { note: TRADITIONAL_OPTIONAL, optional: true, sthalams: temples } : null,
-  };
+  return { kind: it.kind, day, period, charity, avoid: AVOID, doctor, framing: [FRAMING.notCurse, FRAMING.belief], sthalams: temples, home, yatra: temples.map((t) => t.id).slice(0, 4) };
 }
 
 /** The one dosham-based sthalam to show first (Parigaram screen, Today card), or null. */
-export function primarySthalam(diag, { faith = 'hindu' } = {}) {
-  if (!isHinduFaith(faith)) return null;
+export function primarySthalam(diag) {
   const it = (diag?.items || []).find((x) => !x.current) || diag?.items?.[0];
   if (!it) return null;
-  const p = nivarthiPlan(it, { faith });
+  const p = nivarthiPlan(it);
   const s = p.sthalams[0];
   return s ? { item: it, sthalam: s, day: p.day, yatra: p.yatra } : null;
 }
 
 /** All temple ids across the plan for the top items (for one-tap "plan this parigara yatra"). */
-export function yatraIds(diag, { faith = 'hindu', max = 5 } = {}) {
-  if (!isHinduFaith(faith)) return [];
+export function yatraIds(diag, { max = 5 } = {}) {
   const ids = [];
-  for (const it of (diag?.items || []).filter((x) => x.severity !== 'mild' || !x.disputed)) for (const id of nivarthiPlan(it, { faith }).yatra) if (!ids.includes(id)) ids.push(id);
+  for (const it of (diag?.items || []).filter((x) => x.severity !== 'mild' || !x.disputed)) for (const id of nivarthiPlan(it).yatra) if (!ids.includes(id)) ids.push(id);
   return ids.slice(0, max);
 }
 
@@ -575,11 +564,11 @@ const nameOf = (it) => it.name;
 const joinT = (arr, sepEn = ', ', sepTa = ', ') => T(arr.map((x) => x.en).join(sepEn), arr.map((x) => x.ta).join(sepTa));
 
 /**
- * A senior jothidar's reading of the diagnosis, as paragraphs [{ en, ta }]. opts: { name, faith, focus (area) }.
+ * A senior jothidar's reading of the diagnosis, as paragraphs [{ en, ta }]. opts: { name, focus (area) }.
  * Order: framing → key afflictions in order → how they combine (by life area) → cancellations → timing → remedy
  * summary (planets and sthalams) → belief framing (and the fertility-specialist line when children are involved).
  */
-export function expertView(diag, { name = '', faith = 'hindu', focus = null, married = false } = {}) {
+export function expertView(diag, { name = '', focus = null, married = false } = {}) {
   const P = [];
   const who = name ? T(`${name}'s chart`, `${name} — ஜாதகம்`) : T('This chart', 'இந்த ஜாதகம்');
   if (!diag?.available) return { title: T('Expert view', 'நிபுணர் பார்வை'), paras: [T('Birth details are needed for a dosham reading.', 'தோஷம் பார்க்கப் பிறப்பு விவரம் தேவை.')] };
@@ -636,7 +625,7 @@ export function expertView(diag, { name = '', faith = 'hindu', focus = null, mar
     else P.push(T(`Timing: ${runTxt.en} None of these is in focus in the running period — a good time to do the parigaram calmly, before they come into focus.`, `காலம்: ${runTxt.ta} நடப்புக் காலத்தில் இவை எதுவும் முன்னிலையில் இல்லை — அவை முன்னுக்கு வரும் முன், அமைதியாகப் பரிகாரம் செய்ய ஏற்ற நேரம்.`));
     if (diag.guru) P.push(diag.guru.text);
     // Remedy summary
-    if (isHinduFaith(faith)) {
+    {
       const main = items.filter((x) => x.severity !== 'mild' || items.length <= 3);
       const planets = uniq(main.flatMap((x) => x.planets)).filter((k) => PLANET_NIVARTHI[k]).slice(0, 6);
       const pl = planets.map((k) => { const t = templeById(PLANET_NIVARTHI[k].temple); return T(`${k} — ${t.name.en}`, `${pTa(k)} — ${t.name.ta}`); });
@@ -647,8 +636,6 @@ export function expertView(diag, { name = '', faith = 'hindu', focus = null, mar
       if (main.some((x) => x.kind === 'pitru')) extra.push(T('for ancestors: Rameswaram / Thilatharpanapuri on Amavasai', 'முன்னோர்களுக்கு: அமாவாசையில் ராமேஸ்வரம் / திலதர்ப்பணபுரி'));
       if (pl.length) P.push(T(`Nivarthi: ${extra.length ? `${joinT(extra, '; ', '; ').en}; and ` : ''}parigaram for ${planets.join(', ')} — ${joinT(pl, '; ', '; ').en}. Begin with the free weekly practice at home (lamp, hymn, charity) and add the temple visits on the planet's day.`,
         `நிவர்த்தி: ${extra.length ? `${joinT(extra, '; ', '; ').ta}; மேலும் ` : ''}${planets.map(pTa).join(', ')} கிரகங்களுக்குப் பரிகாரம் — ${joinT(pl, '; ', '; ').ta}. வீட்டில் இலவச வாராந்திர வழிபாட்டுடன் (தீபம், தோத்திரம், தானம்) தொடங்கி, கிரகத்துக்குரிய நாளில் கோவில் தரிசனம் சேர்த்துக்கொள்ளுங்கள்.`));
-    } else {
-      P.push(T('Nivarthi in your own faith: steady prayer, charity on the planet\'s day and the practical steps below — temple rituals are not required.', 'உங்கள் நம்பிக்கைப்படி நிவர்த்தி: தொடர் பிரார்த்தனை, கிரகத்துக்குரிய நாளில் தானம், கீழுள்ள நடைமுறை வழிகள் — கோவில் சடங்குகள் தேவையில்லை.'));
     }
   }
   if (diag.needsTime?.length) P.push(T(`With the birth time, Thunai can also read the Lagna-based doshams (${diag.needsTime.slice(0, 4).map((n) => n.en).join(', ')}…).`, `பிறந்த நேரம் தெரிந்தால் லக்ன அடிப்படையிலான தோஷங்களையும் (${diag.needsTime.slice(0, 4).map((n) => n.ta).join(', ')}…) பார்க்கலாம்.`));
@@ -659,6 +646,6 @@ export function expertView(diag, { name = '', faith = 'hindu', focus = null, mar
 /** Every user-facing string the engine can produce for a diagnosis (for the prohibited-word scan in tests). */
 export function allText(diag, opts = {}) {
   const out = [expertView(diag, opts)];
-  for (const it of diag.items || []) out.push(it, nivarthiPlan(it, opts));
+  for (const it of diag.items || []) out.push(it, nivarthiPlan(it));
   return out;
 }

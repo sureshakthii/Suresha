@@ -60,7 +60,7 @@ export function mergeAccountFamily(remote, local) {
 
 // ---------------------------------------------------------------- shared family (server/family.js)
 // Sharing a profile with a family group sends ONLY the birth details a chart needs. Never private profiles,
-// never chats, health notes, goals, marital or children notes, faith or any other field.
+// never chats, health notes, goals, marital or children notes or any other field.
 
 /** Fields copied into a family share — birth data for the chart and the name to show. */
 export const SHARE_FIELDS = ['id', 'name', 'nameTa', 'nameDisplay', 'relation', 'gender', 'date', 'time', 'timeCertainty', 'timeWindowMin', 'dstChoice', 'place', 'lat', 'lon', 'tz', 'zone', 'kattam'];

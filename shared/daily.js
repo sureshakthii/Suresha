@@ -5,7 +5,6 @@ import { RASIS, NAKSHATRAS, PLANETS, moonSidereal } from './astro.js';
 import { PLANET_DEITY, DEITY_MANTRA, STAR_DEITY } from './personal.js';
 import { PRIMARY } from './remedies.js';
 import { ageProfile } from './age-guard.js';
-import { isHinduFaith, universalPractice, faithBlessing } from './faith.js';
 const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 const T = (en, ta) => ({ en, ta });
@@ -113,8 +112,7 @@ export function dayVerdict(chart, snap, now = new Date()) {
  * Today's personal review from gochara: Chandra balam, Tara balam, Chandrashtamam, weekday lord vs Dasa,
  * plus do's and don'ts, today's deity and the closing prayer.
  */
-export function dailyReview(chart, snap, now = new Date(), { faith = 'hindu' } = {}) {
-  const hindu = isHinduFaith(faith);
+export function dailyReview(chart, snap, now = new Date()) {
   const wd = snap.weekday.index;
   const dayLord = WEEKDAY_LORD[wd];
   const deity = DAY_DEITY[wd];
@@ -133,13 +131,13 @@ export function dailyReview(chart, snap, now = new Date(), { faith = 'hindu' } =
   if (TARA_GOOD.has(taraN)) { why.push(T(`Tara balam: today's star ${NAKSHATRAS[snap.nakshatra.index].en} is ${taraName.en} tara for you — favourable`, `தாரா பலம்: இன்றைய ${NAKSHATRAS[snap.nakshatra.index].ta} உங்களுக்கு ${taraName.ta} தாரை — சாதகம்`)); }
   else if (TARA_BAD.has(taraN)) { why.push(T(`Today's star ${NAKSHATRAS[snap.nakshatra.index].en} is ${taraName.en} tara for you — avoid new beginnings`, `இன்றைய ${NAKSHATRAS[snap.nakshatra.index].ta} உங்களுக்கு ${taraName.ta} தாரை — புதிய தொடக்கம் தவிர்க்கவும்`)); }
   else why.push(T(`Today's star is your Janma tara — keep the day simple`, `இன்று உங்கள் ஜென்ம தாரை — எளிமையாக நடத்துங்கள்`));
-  if (md && md === dayLord) { why.push(hindu ? T(`Today is ruled by ${dayLord}, your Dasa lord — a good day to pray to ${PLANET_DEITY[md].en}`, `இன்று ${snap.weekday.ta} — ${PLANETS[dayLord].ta}, உங்கள் தசா நாதர்; ${PLANET_DEITY[md].ta} வழிபாட்டுக்கு உகந்த நாள்`) : T(`Today is ruled by ${dayLord}, your Dasa lord — a good day for prayer in your own faith`, `இன்று ${snap.weekday.ta} — ${PLANETS[dayLord].ta}, உங்கள் தசா நாதர்; உங்கள் நம்பிக்கைப்படி பிரார்த்தனைக்கு உகந்த நாள்`)); }
+  if (md && md === dayLord) { why.push(T(`Today is ruled by ${dayLord}, your Dasa lord — a good day to pray to ${PLANET_DEITY[md].en}`, `இன்று ${snap.weekday.ta} — ${PLANETS[dayLord].ta}, உங்கள் தசா நாதர்; ${PLANET_DEITY[md].ta} வழிபாட்டுக்கு உகந்த நாள்`)); }
 
 
   const dos = [];
   const donts = [];
   if (chandrashtamam) {
-    dos.push(T('Stay patient, speak softly, finish routine work', 'பொறுமை, மென்மையான பேச்சு, வழக்கமான வேலைகளை முடியுங்கள்'), hindu ? T('Pray to Ambal / Shiva and keep the mind calm', 'அம்பாள் / சிவனை வழிபட்டு மனதை அமைதியாக வைக்கவும்') : T('Take a few quiet minutes of prayer in your own faith and keep the mind calm', 'உங்கள் நம்பிக்கைப்படி சில நிமிட அமைதியான பிரார்த்தனை; மனதை அமைதியாக வைக்கவும்'));
+    dos.push(T('Stay patient, speak softly, finish routine work', 'பொறுமை, மென்மையான பேச்சு, வழக்கமான வேலைகளை முடியுங்கள்'), T('Pray to Ambal / Shiva and keep the mind calm', 'அம்பாள் / சிவனை வழிபட்டு மனதை அமைதியாக வைக்கவும்'));
     donts.push(T('No big decisions, signatures or new ventures', 'பெரிய முடிவு, கையெழுத்து, புதிய முயற்சி வேண்டாம்'), T('Avoid arguments and risky travel', 'வாக்குவாதம், அபாயப் பயணம் தவிர்க்கவும்'));
   } else if (level === 'great' || level === 'good') {
     dos.push(T('Start important work, meetings or purchases (outside Rahu Kalam)', 'முக்கிய வேலை, சந்திப்பு, வாங்குதல் தொடங்கலாம் (ராகு காலம் தவிர்த்து)'), T('Reach out to people — your words carry weight today', 'மக்களைத் தொடர்பு கொள்ளுங்கள் — இன்று உங்கள் சொல்லுக்கு மதிப்பு'));
@@ -199,11 +197,7 @@ export function dailyReview(chart, snap, now = new Date(), { faith = 'hindu' } =
   return {
     personal: true, minor: childAge < 18, starNature: cls, level, label, score, chandra, chandrashtamam, tara: { n: taraN, name: taraName }, why, dos, donts,
     deity, dayLord, starDeity: STAR_DEITY[js], dasaDeity: md ? { planet: md, name: PLANET_DEITY[md], mantra: DEITY_MANTRA[md] } : null,
-    // Faith: a Hindu closing prayer only for Hindus; others get a practice for every faith and their own blessing.
-    faith: hindu ? 'hindu' : faith,
-    prayer: hindu ? closingPrayer(chart, now) : null,
-    practice: hindu ? null : universalPractice(md || dayLord),
-    blessing: hindu ? null : faithBlessing(faith),
+    prayer: closingPrayer(chart, now),
     nextChandrashtamam: nextChandrashtamam(jr, now),
   };
 }

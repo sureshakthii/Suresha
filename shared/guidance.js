@@ -14,7 +14,6 @@ import { luckyNumbers } from './personal.js';
 import { predictEvent } from './predict.js';
 import { healthGuide } from './health.js';
 import { closingPrayer, runningDasa } from './daily.js';
-import { faithBlessing, universalPractice, isHinduFaith } from './faith.js';
 import { tamilDay } from './tamilcal.js';
 import { TEMPLES } from './temples.js';
 import { ageProfile, topicAllowed, ageGuardAnswer, facilitationCheck, policyAnswer, reviewedAnswer, childFeelingsAsked, REVIEWED_TEXT, LIMITS_LINE } from './age-guard.js';
@@ -120,7 +119,7 @@ export function chartFacts(chart, rel, now = new Date()) {
   const bh = run.ad || null;
   const ruled = (k) => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((h) => lordOf(from, h) === k);
   let transit = null;
-  try { transit = transitStatus(chart, now, { faith: rel?.faith }); } catch { /* transit needs the ephemeris; skip if unavailable */ }
+  try { transit = transitStatus(chart, now); } catch { /* transit needs the ephemeris; skip if unavailable */ }
   return {
     now,
     chart,
@@ -342,7 +341,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
     if (age == null || !f) return false;
     const gTopic = GUARD_TOPIC[intent];
     if (gTopic && !topicAllowed(gTopic, ageP)) {
-      const g = ageGuardAnswer({ topic: gTopic, profile: ageP, lang, name, faith: life.faith });
+      const g = ageGuardAnswer({ topic: gTopic, profile: ageP, lang, name });
       for (const sx of g.sections) add(sx.key === 'dos' ? 'practice' : sx.key === 'prayer' ? 'next' : sx.key === 'note' ? 'support' : 'answer', ...sx.lines);
       return true;
     }
@@ -389,9 +388,7 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
       add('support', L('I understand this worry — it comes to many of us, especially when someone we love is unwell.', 'இந்தக் கவலை புரிகிறது — அன்புக்குரியவர் உடல்நலம் சரியில்லாதபோது பலருக்கும் இது வரும்.'));
       add('interpretation', L('Thunai does not predict death, lifespan or the timing of anyone’s passing. Traditional texts are not a reliable basis for that, and such predictions cause real fear.', 'மரணம், ஆயுட்காலம், யாருடைய மறைவின் நேரத்தையும் துணை கணிக்காது. அதற்குப் பாரம்பரிய நூல்கள் நம்பகமான அடிப்படை அல்ல; அத்தகைய கணிப்புகள் உண்மையான பயத்தை உண்டாக்கும்.'));
       add('next', L('If you are worried about your own or a loved one’s health, a doctor’s check-up is the right next step. I can help with a prayer for well-being or a calm day plan.', 'உங்கள் அல்லது அன்புக்குரியவரின் உடல்நலம் பற்றிக் கவலை என்றால், மருத்துவப் பரிசோதனையே சரியான அடுத்த படி. நலனுக்கான வழிபாடு அல்லது அமைதியான நாள் திட்டத்திற்கு உதவுகிறேன்.'));
-      add('practice', isHinduFaith(life.faith)
-        ? L('Optional: the Mahamrityunjaya mantra or lighting a lamp at home, simply as a prayer for peace and well-being.', 'விருப்பம்: அமைதி, நலனுக்கான பிரார்த்தனையாக மகா மிருத்யுஞ்ஜய மந்திரம் அல்லது வீட்டில் தீபம்.')
-        : L('Optional: a quiet prayer in your own faith for peace and well-being, and time spent with the people you love.', 'விருப்பம்: உங்கள் நம்பிக்கைப்படி அமைதி, நலனுக்காக ஒரு சிறு பிரார்த்தனை; அன்புக்குரியவர்களுடன் நேரம்.'));
+      add('practice', L('Optional: the Mahamrityunjaya mantra or lighting a lamp at home, simply as a prayer for peace and well-being.', 'விருப்பம்: அமைதி, நலனுக்கான பிரார்த்தனையாக மகா மிருத்யுஞ்ஜய மந்திரம் அல்லது வீட்டில் தீபம்.'));
       add('ask', L('Would you like a calm daily routine or a short prayer for peace of mind?', 'மன அமைதிக்கு ஒரு அமைதியான தினசரி வழக்கம் அல்லது சிறு பிரார்த்தனை வேண்டுமா?'));
       break;
     }
@@ -720,15 +717,8 @@ export function composeAnswer({ question, lang: appLang = 'ta', facts: f = null,
   if (!S.answer?.length) { const src = ['support', 'interpretation', 'next'].find((k) => S[k]?.length); if (src) S.answer = [S[src].shift()]; }
   // Close with the deities of the person's running Dasa and Bhukti lords (not after a crisis or a medical alarm).
   if (f?.chart && !['crisis', 'death', 'pain', 'abuse', 'missing'].includes(intent)) {
-    if (life.faith && life.faith !== 'hindu') {
-      // Other faiths: a blessing in their own faith and practices that suit every faith.
-      const bl = faithBlessing(life.faith);
-      if (bl) add('prayer', tr(bl));
-      if (S.practice?.length) S.practice = [tr(universalPractice(f.weakest?.[0]?.planet || f.dasa?.lord))];
-    } else {
-      const pr = closingPrayer(f.chart, f.now ? new Date(f.now) : new Date());
-      if (pr) add('prayer', `🙏 ${pr.lines.map((x) => tr(x)).join(' · ')}`);
-    }
+    const pr = closingPrayer(f.chart, f.now ? new Date(f.now) : new Date());
+    if (pr) add('prayer', `🙏 ${pr.lines.map((x) => tr(x)).join(' · ')}`);
   }
   const order = ['question', 'answer', 'support', 'factors', 'interpretation', 'uncertainty', 'facts', 'practice', 'next', 'ask', 'prayer'];
   const sections = order.filter((k) => S[k]?.length).map((k) => ({ key: k, title: tr(SECTION_TITLES[k]), lines: S[k] }));

@@ -1,5 +1,6 @@
 // Ask Thunai — everyday questions found in the final release QA: safety phrasings in Tanglish, the baby's sex,
-// small talk, "what is my Rasi / Lagnam", General-mode festival questions, hymns, other faiths, Sade Sati length.
+// small talk, "what is my Rasi / Lagnam", General-mode festival questions, hymns, other-religion questions (Thunai is
+// Hindu-only — owner decision, Oct 2026), Sade Sati length.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -17,6 +18,7 @@ await A.loadGeneralKB();
 const { birthChart } = await import(pathToFileURL(path.join(root, 'shared/astro.js')).href);
 const { chartFacts } = await import(pathToFileURL(path.join(root, 'shared/guidance.js')).href);
 const { timeReliability } = await import(pathToFileURL(path.join(root, 'shared/birthtime.js')).href);
+const { findProhibited } = await import(pathToFileURL(path.join(root, 'shared/themes.js')).href);
 
 const NOW = new Date('2026-10-07T06:00:00Z');
 const LOC = { lat: 13.0827, lon: 80.2707, tz: 5.5, name: 'Chennai' };
@@ -28,11 +30,12 @@ function person(m) {
 }
 const ADULT = person({ id: 'me', relation: 'self', name: 'Karthik', gender: 'male', date: '1996-02-11', time: '07:40:00', timeCertainty: 'exact', maritalStatus: 'single' });
 const KID = person({ id: 'kid', relation: 'daughter', name: 'Meena', gender: 'female', date: '2018-06-03', time: '11:20:00', timeCertainty: 'exact' });
+// A profile saved by an older version with faith 'christian': the stored value is ignored — everyone gets Hindu content.
 const XIAN = person({ id: 'john', relation: 'self', name: 'John', gender: 'male', date: '1990-12-02', time: '14:05:00', timeCertainty: 'exact', faith: 'christian' });
 const ask = (p, text, { lang = 'en', mode = 'chart' } = {}) => A.askThunai({
   text, chart: p.chart, rel: p.rel, facts: p.facts, lang, name: p.m.name, today: TODAY, now: NOW, loc: LOC, mode, profile: p.prof,
   speaker: p.m.relation === 'self' ? p.prof : null,
-  life: { memberId: p.m.id, relation: p.m.relation, gender: p.m.gender, faith: p.m.faith || 'hindu', maritalStatus: p.m.maritalStatus, birthDate: p.m.date },
+  life: { memberId: p.m.id, relation: p.m.relation, gender: p.m.gender, faith: p.m.faith, maritalStatus: p.m.maritalStatus, birthDate: p.m.date },
 });
 
 test('crisis and lifespan phrasings in English and Tanglish get help / a decline, never a reading', () => {
@@ -104,15 +107,20 @@ test('General mode: festival questions that name Saturday or a family word are a
   assert.equal(ask(ADULT, 'enaku kalyanam eppo', { lang: 'ta', mode: 'general' }).intent, 'mode_switch');
 });
 
-test('another faith: church needs no muhurtham, Christian dates are given, no Hindu temples suggested', () => {
-  const a = ask(XIAN, 'naan church ku pogalaama sunday');
-  assert.equal(a.intent, 'faith_place');
-  assert.doesNotMatch(a.text, /Temple|கோவில்/);
+test('Hindu-only app: a church / mosque question gets an honest "not covered" answer; plain festival dates stay factual', () => {
+  for (const q of ['naan church ku pogalaama sunday', 'Can I go to the mosque on Friday?']) {
+    const a = ask(XIAN, q);
+    assert.equal(a.intent, 'not_covered', q);
+    assert.match(a.text, /Hindu astrology app/, q);
+    assert.doesNotMatch(a.text, /God bless|Allah|கர்த்தர்|own faith/i, q);
+    assert.equal(findProhibited(a.text).length, 0, q);
+  }
+  // "When is Christmas / Easter?" is general knowledge: the date only, no practice from another religion.
   assert.match(ask(XIAN, 'Christmas 2026 eppo').text, /25 Dec 2026/);
   assert.match(ask(XIAN, 'When is Easter 2027?').text, /28 Mar 2027/);
+  // No per-faith festival list any more: the month's festivals come from the Hindu calendar for everyone.
   const f = ask(XIAN, 'Which festival should I celebrate this month?');
-  assert.match(f.text, /Christmas/);
-  assert.doesNotMatch(f.text, /Pradosham|Amavasai/);
+  assert.doesNotMatch(f.text, /All Saints|your faith’s calendar|church \/ mosque/);
 });
 
 test('a parent asking on a young child’s profile: "en ponnu" is the child herself, and no reply talks down to the parent', () => {
@@ -145,12 +153,13 @@ test('pilgrimage timing is answered as timing (days, season, elder care, journey
   assert.doesNotMatch(b.text, /good days by the star are/);
 });
 
-test('another faith asking for a parigaram gets a full practice in their own tradition', () => {
+test('a profile once saved as Christian asking for a parigaram gets the Hindu parigaram like everyone else', () => {
   const a = ask(XIAN, 'pariharam enna seyyanum', { lang: 'ta' });
-  assert.equal(a.intent, 'remedy');
-  assert.match(a.text, /ஜெபி/);
-  assert.match(a.text, /14416/);
-  assert.doesNotMatch(a.text, /\/100|தொடர்புடைய ஜாதகக் காரணிகள்/);
+  const h = ask(person({ ...XIAN.m, faith: undefined }), 'pariharam enna seyyanum', { lang: 'ta' });
+  assert.equal(a.text, h.text, 'the stored faith changes nothing');
+  assert.doesNotMatch(a.text, /ஜெபி|கர்த்தர்|வேதாகம|உங்கள் சொந்த நம்பிக்கை/);
+  assert.match(a.text, /பரிகார|வழிபாடு|தீபம்/);
+  assert.equal(findProhibited(a.text).length, 0);
 });
 
 test('writing property to a child is a documentation / registration answer, not house-buying', () => {

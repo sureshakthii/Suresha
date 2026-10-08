@@ -4,7 +4,6 @@
 // clear, positive actions — with the reason for each. Built only from engine facts; runs on device and server.
 import { PLANETS } from './astro.js';
 import { NAVAGRAHA, grahaStrength } from './remedies.js';
-import { isHinduFaith, universalPractice, CHILD_PRACTICE } from './faith.js';
 import { planetAdjTa, WEEKDAYS_TA } from './fmt.js';
 
 const T = (en, ta) => ({ en, ta });
@@ -45,11 +44,11 @@ const ENERGY = {
 };
 
 /**
- * @param {object} p { chart, snap (panchang), festivals: [{en,ta}], level ('great'|'good'|'steady'|'care'), now, faith, age,
+ * @param {object} p { chart, snap (panchang), festivals: [{en,ta}], level ('great'|'good'|'steady'|'care'), now, age,
  *   dasaSure (false when the birth time is unknown and the running Dasa may differ — the reason is then hedged) }
  * @returns {{ energy, items:[{icon,title,text,personal,at?}], horai:{planet,start,end,text,weeks}|null }}
  */
-export function todayPlan({ chart, snap, festivals = [], level = 'steady', now = new Date(), faith = 'hindu', age = 30, dasaSure = true }) {
+export function todayPlan({ chart, snap, festivals = [], level = 'steady', now = new Date(), age = 30, dasaSure = true }) {
   const dayIdx = Math.floor(now.getTime() / 86400000);
   const energy = ENERGY[level][dayIdx % ENERGY[level].length];
   const items = [];
@@ -57,7 +56,6 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
   const md = per?.lord;
   const ad = per?.bhuktis?.find((b) => new Date(b.start) <= now && now < new Date(b.end))?.lord;
   const lords = [md, ad].filter(Boolean);
-  const hindu = isHinduFaith(faith);
 
   // Saturn's transit from the birth Moon: Ezharai (12th, 1st, 2nd) or Ashtama (8th).
   let saniNote = null;
@@ -72,7 +70,6 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
   const used = new Set();
   for (const fe of [...festivals].sort((a, b) => b.en.length - a.en.length)) {
     const s = SACRED.find((x) => x.re.test(fe.en));
-    if (!hindu) continue;
     if (s && used.has(s)) continue;
     if (s) used.add(s);
     if (!s) { items.push({ icon: '🎉', title: T(`Today: ${fe.en}`, `இன்று ${fe.ta}`), text: T('Celebrate with family and visit a temple if you can.', 'குடும்பத்துடன் கொண்டாடி, முடிந்தால் கோவில் தரிசனம்.') }); continue; }
@@ -102,19 +99,17 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
     const n = NAVAGRAHA[planet];
     if (planet === 'Rahu' && snap?.rahuKalam) {
       horai = { planet, start: snap.rahuKalam.start, end: snap.rahuKalam.end, weeks: 9,
-        text: hindu ? T('During Rahu Kalam light a lamp for Goddess Durga — the traditional practice for Rahu.', 'ராகு காலத்தில் துர்க்கைக்குத் தீபம் — ராகுவுக்கான மரபு வழிபாடு.') : T('Use this time for quiet prayer in your own faith and help someone in need.', 'இந்த நேரத்தில் உங்கள் நம்பிக்கைப்படி அமைதியான பிரார்த்தனை; தேவையுள்ளோருக்கு உதவி.') };
+        text: T('During Rahu Kalam light a lamp for Goddess Durga — the traditional practice for Rahu.', 'ராகு காலத்தில் துர்க்கைக்குத் தீபம் — ராகுவுக்கான மரபு வழிபாடு.') };
     } else if (planet === 'Ketu') {
       horai = { planet, start: snap?.sunrise, end: snap?.sunrise ? new Date(new Date(snap.sunrise).getTime() + 7200000) : null, weeks: 9,
-        text: hindu ? T('Early morning: pray to Vinayagar before any work — the traditional practice for Ketu, for a clear mind.', 'அதிகாலை: எந்த வேலைக்கும் முன் விநாயகர் வழிபாடு — தெளிவான மனதுக்குக் கேதுவின் மரபு வழிபாடு.') : T('Early morning: a few minutes of silent prayer or meditation.', 'அதிகாலை: சில நிமிட அமைதியான பிரார்த்தனை / தியானம்.') };
+        text: T('Early morning: pray to Vinayagar before any work — the traditional practice for Ketu, for a clear mind.', 'அதிகாலை: எந்த வேலைக்கும் முன் விநாயகர் வழிபாடு — தெளிவான மனதுக்குக் கேதுவின் மரபு வழிபாடு.') };
     } else {
       const slot = (snap?.horai || []).find((h) => h.lord === planet && new Date(h.end) > now) || (snap?.horai || []).find((h) => h.lord === planet);
       if (slot) {
         const minor = age < 18;
         horai = { planet, start: slot.start, end: slot.end, weeks: 9,
-          // Other faiths: one practice that fits every faith (never a deity puja); a child gets a child-safe one.
-          text: !hindu ? (minor ? T(`In ${planet} hour: ${CHILD_PRACTICE.en[0].toLowerCase()}${CHILD_PRACTICE.en.slice(1)}`, `${pAdj(planet)} ஓரையில்: ${CHILD_PRACTICE.ta}`) : T(`In ${planet} hour: ${universalPractice(planet).en}`, `${pAdj(planet)} ஓரையில்: ${universalPractice(planet).ta}`))
-            : minor ? T(`In ${planet} hour, study the hardest subject — and pray to Saraswathi before starting.`, `${pAdj(planet)} ஓரையில் கடினமான பாடத்தைப் படியுங்கள் — தொடங்கும் முன் சரஸ்வதி வழிபாடு.`)
-              : T(`In ${planet} hour, pray to ${n.deity.en} and chant ${n.mantra.en}.`, `${pAdj(planet)} ஓரையில் ${n.deity.ta} வழிபாடு; ${n.mantra.ta}.`) };
+          text: minor ? T(`In ${planet} hour, study the hardest subject — and pray to Saraswathi before starting.`, `${pAdj(planet)} ஓரையில் கடினமான பாடத்தைப் படியுங்கள் — தொடங்கும் முன் சரஸ்வதி வழிபாடு.`)
+            : T(`In ${planet} hour, pray to ${n.deity.en} and chant ${n.mantra.en}.`, `${pAdj(planet)} ஓரையில் ${n.deity.ta} வழிபாடு; ${n.mantra.ta}.`) };
       }
     }
     if (horai) {
@@ -128,7 +123,7 @@ export function todayPlan({ chart, snap, festivals = [], level = 'steady', now =
   }
 
   // 3. Saturn transit relief on Saturdays (when no sacred day already covered it).
-  if (saniNote && hindu && (snap?.weekday?.index ?? now.getDay()) === 6 && !items.some((i) => /Sani|சனி/.test(i.title.en + i.title.ta))) {
+  if (saniNote && (snap?.weekday?.index ?? now.getDay()) === 6 && !items.some((i) => /Sani|சனி/.test(i.title.en + i.title.ta))) {
     items.push({ icon: '🪐', personal: true, title: T(`Saturday — ${saniNote.en}`, `சனிக்கிழமை — ${saniNote.ta}`),
       text: T('Light a sesame-oil lamp, pray to Saneeswarar (or Venkatachalapathi / Anjaneyar, as your family does), and help an elderly person.', 'நல்லெண்ணெய் தீபம்; சனீஸ்வரர் வழிபாடு (அல்லது குடும்ப வழக்கப்படி வெங்கடாசலபதி / ஆஞ்சநேயர்); ஒரு முதியவருக்கு உதவி.') });
   }

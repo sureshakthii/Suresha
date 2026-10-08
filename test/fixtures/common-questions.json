@@ -1,5 +1,5 @@
 {
- "description": "Ask Thunai evaluation corpus: real questions people ask a family jothidar (Tamil script, Tanglish, English). Each row lists the expected topic(s), the asker's age band, faith (when stated), whether it asks \"when\", and tags a good answer MUST / MUST NOT contain. Tags are defined in test/common-questions.test.js (CHECKS).",
+ "description": "Ask Thunai evaluation corpus: real questions people ask a family jothidar (Tamil script, Tanglish, English). Each row lists the expected topic(s), the asker's age band, faith (when stated — kept only as an old stored value; Thunai is Hindu-only since Oct 2026, so every row gets the Hindu answer), whether it asks \"when\", and tags a good answer MUST / MUST NOT contain. Tags are defined in test/common-questions.test.js (CHECKS).",
  "version": 1,
  "count": 478,
  "questions": [
@@ -8289,7 +8289,7 @@
    ],
    "mustNot": [
     "meter",
-    "hindu_remedy"
+    "other_faith"
    ],
    "faith": "christian"
   },

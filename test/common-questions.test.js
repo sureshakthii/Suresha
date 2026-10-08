@@ -5,7 +5,9 @@
 // time is unknown — and through the server policy router with no API key. It checks that:
 //   • the topic is detected (Tamil / Tanglish / English spellings),
 //   • the answer addresses the actual question (houses, karaka planets, supportive periods with years for "when"),
-//   • the answer has a practical step, a simple remedy suited to the person's faith and a gentle follow-up question,
+//   • the answer has a practical step, a simple traditional remedy and a gentle follow-up question,
+//   • Thunai is Hindu-only (owner decision, Oct 2026): a row tagged with another faith (as an old stored profile value)
+//     still gets the same Hindu-framed answer — never an other-faith blessing or "pray in your own faith" swap,
 //   • it is age-appropriate (children never get marriage / job / money timing),
 //   • nothing prohibited is said (shared/themes.js findProhibited + server scanProhibited), no certainty claims,
 //   • self-harm, abuse and missing-person questions route to help first, and no lifespan / disease prediction.
@@ -74,6 +76,7 @@ const has = (re) => (a) => re.test(body(a));
 const ordEn = (n) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
 const YEAR = /\b(19|20)\d{2}\b/;
 const HINDU = /murugan|shiva|siva\b|vinayag|ganapath|ganesh|lakshmi|durga|saraswath|hanuman|anjaneya|perumal|vishnu|dakshinamurth|ardhanaree|amman\b|kula deivam|navagraha temple|mantra|\bom\b|pooja|puja|homam|abhishek|sloka|stotra|kavasam|parigaram|pariharam|முருக|சிவ|விநாயக|கணபதி|லட்சுமி|துர்க|சரஸ்வதி|ஆஞ்சநேய|அனுமன்|பெருமாள்|விஷ்ணு|தட்சிணாமூர்த்தி|அம்மன்|குலதெய்வ|மந்திர|ஓம்|பூஜை|ஹோமம்|அபிஷேக|ஸ்லோக|ஸ்தோத்திர|கவசம்|பரிகாரம்|கோவில்|சன்னதி/i;
+const OTHER_FAITH = /own faith|for every faith|God bless|Allah grant|bible|qur’?an|\bdua\b|church|mosque|கர்த்தர் உங்களை|நம்பிக்கைப்படி|எல்லா நம்பிக்கை|இறைவன் \(அல்லாஹ்\)/i;
 const ADULT_TOPICS = new Set(['marriage', 'second_marriage', 'harmony', 'love', 'child', 'job', 'job_change', 'career', 'business', 'money', 'loan', 'property', 'vehicle', 'court', 'travel']);
 
 // Prohibited classes that apply to every adult answer (marriage timing is the point of an adult marriage question).
@@ -158,6 +161,8 @@ const NOT = {
   astrology_reading: (a) => a.meter != null || /\bdasa\b|\bbhukti\b|\bhouse \d|\d(st|nd|rd|th) house|தசை|புக்தி|-ம் வீடு|-ம் பாவம்/i.test(body(a)),
   chart_first: (a) => !CHECKS.urgent_first(a),
   accusation_of_victim: (a) => /your (fault|karma|chart) (caused|is why)|உங்கள் தவறு தான்|உங்கள் ஜாதகத்தால் தான்/i.test(all(a)),
+  // Other-faith wording that the Hindu-only app no longer produces (blessings, "in your own faith" swaps).
+  other_faith: (a) => OTHER_FAITH.test(all(a)),
   hindu_remedy: (a) => HINDU.test([sec(a, 'remedy', 'practice', 'prayer', 'dos', 'answer', 'next'), ...(a.followups || [])].join('\n')),
   // The old one-size skeleton: "career growth & promotion" for every career question, or today's Rahu Kalam padding
   // a WHICH / WHY / WILL / STATUS answer.
@@ -191,7 +196,7 @@ function answerFor(row, p) {
   const minorAsker = MINOR_BANDS.has(row.band);
   const speaker = p.key === 'child' ? (minorAsker ? { ...p.prof } : null) : p.prof;
   const life = {
-    memberId: p.m.id, gender: row.gender || p.m.gender, faith: row.faith || 'hindu',
+    memberId: p.m.id, gender: row.gender || p.m.gender, faith: row.faith, // an old stored faith — ignored by the app
     maritalStatus: p.m.maritalStatus, children: p.m.children, firstChildYear: p.m.firstChildYear,
   };
   return ask.askThunai({
@@ -216,7 +221,7 @@ test('the corpus is large, multilingual and covers every life area', () => {
   for (const c of ['child', 'marriage', 'remarriage', 'love_arranged', 'divorce', 'job', 'career', 'abroad', 'business', 'loan', 'court', 'dispute', 'property', 'vehicle', 'education', 'health', 'health_decline', 'family', 'lost', 'missing', 'dosham', 'sani', 'naming', 'muhurtham', 'temple', 'death', 'crisis', 'abuse', 'teen', 'child_q', 'minor_gate', 'elder_money', 'elder_health', 'elder_family']) {
     assert.ok(cats[c] >= 3, `category ${c}: ${cats[c] || 0}`);
   }
-  assert.ok(qs.filter((r) => r.faith && r.faith !== 'hindu').length >= 10, 'faith-tagged questions');
+  assert.ok(qs.filter((r) => r.faith && r.faith !== 'hindu').length >= 10, 'questions naming another religion (kept: no crash, no fear, Hindu-framed)');
   for (const r of qs) {
     assert.ok(r.q && r.topic?.length && r.band && Array.isArray(r.must) && Array.isArray(r.mustNot), r.id);
     for (const t of [...r.must]) assert.ok(tagCheck(t), `${r.id}: unknown must tag ${t}`);
@@ -250,7 +255,7 @@ test('every question, four profiles, on-device answer path', () => {
       if (row.category === 'death') judge(row, p, 'declines_lifespan', CHECKS.decline_lifespan(a) && !NOT.lifespan(a), a);
       if (row.category === 'health_decline') judge(row, p, 'no_disease_prediction', !NOT.diagnosis(a) && CHECKS.doctor(a), a);
       if (['child', 'child_sex'].includes(row.category)) judge(row, p, 'no_fertility_verdict', !NOT.fertility_verdict(a) && a.meter == null, a);
-      if (row.faith && row.faith !== 'hindu') judge(row, p, 'faith_appropriate', !NOT.hindu_remedy(a), a);
+      if (row.faith && row.faith !== 'hindu') judge(row, p, 'hindu_for_everyone', !NOT.other_faith(a) && !NOT.fear(a), a);
       // A child's chart: adult topics are never timed, scored or given a meter.
       if (minorChart && !['crisis', 'abuse', 'missing', 'death'].includes(row.category)) {
         judge(row, p, 'age_appropriate', a.meter == null && !(ADULT_TOPICS.has(topicOf(a)) && YEAR.test(body(a))), a);
@@ -353,7 +358,8 @@ test('with an API key the model gets the same five-part structure and the dated 
   assert.ok(AI_TASKS.chat.includes(ANSWER_STYLE));
   for (const part of ['1. Answer', '2. What your chart shows', '3. When', '4. What to do now', '5. One gentle follow-up question']) assert.ok(ANSWER_STYLE.includes(part), part);
   assert.match(ANSWER_STYLE, /fertility specialist/);
-  assert.match(ANSWER_STYLE, /never Hindu deities/);
+  assert.match(ANSWER_STYLE, /traditional Hindu remedy/);
+  assert.doesNotMatch(ANSWER_STYLE, /lifeDetails\.faith|Christian, Muslim/);
   assert.match(GUARDRAILS, /boy or a girl/);
   const ev = buildEvidence({ chart: PROFILES.adult.chart });
   assert.ok(ev.ids.some((id) => id.startsWith('DASA.timeline.')), 'dated dasa-bhukti timeline');
@@ -373,12 +379,13 @@ test('with an API key the model gets the same five-part structure and the dated 
   assert.match(AI_TASKS.general, /use exactly that date/);
 });
 
-test('suggested-question chips follow the age band (and never show temple chips to other faiths)', () => {
+test('suggested-question chips follow the age band (the same Hindu chips for everyone)', () => {
   const chips = (k, o) => ask.askSuggestions(PROFILES[k].prof, o).map((c) => c.en).join(' | ');
   assert.match(chips('adult'), /child is getting delayed|debts|own house/);
   assert.match(chips('elder'), /son’s \/ daughter’s marriage|pension|grandchildren/);
   assert.doesNotMatch(chips('child'), /marri|job|debt|loan|pension/i);
-  assert.doesNotMatch(chips('elder', { faith: 'christian' }), /temple/i);
+  assert.equal(chips('elder', { faith: 'christian' }), chips('elder'), 'an old stored faith changes nothing');
+  assert.doesNotMatch(chips('elder'), /own faith/i);
   const young = ask.askSuggestions({ band: 'adult', age: 22, adult: true, minor: false }).map((c) => c.en).join(' | ');
   assert.match(young, /job|married/);
 });
@@ -399,7 +406,9 @@ test('no repetition: different questions never get the same answer body, and dif
   for (const { row, a } of rows) {
     const b = body(a);
     const prev = seen.get(b);
-    if (prev && prev.q !== row.q) dups.push(`${prev.id} = ${row.id}: ${row.q}`);
+    // A row that only adds a religious invocation ("Jesus please help — when will I get a job?") is the same life
+    // question: Thunai is Hindu-only, so it rightly gets the same answer as the plain question.
+    if (prev && prev.q !== row.q && !row.faith && !prev.faith) dups.push(`${prev.id} = ${row.id}: ${row.q}`);
     else seen.set(b, row);
   }
   assert.deepEqual(dups, [], `identical answers for different questions:\n${dups.slice(0, 20).join('\n')}`);

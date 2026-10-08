@@ -1,6 +1,5 @@
 // Feature screens: Tamil calendar, Porutham, Muhurtham, Ruthu, Parigaram, Thivasam,
 // Natchathira birthday, Jothidar chat and the shareable daily card.
-import { faithOf, isHinduFaith, TRADITIONAL_OPTIONAL } from './shared/faith.js';
 import { panchang, vedicDay, dayAnchor, calendarNoon, calendarDate, RASIS, NAKSHATRAS } from './shared/astro.js';
 import { CATEGORIES, getCategory } from './shared/prasna.js';
 import { tamilMonth, tamilDay, TAMIL_MONTHS } from './shared/tamilcal.js';
@@ -369,13 +368,10 @@ function renderParigaram(sec) {
   const snap = state.snap;
   const m = activeMember();
   const c = m && chartOf(m);
-  // Faith and age first: a person of another faith (or none) sees practices that fit every faith; the Hindu
-  // Navagraha entries stay available below, collapsed and marked optional, only if they choose to open them.
+  // Age first: a child sees child-safe practices.
   const person = m && m.relation !== 'organization' ? m : null;
-  const faith = person ? faithOf(person) : 'hindu';
-  const hindu = isHinduFaith(faith);
   const prof = person ? ageProfile(person, { tz: state.loc?.tz }) : null;
-  const items = dailyParigaram({ weekday: snap.weekday.index, chart: c, snapshot: snap, faith, profile: prof, now: new Date() });
+  const items = dailyParigaram({ weekday: snap.weekday.index, chart: c, snapshot: snap, profile: prof, now: new Date() });
   const weak = c ? grahaStrength(c.planets).filter((g) => g.level === 'weak').map((g) => g.planet) : [];
   const card = (k, open) => {
     const n = NAVAGRAHA[k];
@@ -389,15 +385,14 @@ function renderParigaram(sec) {
       <p class="mantra">📿 ${hymnText(bi(n.mantra))} <button class="link-btn say" data-say="${esc(mantraOnly(n.mantra))}" aria-label="${esc(L('Read aloud', 'வாசித்துக்காட்டு'))}">🔊</button></p>
       <p class="muted small">💎 ${L('Gemstone', 'ரத்தினம்')}: ${esc(bi(n.gem))} — ${L('wear only after a careful personal consultation; it is never required.', 'கவனமான தனிப்பட்ட ஆலோசனைக்குப் பின் மட்டும் அணியவும்; இது கட்டாயமல்ல.')}</p></details>`;
   };
-  const rec = c && hindu ? sthalamPicks(c, weak, prof) : [];
-  const cards = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'].map((k) => card(k, hindu && weak.includes(k))).join('');
-  sec.innerHTML = `${subHeader(L('Parigaram', 'பரிகாரம்'), hindu ? L('Simple, free remedies first — for peace, health and prosperity', 'எளிய இலவச பரிகாரங்கள் முதலில் — அமைதி, ஆரோக்கியம், செல்வத்திற்கு') : L('Simple practices that fit every faith — prayer in your own way, charity, discipline and service', 'எல்லா நம்பிக்கைக்கும் பொருந்தும் எளிய வழிகள் — உங்கள் வழியில் பிரார்த்தனை, தானம், ஒழுக்கம், சேவை'))}
+  const rec = c ? sthalamPicks(c, weak, prof) : [];
+  const cards = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'].map((k) => card(k, weak.includes(k))).join('');
+  sec.innerHTML = `${subHeader(L('Parigaram', 'பரிகாரம்'), L('Simple, free remedies first — for peace, health and prosperity', 'எளிய இலவச பரிகாரங்கள் முதலில் — அமைதி, ஆரோக்கியம், செல்வத்திற்கு'))}
     ${rec.length ? sthalamCard(rec, m) : ''}
     <div class="card glass"><div class="card-title">🌅 ${L('For today', 'இன்றைக்கு')}${m ? ` · ${esc(displayName(m))}` : ''}</div>
-      ${items.map((i) => `<div class="pari-row"><span class="pg" style="color:${COLOR[i.planet]}">${GLYPH[i.planet]}</span><div><b>${esc(bi(i.reason))}</b><p>${hymnText(bi(i.free))}</p>${hindu ? `<p class="muted small">🛕 ${esc(bi(i.deity))} · ${esc(bi(i.temple))}</p>` : `<p class="muted small">🤲 ${esc(bi(i.charity))}</p>`}</div></div>`).join('')}
+      ${items.map((i) => `<div class="pari-row"><span class="pg" style="color:${COLOR[i.planet]}">${GLYPH[i.planet]}</span><div><b>${esc(bi(i.reason))}</b><p>${hymnText(bi(i.free))}</p><p class="muted small">🛕 ${esc(bi(i.deity))} · ${esc(bi(i.temple))}</p></div></div>`).join('')}
     </div>
-    ${hindu ? `<div class="section-title">${L('Navagraha parigaram', 'நவகிரக பரிகாரம்')}</div>${cards}`
-    : `<details class="disclose"><summary>${L('Traditional Navagraha practices (optional)', 'பாரம்பரிய நவகிரக வழிபாடு (விருப்பம்)')}</summary><p class="small muted">${esc(bi(TRADITIONAL_OPTIONAL))}</p>${cards}</details>`}`;
+    <div class="section-title">${L('Navagraha parigaram', 'நவகிரக பரிகாரம்')}</div>${cards}`;
   $$('.say', sec).forEach((b) => b.addEventListener('click', () => speak(b.dataset.say)));
   $('#stPlan')?.addEventListener('click', () => {
     const ids = $$('input[name=stTemple]:checked', sec).map((x) => x.value);
@@ -423,7 +418,7 @@ function sthalamPicks(c, weak, prof = null) {
   if (prof && !prof.minor) {
     const diag = diagnoseDoshams(c, { now, minor: prof.minor, age: prof.age });
     for (const it of diag.items.filter((x) => !x.current).slice(0, 2)) {
-      const st = nivarthiPlan(it, { faith: 'hindu' }).sthalams.find((x) => !picks.some((p) => p.temple.id === x.id));
+      const st = nivarthiPlan(it).sthalams.find((x) => !picks.some((p) => p.temple.id === x.id));
       const t = st && TEMPLES.find((x) => x.id === st.id);
       if (t) picks.push({ planet: t.planet || null, dosham: it.kind, why: L(`For ${it.name.en} — ${it.condition.en}`, `${it.name.ta} நிவர்த்திக்கு — ${it.condition.ta}`), temple: t });
     }
@@ -580,7 +575,7 @@ function renderStarBday(sec) {
           <p class="small muted">📐 ${esc(bi(x.basis))}</p>
           ${starNote(x.day)}
           ${x.thousandthFullMoon ? `<div class="small muted">🌕 ${L('1000th full moon', '1000-வது பௌர்ணமி')}: ${fDay(new Date(x.thousandthFullMoon.getTime() + loc.tz * 3600000).toISOString().slice(0, 10))}</div>` : ''}
-          ${(() => { const nt = milestoneNote(faithOf(m)); return `<p class="small">${esc(bi(nt))}</p>${nt.hindu ? `<div class="btn-row"><button class="chip-btn" data-go="packages" data-param='{"id":"thirukadaiyur"}'>🧳 ${L('Package', 'தொகுப்பு')}</button><button class="chip-btn" data-go="seva" data-param='{"service":"homam"}'>🔥 ${L('Book priest', 'புரோகிதர்')}</button></div>` : ''}`; })()}
+          ${(() => { const nt = milestoneNote(); return `<p class="small">${esc(bi(nt))}</p><div class="btn-row"><button class="chip-btn" data-go="packages" data-param='{"id":"thirukadaiyur"}'>🧳 ${L('Package', 'தொகுப்பு')}</button><button class="chip-btn" data-go="seva" data-param='{"service":"homam"}'>🔥 ${L('Book priest', 'புரோகிதர்')}</button></div>`; })()}
           </div>`).join('')).join('')}`);
     }
   }, 40);
@@ -631,7 +626,7 @@ function todayFacts() {
  */
 function lifeOf(m) {
   if (!m) return {};
-  const life = { memberId: m.id, relation: m.relation, gender: m.gender, faith: faithOf(m), maritalStatus: m.maritalStatus, marriedYear: m.marriedYear, children: m.children, firstChildYear: m.firstChildYear };
+  const life = { memberId: m.id, relation: m.relation, gender: m.gender, maritalStatus: m.maritalStatus, marriedYear: m.marriedYear, children: m.children, firstChildYear: m.firstChildYear };
   if (m.relation === 'self') {
     if (!life.maritalStatus && state.family.some((x) => x.relation === 'spouse')) life.maritalStatus = 'married';
     const kids = state.family.filter((x) => ['son', 'daughter'].includes(x.relation));
@@ -660,7 +655,7 @@ function chatContext(question) {
     today: { date: fDay(calendarDate(new Date(), loc.tz)), weekday: s.weekday.en, star: s.nakshatra.name, tithi: `${s.tithi.paksha} ${s.tithi.name}`, place: loc.name, ...todayFacts() },
     person: m ? { name: m.name, relation: m.relation, birth: m.relation === 'organization' ? undefined : { date: m.date }, ageBand: ageOf(m).band, birthTimeCertainty: rel.certainty, timeSensitiveResultsAllowed: rel.lagna, rasi: rel.rasi ? chartOf(m).janmaRasi.name : 'uncertain', star: rel.nakshatra ? chartOf(m).janmaNakshatra.name : 'uncertain' } : null,
     verifiedChartFacts: factsForAI(facts),
-    lifeDetails: (() => { const l = lifeOf(m); return m ? { faith: l.faith || 'hindu', maritalStatus: l.maritalStatus || 'not given', marriedYear: l.marriedYear || null, children: l.children ?? 'not given', firstChildYear: l.firstChildYear || null } : null; })(),
+    lifeDetails: (() => { const l = lifeOf(m); return m ? { maritalStatus: l.maritalStatus || 'not given', marriedYear: l.marriedYear || null, children: l.children ?? 'not given', firstChildYear: l.firstChildYear || null } : null; })(),
     builtInAnswer: askAnswer(question, m, facts, chatTurns()).text,
   };
 }
@@ -689,7 +684,7 @@ function renderChat(sec, params = {}) {
     <div class="chat-head card glass"><div class="avatar big">🪔</div><div><b>${esc(assistantName())}</b>
       <div class="muted small">${m ? L(`Using ${displayName(m)}'s chart${m.private ? ' · private profile — this chat stays on this phone' : ''}`, `${displayName(m)} அவர்களின் ஜாதகப்படி${m.private ? ' · தனிப்பட்ட சுயவிவரம் — இந்த உரையாடல் இந்தக் கைப்பேசியிலேயே' : ''}`) : L('Add birth details for personal answers', 'தனிப்பட்ட பதில்களுக்குப் பிறப்பு விவரம் சேர்க்கவும்')}</div></div></div>
     <div id="chatLog" class="chat-log" aria-live="polite">${chat.messages.length ? '' : `<div class="bubble ai">🙏 ${L('Vanakkam! Ask anything — in Tamil, English or Tanglish. Answers come in English (change language with the தமிழ் button).', 'வணக்கம்! தமிழ், ஆங்கிலம், தங்கிலீஷ் — எப்படியும் கேளுங்கள். பதில் தமிழில் வரும்.')}</div>`}</div>
-    <div class="suggest-row">${askSuggestions(ageOf(m), { faith: m ? faithOf(m) : 'hindu', married: isMarried(m), single: m?.maritalStatus === 'single' }).map((x) => `<button class="sg">${esc(bi(x))}</button>`).join('')}</div>
+    <div class="suggest-row">${askSuggestions(ageOf(m), { married: isMarried(m), single: m?.maritalStatus === 'single' }).map((x) => `<button class="sg">${esc(bi(x))}</button>`).join('')}</div>
     <form novalidate id="chatForm" class="chat-form"><button type="button" id="micBtn" class="mic" aria-label="${L('Speak', 'பேசுங்கள்')}">🎙️</button>
       <label class="sr-only" for="chatInput">${L('Message', 'செய்தி')}</label><textarea id="chatInput" class="grow-in" rows="1" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai…', 'கேள்வியை இங்கே எழுதுங்கள்…'))}"></textarea>
       <button class="send" aria-label="${L('Send', 'அனுப்பு')}">➤</button></form></div>
@@ -779,15 +774,15 @@ function addBubble(role, text, meta = {}) {
  */
 function askAnswer(text, m, facts, turns = []) {
   // The whole on-device answer path lives in ask-thunai.js (askThunai — pure, tested against the common-questions
-  // corpus): safety first → policy / age gate → the life topic → dated periods, practical steps, a faith-suited remedy.
+  // corpus): safety first → policy / age gate → the life topic → dated periods, practical steps, a traditional remedy.
   // AGE FIRST: the person typing is known only when their own profile is open; otherwise the speaker's age is unknown.
   const prof = m ? ageOf(m) : ageProfile(null);
   const speaker = m?.relation === 'self' ? prof : null;
-  // Children: an open question gets a warm answer with today's prayer (no Hindu deity for a child of another faith).
+  // Children: an open question gets a warm answer with today's prayer.
   const childAnswer = () => {
     let deity = null;
-    try { refreshSnap(); deity = isHinduFaith(faithOf(m)) ? dailyReview(chartOf(m), state.snap, new Date(), { faith: faithOf(m) }).deity : null; } catch { /* optional */ }
-    return childGeneralAnswer({ profile: prof, lang: state.lang, name: displayName(m), deity, question: text, faith: faithOf(m) });
+    try { refreshSnap(); deity = dailyReview(chartOf(m), state.snap, new Date()).deity; } catch { /* optional */ }
+    return childGeneralAnswer({ profile: prof, lang: state.lang, name: displayName(m), deity, question: text });
   };
   return askThunai({
     text, chart: m ? chartOf(m) : null, rel: m ? reliabilityOf(m) : null, facts, life: lifeOf(m), lang: answerLang(text, state.lang),

@@ -5,6 +5,8 @@ Status: **engineering draft, version `safety-policy-1.0.0`.** It implements sect
 sign-off from the reviewers listed in §9 before launch. Passing the test suite does not prove real-world
 safety, and it does not mean any government has approved the product.
 
+**Owner decision (Oct 2026): Thunai is a Hindu-only app — every person gets the full Hindu content (deities, temples, mantras, parigaram, sthalams, prayers); the per-person faith field and every "own faith" / other-faith branch below are removed (other-religion practice questions get an honest "not covered" answer), while the age, no-fear, no-certainty, doctor, crisis, lifespan and PCPNDT rules are unchanged.**
+
 Code: `server/policy/` (plain ES modules), wired into `POST /api/ask` and `POST /api/ai/:task` in
 `server/index.js`. Prompts are in `shared/narrator.js`; model calls are in `server/ai.js`.
 
@@ -346,7 +348,7 @@ and the Today parigaram card. Rules, enforced in code and by test/dosham.test.js
 * **Contested labels** (Kala Sarpa, Naga, Pitru, Guru Chandala, Shrapit, Grahana) are always marked "traditional; some
   astrologers differ" and default to mild. This relaxes the earlier rule that contested labels are never paired with a
   remedy: they are now paired with free practice and a sthalam framed as belief. Needs reviewer confirmation (§9).
-* **Age.** Under 18: no dosham list — only a short prayer-and-habits note (shared/faith.js CHILD_PRACTICE).
+* **Age.** Under 18: no dosham list — only a short prayer-and-habits note (shared/age-guard.js CHILD_PRACTICE).
 * **Birth time unknown:** only Moon / planet-based doshams; the Lagna-based ones are named as needing the time.
 * **Faith.** Another faith (or none) gets own-faith practice per planet, charity and the avoid-list; Hindu sthalams appear
   only inside a closed "optional, for information" panel.

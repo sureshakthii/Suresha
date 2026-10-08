@@ -10,10 +10,7 @@ import {
 } from './core.js';
 import { remindBtn } from './remind.js';
 import { ageProfile, adultText } from './shared/age-guard.js';
-import { faithOf } from './shared/faith.js';
 import { hymnText } from './hymn-links.js';
-// The viewer's faith (the active family member's) — another faith gets practices for every faith, not Hindu pujas.
-const pyFaith = () => { const m = activeMember(); return m && m.relation !== 'organization' ? faithOf(m) : 'hindu'; };
 
 // Age first: when the selected person is a child and this is their own rasi, keep only child-appropriate sentences
 // (no marriage, spouse, business, money) and hide the career / money bars.
@@ -152,7 +149,7 @@ function fillNow(cur) {
 
 let lastPalans = [];
 function fillPalan(cur) {
-  lastPalans = PEYARCHI_PLANETS.map((p) => ({ p, rasi: cur[p].rasi, x: peyarchiPalan(p, cur[p].rasi, pyRasi, { faith: pyFaith() }) }));
+  lastPalans = PEYARCHI_PLANETS.map((p) => ({ p, rasi: cur[p].rasi, x: peyarchiPalan(p, cur[p].rasi, pyRasi) }));
   $('#pyPalan').innerHTML = `<div class="card glass">
     <div class="card-title"><span>${L('Peyarchi Palan for', 'பெயர்ச்சி பலன்')} · ${esc(rasiName(pyRasi))} ${L('rasi', 'ராசி')}</span></div>
     ${lastPalans.map(({ p, rasi, x }) => `<div class="py-palan">

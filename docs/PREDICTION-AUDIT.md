@@ -2,6 +2,8 @@
 
 *Audit date: 7 October 2026 · Test: `test/prediction-audit.test.js` (25 checks, about 10 s) · Companion to `docs/ACCURACY-REPORT.md`*
 
+**Owner decision (Oct 2026): Thunai is Hindu-only — the faith rows below are superseded; the audit now checks that every profile, whatever faith an older version stored, gets the same Hindu content (`shared/faith.js` is removed; see also `test/hindu-only.test.js`).**
+
 ## 1. What this audit can and cannot claim
 
 Thunai has two kinds of output, and they need different kinds of evidence.

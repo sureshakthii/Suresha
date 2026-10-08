@@ -1,7 +1,6 @@
 // Parigaram (remedies) and Graha Balam (planet strength).
 // Philosophy: free and simple remedies first — prayer, lamp, charity, discipline.
 import { RASIS, PLANETS } from './astro.js';
-import { isHinduFaith, universalPractice, CHILD_PRACTICE, TRADITIONAL_OPTIONAL } from './faith.js';
 import { adultText } from './age-guard.js';
 import { WEEKDAYS_TA, WEEKDAYS_EN, planetAdjTa } from './fmt.js';
 const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
@@ -217,36 +216,25 @@ export function governsFor(planet, profile = null) {
 }
 
 /**
- * The practice to show for a planet, by faith and age.
- * Hindu (or Auto): the full Navagraha entry, unchanged — deity, mantra, temple, free remedy, charity, gem.
- * Any other faith or none: a universal practice (prayer in their own faith, charity, discipline, service) and the
- * charity line; NO deity, mantra, temple or gem. The Hindu entry is attached as `traditional` (marked optional,
- * for information) only when the person opted in. A minor gets a child-safe practice and governs line.
+ * The practice to show for a planet, the same for every person: the full Navagraha entry — deity, mantra, temple,
+ * free remedy, charity, gem. A minor gets a child-safe free practice and governs line.
  */
-export function remedyFor(planet, { faith = 'hindu', traditional = false, profile = null } = {}) {
+export function remedyFor(planet, { profile = null } = {}) {
   const n = NAVAGRAHA[planet];
   if (!n) return null;
   const minor = !!profile?.minor;
-  if (isHinduFaith(faith)) {
-    // A Hindu child keeps the deity and prayer; a free-practice line about work or money becomes a study prayer.
-    const free = minor && adultText(n.free) ? { en: `A short prayer to ${n.deity.en} before studies, and kind words at home.`, ta: `படிக்கும் முன் ${n.deity.ta} வழிபாடு; வீட்டில் இனிய சொல்.` } : n.free;
-    return { planet, ...n, free, governs: governsFor(planet, profile), faith: 'hindu' };
-  }
-  return {
-    planet, faith, day: n.day, color: n.color, governs: governsFor(planet, profile),
-    free: minor ? CHILD_PRACTICE : universalPractice(planet), charity: n.charity,
-    traditional: traditional ? { deity: n.deity, mantra: n.mantra, temple: n.temple, free: n.free, note: TRADITIONAL_OPTIONAL, optional: true } : null,
-  };
+  // A child keeps the deity and prayer; a free-practice line about work or money becomes a study prayer.
+  const free = minor && adultText(n.free) ? { en: `A short prayer to ${n.deity.en} before studies, and kind words at home.`, ta: `படிக்கும் முன் ${n.deity.ta} வழிபாடு; வீட்டில் இனிய சொல்.` } : n.free;
+  return { planet, ...n, free, governs: governsFor(planet, profile) };
 }
 
 /**
  * Today's personal parigaram: weekday lord + weakest planets + running dasa lord + moon-based cautions.
- * opts: faith (non-Hindu → universal practices, Hindu entries only as opt-in `traditional`), traditional (opt-in),
- * profile (ageProfile — a minor gets child-safe lines), now (for the running dasa; default: the chart's own).
+ * opts: profile (ageProfile — a minor gets child-safe lines), now (for the running dasa; default: the chart's own).
  */
-export function dailyParigaram({ weekday, chart, snapshot, faith = 'hindu', traditional = false, profile = null, now = null }) {
+export function dailyParigaram({ weekday, chart, snapshot, profile = null, now = null }) {
   const items = [];
-  const R = (planet) => remedyFor(planet, { faith, traditional, profile });
+  const R = (planet) => remedyFor(planet, { profile });
   const dayLord = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'][weekday];
   items.push({ reason: { en: `Today is ${WEEKDAYS_EN[weekday]}, ruled by ${dayLord}`, ta: `இன்று ${WEEKDAYS_TA[weekday]} — ${PLANETS[dayLord].ta} ஆளும் நாள்` }, ...R(dayLord) });
   if (chart) {

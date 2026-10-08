@@ -10,8 +10,7 @@
 //   sanskritdocuments.org's Tamil script). `transliterated: true` says so on the page.
 // - A hymn whose source could not be fetched is kept with `status: 'pending'` and no text; the reader then shows its
 //   name, meaning and a "full text coming" note instead of anything unverified.
-// Faith: the hymns open for anyone who taps them; they are *suggested* only where the existing faith rules
-// (shared/faith.js) already allow Hindu practices — this file does not change those rules.
+// Thunai is a Hindu astrology app: the hymns are suggested to every person (age rules still apply).
 
 export const RETRIEVED = '2026-10-07';
 const T = (en, ta) => ({ en, ta });

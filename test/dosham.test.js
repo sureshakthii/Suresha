@@ -1,6 +1,6 @@
 // Dosham diagnosis & Nivarthi engine (shared/dosham.js): the owner's two sanity patterns, base rates on random
 // charts (no over-reporting), cancellations, Chevvai agreeing with the registry rule, unknown birth time, children,
-// other faiths, temple data, the prohibited-word scan on every string, and Ask Thunai answers that name the doshams.
+// the same sthalams for every person (Hindu-only app), temple data, the prohibited-word scan on every string, and Ask Thunai answers that name the doshams.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -200,17 +200,18 @@ test('children (<18): no dosham list — only a general prayer-and-habits note',
   assert.doesNotMatch(t, /marri|திருமண|குழந்தை பாக்கிய|putra|புத்திர/i);
 });
 
-test('another faith: own-faith practice, no sthalam unless shown as optional tradition', () => {
+test('Hindu-only (owner decision, Oct 2026): every person gets the parigara sthalams — an old stored faith changes nothing', () => {
   const d = diagnoseDoshams(wifeChart, { now: NOW });
   const rk = d.items.find((x) => x.kind === 'rahuketu');
-  const pc = nivarthiPlan(rk, { faith: 'christian' });
-  assert.equal(pc.sthalams.length, 0);
-  assert.equal(pc.yatra.length, 0);
-  assert.ok(pc.universal.length >= 1 && pc.blessing);
-  assert.equal(pc.traditional, null);
-  assert.ok(nivarthiPlan(rk, { faith: 'christian', traditional: true }).traditional.optional);
-  assert.equal(primarySthalam(d, { faith: 'muslim' }), null);
-  assert.doesNotMatch(flat(expertView(d, { faith: 'christian' })), /Kalahasti|காளஹஸ்தி|Thirunallar|திருநள்ளாறு/);
+  const plan = nivarthiPlan(rk);
+  assert.ok(plan.sthalams.length >= 1 && plan.yatra.length >= 1 && plan.home.length >= 1);
+  // A caller still passing an old faith option gets exactly the same plan (the option is ignored).
+  assert.deepEqual(nivarthiPlan(rk, { faith: 'christian', traditional: true }), plan);
+  for (const k of ['universal', 'blessing', 'traditional', 'faith']) assert.ok(!(k in plan), `no ${k} field`);
+  assert.ok(primarySthalam(d, { faith: 'muslim' })?.sthalam);
+  assert.deepEqual(primarySthalam(d, { faith: 'muslim' }), primarySthalam(d));
+  assert.match(flat(expertView(d, { faith: 'christian' })), /Kalahasti|காளஹஸ்தி/);
+  assert.doesNotMatch(flat(expertView(d)), /own faith|நம்பிக்கைப்படி/);
 });
 
 test('every temple the engine names exists, with info; the new sthalams have no invented timings', () => {
@@ -229,11 +230,11 @@ test('every temple the engine names exists, with info; the new sthalams have no 
   }
 });
 
-test('prohibited-word scan: every string the engine produces, for the owner charts and 30 random charts, both faiths', () => {
+test('prohibited-word scan: every string the engine produces, for the owner charts and 30 random charts', () => {
   for (const c of [ownerChart, wifeChart, ...RANDOM]) {
     const d = diagnoseDoshams(c, { now: NOW });
-    for (const faith of ['hindu', 'christian']) {
-      const all = allText(d, { faith, name: 'X' });
+    {
+      const all = allText(d, { name: 'X' });
       assert.deepEqual(findProhibited(all), [], `${c.name}`);
       const text = JSON.stringify(all);
       for (const lang of ['en', 'ta']) {

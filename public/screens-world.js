@@ -9,7 +9,6 @@ import { NAVAGRAHA, grahaStrength } from './shared/remedies.js';
 import { hymnText } from './hymn-links.js';
 import { familyRelations } from './shared/relations.js';
 import { fullAnalysis, BHAVAS } from './shared/analysis.js';
-import { faithOf } from './shared/faith.js';
 import { REPORT_YEARS, horizonLabel, withinHorizon, HORIZON_LINES } from './shared/report-horizon.js';
 import { ageProfile, topicAllowed, adultText, childSafe } from './shared/age-guard.js';
 import { writtenPalan, palanFollowups, bhavaMeaning, scoreTag, yogaPeriodsByPlanet } from './shared/written-palan.js';
@@ -299,7 +298,7 @@ function drawMantraState() {
 }
 
 function renderMantras(sec) {
-  sec.innerHTML = `${subHeader(L('Mantras', 'மந்திரங்கள்'), L('Listen while travelling, at home or at the temple', 'பயணத்திலும், வீட்டிலும், கோவிலிலும் கேட்க'))}
+  sec.innerHTML = `${subHeader(L('Daily Chants', 'தினசரி தோத்திரங்கள்'), L('Short chants to listen to and repeat — while travelling, at home or at the temple', 'கேட்டுச் சொல்லும் சிறு தோத்திரங்கள் — பயணத்திலும், வீட்டிலும், கோவிலிலும்'))}
     <button class="btn-gold" id="travelBtn"></button>
     <div class="row2" style="margin-top:10px"><label>${L('Repeat', 'முறை')}<select id="mRepeat">${[1, 3, 11, 21, 108].map((n) => `<option value="${n}"${n === mantraUi.repeat ? ' selected' : ''}>${n} ${n === 1 ? L('time', 'முறை') : L('times', 'முறை')}</option>`).join('')}</select></label>
       <div class="muted small" style="align-self:center">${L('Uses your phone\'s Tamil voice. For the best sound install "Tamil" in Google Text-to-speech.', 'உங்கள் கைப்பேசியின் தமிழ் குரலைப் பயன்படுத்துகிறது. சிறந்த ஒலிக்கு Google Text-to-speech-ல் "Tamil" நிறுவவும்.')}</div></div>
@@ -734,9 +733,8 @@ function renderAnalysis(sec) {
     // Age first: a child's analysis shows learning / spiritual areas only — no career, wealth, marriage, children,
     // property scores, no Badhaka / Maraka, and no marriage / money statements in yogas, houses or transits.
     const prof = ageProfile(m, { tz: state.loc?.tz });
-    const faith = faithOf(m);
     const now = new Date(); // one instant for the analysis card and the written palan (same dasa, same transits)
-    const a0 = fullAnalysis(c, now, { faith, age: prof.age });
+    const a0 = fullAnalysis(c, now, { age: prof.age });
     const kidAdvice = { en: 'Keep studies, sleep and prayer steady — this passes gently.', ta: 'படிப்பு, உறக்கம், வழிபாட்டைச் சீராக வைத்தால் இது மென்மையாகக் கடக்கும்.' };
     const a = prof.minor ? {
       ...a0,
@@ -754,7 +752,7 @@ function renderAnalysis(sec) {
     const houseChip = (b) => (st ? stabilityChip(c, 'lagna', ...b.occupants.map((o) => `house:${o}`)) : '');
     // Married when the profile says so, or it is the spouse / the self of a family that has a spouse profile.
     const married = m.maritalStatus === 'married' || m.relation === 'spouse' || (m.relation === 'self' && state.family.some((x) => x.relation === 'spouse')) ? 'married' : (m.maritalStatus || null);
-    const palan = writtenPalan(c, { now, profile: prof, analysis: a0, tz, maritalStatus: married, faith });
+    const palan = writtenPalan(c, { now, profile: prof, analysis: a0, tz, maritalStatus: married });
     const asks = palanFollowups(palan, { maritalStatus: married });
     $('#anBody').innerHTML = `
       ${lagnaOk ? '' : needsTimeNote({ en: 'The 12 houses, Badhakathipathi and Marakathipathi are counted from the Lagna.', ta: '12 பாவங்கள், பாதகாதிபதி, மாரகாதிபதி லக்னத்திலிருந்து கணக்கிடப்படுகின்றன.' })}

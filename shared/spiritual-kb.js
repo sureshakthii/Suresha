@@ -25,7 +25,7 @@ import { FESTIVALS_B } from './kb/festivals-b.js';
 import { EKADASIS } from './kb/ekadasi.js';
 import { CONCEPTS } from './kb/concepts.js';
 import { CHARACTERS } from './kb/characters.js';
-import { FAST_CARE, NON_HINDU_NOTE } from './kb/common.js';
+import { FAST_CARE } from './kb/common.js';
 
 export { CHARACTERS };
 /** Every festival / vratham / concept entry (Ithihasa characters are separate: CHARACTERS). */
@@ -441,17 +441,16 @@ function templeLines(e, lang) {
 }
 
 /** Full detail sections for one entry (used by the Festivals screen and by answers). */
-export function entrySections(e, lang = 'ta', { faith = 'hindu', parts = ['why', 'story', 'how', 'fast', 'offer', 'mantra', 'temples', 'regional', 'extra'] } = {}) {
-  const hindu = !faith || faith === 'hindu';
+export function entrySections(e, lang = 'ta', { parts = ['why', 'story', 'how', 'fast', 'offer', 'mantra', 'temples', 'regional', 'extra'] } = {}) {
   const out = [];
   const has = (k) => parts.includes(k);
   if (has('why') && e.why) out.push(sec('why', T(lang, 'Why it is observed', 'ஏன் கடைப்பிடிக்கப்படுகிறது'), [pick(e.why, lang)]));
   if (has('story') && e.story) out.push(sec('story', T(lang, 'The story (tradition)', 'புராணக் கதை (மரபு)'), [pick(e.story, lang)]));
   if (has('extra') && e.extra) for (const x of e.extra) out.push(sec(x.key, pick(x.title, lang), pick(x.lines, lang)));
-  if (has('how') && e.how) out.push(sec('how', hindu ? T(lang, 'How to observe (simple)', 'எப்படிக் கடைப்பிடிப்பது (எளிய முறை)') : T(lang, 'How Hindu families observe it', 'இந்துக் குடும்பங்கள் கடைப்பிடிக்கும் முறை'), pick(e.how, lang)));
+  if (has('how') && e.how) out.push(sec('how', T(lang, 'How to observe (simple)', 'எப்படிக் கடைப்பிடிப்பது (எளிய முறை)'), pick(e.how, lang)));
   if (has('fast') && e.fast) out.push(sec('fast', T(lang, 'About fasting — who should not fast', 'விரதம் — யார் இருக்க வேண்டாம்'), [pick(FAST_CARE, lang)]));
   if (has('offer') && e.offer) out.push(sec('offer', T(lang, 'Offerings & food', 'நைவேத்தியம் & உணவு'), [pick(e.offer, lang)]));
-  if (has('mantra') && hindu) { const ml = mantraLines(e, lang); if (ml.length) out.push(sec('mantra', T(lang, 'Mantra / chant', 'மந்திரம் / நாமம்'), ml)); }
+  if (has('mantra')) { const ml = mantraLines(e, lang); if (ml.length) out.push(sec('mantra', T(lang, 'Mantra / chant', 'மந்திரம் / நாமம்'), ml)); }
   if (has('temples')) { const tl = templeLines(e, lang); if (tl.length) out.push(sec('temples', T(lang, 'Temples known for it', 'சிறப்பான கோவில்கள்'), tl)); }
   if (has('regional') && e.regional) out.push(sec('regional', T(lang, 'Regional practice', 'பகுதி வழக்கம்'), [pick(e.regional, lang)]));
   return out;
@@ -564,7 +563,7 @@ function characterAnswer(c, lang, intents) {
  * Answer an everyday festival / vratham / panchangam / Ithihasa question offline.
  * @returns {null | { topic, sections: [{ key, title, lines }], text, followups, sources, id?, dates? }}
  */
-export function answerGeneral(question, { lang = 'ta', now = new Date(), loc = DEFAULT_LOC, tz = 5.5, faith = 'hindu' } = {}) {
+export function answerGeneral(question, { lang = 'ta', now = new Date(), loc = DEFAULT_LOC, tz = 5.5 } = {}) {
   const m = matchQuestion(question);
   if (!m) return null;
   lang = lang === 'en' ? 'en' : 'ta';
@@ -572,7 +571,6 @@ export function answerGeneral(question, { lang = 'ta', now = new Date(), loc = D
   if (!Number.isFinite(loc.lat) || !Number.isFinite(loc.lon)) loc = { ...DEFAULT_LOC };
   const h = tzHours(tz, now);
   const { entry: e, intents } = m;
-  const hindu = !faith || faith === 'hindu';
 
   if (!e) {
     if (CHART_WORDS.test(m.n)) return null;
@@ -592,7 +590,6 @@ export function answerGeneral(question, { lang = 'ta', now = new Date(), loc = D
   const wantHow = intents.includes('how');
   const all = !wantWhen && !wantWhy && !wantHow;
   const sections = [];
-  if (!hindu) sections.push(sec('note', T(lang, 'For information', 'தகவலுக்காக'), [pick(NON_HINDU_NOTE, lang)]));
   sections.push(sec('about', pick(e.names, lang), [pick(e.line, lang), e.deity ? `${T(lang, 'Deity', 'தெய்வம்')}: ${pick(e.deity, lang)}` : '']));
 
   let dates = [];
@@ -622,6 +619,6 @@ export function answerGeneral(question, { lang = 'ta', now = new Date(), loc = D
     const nx = occurrencesBetween(fromIso, 400, loc, h).find((o) => o.id === e.id);
     if (nx) { dates = [nx]; sections.push(sec('next', T(lang, 'Next date', 'அடுத்த தேதி'), [whenLines(e, [nx], lang, loc, h, now)[0]])); }
   }
-  sections.push(...entrySections(e, lang, { faith, parts }));
+  sections.push(...entrySections(e, lang, { parts }));
   return finish(e.id, sections, followupsFor(e, lang, intents), SOURCES(lang), { id: e.id, dates: dates.map((o) => ({ date: o.date, end: o.end || null })) });
 }

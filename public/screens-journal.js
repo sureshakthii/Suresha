@@ -11,7 +11,6 @@ import {
 } from './core.js';
 import { morningBrief, weekAhead, monthAhead, sandhyaReminder, allOff, festivalInfo, dateLabel, monthLabel, isoAt } from './shared/daily-brief.js';
 import * as J from './shared/journal.js';
-import { faithOf, isHinduFaith } from './shared/faith.js';
 import { birthTamilMonth, natchathiraBirthdays } from './shared/special.js';
 import { openShareCard, inviteInfo, rewardLine } from './share-card.js';
 import { scheduleBriefNotifications, settings, SETTINGS_KEY } from './brief-notify.js';
@@ -169,7 +168,7 @@ function briefFor(m, snap, loc, td) {
     let chart = null;
     try { chart = person ? chartOf(person) : null; } catch { chart = null; }
     memo.clear();
-    memo.set(key, morningBrief({ chart, member: person, name: person ? displayName(person) : '', loc, now: new Date(), faith: person ? faithOf(person) : 'hindu', td, snap }));
+    memo.set(key, morningBrief({ chart, member: person, name: person ? displayName(person) : '', loc, now: new Date(), td, snap }));
   }
   return memo.get(key);
 }
@@ -181,7 +180,7 @@ function briefCardHtml(m, snap, loc, td, s) {
   const name = person ? displayName(person) : '';
   const greet = hour < 12 ? bi(b.greeting) : name ? L(`Vanakkam, ${name}`, `வணக்கம், ${name}`) : L('Vanakkam', 'வணக்கம்');
   const lines = [...b.lines];
-  if (s.sandhya) { const r = sandhyaReminder({ loc, date: b.date, faith: person ? faithOf(person) : 'hindu', td }); if (r && r.at > new Date()) lines.push({ key: 'sandhya', icon: '🪔', text: r.text }); }
+  if (s.sandhya) { const r = sandhyaReminder({ loc, date: b.date, td }); if (r && r.at > new Date()) lines.push({ key: 'sandhya', icon: '🪔', text: r.text }); }
   return `<section class="card glass brief-card" aria-labelledby="bfTitle">
     <div class="bf-head"><div><div class="bf-kicker">🌅 ${L('Morning brief', 'காலைக் குறிப்பு')} · ${esc(bi(dateLabel(b.date)).replace(/ \d{4}$/, ''))}</div><h3 id="bfTitle" class="bf-greet">${esc(greet)}</h3></div>
       <button class="link-btn" data-go="dailyset" aria-label="${esc(L('Brief and reminder settings', 'குறிப்பு, நினைவூட்டல் அமைப்புகள்'))}">⚙️</button></div>
@@ -205,7 +204,7 @@ function starBirthdaysToday(td) {
   if (sbMemo.key === key) return sbMemo.list;
   const list = [];
   for (const m of state.family) {
-    if (m.relation === 'organization' || !isHinduFaith(faithOf(m))) continue;
+    if (m.relation === 'organization') continue;
     try {
       const c = chartOf(m);
       const month = birthTamilMonth(c).month;
@@ -223,7 +222,6 @@ function delightCardHtml(m, loc, td, s) {
   const today = todayIso();
   const dis = (id) => Boolean(j.dismissed[id]);
   const person = m && m.relation !== 'organization' ? m : null;
-  const hindu = person ? isHinduFaith(faithOf(person)) : true;
   // 1. The person's own milestone.
   if (s.milestones) {
     const ms = J.pendingMilestone(j, today);
@@ -234,8 +232,8 @@ function delightCardHtml(m, loc, td, s) {
     if (sb) return dlCard(`sb:${sb.id}:${today}`, '🎂', `<p>${L(`Today is ${esc(displayName(sb))}’s star birthday.`, `இன்று ${esc(displayName(sb))} அவர்களின் நட்சத்திரப் பிறந்தநாள்.`)}</p>`,
       `<button class="chip-btn" type="button" data-grow="share-starbday" data-id="${esc(sb.id)}">🖼️ ${L('Send a wishes card', 'வாழ்த்து அட்டை அனுப்பு')}</button>`);
   }
-  // 3. Festival greeting (Hindu festivals for a Hindu-tradition person).
-  const fest = hindu ? (td.festivals || []).find((f) => f.kind === 'festival' && f.id !== 'month-start') : null;
+  // 3. Festival greeting.
+  const fest = (td.festivals || []).find((f) => f.kind === 'festival' && f.id !== 'month-start');
   if (fest && !dis(`fe:${fest.id}:${today}`)) {
     const fi = festivalInfo(fest);
     return dlCard(`fe:${fest.id}:${today}`, '🪔', `<p><b>${L(`Happy ${esc(fi.name.en)}!`, `இனிய ${esc(fi.name.ta)} நல்வாழ்த்துகள்!`)}</b></p><p class="small muted">${esc(bi(fi.line))}</p>`,
@@ -271,7 +269,7 @@ function summaryFor(kind, person, loc) {
   if (!sumMemo.has(key)) {
     let chart = null;
     try { chart = person ? chartOf(person) : null; } catch { chart = null; }
-    const o = { chart, loc, faith: person ? faithOf(person) : 'hindu', member: person, now: new Date() };
+    const o = { chart, loc, member: person, now: new Date() };
     try { sumMemo.set(key, kind === 'week' ? weekAhead({ ...o, start: todayIso() }) : monthAhead({ ...o, month: todayIso().slice(0, 7) })); } catch { sumMemo.set(key, null); }
   }
   return sumMemo.get(key);

@@ -7,7 +7,6 @@
 import { planetPositions, RASIS, NAKSHATRAS, PLANETS } from './astro.js';
 import { bhavaAnalysis } from './analysis.js';
 import { grahaStrength, NAVAGRAHA, remedyFor } from './remedies.js';
-import { isHinduFaith, universalPractice, TRADITIONAL_OPTIONAL } from './faith.js';
 
 const ASPECTS = { Jupiter: [1, 5, 7, 9], Saturn: [1, 3, 7, 10] };
 const DAY = 86400000;
@@ -48,23 +47,16 @@ export const QUESTIONS = [
     remedy: { en: 'Visit Shiva–Parvathi temples together on Mondays; talk daily without blame. A counsellor helps when needed — it is a sign of strength.', ta: 'திங்கள் சேர்ந்து சிவ–பார்வதி தரிசனம்; குற்றம் சாட்டாமல் தினமும் பேசுங்கள். தேவைப்பட்டால் ஆலோசகரை அணுகுவது பலத்தின் அடையாளம்.' } },
 ];
 
+/** The topic's traditional parigaram, always marked optional. */
+const topicRemedy = (remedy) => ({ ...remedy, optional: true });
+
 /**
  * The question as the chart owner should read it — gender-aware wording for partner / harmony questions and the
  * marriage parigaram (a woman looks for a மணமகன், a man for a மணமகள்). Unknown gender keeps the neutral text.
  * Returns { en, ta, remedy }.
  */
-/**
- * The topic's practice for this person's faith: Hindu → the question's own traditional parigaram; any other faith
- * (or none) → a practice for every faith from the topic's first karaka (prayer in their own way, charity, service),
- * with the Hindu text attached as optional `traditional` only on opt-in.
- */
-export function faithRemedy(q, hinduRemedy, faith = 'hindu', { traditional = false } = {}) {
-  if (isHinduFaith(faith)) return { ...hinduRemedy, optional: true };
-  const u = universalPractice(q?.karakas?.[0]);
-  return { en: u.en, ta: u.ta, optional: true, faith, traditional: traditional ? { ...hinduRemedy, note: TRADITIONAL_OPTIONAL, optional: true } : null };
-}
 
-export function questionFor(q, gender, { faith = 'hindu', traditional = false } = {}) {
+export function questionFor(q, gender) {
   if (!q) return null;
   const f = gender === 'female', m = gender === 'male';
   let en = q.en, ta = q.ta, remedy = q.remedy;
@@ -81,7 +73,7 @@ export function questionFor(q, gender, { faith = 'hindu', traditional = false } 
       ? { en: 'Pray to Lord Murugan with Valli–Deivanai on Tuesdays; the Katyayani mantra is a traditional prayer for a good groom.', ta: 'செவ்வாய்தோறும் வள்ளி–தெய்வானை சமேத முருகனை வழிபடுங்கள்; நல்ல மணமகன் அமைய காத்யாயனி மந்திரம் மரபு வழிபாடு.' }
       : { en: 'Pray to Lord Murugan with Valli–Deivanai on Tuesdays and light a lamp for Mahalakshmi on Fridays — a traditional prayer for a good bride.', ta: 'செவ்வாய்தோறும் வள்ளி–தெய்வானை சமேத முருகனை வழிபடுங்கள்; வெள்ளிதோறும் மகாலட்சுமிக்குத் தீபம் — நல்ல மணமகள் அமைய மரபு வழிபாடு.' };
   }
-  return { en, ta, remedy: faithRemedy(q, remedy, faith, { traditional }) };
+  return { en, ta, remedy: topicRemedy(remedy) };
 }
 
 /** Is this timing question meaningful at this age? (Its own age range — e.g. no marriage or child timing at 70.) */
@@ -169,7 +161,7 @@ const ageAt = (chart, d) => (d - chart.utc) / (365.25 * DAY);
  * Predict windows for a question. Returns the chart promise, the best dasa–bhukti windows (with
  * double-transit months), the current period, and positive guidance.
  */
-export function predictEvent(chart, questionId, { from = new Date(), years = 15, until = undefined, faith = 'hindu', traditional = false } = {}) {
+export function predictEvent(chart, questionId, { from = new Date(), years = 15, until = undefined } = {}) {
   // Report horizon: `years` ahead of `from` (stated by the screen). No age cutoff; a caller may pass `until`
   // to end the windows earlier (e.g. a couple's shared timeline).
   const horizon = until == null ? null : new Date(until);
@@ -183,7 +175,7 @@ export function predictEvent(chart, questionId, { from = new Date(), years = 15,
       promise: { score: null, level: q.sensitive === 'reproductive' ? 'not-assessed' : 'needs-birth-time', notes: [q.sensitive === 'reproductive' ? NOT_ASSESSED_NOTE : NEEDS_BIRTH_TIME] },
       windows: [], earliest: null, careful: [],
       current: md && ad ? { md: md.lord, ad: ad.lord, start: ad.start, end: ad.end, dasaScore: null } : null,
-      remedy: faithRemedy(q, q.remedy, faith, { traditional }), karakaRemedies: [],
+      remedy: topicRemedy(q.remedy), karakaRemedies: [],
       disclaimerId: PREDICT_DISCLAIMER_ID, disclaimer: PREDICT_DISCLAIMER, exactDatesGuaranteed: false,
       framing: framingOf(q),
     };
@@ -252,8 +244,8 @@ export function predictEvent(chart, questionId, { from = new Date(), years = 15,
   }
   const earliest = [...windows].filter((w) => w.score >= (ranked[0]?.score || 0) * 0.7).sort((a, b) => a.start - b.start)[0] || null;
   return {
-    question: q, promise, windows: top, allWindows: windows, earliest, careful, current, remedy: faithRemedy(q, q.remedy, faith, { traditional }),
-    karakaRemedies: q.sensitive ? [] : q.karakas.filter((k) => strength[k] < 50).map((k) => ({ ...remedyFor(k, { faith, traditional }), optional: true })),
+    question: q, promise, windows: top, allWindows: windows, earliest, careful, current, remedy: topicRemedy(q.remedy),
+    karakaRemedies: q.sensitive ? [] : q.karakas.filter((k) => strength[k] < 50).map((k) => ({ ...remedyFor(k), optional: true })),
     disclaimerId: PREDICT_DISCLAIMER_ID,
     disclaimer: PREDICT_DISCLAIMER,
     framing: framingOf(q),
@@ -320,7 +312,7 @@ export function kulaDeivam(chart, { recorded = null, now = new Date() } = {}) {
 }
 
 /** Habits to guard (e.g. alcohol/addiction): gentle, natal tendencies with practical support — never a label. */
-export function habitGuard(chart, { faith = 'hindu' } = {}) {
+export function habitGuard(chart) {
   const P = chart.planets;
   const L = P.Lagna ? P.Lagna.rasi : null;
   const notes = [];
@@ -333,12 +325,9 @@ export function habitGuard(chart, { faith = 'hindu' } = {}) {
     level: notes.length >= 2 ? 'guard' : notes.length ? 'mild' : 'low',
     notes,
     ...(L == null ? { needsBirthTime: true, birthTimeNote: NEEDS_BIRTH_TIME } : {}),
-    support: isHinduFaith(faith) ? {
+    support: {
       en: 'Daily routine, exercise and sleep; Murugan or Anjaneya worship on Tuesdays and Saturdays; avoid company that pressures you. If a habit is already hard to stop, talk to a doctor or a de-addiction counsellor — help works, and asking is strength.',
       ta: 'தினசரி ஒழுங்கு, உடற்பயிற்சி, உறக்கம்; செவ்வாய், சனி முருகன் அல்லது ஆஞ்சநேயர் வழிபாடு; அழுத்தம் தரும் நட்பைத் தவிர்க்கவும். பழக்கத்தை நிறுத்த கடினமாக இருந்தால் மருத்துவர் அல்லது போதை மீட்பு ஆலோசகரை அணுகவும் — உதவி பலன் தரும், கேட்பது பலம்.',
-    } : {
-      en: 'Daily routine, exercise and sleep; a few quiet minutes of prayer or reflection in your own way; avoid company that pressures you. If a habit is already hard to stop, talk to a doctor or a de-addiction counsellor — help works, and asking is strength.',
-      ta: 'தினசரி ஒழுங்கு, உடற்பயிற்சி, உறக்கம்; உங்கள் வழியில் சில நிமிட பிரார்த்தனை அல்லது அமைதியான சிந்தனை; அழுத்தம் தரும் நட்பைத் தவிர்க்கவும். ஒரு பழக்கத்தை நிறுத்த ஏற்கனவே கடினமாக இருந்தால், மருத்துவர் அல்லது போதை மீட்பு ஆலோசகரிடம் பேசுங்கள் — உதவி பலன் தரும்; கேட்பது வலிமை.',
     },
   };
 }

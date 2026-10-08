@@ -2,7 +2,7 @@
 // current engine. For ADULTS (18+) it reads the birth chart, the running Dasa / Bhukti and the Saturn, Jupiter and
 // Rahu–Ketu Gochara and names the body areas that Tamil / Jyotish tradition asks a person to look after, with dates,
 // a 12-month care map, traditional food tips (Tamil Siddha / Ayurveda planet and dosha associations), a daily routine,
-// simple yoga and faith-appropriate remedies, plus age-wise check-ups with reminders.
+// simple yoga and traditional remedies, plus age-wise check-ups with reminders.
 //
 // Hard rules (test/health-guide.test.js, docs/AI-SAFETY-POLICY.md §5):
 //  • every section says it is a traditional indication, not a diagnosis, and to see a doctor for any symptom;
@@ -15,7 +15,6 @@
 // General wellbeing (habits, check-ups) stays separate from astrology and is marked "needs medical review".
 import { RASIS, PLANETS, planetPositions } from './astro.js';
 import { grahaStrength, NAVAGRAHA } from './remedies.js';
-import { isHinduFaith, universalPractice, TRADITIONAL_OPTIONAL } from './faith.js';
 import { MANTRAS } from './mantras.js';
 import { MONTHS_EN, MONTHS_TA, planetAdjTa } from './fmt.js';
 const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
@@ -557,26 +556,12 @@ const ROUTINE = {
   kapha: T('Rise before sunrise and move briskly in the morning', 'சூரிய உதயத்திற்கு முன் எழுந்து காலையில் சுறுசுறுப்பான இயக்கம்'),
 };
 
-// ------------------------------------------------------------------ remedies (faith-appropriate)
+// ------------------------------------------------------------------ remedies
 const HEALING = [
   T('Pray to Lord Dhanvantari on Thursdays, if it is part of your family tradition', 'உங்கள் குடும்ப மரபு என்றால், வியாழன்தோறும் தன்வந்திரி பகவானை வணங்குங்கள்'),
   T('Vaitheeswaran Kovil (near Sirkazhi) — a visit or a prayer from home for the family’s wellbeing', 'வைத்தீஸ்வரன் கோவில் (சீர்காழி அருகே) — குடும்ப நலனுக்காகத் தரிசனம் அல்லது வீட்டிலிருந்தே பிரார்த்தனை'),
   T('Share food with someone in need (annadhanam) — a traditional act of kindness', 'தேவைப்படுபவருக்கு உணவளித்தல் (அன்னதானம்) — மரபு வழி அன்புச் செயல்'),
 ];
-const HEALING_ALL_FAITHS = [
-  T('A short prayer in your own faith, or a quiet moment, at dusk — a calm close to the day', 'அந்திவேளையில் உங்கள் நம்பிக்கைப்படி ஒரு சிறு பிரார்த்தனை அல்லது அமைதியான நிமிடம் — நாளுக்கு அமைதியான நிறைவு'),
-  T('Share food with someone in need — an act of kindness every faith honours', 'தேவைப்படுபவருக்கு உணவளித்தல் — எல்லா நம்பிக்கைகளும் போற்றும் அன்புச் செயல்'),
-  T('Visit or call an elder or someone who is unwell', 'ஒரு முதியவரையோ உடல்நலம் குன்றியவரையோ சந்தியுங்கள் அல்லது அழைத்துப் பேசுங்கள்'),
-  T('Keep a steady discipline — regular sleep, meals and a daily walk', 'சீரான ஒழுக்கம் — குறித்த நேர உறக்கம், சாப்பாடு, தினசரி நடை'),
-];
-const GOCHARA_ALL_FAITHS = {
-  ezharai: T('Ezharai Sani — tradition reads this as a time for patience and steady routine; a weekly act of service fits every faith', 'ஏழரைச் சனி — பொறுமைக்கும் சீரான அன்றாட ஒழுங்குக்குமான காலம் என மரபு பார்க்கிறது; வாரம் ஒரு சேவைச் செயல் எல்லா நம்பிக்கைக்கும் பொருந்தும்'),
-  ashtama: T('Ashtama Sani — tradition suggests a calm, unhurried routine and prayer in your own faith', 'அஷ்டமச் சனி — அமைதியான, நிதானமான வழக்கமும் உங்கள் நம்பிக்கைப்படி பிரார்த்தனையும் என மரபு சொல்கிறது'),
-  ardhashtama: T('Ardhashtama Sani — tradition suggests time and care for home and family', 'அர்த்தாஷ்டமச் சனி — வீட்டுக்கும் குடும்பத்துக்கும் நேரமும் அக்கறையும் என மரபு சொல்கிறது'),
-  rahu: T('Rahu over your Moon sign — tradition suggests avoiding shortcuts and a few quiet minutes each day', 'ராகு உங்கள் சந்திர ராசி மேல் — குறுக்கு வழி தவிர்த்து, தினமும் சில அமைதியான நிமிடங்கள் என மரபு சொல்கிறது'),
-  ketu: T('Ketu over your Moon sign — tradition suggests quiet reflection or meditation', 'கேது உங்கள் சந்திர ராசி மேல் — அமைதியான சிந்தனை அல்லது தியானம் என மரபு சொல்கிறது'),
-  guru_balam: T('Guru Balam — a time tradition sees for gratitude and sharing knowledge', 'குரு பலம் — நன்றி செலுத்தவும் அறிவைப் பகிரவும் உரிய காலம் என மரபு பார்க்கிறது'),
-};
 // Same text as the mantra library (shared/mantras.js) — one source; its meaning line is not reused here.
 const MRITYUNJAYA_SRC = MANTRAS.find((x) => x.id === 'mrityunjaya');
 const MRITYUNJAYA = {
@@ -605,8 +590,6 @@ const WELLBEING_NOTE = T('General habits, not from astrology — no diagnosis, n
 const REFLECTION_LABEL = T('Traditional reflection (optional)', 'மரபுச் சிந்தனை (விருப்பம்)');
 const REFLECTION_NOTE = T('Spiritual practices only — prayer, a lamp, a mantra, a calm routine. This is not health advice.',
   'ஆன்மீகப் பழக்கங்கள் மட்டுமே — பிரார்த்தனை, தீபம், மந்திரம், அமைதியான வழக்கம். இது உடல்நல ஆலோசனை அல்ல.');
-const REFLECTION_NOTE_ALL = T('Optional practices only — prayer in your own faith, a quiet moment, kindness and a calm routine. This is not health advice.',
-  'விருப்பப் பழக்கங்கள் மட்டுமே — உங்கள் நம்பிக்கைப்படி பிரார்த்தனை, அமைதியான நிமிடம், அன்புச் செயல், அமைதியான வழக்கம். இது உடல்நல ஆலோசனை அல்ல.');
 const TRADITION_LABEL = T('Traditional indications — not a diagnosis, not medical advice', 'மரபுக் குறிப்புகள் — நோய் கண்டறிதல் அல்ல, மருத்துவ ஆலோசனை அல்ல');
 const VITALITY_NOT_ASSESSED = T('Thunai does not estimate lifespan or vitality from a horoscope. Regular check-ups with your doctor are the reliable guide.',
   'துணை ஜாதகத்திலிருந்து ஆயுளையோ உயிர்ச்சக்தியையோ கணிப்பதில்லை. மருத்துவரிடம் வழக்கமான பரிசோதனையே நம்பகமான வழிகாட்டி.');
@@ -634,12 +617,11 @@ function nowAreas(cur, gochara, natal) {
 // ------------------------------------------------------------------ main
 /**
  * Health guide for one person. chart: birthChart output (birthArgs-mapped, so an unknown time has no Lagna).
- * options: now, gender ('male' | 'female' | undefined), faith, traditional (opt-in Hindu practice for other faiths),
- * tz (residence time zone, hours) for dates, profile (ageProfile result) for the age guard.
+ * options: now, gender ('male' | 'female' | undefined), tz (residence time zone, hours) for dates,
+ * profile (ageProfile result) for the age guard.
  */
-export function healthGuide(chart, { now = new Date(), gender, faith = 'hindu', traditional = false, tz = null, profile = null } = {}) {
+export function healthGuide(chart, { now = new Date(), gender, tz = null, profile = null } = {}) {
   const zone = tz ?? chart.tz ?? 5.5;
-  const hindu = isHinduFaith(faith);
   const P = chart.planets;
   const ref = refOf(chart);
   const { age, exact, minor } = ageOf(chart, now, profile);
@@ -664,22 +646,20 @@ export function healthGuide(chart, { now = new Date(), gender, faith = 'hindu', 
   if (g0.rahu === 1) rn('rahu', 'Rahu over your Moon sign — tradition suggests a prayer to Durga', 'ராகு உங்கள் சந்திர ராசி மேல் — துர்கை வழிபாடு என மரபு சொல்கிறது');
   if (g0.ketu === 1) rn('ketu', 'Ketu over your Moon sign — tradition suggests a prayer to Vinayagar', 'கேது உங்கள் சந்திர ராசி மேல் — விநாயகர் வழிபாடு என மரபு சொல்கிறது');
   if (g0.guruBalam) rn('guru_balam', 'Guru Balam — a time tradition sees for a Thursday prayer of thanks', 'குரு பலம் — வியாழன் நன்றி வழிபாட்டிற்கான காலம் என மரபு பார்க்கிறது');
-  const gNotes = hindu ? reflNotes : reflNotes.map((x) => ({ id: x.id, ...(GOCHARA_ALL_FAITHS[x.id] || x) }));
+  const gNotes = reflNotes;
   const lords = [...new Set([md?.lord, ad?.lord].filter(Boolean))];
   const practices = lords.map((k, i) => {
     const why = i === 0 && k === md?.lord ? T(`Running ${k} Dasa`, `நடப்பு ${planetAdjTa(k, PLANETS[k].ta)} தசை`) : T(`Running ${k} Bhukti`, `நடப்பு ${planetAdjTa(k, PLANETS[k].ta)} புக்தி`);
     const lamp = T(`Light a lamp on ${dayOf(k).en} with a short prayer to ${NAVAGRAHA[k].deity.en}`, `${dayOf(k).ta} அன்று ${NAVAGRAHA[k].deity.ta} முன் ஒரு தீபமும் சிறு பிரார்த்தனையும்`);
-    if (hindu) return { planet: k, ta: PLANETS[k].ta, why, day: dayOf(k), deity: NAVAGRAHA[k].deity, mantra: NAVAGRAHA[k].mantra, charity: NAVAGRAHA[k].charity, lamp };
-    return { planet: k, ta: PLANETS[k].ta, why, day: dayOf(k), deity: null, mantra: null, charity: NAVAGRAHA[k].charity, lamp: universalPractice(k),
-      traditional: traditional ? { deity: NAVAGRAHA[k].deity, mantra: NAVAGRAHA[k].mantra, temple: NAVAGRAHA[k].temple, lamp, note: TRADITIONAL_OPTIONAL, optional: true } : null };
+    return { planet: k, ta: PLANETS[k].ta, why, day: dayOf(k), deity: NAVAGRAHA[k].deity, mantra: NAVAGRAHA[k].mantra, charity: NAVAGRAHA[k].charity, lamp };
   });
-  // The guide's remedies card adds the temple (Hindu only) and a free practice to each reflection practice.
-  const remedyPlanets = practices.map((x) => ({ ...x, temple: hindu ? NAVAGRAHA[x.planet].temple : null, free: hindu ? NAVAGRAHA[x.planet].free : universalPractice(x.planet) }));
+  // The guide's remedies card adds the temple and a free practice to each reflection practice.
+  const remedyPlanets = practices.map((x) => ({ ...x, temple: NAVAGRAHA[x.planet].temple, free: NAVAGRAHA[x.planet].free }));
   const calm = T('A calm routine: a few quiet minutes of prayer or slow breathing each morning', 'அமைதியான வழக்கம்: தினமும் காலையில் சில நிமிடங்கள் அமைதியான பிரார்த்தனை அல்லது மெதுவான சுவாசம்');
-  const healing = hindu ? HEALING : HEALING_ALL_FAITHS;
+  const healing = HEALING;
   const reflection = {
-    label: REFLECTION_LABEL, note: hindu ? REFLECTION_NOTE : REFLECTION_NOTE_ALL, optional: true, notHealthAdvice: true, fromAstrology: true,
-    period: null, practices, gochara: gNotes, calm, healing, mantra: hindu ? MRITYUNJAYA : null, faith: hindu ? 'hindu' : faith,
+    label: REFLECTION_LABEL, note: REFLECTION_NOTE, optional: true, notHealthAdvice: true, fromAstrology: true,
+    period: null, practices, gochara: gNotes, calm, healing, mantra: MRITYUNJAYA,
   };
 
   const base = {
@@ -821,7 +801,7 @@ function healthNowFrom(cur, top, zone) {
 
 /**
  * One-line "ஆரோக்கிய கவனம் இப்போது / Health care now" summary for the Today wellbeing card and the written palan.
- * profile: an ageProfile() result or a member ({ age, minor, gender, faith }). Returns { en, ta, areas, until, link, label }.
+ * profile: an ageProfile() result or a member ({ age, minor, gender }). Returns { en, ta, areas, until, link, label }.
  * Minors get a general habit line (areas: []), never a chart-based body area.
  */
 export function healthNow(chart, profile = null, now = new Date(), { tz = null } = {}) {

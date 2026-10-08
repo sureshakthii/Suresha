@@ -144,10 +144,10 @@ export function goodWindows(td, { fixedAt = [], now = Date.now() } = {}) {
 
 // ---------------------------------------------------------------- observance guidance
 const strip = (s) => s.replace(/^As per your transits: /, '').replace(/^உங்கள் கோசாரப்படி: /, '');
-function obsLine(festivals, age, faith) {
+function obsLine(festivals, age) {
   if (!festivals.length) return null;
   try {
-    const it = todayPlan({ chart: null, snap: null, festivals, now: new Date(), faith, age }).items[0];
+    const it = todayPlan({ chart: null, snap: null, festivals, now: new Date(), age }).items[0];
     return it ? T(strip(it.text.en), strip(it.text.ta)) : null;
   } catch { return null; }
 }
@@ -158,7 +158,7 @@ const FAST_RE = /fast|skip rice|avoid non-vegetarian|விரதம்|அர�
  * Build the 7-day plan.
  * @param {object} o
  *  start: Date | 'YYYY-MM-DD' (default today at loc) · loc: residence { lat, lon, tz, zone? } · days (7)
- *  now: Date · profile: age profile of the plan owner ({ minor, age }) · faith ('hindu')
+ *  now: Date · profile: age profile of the plan owner ({ minor, age })
  *  family: [{ id, name, relation?, birthStar?, birthTamilMonth?, dob? }]  (birthStar/month → star birthday; dob → birthday)
  *  ancestors: [{ id, name, date, time, lat, lon, tz }]  (thivasam)
  *  chosenObservances: ['ekadasi', 'pradosham', …] · tasks: stored tasks · reminders: [{ id, title, eventAt | alarmAt }]
@@ -177,7 +177,6 @@ export function buildWeek(o = {}) {
   const todayIso = isoAt(now, loc);
   const profile = o.profile || { minor: false, age: 30 };
   const minor = Boolean(profile.minor);
-  const faith = o.faith || 'hindu';
   const chosen = new Set((o.chosenObservances || []).filter((x) => OBS_IDS.has(x)));
   const goalTasks = (o.goalSteps || []).map((x) => {
     if (!x || !x.goalId) return null;
@@ -281,7 +280,7 @@ export function buildWeek(o = {}) {
       d.observances.push({ id: `obs:${d.date}:${f.en}`, kind: 'observance', type: id, icon: ob?.icon || '🙏', title: T(f.en, f.ta), date: d.date,
         remindAt: instantAt(d.date, '05:30', loc).toISOString() });
     }
-    const line = obsLine(hits, minor ? Math.min(profile.age ?? 12, 13) : (profile.age ?? 30), faith);
+    const line = obsLine(hits, minor ? Math.min(profile.age ?? 12, 13) : (profile.age ?? 30));
     d.line = line && minor && (FAST_RE.test(line.en) || FAST_RE.test(line.ta))
       ? T('A simple prayer is enough — children need not fast.', 'எளிய பிரார்த்தனை போதும் — குழந்தைகள் விரதம் இருக்கத் தேவையில்லை.')
       : line;

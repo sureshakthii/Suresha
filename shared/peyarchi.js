@@ -1,7 +1,6 @@
 // Peyarchi Palan (Guru / Sani / Rahu-Ketu transits), monthly & yearly Rasi Palan and the
 // annual Viratha Naatkal list. Sidereal (Lahiri), runs unchanged in Node and the browser.
 import * as A from 'astronomy-engine';
-import { isHinduFaith, universalPractice, TRADITIONAL_OPTIONAL } from './faith.js';
 import { lahiriAyanamsa, norm360, sunSidereal, moonSidereal, RASIS, PLANETS } from './astro.js';
 import { tamilMonth } from './tamilcal.js';
 
@@ -274,29 +273,18 @@ const pair = ([en, ta]) => ({ en, ta });
 /** House of `transitRasi` counted from `moonRasi` (1..12). */
 export const houseFrom = (moonRasi, transitRasi) => ((transitRasi - moonRasi + 12) % 12) + 1;
 
-// For another faith (or none): the few transit lines that name a Hindu practice say it in a way every faith shares.
-const ALL_FAITHS_TEXT = [
-  ['temples, travel', 'charity, travel'], ['கோவில், பயணம்', 'தானம், பயணம்'],
-  ['mantra chanting', 'prayer in your own faith'], ['மந்திர ஜபமும்', 'உங்கள் நம்பிக்கைப்படி பிரார்த்தனையும்'],
-  ['visit temples and seek', 'visit your own place of worship and seek'], ['கோவில்களுக்குச் சென்று', 'உங்கள் வழிபாட்டுத் தலத்திற்குச் சென்று'],
-];
-const forAllFaiths = (s) => ALL_FAITHS_TEXT.reduce((x, [a, b]) => x.split(a).join(b), s);
-
 /** Classical gochara palan for one slow graha transiting `transitRasi`, for janma rasi `moonRasi`. */
-export function peyarchiPalan(planet, transitRasi, moonRasi, { faith = 'hindu', traditional = false } = {}) {
+export function peyarchiPalan(planet, transitRasi, moonRasi) {
   const house = houseFrom(moonRasi, transitRasi);
   const rule = RULES[planet];
   const level = LEVEL[rule.lv[house - 1]];
   const rem = REMEDIES[planet];
-  const hinduRemedy = pair(rem[level] || (level === 'good' ? rem.good : rem.other));
-  // Faith: another faith (or none) gets a practice for every faith; the Hindu parigaram only on opt-in, optional.
-  const remedy = isHinduFaith(faith) ? hinduRemedy : universalPractice(planet);
+  const remedy = pair(rem[level] || (level === 'good' ? rem.good : rem.other));
   const sp = SPECIAL[planet]?.[house];
   return {
     planet, house, level, score: rule.sc[house - 1],
-    text: isHinduFaith(faith) ? pair(TEXTS[planet][house - 1]) : pair(TEXTS[planet][house - 1].map(forAllFaiths)),
+    text: pair(TEXTS[planet][house - 1]),
     remedy,
-    traditional: !isHinduFaith(faith) && traditional ? { ...hinduRemedy, note: TRADITIONAL_OPTIONAL, optional: true } : null,
     special: sp ? pair(sp) : null,
   };
 }

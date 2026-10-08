@@ -1,6 +1,7 @@
 // Jathagam health guide (restored Oct 2026 at the owner's request): adults get traditional body areas, period
 // outlook, a 12-month map and food tips — always as traditional indications with the doctor line. Minors get only
-// general habits; unknown birth time is Moon-based only; other faiths get neutral remedies; no prohibited wording.
+// general habits; unknown birth time is Moon-based only; every person gets the same Hindu remedies (Hindu-only app,
+// Oct 2026); no prohibited wording.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { birthChart } from '../shared/astro.js';
@@ -164,29 +165,27 @@ test('approximate birth time: Lagna-based items are marked mayChange (stability 
   assert.ok(exact.bodyAreas.items.every((a) => !a.mayChange));
 });
 
-test('faith: Hindu gets deity, temple and mantra; other faiths get neutral prayer, charity and discipline only', () => {
-  const hi = healthGuide(venusAdult, { now, faith: 'hindu' });
+test('Hindu-only: every person gets deity, temple and mantra — an old stored faith changes nothing', () => {
+  const hi = healthGuide(venusAdult, { now });
   assert.ok(hi.remedies.planets.every((p) => p.deity && p.mantra && p.temple));
   assert.ok(hi.remedies.healing.some((x) => /Dhanvantari/.test(x.en)) && hi.remedies.healing.some((x) => /Vaitheeswaran Kovil/.test(x.en)));
   assert.ok(/Tryambakam/.test(hi.remedies.mantra.en) && /த்ர்யம்பகம்/.test(hi.remedies.mantra.ta));
   for (const faith of ['christian', 'muslim', 'none', 'other']) {
-    const h = healthGuide(venusAdult, { now, faith });
-    assert.equal(h.remedies.mantra, null);
-    assert.ok(h.remedies.planets.every((p) => p.deity === null && p.mantra === null && p.temple === null && p.free.en));
-    assert.ok(h.remedies.healing.some((x) => /discipline/i.test(x.en)));
+    const h = healthGuide(venusAdult, { now, faith, traditional: true });
+    assert.deepEqual(h, hi, `${faith}: same guide`);
+    assert.ok(h.remedies.planets.every((p) => p.deity && p.mantra && p.temple && !('traditional' in p)));
     const text = collectStrings({ r: h.remedies, refl: h.reflection, g: guideText(h) }).map(([, x]) => x).join('\n');
-    assert.doesNotMatch(text, /Dhanvantari|Kovil|Temple|Om |mantra|Mahalakshmi|Durga|Vinayagar|Shiva|temple|கோவில்|மந்திரம்|ஓம்|தீபம்/, faith);
-    // Opt-in shows the Hindu practice marked optional.
-    const opt = healthGuide(venusAdult, { now, faith, traditional: true });
-    assert.ok(opt.remedies.planets.every((p) => p.traditional?.optional === true));
+    assert.doesNotMatch(text, /own faith|every faith|நம்பிக்கைப்படி|எல்லா நம்பிக்கை/, faith);
+    // The doctor line stays.
+    assert.match(guideText(h).disclaimer?.en || JSON.stringify(guideText(h)), /doctor/i);
   }
 });
 
 test('no prohibited, fatal, certainty, fear or medicine wording across many adult charts, both languages', () => {
   const charts = [venusAdult, noTime, approx, ...adultCharts()];
   for (const c of charts) {
-    for (const faith of ['hindu', 'christian']) {
-      const h = healthGuide(c, { now, faith, gender: 'female' });
+    {
+      const h = healthGuide(c, { now, gender: 'female' });
       assert.deepEqual(findProhibited(h), []);
       const guide = collectStrings(guideText(h)).map(([, s]) => s);
       for (const s of guide) {

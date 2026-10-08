@@ -5,9 +5,8 @@ import { festivalCalendar, getEntry, entrySections, nextOccurrences, fmtDay } fr
 import { WEEKDAYS } from './shared/astro.js';
 import { TAMIL_MONTHS } from './shared/tamilcal.js';
 import { MANTRAS } from './shared/mantras.js';
-import { state, $, $$, L, ta, esc, bi, go, registerScreen, subHeader, speak, placeName, monthName, activeMember } from './core.js';
+import { state, $, $$, L, ta, esc, bi, go, registerScreen, subHeader, speak, placeName, monthName } from './core.js';
 import { remindBtn } from './remind.js';
-import { faithOf } from './shared/faith.js';
 import { hymnText } from './hymn-links.js';
 import { icon } from './icons.js';
 
@@ -25,7 +24,6 @@ const lang = () => (ta() ? 'ta' : 'en');
 const todayIso = () => new Date(Date.now() + tz() * 3600000).toISOString().slice(0, 10);
 const localAt = (iso, hm) => { const [y, mo, d] = iso.split('-').map(Number); const [h, mi] = hm.split(':').map(Number); return new Date(Date.UTC(y, mo - 1, d, h, mi) - tz() * 3600000); };
 const locKey = () => `${state.loc.lat.toFixed(3)}|${state.loc.lon.toFixed(3)}|${tz()}|${todayIso()}`;
-const viewerFaith = () => { const m = activeMember(); return m && m.relation !== 'organization' ? faithOf(m) : 'hindu'; };
 const kindOf = (row) => (row.kind === 'festival' ? 'festival' : row.kind === 'vratham' ? 'vratham' : 'monthly');
 const KIND_ICON = { festival: '🪔', vratham: '🙏', monthly: '🌙' };
 
@@ -95,7 +93,6 @@ function draw(sec) {
 function renderDetail(sec, id) {
   const e = getEntry(id);
   const lg = lang();
-  const faith = viewerFaith();
   const rows = rowsNow().filter((r) => r.id === id).slice(0, e.kind === 'monthly' ? 4 : 3);
   const upcoming = rows.length ? rows : nextOccurrences(id, { from: new Date(), count: 3, loc: { lat: state.loc.lat, lon: state.loc.lon }, tz: tz() }).map((o) => ({ ...o, end: o.end || null }));
   const dateHtml = upcoming.length ? upcoming.map((r) => {
@@ -103,7 +100,7 @@ function renderDetail(sec, id) {
     return `<div class="fx-when"><span>📅 <b>${esc(fmtDay(r.date, lg))}</b>${r.end && r.end !== r.date ? ` → ${esc(fmtDay(r.end, lg))}` : ''}${r.sub ? ` · ${esc(bi(r.sub.names))}` : ''}</span>
       ${remindBtn({ title, at: localAt(r.date, '06:00'), place: state.loc?.name || '', label: L('Remind', 'நினைவூட்டு') })}</div>`;
   }).join('') : `<p class="muted small">${L('Not a fixed-date day — see below.', 'நிலையான தேதி இல்லை — கீழே பாருங்கள்.')}</p>`;
-  const sections = entrySections(e, lg, { faith });
+  const sections = entrySections(e, lg);
   const mantra = e.mantra ? MANTRAS.find((m) => m.id === e.mantra) : null;
   const spoken = mantra ? (ta() ? mantra.text : mantra.translit) : e.chant ? (ta() ? e.chant.text : e.chant.translit) : '';
   const body = sections.map((s) => {

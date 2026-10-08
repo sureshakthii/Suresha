@@ -28,7 +28,6 @@ import { healthNowHtml } from './screens-health.js';
 import { dailyReview, dayVerdict } from './shared/daily.js';
 import { todayPlan } from './shared/today-plan.js';
 import { hymnText } from './hymn-links.js';
-import { faithOf, faithWelcome, faithBlessing, universalPractice, isHinduFaith } from './shared/faith.js';
 import { todayLines } from './today-lines.js';
 import { ageProfile, suggestionsFor, categoryAllowed, childSafe } from './shared/age-guard.js';
 import { compatCardHtml, bindCompatCard } from './compat-card.js';
@@ -66,12 +65,6 @@ export const GUIDE_SUGGESTIONS = [
   ['Explain my current dasa-bhukti simply', 'என் நடப்பு தசா புக்தியை எளிமையாக விளக்குங்கள்'],
 ];
 
-// Another faith (or none): no temple question among the suggestions.
-const GUIDE_SUGGESTIONS_OTHER_FAITH = [
-  ['A short prayer for today in my own faith', 'இன்றைக்கு என் நம்பிக்கைப்படி ஒரு சிறு பிரார்த்தனை'],
-  ...GUIDE_SUGGESTIONS.slice(1),
-];
-
 let today = null; // { key, day } cache of tamilDay for the current local date
 function todayInfo(loc) {
   const now = new Date();
@@ -102,11 +95,11 @@ function todayPlanCard(m, snap, loc, td) {
   let plan, review;
   try {
     const chart = person ? chartOf(person) : null;
-    review = chart ? minorDay(dailyReview(chart, snap, new Date(), { faith: faithOf(person) }), ageOf(person)) : null;
+    review = chart ? minorDay(dailyReview(chart, snap, new Date()), ageOf(person)) : null;
     const age = person ? (ageOf(person).age ?? 30) : 30;
     let dasaSure = true;
     try { dasaSure = person ? reliabilityOf(person).dasa !== false : true; } catch { dasaSure = true; }
-    plan = todayPlan({ chart, snap, festivals: td.festivals || [], level: review?.level || 'steady', now: new Date(), faith: person ? faithOf(person) : 'hindu', age, dasaSure });
+    plan = todayPlan({ chart, snap, festivals: td.festivals || [], level: review?.level || 'steady', now: new Date(), age, dasaSure });
   } catch { return ''; }
   const h = plan.horai;
   const lvCls = review?.personal ? { great: 'good', good: 'good', steady: 'warn', care: 'bad' }[review.level] : '';
@@ -158,11 +151,10 @@ function timeStrip(td, snap, loc) {
 function dailyCard(m, snap, loc) {
   const person = m && m.relation !== 'organization' ? m : null;
   let r;
-  try { r = dailyReview(person ? chartOf(person) : null, snap, new Date(), { faith: person ? faithOf(person) : 'hindu' }); } catch { return ''; }
+  try { r = dailyReview(person ? chartOf(person) : null, snap, new Date()); } catch { return ''; }
   if (person) r = minorDay(r, ageOf(person));
   const god = `<div class="dc-god"><span class="mini-label">${L('God of the day', 'இன்றைய தெய்வம்')}</span><b>${esc(bi(r.deity.god))}</b><span class="dc-mantra">${esc(bi(r.deity.mantra))}</span><span class="small muted">${hymnText(bi(r.deity.act))}</span></div>`;
-  // God of the day: Hindu tradition — shown only when the member is Hindu (or no member is chosen).
-  if (!r.personal) return person && !isHinduFaith(faithOf(person)) ? '' : `<section class="card glass daily-card">${god}</section>`;
+  if (!r.personal) return `<section class="card glass daily-card">${god}</section>`;
   const at = (d) => `${fmtDate(d, loc.tz)}, ${fmtTime(d, loc.tz)}`;
   const range = (w) => `${at(w.start)} – ${at(w.end)}`;
   const ch = r.nextChandrashtamam;
@@ -170,24 +162,19 @@ function dailyCard(m, snap, loc) {
     ? `<div class="dc-alert">${icon('alert', { size: 16 })} <b>${L('Chandrashtamam today', 'இன்று சந்திராஷ்டமம்')}</b>${ch ? ` · ${esc(untilL(at(ch.end)))}` : ''}<br><span class="small">${ageOf(person).adult ? L('Stay patient; postpone big decisions, signatures and new starts.', 'பொறுமை காக்கவும்; பெரிய முடிவு, கையெழுத்து, புதிய தொடக்கத்தை ஒத்திவையுங்கள்.') : L('Stay calm and gentle today — rest well and keep to your routine.', 'இன்று அமைதியாக, மென்மையாக இருங்கள் — நன்கு ஓய்வெடுத்து வழக்கத்தைப் பின்பற்றுங்கள்.')}</span></div>`
     : '';
   const fam = state.family.filter((x) => x.id !== person.id && x.relation !== 'organization').filter((x) => { try { return ((snap.moonRasi.index - chartOf(x).janmaRasi.index + 12) % 12) === 7; } catch { return false; } });
-  const faith = faithOf(person);
-  const other = faith !== 'hindu';
-  const welcome = faithWelcome(faith, displayName(person));
-  const blessing = other ? faithBlessing(faith) : null;
   return `<section class="card glass daily-card" aria-labelledby="dcTitle">
     <div class="card-title"><span id="dcTitle">${icon('check', { size: 18 })} ${L('Do’s & don’ts today', 'இன்று செய்யலாம் · தவிர்க்கவும்')}</span></div>
     ${(() => { try { const tl = todayLines(chartOf(person), snap); if (!ageOf(person).adult && childSafe([tl.star, tl.moon], ageOf(person)).length < 2) return ''; const rel = reliabilityOf(person); return `<div class="dc-star"><span class="dc-star-k">${esc(starRasiText(person))}</span>${rel.nakshatra ? `<b>${esc(bi(tl.star))}</b>` : ''}${rel.rasi ? `<span>${esc(bi(tl.moon))}</span>` : ''}</div>`; } catch { return ''; } })()}
-    ${welcome ? `<div class="dc-welcome">${esc(bi(welcome))}</div>` : ''}
     ${chLine}
     <div class="dc-cols"><div class="dc-do"><h4>${L('Do', 'செய்யலாம்')}</h4><ul>${r.dos.map((x) => `<li>${esc(bi(x))}</li>`).join('')}</ul></div>
       <div class="dc-dont"><h4>${L('Avoid', 'தவிர்க்கவும்')}</h4><ul>${r.donts.map((x) => `<li>${esc(bi(x))}</li>`).join('')}</ul></div></div>
     <details class="disclose dc-more"><summary>${L('Why, god of the day & prayer', 'ஏன், இன்றைய தெய்வம் & பிரார்த்தனை')}</summary>
     <ul class="dc-why">${r.why.map((w) => `<li>${esc(bi(w))}</li>`).join('')}</ul>
     ${!r.chandrashtamam && ch ? `<div class="dc-next">${L('Next Chandrashtamam', 'அடுத்த சந்திராஷ்டமம்')}: <b>${esc(range(ch))}</b></div>` : ''}
-    ${other ? `<div class="dc-god"><span class="mini-label">${L('For you today', 'இன்று உங்களுக்கு')}</span><b>${esc(bi(universalPractice(r.dasaDeity?.planet || r.dayLord)))}</b></div>` : god}
-    ${!other && r.dasaDeity ? `<p class="small">${L('Your Dasa deity', 'உங்கள் தசா தெய்வம்')}: <b>${esc(bi(r.dasaDeity.name))}</b> · ${L('Birth-star deity', 'நட்சத்திரத் தெய்வம்')}: <b>${esc(bi(r.starDeity))}</b></p>` : ''}
+    ${god}
+    ${r.dasaDeity ? `<p class="small">${L('Your Dasa deity', 'உங்கள் தசா தெய்வம்')}: <b>${esc(bi(r.dasaDeity.name))}</b> · ${L('Birth-star deity', 'நட்சத்திரத் தெய்வம்')}: <b>${esc(bi(r.starDeity))}</b></p>` : ''}
     ${fam.length ? `<p class="small dc-fam">${L('Chandrashtamam today in the family', 'இன்று குடும்பத்தில் சந்திராஷ்டமம்')}: <b>${fam.map((x) => esc(displayName(x))).join(', ')}</b> — ${L('be gentle with them today', 'இன்று அவர்களிடம் மென்மையாக இருங்கள்')}</p>` : ''}
-    ${other ? (blessing ? `<div class="dc-prayer">${esc(bi(blessing))}</div>` : '') : r.prayer ? `<div class="dc-prayer">${r.prayer.lines.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}
+    ${r.prayer ? `<div class="dc-prayer">${r.prayer.lines.map((x) => esc(bi(x))).join(' · ')}</div>` : ''}
     </details>
     <button class="chip-btn" id="dcShare" type="button">${icon('share', { size: 16 })} ${L('Share my day', 'என் நாளைப் பகிர்')}</button>
   </section>`;
@@ -201,7 +188,7 @@ function minorDay(r, prof) {
 
 function shareDaily(m, snap, loc) {
   const c = chartOf(m);
-  const r = minorDay(dailyReview(c, snap, new Date(), { faith: faithOf(m) }), ageOf(m));
+  const r = minorDay(dailyReview(c, snap, new Date()), ageOf(m));
   // A shared message is read by someone else: name the person and their rasi instead of "your rasi".
   const ri = c?.janmaRasi?.index;
   const rasi = ri == null ? '' : rasiName(ri);
@@ -219,8 +206,8 @@ function shareDaily(m, snap, loc) {
     ...r.why.map((w) => `• ${named(bi(w))}`),
     `✅ ${r.dos.map((x) => bi(x)).join('; ')}`,
     `🚫 ${r.donts.map((x) => bi(x)).join('; ')}`,
-    faithOf(m) === 'hindu' ? `🛕 ${L('God of the day', 'இன்றைய தெய்வம்')}: ${bi(r.deity.god)} — ${bi(r.deity.mantra)}` : '',
-    faithOf(m) === 'hindu' ? (r.prayer ? `🙏 ${r.prayer.lines.map((x) => bi(x)).join(' · ')}` : '') : (faithBlessing(faithOf(m)) ? bi(faithBlessing(faithOf(m))) : ''),
+    `🛕 ${L('God of the day', 'இன்றைய தெய்வம்')}: ${bi(r.deity.god)} — ${bi(r.deity.mantra)}`,
+    r.prayer ? `🙏 ${r.prayer.lines.map((x) => bi(x)).join(' · ')}` : '',
     '',
     `${L('From', 'வழங்குவது')} ${L('Thunai', 'துணை')} — ${L('Your companion on life’s path', 'உங்கள் வாழ்வின் வழித்துணை')}`,
     APP_URL ? `🔗 ${APP_URL}` : '',
@@ -234,7 +221,7 @@ function shareDaily(m, snap, loc) {
 function healthTodayCard(m) {
   if (!m || m.relation === 'organization') return '';
   let h;
-  try { h = healthGuide(chartOf(m), { gender: m.gender, faith: faithOf(m) }); } catch { return ''; }
+  try { h = healthGuide(chartOf(m), { gender: m.gender }); } catch { return ''; }
   const w = h.wellbeing, r = h.reflection;
   const habits = w.habits.filter((x) => ['sleep', 'walk', 'doctor'].includes(x.id));
   const pr = r.practices[0];
@@ -323,7 +310,7 @@ function renderHome(sec) {
         <textarea id="guideInput" class="grow-in" rows="2" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai your question…', 'உங்கள் கேள்வியைத் துணையிடம் கேளுங்கள்…'))}"></textarea>
         <button class="send" aria-label="${L('Ask', 'கேள்')}">➤</button>
       </form>
-      <div class="guide-sugs">${suggestionsFor(m ? ageOf(m) : ageProfile(null), m && !isHinduFaith(faithOf(m)) ? GUIDE_SUGGESTIONS_OTHER_FAITH : GUIDE_SUGGESTIONS, { count: 4 }).map((x) => `<button class="sg" type="button">${esc(bi(x))}</button>`).join('')}</div>
+      <div class="guide-sugs">${suggestionsFor(m ? ageOf(m) : ageProfile(null), GUIDE_SUGGESTIONS, { count: 4 }).map((x) => `<button class="sg" type="button">${esc(bi(x))}</button>`).join('')}</div>
       <p class="small muted">${L('Type or speak — Tamil, English or Tanglish. You can check the words before sending.', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எழுதலாம் அல்லது பேசலாம். அனுப்பும் முன் சரிபார்க்கலாம்.')}</p>
     </section>
 
@@ -365,7 +352,7 @@ function renderHome(sec) {
     ${trialBanner()}
     ${plans.length ? `<div class="card glass"><div class="card-title"><span>${L('Saved plans', 'சேமித்த திட்டங்கள்')}</span><button class="link-btn" data-go="journey">${L('Plan new', 'புதிய திட்டம்')}</button></div>
       ${plans.slice(0, 3).map((p) => `<button class="plan-row" data-go="journey" data-param='${esc(JSON.stringify({ open: p.id }))}'><b>${esc(p.title)}</b><span class="muted small">${esc(p.dates || '')}</span></button>`).join('')}</div>`
-    : `<button class="card glass cta-card journey-cta" data-go="journey"><b>${L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்')}</b><span class="small muted">${m && !isHinduFaith(faithOf(m)) ? L('Plan a family trip or pilgrimage that fits your leave, budget and family — route, timings, weather and stay.', 'உங்கள் விடுப்பு, பட்ஜெட், குடும்பத்திற்கு ஏற்ற குடும்பப் பயணம் அல்லது புனிதப் பயணம் — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.') : L('Plan a temple visit that fits your leave, budget and family — route, timings, weather and stay.', 'உங்கள் விடுப்பு, பட்ஜெட், குடும்பத்திற்கு ஏற்ற கோவில் பயணம் — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.')}</span></button>`}
+    : `<button class="card glass cta-card journey-cta" data-go="journey"><b>${L('My Spiritual Journey', 'என் ஆன்மீகப் பயணம்')}</b><span class="small muted">${L('Plan a temple visit that fits your leave, budget and family — route, timings, weather and stay.', 'உங்கள் விடுப்பு, பட்ஜெட், குடும்பத்திற்கு ஏற்ற கோவில் பயணம் — வழி, நேரம், வானிலை, தங்குமிடத்துடன்.')}</span></button>`}
     ${reminderCard()}
     ${familyCard(snap)}
     ${weatherCardHtml()}
@@ -451,14 +438,14 @@ function relationsCard() {
 
 function parigaramCard(snap) {
   const m = activeMember();
-  // Faith and age first: another faith gets every-faith practices, a child gets child-safe ones.
+  // Age first: a child gets child-safe practices.
   const person = m && m.relation !== 'organization' ? m : null;
-  const items = dailyParigaram({ weekday: snap.weekday.index, chart: person && chartOf(person), snapshot: snap, faith: person ? faithOf(person) : 'hindu', profile: person ? ageOf(person) : null, now: new Date() }).slice(0, 2);
+  const items = dailyParigaram({ weekday: snap.weekday.index, chart: person && chartOf(person), snapshot: snap, profile: person ? ageOf(person) : null, now: new Date() }).slice(0, 2);
   // An adult with doshams: the dosham-based parigara sthalam first (shared/dosham.js), then today's practices.
   let ds = null;
   try {
     const prof = person ? ageOf(person) : null;
-    if (person && prof && !prof.minor && !prof.unknown) ds = primarySthalam(diagnoseDoshams(chartOf(person), { minor: prof.minor, age: prof.age }), { faith: faithOf(person) });
+    if (person && prof && !prof.minor && !prof.unknown) ds = primarySthalam(diagnoseDoshams(chartOf(person), { minor: prof.minor, age: prof.age }));
   } catch (e) { console.warn('dosham', e); }
   return `<div class="card glass" data-go="parigaram"><div class="card-title"><span>🪔 ${L('Today\'s parigaram', 'இன்றைய பரிகாரம்')}${m ? ` · ${esc(displayName(m))}` : ''}</span><span class="link-btn">${L('All', 'அனைத்தும்')} ›</span></div>
     ${ds ? `<div class="pari-row dz-today"><span class="pg">🛕</span><div><b>${esc(bi(ds.item.name))} — ${esc(bi(ds.sthalam.name))}</b><p class="small">${esc(bi(ds.sthalam.why))}${ds.day ? ` · 📅 ${esc(bi(ds.day))}` : ''}</p></div></div>` : ''}
@@ -1009,7 +996,7 @@ async function ask(opts = {}) {
   $('#answer').hidden = false;
   if (!categoryAllowed(category, prof)) {
     // Only the selected minor is limited: a typed adult question gets the age-appropriate reply, never a verdict.
-    const g = ageGuardAnswer({ topic: category, profile: prof, lang: state.lang, name: m ? displayName(m) : '', question, label: { en: cat.en.toLowerCase(), ta: cat.ta }, faith: m && m.relation !== 'organization' ? faithOf(m) : 'hindu' });
+    const g = ageGuardAnswer({ topic: category, profile: prof, lang: state.lang, name: m ? displayName(m) : '', question, label: { en: cat.en.toLowerCase(), ta: cat.ta } });
     lastAnswer = { category: null, guard: g };
     renderGuard(g);
     $('#answer').scrollIntoView({ behavior: 'smooth' });

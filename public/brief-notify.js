@@ -7,7 +7,6 @@
 // shown only from that switch.
 import { state, store, L, activeMember, chartOf, displayName, BRAND } from './core.js';
 import { morningBrief, briefNotification, sandhyaReminder, weekAhead, monthAhead, briefSettings, instantAt, isoAt, addDaysIso } from './shared/daily-brief.js';
-import { faithOf } from './shared/faith.js';
 
 export const SETTINGS_KEY = 'kj_daily';
 export const ID_BASE = 7100000;
@@ -31,7 +30,6 @@ export function plannedNotifications({ now = new Date(), days = 7, s = settings(
   const m = briefPerson();
   let chart = null;
   try { chart = m ? chartOf(m) : null; } catch { chart = null; }
-  const faith = m ? faithOf(m) : 'hindu';
   const name = m ? displayName(m) : '';
   const lang = state.lang === 'en' ? 'en' : 'ta';
   const pick = (x) => (lang === 'ta' ? x.ta : x.en);
@@ -42,20 +40,20 @@ export function plannedNotifications({ now = new Date(), days = 7, s = settings(
     const at = instantAt(date, s.morningTime, tz);
     if (s.notify && at > now) {
       try {
-        const b = morningBrief({ chart, member: m, name, loc, now: at, from: at, faith });
+        const b = morningBrief({ chart, member: m, name, loc, now: at, from: at });
         const n = briefNotification(b, lang);
         out.push({ id: ID_BASE + i, at, title: n.title, body: n.body, kind: 'brief' });
       } catch { /* a day the engine cannot compute is skipped */ }
       const wd = new Date(`${date}T12:00:00Z`).getUTCDay();
       if (s.weekly && wd === 0) {
-        try { const w = weekAhead({ chart, loc, start: date, faith, member: m, now: at }); out.push({ id: ID_BASE + 40 + i, at: new Date(at.getTime() + 60000), title: `🗓️ ${pick(w.title)}`, body: w.lines.map((l) => pick(l.text)).join('\n'), kind: 'week' }); } catch { /* skip */ }
+        try { const w = weekAhead({ chart, loc, start: date, member: m, now: at }); out.push({ id: ID_BASE + 40 + i, at: new Date(at.getTime() + 60000), title: `🗓️ ${pick(w.title)}`, body: w.lines.map((l) => pick(l.text)).join('\n'), kind: 'week' }); } catch { /* skip */ }
       }
       if (s.monthly && date.endsWith('-01')) {
-        try { const mo = monthAhead({ chart, loc, month: date.slice(0, 7), faith, member: m, now: at }); out.push({ id: ID_BASE + 60 + i, at: new Date(at.getTime() + 120000), title: `📅 ${pick(mo.title)}`, body: mo.lines.map((l) => pick(l.text)).join('\n'), kind: 'month' }); } catch { /* skip */ }
+        try { const mo = monthAhead({ chart, loc, month: date.slice(0, 7), member: m, now: at }); out.push({ id: ID_BASE + 60 + i, at: new Date(at.getTime() + 120000), title: `📅 ${pick(mo.title)}`, body: mo.lines.map((l) => pick(l.text)).join('\n'), kind: 'month' }); } catch { /* skip */ }
       }
     }
     if (s.sandhya) {
-      const r = sandhyaReminder({ loc, date, faith });
+      const r = sandhyaReminder({ loc, date });
       if (r && r.at > now) out.push({ id: ID_BASE + 20 + i, at: r.at, title: `🪔 ${L('Evening lamp', 'மாலை விளக்கு')}`, body: pick(r.text), kind: 'sandhya' });
     }
   }

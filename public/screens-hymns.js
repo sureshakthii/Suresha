@@ -4,7 +4,6 @@
 // the source edition, then the text in large Tamil script by section, read aloud line by line with the shared
 // player (read-aloud.js): highlight, speed, and resume at the last line. Texts load only when opened.
 // A hymn whose text is still pending shows its name, meaning and a "full text coming" note — never unverified text.
-// Faith: any visitor may open a hymn; whether a hymn is *suggested* is decided by the existing faith rules elsewhere.
 import { state, $, $$, L, ta, esc, bi, store, registerScreen, subHeader, toast, copyright, go } from './core.js';
 import { createPlayer, detectVoice, nativeTts, userHasTapped } from './read-aloud.js';
 import { HYMNS, hymnById, hymnReady, loadHymn, speakable } from './shared/hymns.js';

@@ -22,7 +22,6 @@ import { grahaStrength, NAVAGRAHA, remedyFor } from './remedies.js';
 import { vargaRasi } from './varga.js';
 import { runningDasa } from './daily.js';
 import { luckyNumbers, ishtaTheivam, gemstones, PLANET_DEITY, STAR_DEITY, PLANET_COLOR } from './personal.js';
-import { isHinduFaith, universalPractice, faithBlessing } from './faith.js';
 
 const T = (en, ta) => ({ en, ta });
 const ta = (k) => PLANETS[k]?.ta || k;
@@ -470,19 +469,12 @@ export function luckLines(kind, chart, lang = 'ta', { rel = null, name = '', veh
   ], chart: [L(`Read from your ${ref.en}: weekday lords of the 1st, 9th and 5th lords and your strongest planet.`, `${ref.ta}படி: 1, 9, 5-ம் அதிபதிகள், பலமான கிரகம் — அவற்றின் கிழமைகள்.`)] };
 }
 
-// ------------------------------------------------------------------ which god (faith-aware)
-export function godLines(chart, lang = 'ta', { rel = null, faith = 'hindu', name = '' } = {}) {
+// ------------------------------------------------------------------ which god
+export function godLines(chart, lang = 'ta', { rel = null, name = '' } = {}) {
   const L = (en, t) => (lang === 'ta' ? t : en);
   const b = base(chart, rel);
   const ll = lordOf(b.from, 1);
   const who = name ? `${name}, ` : '';
-  if (!isHinduFaith(faith)) {
-    return { answer: [
-      L(`${who}pray in your own faith — that is the right way for you. Thunai does not suggest Hindu deities for another faith.`, `${who}உங்கள் சொந்த நம்பிக்கைப்படி பிரார்த்தியுங்கள் — அதுவே உங்களுக்கு ஏற்ற வழி. மற்ற நம்பிக்கையுள்ளவர்களுக்குத் துணை இந்துத் தெய்வங்களைப் பரிந்துரைப்பதில்லை.`),
-      pick(universalPractice(ll), lang),
-      pick(faithBlessing(faith) || faithBlessing('other'), lang),
-    ], chart: [L(`Your ${b.useLagna ? 'Lagna' : 'Moon-sign'} lord ${ll} speaks of the virtues above.`, `உங்கள் ${b.useLagna ? 'லக்னாதிபதி' : 'ராசி அதிபதி'} ${ta(ll)} மேலே உள்ள நற்பண்புகளைக் குறிக்கிறார்.`)] };
-  }
   const answer = [L(`${who}the deities your chart points to, by traditional method:`, `${who}உங்கள் ஜாதகப்படி மரபு முறைகள் காட்டும் வழிபாட்டுத் தெய்வம்:`)];
   let i = 1;
   if (b.exact) {
@@ -500,15 +492,15 @@ export function godLines(chart, lang = 'ta', { rel = null, faith = 'hindu', name
 }
 
 // ------------------------------------------------------------------ which gem (optional; the free practice first)
-export function gemLines(chart, lang = 'ta', { rel = null, faith = 'hindu', name = '', profile = null } = {}) {
+export function gemLines(chart, lang = 'ta', { rel = null, name = '', profile = null } = {}) {
   const L = (en, t) => (lang === 'ta' ? t : en);
   const b = base(chart, rel);
   const ll = lordOf(b.from, 1);
   const who = name ? `${name}, ` : '';
-  const free0 = remedyFor(ll, { faith, profile })?.free;
+  const free0 = remedyFor(ll, { profile })?.free;
   const free = free0 && { en: String(free0.en).replace(/[.\s]+$/, ''), ta: String(free0.ta).replace(/[.\s]+$/, '') };
   const answer = [L(`${who}first, the free way: ${free ? free.en : 'prayer, charity and discipline'} — this strengthens your ${b.useLagna ? 'Lagna' : 'Moon-sign'} lord ${ll} without buying anything.`, `${who}முதலில் இலவச வழி: ${free ? free.ta : 'வழிபாடு, தானம், ஒழுக்கம்'} — எதையும் வாங்காமலே ${b.useLagna ? 'லக்னாதிபதி' : 'ராசி அதிபதி'} ${ta(ll)} பலம் பெற உதவும்.`)];
-  if (b.useLagna && isHinduFaith(faith)) {
+  if (b.useLagna) {
     const g = gemstones(chart);
     const good = g.good.slice(0, 2);
     if (good.length) answer.push(L(`Only if you wish (tradition, optional): ${good.map((x) => `${pick(x.gem, 'en')} for ${x.planet} (${x.role.en})`).join('; ')}.`, `விரும்பினால் மட்டும் (மரபு, விருப்பத்திற்குரியது): ${good.map((x) => `${pick(x.gem, 'ta')} — ${ta(x.planet)} (${x.role.ta})`).join('; ')}.`));

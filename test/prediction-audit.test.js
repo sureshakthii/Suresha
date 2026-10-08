@@ -1,11 +1,12 @@
 // Prediction audit (docs/PREDICTION-AUDIT.md): every prediction surface run over a matrix of ~80 profiles —
-// ages 0–100, male / female, Hindu / Christian / Muslim / Jain / Sikh / other / none, exact / approximate / unknown
+// ages 0–100, male / female, a stored faith of Hindu / Christian / Muslim / Jain / Sikh / other / none (left by older
+// versions — ignored since the app is Hindu-only, Oct 2026), exact / approximate / unknown
 // birth time, born in India or abroad and living in Chennai / Dubai / London / New York / Singapore, single /
 // married / separated-widowed — and checked for the rules the app promises:
 //   • age: nothing adult for minors, study tone for teens, no marriage / job push at 60+, milestones at 60/70/80,
 //     no lifespan wording, no age-80 horizon cutoff;
-//   • faith: no Hindu-only instruction for another faith unless they opt in (then marked optional); Hindu content
-//     stays rich;
+//   • Hindu for everyone: every profile, whatever an old stored faith says, gets the same rich Hindu content (deity,
+//     mantra, temple, festival practice, closing prayer) — only the age rules change what is shown;
 //   • consistency: one running dasa / bhukti and one "supportive or not" verdict on every surface; analysis area
 //     levels match the written palan; unknown-time charts are read from the Moon everywhere; residence time zone
 //     for daily timings, birth time zone for the chart;
@@ -32,7 +33,6 @@ import { matchPorutham } from '../shared/porutham.js';
 import { marriageReport } from '../shared/couple.js';
 import { healthGuide } from '../shared/health.js';
 import { ageProfile, adultText, topicAllowed, lifeQuestionAllowed, ageGuardAnswer, childGeneralAnswer, isAdult } from '../shared/age-guard.js';
-import { isHinduFaith, TRADITIONAL_OPTIONAL, FAITHS } from '../shared/faith.js';
 import { locFromPlace } from '../shared/residence.js';
 import { REPORT_YEARS } from '../shared/report-horizon.js';
 import { collectStrings, findProhibited } from '../shared/themes.js';
@@ -48,6 +48,7 @@ const TA = /[஀-௿]/;
 
 // ------------------------------------------------------------------ the profile matrix
 const AGES = [0, 3, 6, 10, 13, 16, 17, 18, 21, 25, 30, 40, 50, 60, 70, 80, 90, 100];
+// Values older versions could store on a profile; the app ignores them now (every profile is read the same way).
 const OTHER_FAITHS = ['christian', 'muslim', 'jain', 'sikh', 'other', 'none'];
 const TIMES = ['exact', 'approx', 'unknown'];
 const MARITAL = ['single', 'married', 'other'];
@@ -161,10 +162,8 @@ test('profile matrix: ~80 profiles cover every age, gender, faith, birth-time, r
   for (const m of MARITAL) assert.ok(PROFILES.some((p) => p.marital === m), `marital ${m}`);
   assert.ok(PROFILES.every((p) => MARITAL.includes(p.marital) && p.faith && TIMES.includes(p.time)), 'every profile fully specified');
   assert.ok(PROFILES.some((p) => p.birth === 'London'), 'born abroad');
-  // Every age has a Hindu and a non-Hindu profile, so the faith rules are checked at every age.
+  // Every age has a profile with an old non-Hindu stored faith, so "the stored faith is ignored" is checked at every age.
   for (const a of AGES) assert.ok(PROFILES.some((p) => p.age === a && p.faith === 'hindu') && PROFILES.some((p) => p.age === a && p.faith !== 'hindu'), `age ${a} both faiths`);
-  // Every faith a person can pick in the profile is one the matrix covers.
-  for (const [id] of FAITHS) if (id !== 'auto' && id !== 'buddhist') assert.ok(PROFILES.some((p) => p.faith === id), `FAITHS option ${id}`);
   for (const r of RUNS) assert.equal(r.prof.age, r.p.age, `${r.p.id} calendar age`);
 });
 
@@ -271,73 +270,53 @@ test('age: no lifespan or death prediction at any age, and no age-80 horizon cut
   for (const r of oldest) assert.ok(r.roadmap.years.at(-1).age >= r.p.age + REPORT_YEARS.roadmap - 1, `${r.p.id}: years past 80+ are read`);
 });
 
-// ------------------------------------------------------------------ FAITH
-test('faith: another faith (or none) never gets Hindu-only instructions by default — prayer in their own way, charity, service', () => {
-  const others = RUNS.filter((r) => !isHinduFaith(r.p.faith));
-  assert.ok(others.length >= 50);
-  for (const r of others) {
-    const R = readable(r);
-    for (const [surface, v] of Object.entries(R)) {
-      for (const s of strs(v)) {
-        assert.doesNotMatch(s, HINDU_ONLY, `${r.p.id} (${r.p.faith}) ${surface}: "${s}"`);
-      }
-    }
+// ------------------------------------------------------------------ HINDU FOR EVERYONE (owner decision, Oct 2026)
+// "Thunai is a complete Hindu-based astrology app — fully Hindu for everyone." A faith stored by an older version is
+// ignored: every profile gets the same Hindu content; only the AGE rules change what a person sees.
+test('Hindu-only: a profile stored with another faith gets exactly the content of the same profile with no faith', () => {
+  const legacy = RUNS.filter((r) => r.p.faith !== 'hindu');
+  assert.ok(legacy.length >= 50);
+  for (const r of legacy) {
+    const { c, prof, snap, p } = r;
+    assert.deepEqual(r.parigaram, dailyParigaram({ weekday: snap.weekday.index, chart: c, snapshot: snap, profile: prof, now: NOW }), `${p.id} parigaram`);
+    assert.deepEqual(r.today, todayPlan({ chart: c, snap, festivals: FESTIVALS, level: r.daily.level, now: NOW, age: prof.age }), `${p.id} today plan`);
+    assert.deepEqual(r.peyarchi, ['Jupiter', 'Saturn', 'Rahu', 'Ketu'].map((k) => peyarchiPalan(k, PEY[k].rasi, c.janmaRasi.index)), `${p.id} peyarchi`);
+    assert.deepEqual(r.daily, dailyReview(c, snap, NOW), `${p.id} daily`);
+    if (r.life.length) assert.deepEqual(r.life[0].remedy, predictEvent(c, 'career', { from: NOW, years: REPORT_YEARS.life }).remedy, `${p.id} life remedy`);
+  }
+});
+
+test('Hindu-only: every profile keeps rich traditional content — deity, mantra, temple, festival practice, ceremony', () => {
+  for (const r of RUNS) {
     for (const i of r.parigaram) {
-      assert.ok(!('deity' in i) && !('temple' in i) && !('mantra' in i) && !('gem' in i), `${r.p.id} parigaram item has no deity / temple / mantra / gem`);
-      assert.equal(i.traditional, null);
+      assert.ok(i.deity?.en && i.mantra?.en && i.temple?.en && i.free?.en, `${r.p.id} full Navagraha entry`);
+      assert.ok(!('traditional' in i) && !('faith' in i), `${r.p.id}: no "optional, for information only" fold`);
     }
-    assert.equal(r.daily.prayer, null);
-    assert.ok(bothLangs(r.daily.practice), 'a practice for every faith');
-    assert.ok(r.daily.blessing === null || bothLangs(r.daily.blessing));
-    for (const per of r.roadmap.periods) assert.equal(per.remedy.deity, null);
-    for (const x of r.peyarchi) assert.doesNotMatch(`${x.remedy.en} ${x.remedy.ta}`, HINDU_ONLY);
-    const mn = milestoneNote(r.p.faith);
-    assert.equal(mn.hindu, false);
-    assert.match(mn.en, /own tradition/);
-    if (r.prof.minor) {
-      const g = ageGuardAnswer({ topic: 'marriage', profile: r.prof, lang: 'en', faith: r.p.faith });
-      assert.doesNotMatch(g.text, HINDU_ONLY, `${r.p.id} child answer: ${g.text}`);
-      const c = childGeneralAnswer({ profile: r.prof, lang: 'en', faith: r.p.faith, deity: r.daily.deity });
-      assert.doesNotMatch(c.text, HINDU_ONLY, `${r.p.id} child general answer: ${c.text}`);
-    }
-  }
-});
-
-test('faith: Hindu content is offered to another faith only on opt-in, and then marked optional / informational', () => {
-  const r = RUNS.find((x) => x.p.faith === 'christian' && x.prof.adult && x.c.planets.Lagna);
-  const opted = dailyParigaram({ weekday: r.snap.weekday.index, chart: r.c, snapshot: r.snap, faith: 'christian', traditional: true, profile: r.prof, now: NOW });
-  for (const i of opted) {
-    assert.doesNotMatch(i.free.en, HINDU_ONLY, 'the main practice stays faith-neutral');
-    assert.ok(i.traditional && i.traditional.optional === true, 'Hindu entry attached as optional');
-    assert.deepEqual(i.traditional.note, TRADITIONAL_OPTIONAL);
-    assert.match(i.traditional.note.en, /optional, for information only. Not required/);
-  }
-  const rem = remedyFor('Saturn', { faith: 'muslim', traditional: true });
-  assert.equal(rem.traditional.optional, true);
-  const q = questionFor(QUESTIONS.find((x) => x.id === 'marriage'), 'female', { faith: 'muslim', traditional: true });
-  assert.doesNotMatch(q.remedy.en, HINDU_ONLY);
-  assert.equal(q.remedy.traditional.optional, true);
-  const py = peyarchiPalan('Saturn', PEY.Saturn.rasi, r.c.janmaRasi.index, { faith: 'sikh', traditional: true });
-  assert.equal(py.traditional.optional, true);
-});
-
-test('faith: Hindu users keep rich traditional content — deity, mantra, temple, festival practice, ceremony', () => {
-  const hindus = RUNS.filter((r) => isHinduFaith(r.p.faith));
-  assert.ok(hindus.length >= 18);
-  for (const r of hindus) {
-    for (const i of r.parigaram) assert.ok(i.deity?.en && i.mantra?.en && i.temple?.en && i.free?.en, `${r.p.id} full Navagraha entry`);
     assert.ok(r.today.items.some((it) => /Murugan|Kanda Sashti|Shiva|Perumal|Vishnu/.test(it.text.en + it.title.en)), `${r.p.id} festival practice`);
     if (r.daily.dasaDeity) assert.ok(r.daily.prayer?.lines?.length, `${r.p.id} closing prayer`);
+    assert.ok(!('blessing' in r.daily) && !('practice' in r.daily), `${r.p.id}: no other-faith blessing`);
     for (const x of r.peyarchi) assert.match(x.remedy.en, HINDU_ONLY, `${r.p.id} traditional peyarchi parigaram`);
     for (const per of r.roadmap.periods) assert.ok(per.remedy.deity?.en, `${r.p.id} road-map period deity`);
     for (const l of r.life) assert.match(l.remedy.en, HINDU_ONLY, `${r.p.id} life-question parigaram`);
+    if (r.prof.adult && r.health.reflection) assert.ok(r.health.reflection.mantra && r.health.reflection.practices.every((x) => x.deity?.en), `${r.p.id} health remedies`);
+    for (const s of strs(readable(r))) assert.doesNotMatch(s, /own faith|every faith|God bless|Allah|நம்பிக்கைப்படி|எல்லா நம்பிக்கை|கர்த்தர்/i, `${r.p.id}: "${s}"`);
   }
-  assert.equal(milestoneNote('hindu').hindu, true);
-  assert.match(milestoneNote('hindu').en, /Thirukadaiyur/);
+  assert.match(milestoneNote().en, /Thirukadaiyur/);
 });
 
-test('faith: fasting is never required — children, elders and anyone unwell are told it is optional', () => {
-  for (const r of RUNS.filter((x) => isHinduFaith(x.p.faith))) {
+test('Hindu-only: children still get child-appropriate prayers — the age rules are unchanged', () => {
+  const kids = RUNS.filter((r) => r.prof.minor);
+  assert.ok(kids.length >= 20);
+  for (const r of kids) {
+    const g = ageGuardAnswer({ topic: 'marriage', profile: r.prof, lang: 'en', faith: r.p.faith });
+    assert.deepEqual(g, ageGuardAnswer({ topic: 'marriage', profile: r.prof, lang: 'en' }), `${r.p.id}: the faith option is ignored`);
+    if (r.prof.band !== 'unknown') assert.ok(g.sections.some((s) => s.key === 'prayer'), `${r.p.id} child prayer`);
+    for (const i of r.parigaram) assert.ok(!adultText(i.free), `${r.p.id}: child-safe practice "${i.free.en}"`);
+  }
+});
+
+test('fasting is never required — children, elders and anyone unwell are told it is optional', () => {
+  for (const r of RUNS) {
     const fastLines = r.today.items.filter((it) => /fast|viratham|food/i.test(it.text.en));
     for (const it of fastLines) {
       if (r.p.age < 14) assert.match(it.text.en, /children need not fast/);
@@ -544,7 +523,7 @@ test('gender: bride / groom are மணமகள் / மணமகன் on porut
   for (const r of RUNS.filter((x) => x.prof.minor)) assert.equal(isAdult(r.p.date, { today: TODAY }), false);
 });
 
-// ------------------------------------------------------------------ mantra & faith review (F1–F5, M3–M6, L1, L6, L7)
+// ------------------------------------------------------------------ mantra review, Hindu for everyone (F1–F5, M3–M6, L1, L6, L7)
 import { personalGuide, PLANET_DEITY, DEITY_MANTRA } from '../shared/personal.js';
 import { PRIMARY, mantraOnly } from '../shared/remedies.js';
 import { MANTRAS } from '../shared/mantras.js';
@@ -552,59 +531,54 @@ import { MANTRAS } from '../shared/mantras.js';
 const src = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 const fnBody = (code, name) => { const i = code.indexOf(`function ${name}(`); assert.ok(i >= 0, name); return code.slice(i, code.indexOf('\nfunction ', i + 10) > 0 ? code.indexOf('\nfunction ', i + 10) : i + 6000); };
 
-test('F1: Today "God of the day" and closing prayer are shown only for Hindu members', () => {
+test('F1: Today "God of the day" and the closing prayer are shown for every member (Hindu-only app)', () => {
   const body = fnBody(src('public/screens-main.js'), 'dailyCard');
-  assert.match(body, /isHinduFaith\(faithOf\(person\)\)/, 'the general god card checks the member\'s faith');
-  assert.match(body, /other \? .*universalPractice/, 'the details show an every-faith practice for other faiths');
+  assert.doesNotMatch(body, /faithOf|isHinduFaith|universalPractice|faithBlessing|faithWelcome/, 'no per-faith branch on Today');
+  assert.match(body, /\$\{god\}/, 'the god-of-the-day card is always drawn');
   const r = RUNS.find((x) => x.p.faith === 'muslim' && x.prof.adult);
-  assert.equal(r.daily.prayer, null);
-  assert.ok(bothLangs(r.daily.practice));
+  assert.ok(r.daily.prayer?.lines?.length, 'closing prayer for a profile once stored as Muslim');
+  assert.equal(r.daily.practice, undefined);
 });
 
-test('F2: My Guide, Guru Vakku and Love screen respect faith', () => {
+test('F2: My Guide, Guru Vakku and Love screen give everyone the Ishta Theivam, Siddhar and mantra playlist', () => {
   const c = RUNS.find((x) => x.p.faith === 'christian' && x.c.planets.Lagna).c;
-  const other = personalGuide(c, { date: '1990-01-01', now: NOW, faith: 'christian' });
-  assert.equal(other.hindu, false);
-  assert.deepEqual(other.playlist, [], 'no mantra playlist read aloud for another faith');
-  assert.ok(bothLangs(other.practice) && bothLangs(other.blessing));
-  for (const s of strs([other.practice, other.blessing])) assert.doesNotMatch(s, HINDU_ONLY, s);
-  const hindu = personalGuide(c, { date: '1990-01-01', now: NOW, faith: 'hindu' });
-  assert.equal(hindu.hindu, true);
-  assert.ok(hindu.playlist.length >= 5, 'Hindu playlist kept');
+  const g = personalGuide(c, { date: '1990-01-01', now: NOW, faith: 'christian' });
+  assert.deepEqual(g, personalGuide(c, { date: '1990-01-01', now: NOW }), 'an old faith option changes nothing');
+  assert.ok(g.playlist.length >= 5, 'mantra playlist for everyone');
+  assert.ok(g.ishta.deity && g.siddhar.main);
+  for (const k of ['hindu', 'faith', 'practice', 'blessing']) assert.ok(!(k in g), `no ${k} field`);
   const guide = src('public/screens-guide.js');
-  assert.equal((guide.match(/personalGuide\(c, \{ date: m\.date, faith: faithOf\(m\)[, ]/g) || []).length, 2, 'Guide and Guru Vakku pass the faith');
-  assert.match(guide, /g\.hindu \? '' : `<details[^`]*Traditional Hindu guidance \(optional\)/, 'Ishta Theivam folded away as optional');
-  assert.match(guide, /g\.hindu \? '' : `<details[^`]*Siddhar tradition \(optional\)/);
+  assert.doesNotMatch(guide, /faithOf|TRADITIONAL_OPTIONAL|g\.hindu|\(optional\)<\/summary>/, 'nothing folded away as "optional, for information only"');
   assert.match(guide, /\$\{g\.playlist\.length \? `/, 'playlist card only when there is a playlist');
-  assert.match(guide, /!g\.hindu \? L\('postpone new starts and take a few quiet minutes of prayer in your own faith/, 'Guru Vakku: no "chant" for other faiths');
+  assert.match(guide, /postpone new starts and chant/);
   const love = src('public/screens-love.js');
-  assert.match(love, /const pr = isHinduFaith\(r\.faith\) \? closingPrayer\(r\.charts\[0\]\) : null;/);
+  assert.match(love, /const pr = closingPrayer\(r\.charts\[0\]\);/);
+  assert.doesNotMatch(love, /faithBlessing|isHinduFaith/);
 });
 
-test('F3: children of another faith get no Hindu prayer (age-guard answers, child "Today\'s prayer")', () => {
-  for (const r of RUNS.filter((x) => x.prof.minor && !isHinduFaith(x.p.faith))) {
-    const hinduDeity = { god: { en: 'Lord Vinayagar', ta: 'விநாயகர்' }, mantra: { en: 'Om Gam Ganapataye Namaha', ta: 'ஓம் கம் கணபதயே நமஹ' } };
+test('F3: children get child-appropriate Hindu prayers whatever an old stored faith says (age rules unchanged)', () => {
+  const hinduDeity = { god: { en: 'Lord Vinayagar', ta: 'விநாயகர்' }, mantra: { en: 'Om Gam Ganapataye Namaha', ta: 'ஓம் கம் கணபதயே நமஹ' } };
+  for (const r of RUNS.filter((x) => x.prof.minor && x.p.faith !== 'hindu')) {
     const g = childGeneralAnswer({ profile: r.prof, lang: 'ta', faith: r.p.faith, deity: hinduDeity, question: 'இன்று என்ன பிரார்த்தனை?' });
-    assert.doesNotMatch(g.text, HINDU_ONLY, `${r.p.id}: ${g.text}`);
+    assert.match(g.text, /கணபதயே/, `${r.p.id}: today's prayer`);
     const a = ageGuardAnswer({ topic: 'job', profile: r.prof, lang: 'ta', faith: r.p.faith });
-    assert.doesNotMatch(a.text, /கணபதயே|சரஸ்வதி|Ganapataye|Saraswathi/, `${r.p.id}: ${a.text}`);
+    assert.deepEqual(a, ageGuardAnswer({ topic: 'job', profile: r.prof, lang: 'ta' }), `${r.p.id}: same child answer`);
   }
-  // Hindu children keep their prayer.
-  const h = RUNS.find((x) => x.prof.band === '0-5' && isHinduFaith(x.p.faith));
+  const h = RUNS.find((x) => x.prof.band === '0-5');
   assert.match(ageGuardAnswer({ topic: 'job', profile: h.prof, lang: 'en' }).text, /Ganapataye/);
   const tools = src('public/screens-tools.js');
-  assert.match(tools, /childGeneralAnswer\(\{ profile: prof, lang: state\.lang, name: displayName\(m\), deity, question: text, faith: faithOf\(m\) \}\)/);
-  assert.match(tools, /deity = isHinduFaith\(faithOf\(m\)\) \? dailyReview\(/);
-  assert.match(src('public/screens-main.js'), /ageGuardAnswer\(\{[^\n]*faith: m && m\.relation !== 'organization' \? faithOf\(m\) : 'hindu' \}\)/);
+  assert.match(tools, /childGeneralAnswer\(\{ profile: prof, lang: state\.lang, name: displayName\(m\), deity, question: text \}\)/);
+  assert.match(tools, /deity = dailyReview\(chartOf\(m\), state\.snap, new Date\(\)\)\.deity/);
+  assert.doesNotMatch(src('public/screens-main.js'), /faithOf\(m\)/);
 });
 
-test('F5: Home "Today\'s parigaram" passes faith and age — no Kanda Sashti for other faiths or work lines for children', () => {
+test('F5: Home "Today\'s parigaram" passes age — the full Hindu parigaram for everyone, no work lines for children', () => {
   const body = fnBody(src('public/screens-main.js'), 'parigaramCard');
-  assert.match(body, /faith: person \? faithOf\(person\) : 'hindu', profile: person \? ageOf\(person\) : null/);
-  for (const r of RUNS.filter((x) => !isHinduFaith(x.p.faith))) for (const i of r.parigaram) assert.doesNotMatch(`${i.free.en} ${i.free.ta}`, /Kanda Sashti|கந்த சஷ்டி/, r.p.id);
-  // Tuesday (Mars) for a Hindu child: the free line stays a prayer, never "work" / money wording.
-  const kid = RUNS.find((x) => x.prof.minor && isHinduFaith(x.p.faith));
-  for (const wd of [0, 1, 2, 3, 4, 5, 6]) for (const i of dailyParigaram({ weekday: wd, chart: kid.c, faith: 'hindu', profile: kid.prof, now: NOW })) assert.ok(!adultText(i.free), `${wd}: ${i.free.en}`);
+  assert.match(body, /snapshot: snap, profile: person \? ageOf\(person\) : null/);
+  assert.doesNotMatch(body, /faith/);
+  // Tuesday (Mars) for a child: the free line stays a prayer, never "work" / money wording.
+  const kid = RUNS.find((x) => x.prof.minor);
+  for (const wd of [0, 1, 2, 3, 4, 5, 6]) for (const i of dailyParigaram({ weekday: wd, chart: kid.c, profile: kid.prof, now: NOW })) assert.ok(!adultText(i.free), `${wd}: ${i.free.en}`);
 });
 
 test('M3–M6: one primary deity and mantra per planet on every surface; the 🔊 button speaks only the mantra', () => {
@@ -615,7 +589,7 @@ test('M3–M6: one primary deity and mantra per planet on every surface; the �
     assert.equal(DEITY_MANTRA[k], p.mantra.ta, `${k}: Today / Ishta mantra`);
     assert.deepEqual(PLANET_DEITY[k], p.deity, `${k}: deity`);
   }
-  for (const r of RUNS.filter((x) => isHinduFaith(x.p.faith)).slice(0, 6)) {
+  for (const r of RUNS.slice(0, 6)) {
     const cp = closingPrayer(r.c, NOW);
     cp.deities.forEach((k, i) => assert.ok(cp.lines[i].ta.startsWith(PRIMARY[k].mantra.ta), `${k} closing prayer`));
     for (const it of r.roadmap.periods) assert.equal(mantraOnly(it.remedy.mantra), PRIMARY[it.ad].mantra.ta);

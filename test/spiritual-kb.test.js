@@ -178,12 +178,16 @@ test('no chart / dasa lines, Tamil present, nothing prohibited — every route, 
   assert.ok(!/நிச்சயம் கிடைக்கும்|கண்டிப்பாக நடக்கும்|செய்யாவிட்டால் ஆபத்து/.test(all));
 });
 
-test('other faiths get the same facts framed as information, without mantra instructions', () => {
+test('Hindu-only: every viewer gets the full "how to observe" with the mantra — an old faith option changes nothing', () => {
   const a = answerGeneral('deepavali eppo', { now: NOW, loc: CHENNAI, lang: 'en', faith: 'christian' });
-  assert.equal(a.sections[0].key, 'note');
-  assert.ok(!a.sections.some((s) => s.key === 'mantra'));
+  assert.deepEqual(a, answerGeneral('deepavali eppo', { now: NOW, loc: CHENNAI, lang: 'en' }));
+  assert.ok(!a.sections.some((s) => s.key === 'note' && /own faith/.test(s.lines.join(' '))));
   const h = answerGeneral('how to observe deepavali', { now: NOW, loc: CHENNAI, lang: 'en', faith: 'muslim' });
-  assert.ok(h.sections.some((s) => s.key === 'how' && /Hindu families/.test(s.title)));
+  assert.ok(h.sections.some((s) => s.key === 'how' && /How to observe/.test(s.title)));
+  assert.ok(!h.sections.some((s) => /Hindu families/.test(s.title)));
+  const withMantra = entrySections(getEntry('vinayagar-chathurthi'), 'en', { faith: 'christian' });
+  assert.ok(withMantra.some((s) => s.key === 'mantra'), 'the mantra is shown to everyone');
+  assert.deepEqual(withMantra, entrySections(getEntry('vinayagar-chathurthi'), 'en'));
 });
 
 test('festival calendar: 365 days of rows with Tamil and English names, sorted', () => {

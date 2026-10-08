@@ -4,8 +4,8 @@
 //
 //   1. quality  — today's quality for THIS person (Chandrashtamam, Tara balam, Chandra balam: shared/daily.js logic)
 //   2. do       — one thing to do in today's next good window (Gowri nalla neram outside Rahu Kalam / Yamagandam)
-//   3. spirit   — one spiritual touch: today's festival / vratham, else the day's deity and mantra (Hindu); for
-//                 every other faith a practice that fits all faiths (shared/faith.js) — never a deity puja.
+//   3. spirit   — one spiritual touch: today's festival / vratham, else the day's deity and mantra (Thunai is a
+//                 Hindu astrology app — every person gets the Hindu line; age rules still apply).
 // Age first (shared/age-guard.js): minors get study / play lines, no money, marriage or business topics and no
 // fasting advice; a small child's brief is written for the caregiver. Wording is reflective ("tradition says"),
 // never a promise, never fear (findProhibited in shared/themes.js scans every line in the tests).
@@ -14,7 +14,6 @@ import { tamilDay } from './tamilcal.js';
 import { dailyReview, dayVerdict, DAY_DEITY, runningDasa } from './daily.js';
 import { dayPartTa, planetAdjTa } from './fmt.js';
 import { ageProfile } from './age-guard.js';
-import { isHinduFaith, universalPractice, faithBlessing, CHILD_PRACTICE } from './faith.js';
 import { getEntry } from './spiritual-kb.js';
 
 const T = (en, ta) => ({ en, ta });
@@ -126,7 +125,7 @@ export function festivalInfo(f) {
 /**
  * The morning brief for one person.
  * @param {object} o { chart|null, member|null ({ name/display, date, relation }), name (display), loc { lat, lon, tz },
- *   now (Date), faith ('hindu'…), td (tamilDay, optional), snap (panchang, optional), from (Date: windows start here) }
+ *   now (Date), td (tamilDay, optional), snap (panchang, optional), from (Date: windows start here) }
  * @returns {{ date, personal, minor, band, level, greeting, lines: [{ key, icon, text:{en,ta} }], window, rahu, blessing }}
  */
 export function morningBrief(o = {}) {
@@ -138,8 +137,6 @@ export function morningBrief(o = {}) {
   const td = o.td || tamilDay(instantAt(date, '12:00', tz), loc.lat, loc.lon, tz);
   const snap = o.snap || todaySnapshot(now, { ...loc, tz });
   const chart = o.chart || null;
-  const faith = o.faith || 'hindu';
-  const hindu = isHinduFaith(faith);
   const prof = o.member ? ageProfile(o.member, { tz, now }) : chart ? ageProfile(chart, { tz, now }) : ageProfile(null);
   const age = prof.age ?? 30;
   const minor = Boolean(prof.minor);
@@ -150,7 +147,7 @@ export function morningBrief(o = {}) {
   // 1. Quality for the person.
   let q = null;
   if (chart) {
-    const r = dailyReview(chart, snap, now, { faith });
+    const r = dailyReview(chart, snap, now);
     q = { level: r.level, chandrashtamam: r.chandrashtamam, tara: r.tara };
     const star = NAKSHATRAS[snap.nakshatra.index];
     const tara = r.tara.name;
@@ -190,11 +187,11 @@ export function morningBrief(o = {}) {
     lines.push({ key: 'do', icon: '⏰', text: T(`Today's good times are over — a calm evening; plan tomorrow's work${rkText.en}.`, `இன்றைய நல்ல நேரம் முடிந்தது — அமைதியான மாலை; நாளைய வேலையைத் திட்டமிடுங்கள்${rkText.ta}.`) });
   }
 
-  // 3. One spiritual touch (faith-aware, child-safe).
+  // 3. One spiritual touch (child-safe).
   const fe = mainFestival(td.festivals);
   const deity = DAY_DEITY[snap.weekday.index];
   let spirit;
-  if (hindu) {
+  {
     const fi = fe ? festivalInfo(fe) : null;
     if (fi && minor && /amavasai/.test(fi.id)) {
       // Tharpanam is an adult's rite: a child remembers the elders with a short prayer.
@@ -205,17 +202,13 @@ export function morningBrief(o = {}) {
         : T(`Today is ${fi.name.en} — a simple prayer is enough; fast only if your health allows.`, `இன்று ${fi.name.ta} — எளிய பிரார்த்தனை போதும்; உடல்நலம் அனுமதித்தால் மட்டும் விரதம்.`);
     } else if (fi) spirit = T(`Today is ${fi.name.en}: ${fi.line.en}`, `இன்று ${fi.name.ta} — ${fi.line.ta}`);
     else spirit = T(`God of the day: ${deity.god.en} — “${deity.mantra.en.split(' · ')[0]}”.`, `இன்றைய தெய்வம்: ${deity.god.ta} — “${deity.mantra.ta.split(' · ')[0]}”.`);
-  } else {
-    const p = minor ? CHILD_PRACTICE : universalPractice(snap.weekday.lord || 'Sun');
-    spirit = T(`For today: ${p.en}`, `இன்றைக்கு: ${p.ta}`);
   }
-  lines.push({ key: 'spirit', icon: hindu ? '🪔' : '🌿', text: spirit });
+  lines.push({ key: 'spirit', icon: '🪔', text: spirit });
 
   const greeting = name ? T(`Good morning, ${name}`, `காலை வணக்கம், ${name}`) : T('Good morning', 'காலை வணக்கம்');
   return {
-    date, personal: Boolean(chart), minor, band: prof.band, level, chandrashtamam: Boolean(q?.chandrashtamam), faith: hindu ? 'hindu' : faith,
+    date, personal: Boolean(chart), minor, band: prof.band, level, chandrashtamam: Boolean(q?.chandrashtamam),
     greeting, lines, window: win, rahu: rk || null, festival: fe ? festivalInfo(fe) : null,
-    blessing: hindu ? null : faithBlessing(faith),
   };
 }
 
@@ -226,16 +219,14 @@ export function briefNotification(b, lang = 'ta') {
 }
 
 // ---------------------------------------------------------------- evening lamp (sandhya)
-/** Evening lamp-lighting time: sunset of the day. Returns { at, text } (faith-aware) or null. */
-export function sandhyaReminder({ loc, date, faith = 'hindu', td = null }) {
+/** Evening lamp-lighting time: sunset of the day. Returns { at, text } or null. */
+export function sandhyaReminder({ loc, date, td = null }) {
   const tz = Number(loc.tz ?? 5.5);
   const day = td || tamilDay(instantAt(date, '12:00', tz), loc.lat, loc.lon, tz);
   if (!day?.sunset) return null;
   const at = new Date(day.sunset);
   const t = both((l) => fmtHM(at, tz, l));
-  const text = isHinduFaith(faith)
-    ? T(`Sunset at ${t.en} — time to light the evening lamp (sandhya deepam).`, `${t.ta} சூரிய அஸ்தமனம் — மாலை விளக்கேற்றும் நேரம் (சந்தியா தீபம்).`)
-    : T(`Sunset at ${t.en} — a quiet moment of evening prayer in your own way.`, `${t.ta} சூரிய அஸ்தமனம் — உங்கள் வழக்கப்படி ஓர் அமைதியான மாலைப் பிரார்த்தனை.`);
+  const text = T(`Sunset at ${t.en} — time to light the evening lamp (sandhya deepam).`, `${t.ta} சூரிய அஸ்தமனம் — மாலை விளக்கேற்றும் நேரம் (சந்தியா தீபம்).`);
   return { at, text };
 }
 
@@ -251,28 +242,27 @@ function daysInfo(chart, loc, isos) {
 const listDays = (ds, lang) => ds.map((d) => dayLabel(d.date)[lang]).join(', ');
 
 /**
- * Sunday "your week ahead": good days, care days (Chandrashtamam), and (Hindu) the coming vratham / festival days.
+ * Sunday "your week ahead": good days, care days (Chandrashtamam), and the coming vratham / festival days.
  * @returns {{ start, end, lines:[{icon,text}], good:[iso], care:[iso], festivals:[{date,name}] }}
  */
-export function weekAhead({ chart = null, loc, start, faith = 'hindu', member = null, now = new Date() }) {
+export function weekAhead({ chart = null, loc, start, member = null, now = new Date() }) {
   const tz = Number(loc.tz ?? 5.5);
   const s = start || isoAt(now, tz);
   const ds = daysInfo(chart, loc, Array.from({ length: 7 }, (_, i) => addDaysIso(s, i)));
-  return summarise(ds, { chart, faith, member, now, tz, kind: 'week' });
+  return summarise(ds, { chart, member, now, tz, kind: 'week' });
 }
 
 /** 1st of the month "your month": good-day count, care days, main festivals and the running Dasa / Bhukti. */
-export function monthAhead({ chart = null, loc, month, faith = 'hindu', member = null, now = new Date() }) {
+export function monthAhead({ chart = null, loc, month, member = null, now = new Date() }) {
   const tz = Number(loc.tz ?? 5.5);
   const ym = month || isoAt(now, tz).slice(0, 7);
   const [y, m] = ym.split('-').map(Number);
   const n = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const ds = daysInfo(chart, loc, Array.from({ length: n }, (_, i) => `${ym}-${pad(i + 1)}`));
-  return summarise(ds, { chart, faith, member, now, tz, kind: 'month', ym });
+  return summarise(ds, { chart, member, now, tz, kind: 'month', ym });
 }
 
-function summarise(ds, { chart, faith, member, now, tz, kind, ym }) {
-  const hindu = isHinduFaith(faith);
+function summarise(ds, { chart, member, now, tz, kind, ym }) {
   const prof = member ? ageProfile(member, { tz, now }) : chart ? ageProfile(chart, { tz, now }) : ageProfile(null);
   const good = ds.filter((d) => d.q && (d.q.level === 'great' || d.q.level === 'good'));
   const care = ds.filter((d) => d.q && d.q.chandrashtamam);
@@ -307,7 +297,7 @@ function summarise(ds, { chart, faith, member, now, tz, kind, ym }) {
   } else {
     lines.push({ icon: '🌤️', text: T('Add birth details to see your good days and days for care.', 'உங்கள் நல்ல நாட்கள், கவனமான நாட்களைப் பார்க்கப் பிறப்பு விவரம் சேர்க்கவும்.') });
   }
-  if (hindu && fests.length) {
+  if (fests.length) {
     const top = fests.slice(0, kind === 'week' ? 3 : 4);
     lines.push({ icon: '🪔', text: T2((l) => (l === 'ta' ? `வரும் விசேஷ நாட்கள்: ${top.map((f) => `${f.name.ta} (${dayLabel(f.date).ta})`).join(', ')}` : `Sacred days ahead: ${top.map((f) => `${f.name.en} (${dayLabel(f.date).en})`).join(', ')}`)) });
   }

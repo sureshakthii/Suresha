@@ -1,10 +1,9 @@
 // Jathagam health guide screen (ஜாதக ஆரோக்கிய வழிகாட்டி). For adults (18+): "health care now", the running Dasa /
 // Bhukti and Gochara with dates, the next periods, a 12-month care map, body areas from the birth chart, body type by
-// tradition, food to favour / reduce, daily routine & yoga, faith-appropriate remedies and age-wise check-ups with
+// tradition, food to favour / reduce, daily routine & yoga, traditional remedies and age-wise check-ups with
 // reminders. Every traditional section carries "traditional indication, not a diagnosis — see a doctor".
 // Minors (<18): general sleep / play / food habits and growth check-ups only. Engine: shared/health.js.
 import { healthGuide, healthNow } from './shared/health.js';
-import { faithOf } from './shared/faith.js';
 import { ageProfile } from './shared/age-guard.js';
 import {
   state, $, $$, L, esc, bi, GLYPH, COLOR, planetName, activeMember, chartOf, registerScreen, subHeader,
@@ -135,7 +134,7 @@ function drawHealth(m) {
   const c = chartOf(m);
   const tz = tzNow();
   const prof = ageProfile(m, { tz });
-  const h = healthGuide(c, { gender: m.gender, faith: faithOf(m), tz, profile: prof });
+  const h = healthGuide(c, { gender: m.gender, tz, profile: prof });
   const at = nextMonth9am();
   if (h.minor) { drawMinor(h, m, at); return; }
   const o = h.outlook, con = h.constitution, d = h.diet;

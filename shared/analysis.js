@@ -7,7 +7,6 @@ import { grahaStrength } from './remedies.js';
 import { evaluateRules, resolveProfile } from './rules/registry.js';
 import { houseRoles as computeHouseRoles } from './rules/roles.js';
 import { runningDasa } from './daily.js';
-import { isHinduFaith } from './faith.js';
 import { adultText } from './age-guard.js';
 import { planetAdjTa } from './fmt.js';
 const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
@@ -153,13 +152,6 @@ export function houseRoles(chart, { profile } = {}) {
   return computeHouseRoles(chart, { profile });
 }
 
-// Transit advice for a person of another faith (or none): same meaning, no Hindu deity / lamp instruction.
-const ADVICE_ALL_FAITHS = {
-  ezharai: ['A period of hard work that builds maturity. Avoid shortcuts, keep health routines, and give a little time to service each week.', 'உழைப்பால் முதிர்ச்சி தரும் காலம். குறுக்கு வழிகளைத் தவிர்த்து, ஆரோக்கியம் பேணி, வாரம் சிறிது நேரம் சேவையில் செலவிடுங்கள்.'],
-  guru_weak: ['Prayer in your own faith and respect for teachers help; choose dates carefully for big events.', 'உங்கள் நம்பிக்கைப்படி பிரார்த்தனையும் ஆசிரியர்களுக்கு மரியாதையும் நன்று; பெரிய நிகழ்வுகளுக்குத் தேதியைக் கவனமாகத் தேர்வு செய்யுங்கள்.'],
-  rahu: ['Avoid confusion in partnerships; keep agreements clear and in writing.', 'கூட்டு முயற்சிகளில் தெளிவு தேவை; ஒப்பந்தங்களைத் தெளிவாக, எழுத்தில் வைத்திருங்கள்.'],
-};
-
 /**
  * The one "is this Maha Dasa supportive?" rule, shared by the analysis card, the written palan and the road map so
  * the same period is never called favourable in one place and difficult in another: the lord's traditional strength
@@ -177,10 +169,9 @@ export function dasaTone(chart, lord, sMap = null) {
 
 /**
  * Sidereal Saturn/Jupiter/Rahu now, relative to the natal Moon; Ezharai / Ashtama Sani and Guru Balam.
- * opts: faith (another faith → advice without Hindu deity / lamp wording), age (60+ → Guru Balam advice speaks of
- * family events, not marriage or children).
+ * opts: age (60+ → Guru Balam advice speaks of family events, not marriage or children).
  */
-export function transitStatus(chart, now = new Date(), { faith = 'hindu', age = null } = {}) {
+export function transitStatus(chart, now = new Date(), { age = null } = {}) {
   const { planets } = planetPositions(now);
   const M = chart.planets.Moon.rasi;
   const h = (k) => houseOf(M, planets[k].rasi);
@@ -199,7 +190,6 @@ export function transitStatus(chart, now = new Date(), { faith = 'hindu', age = 
     ? { id: 'guru_balam', kind: 'good', en: `Guru Balam: Jupiter ${ordEn(jup)} from your Moon`, ta: `குரு பலம் உண்டு (${jup}-ல் குரு)`, adviceEn: 'Favourable for marriage, children, new ventures and learning.', adviceTa: 'திருமணம், குழந்தை, புதிய முயற்சி, கல்விக்குச் சாதகம்.' }
     : { id: 'guru_weak', kind: 'mild', en: `Jupiter ${ordEn(jup)} from your Moon (Guru Balam weak)`, ta: `குரு ${jup}-ல் (குரு பலம் குறைவு)`, adviceEn: 'Pray to Dakshinamurthy on Thursdays; choose muhurthams carefully for big events.', adviceTa: 'வியாழன் தட்சிணாமூர்த்தி வழிபாடு; பெரிய நிகழ்வுகளுக்கு முகூர்த்தத்தைக் கவனமாகத் தேர்வு செய்யவும்.' });
   if ([1, 7].includes(rahu)) status.push({ id: 'rahu', kind: 'mild', en: `Rahu transits the ${ordEn(rahu)} from your Moon`, ta: `ராகு ${rahu}-ல் சஞ்சாரம்`, adviceEn: 'Avoid confusion in partnerships; Durga worship on Tuesdays/Fridays helps.', adviceTa: 'கூட்டு முயற்சிகளில் தெளிவு தேவை; செவ்வாய்/வெள்ளி துர்க்கை வழிபாடு நன்று.' });
-  if (!isHinduFaith(faith)) for (const st of status) if (ADVICE_ALL_FAITHS[st.id]) [st.adviceEn, st.adviceTa] = ADVICE_ALL_FAITHS[st.id];
   // Under 18: advice that talks about property, partnerships, marriage or money becomes a study-and-routine line.
   if (age != null && Number(age) < 18) {
     for (const st of status) {
@@ -240,7 +230,7 @@ const AREAS = [
 ];
 
 /** Full analysis bundle used by the Jathagam report screen and the Jothidar. */
-export function fullAnalysis(chart, now = new Date(), { profile, faith = 'hindu', age = null } = {}) {
+export function fullAnalysis(chart, now = new Date(), { profile, age = null } = {}) {
   const pr = resolveProfile(profile);
   const bhavas = bhavaAnalysis(chart);
   const strength = grahaStrength(chart.planets);
@@ -248,7 +238,7 @@ export function fullAnalysis(chart, now = new Date(), { profile, faith = 'hindu'
   const yogas = detectYogas(chart, { profile: pr });
   const roles = houseRoles(chart, { profile: pr });
   const hasLagna = !!chart.planets.Lagna;
-  const transit = transitStatus(chart, now, { faith, age });
+  const transit = transitStatus(chart, now, { age });
   const areas = !hasLagna ? [] : AREAS.map((a) => {
     const hs = a.houses.map((h) => bhavas[h - 1].score);
     const ks = a.karakas.map((k) => sMap[k]);
@@ -274,8 +264,8 @@ export function fullAnalysis(chart, now = new Date(), { profile, faith = 'hindu'
     const ruledTa = ruled.length === 1 ? `, ${ruled[0]}-ம் வீட்டு அதிபதி` : ruled.length ? `, ${ruled.join(', ')}-ம் வீடுகளுக்கு அதிபதி` : '';
     dasaOutlook = {
       lord: k, house, ruled, strength: sMap[k], tone: good ? 'favourable' : 'growth through effort', until,
-      en: `You are in ${k} Mahadasa${uy ? ` (till ${uy})` : ''}. In your chart ${k}${where.en}${ruledEn}. ${good ? 'A supportive period — use it to build.' : `Results come through patience and steady effort${isHinduFaith(faith) ? '; its parigaram helps' : ''}.`}`,
-      ta: `நீங்கள் இப்போது ${planetAdjTa(k, PLANETS[k].ta)} மகா தசையில்${uy ? ` (${uy} வரை)` : ''}. உங்கள் ஜாதகத்தில் ${PLANETS[k].ta}${where.ta}${ruledTa}. ${good ? 'ஆதரவான காலம் — வளர்ச்சிக்குப் பயன்படுத்துங்கள்.' : `பொறுமையும் தொடர் முயற்சியும் பலன் தரும்${isHinduFaith(faith) ? '; அதன் பரிகாரம் உதவும்' : ''}.`}`,
+      en: `You are in ${k} Mahadasa${uy ? ` (till ${uy})` : ''}. In your chart ${k}${where.en}${ruledEn}. ${good ? 'A supportive period — use it to build.' : `Results come through patience and steady effort; its parigaram helps.`}`,
+      ta: `நீங்கள் இப்போது ${planetAdjTa(k, PLANETS[k].ta)} மகா தசையில்${uy ? ` (${uy} வரை)` : ''}. உங்கள் ஜாதகத்தில் ${PLANETS[k].ta}${where.ta}${ruledTa}. ${good ? 'ஆதரவான காலம் — வளர்ச்சிக்குப் பயன்படுத்துங்கள்.' : `பொறுமையும் தொடர் முயற்சியும் பலன் தரும்; அதன் பரிகாரம் உதவும்.`}`,
     };
   }
   const needsBirthTime = hasLagna ? [] : rulesNeedingBirthTime(chart, { profile: pr });

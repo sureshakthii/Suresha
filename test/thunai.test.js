@@ -1,6 +1,7 @@
 // THUNAI brief: explainable guidance, birth-time certainty, journey planning, brand config.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { birthChart } from '../shared/astro.js';
 import { timeReliability, shiftLocal, UNKNOWN_TIME_PLACEHOLDER } from '../shared/birthtime.js';
 import { classify, chartFacts, composeAnswer, factsForAI, answerLang } from '../shared/guidance.js';
@@ -267,14 +268,14 @@ test('safety & understanding: Tanglish crisis, love, festivals, going abroad', (
   assert.ok(!crisis.sections.some((s) => s.key === 'prayer'));
 });
 
-test('faith: name hint, own choice wins, blessing replaces deity prayer', async () => {
-  const { guessFaith, faithOf } = await import('../shared/faith.js');
-  assert.equal(guessFaith('Mohammed Riyaz'), 'muslim');
-  assert.equal(guessFaith('John Peter'), 'christian');
-  assert.equal(guessFaith('Suresh Babu'), null);
-  assert.equal(faithOf({ name: 'John', faith: 'hindu' }), 'hindu');
+test('Hindu-only: no faith guessing from names; an old stored faith still gets the Hindu closing prayer', () => {
+  assert.equal(fs.existsSync(new URL('../shared/faith.js', import.meta.url)), false, 'no per-person faith resolver');
   const a = composeAnswer({ question: 'How is my career?', lang: 'en', facts, life: { faith: 'christian' } });
-  assert.match(a.sections.find((s) => s.key === 'prayer').lines[0], /God bless/);
+  const b = composeAnswer({ question: 'How is my career?', lang: 'en', facts, life: {} });
+  assert.deepEqual(a.sections, b.sections);
+  const prayer = a.sections.find((s) => s.key === 'prayer');
+  assert.ok(prayer && /🙏/.test(prayer.lines[0]));
+  assert.doesNotMatch(prayer.lines.join(' '), /God bless|Allah/);
 });
 
 test('journey: every stop gets arrival / closing times from temple hours', () => {
@@ -285,7 +286,7 @@ test('journey: every stop gets arrival / closing times from temple hours', () =>
   }
 });
 
-test('today plan: sacred day linked to the person, horai with time and 9-week repeat, faith and age aware', async () => {
+test('today plan: sacred day linked to the person, horai with time and 9-week repeat, the same for everyone, age aware', async () => {
   const { todayPlan } = await import('../shared/today-plan.js');
   const { panchang } = await import('../shared/astro.js');
   const chart = birthChart(suresh);
@@ -299,7 +300,8 @@ test('today plan: sacred day linked to the person, horai with time and 9-week re
   assert.equal(amav.items.length, 1);
   assert.match(amav.items[0].title.en, /Mahalaya/);
   const other = todayPlan({ chart, snap, festivals: [{ en: 'Ekadasi', ta: 'ஏகாதசி' }], now, faith: 'christian' });
-  assert.equal(other.items.length, 0);
+  assert.deepEqual(other, todayPlan({ chart, snap, festivals: [{ en: 'Ekadasi', ta: 'ஏகாதசி' }], now }), 'an old faith option is ignored');
+  assert.equal(other.items.length, 1);
   const child = todayPlan({ chart, snap, festivals: [{ en: 'Sashti Viratham', ta: 'சஷ்டி விரதம்' }], now, age: 9 });
   assert.match(child.items[0].text.en, /children need not fast/);
 });

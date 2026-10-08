@@ -5,7 +5,6 @@
 import { RASIS, PLANETS, NAKSHATRAS } from './astro.js';
 import { NAVAGRAHA, grahaStrength, PRIMARY } from './remedies.js';
 import { ayulBalam } from './lifecheck.js';
-import { isHinduFaith, universalPractice, faithBlessing } from './faith.js';
 const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 const T = (en, ta) => ({ en, ta });
@@ -207,16 +206,8 @@ export function personalPlaylist(chart, now = new Date()) {
 }
 
 /** The complete personal guide for one person. */
-export function personalGuide(chart, { date, now = new Date(), weekday = now.getDay(), faith = 'hindu' } = {}) {
-  // Faith: Ishta Theivam, Siddhar and the mantra playlist are Hindu / Tamil Saiva practice. For another faith (or
-  // none) the guide leads with a practice for every faith and their own blessing; the playlist is empty and the
-  // Hindu items stay available only as optional information (`hindu: false` tells the screen to fold them away).
-  const hindu = isHinduFaith(faith);
-  const ref = lordOf(refRasi(chart), 1);
+export function personalGuide(chart, { date, now = new Date(), weekday = now.getDay() } = {}) {
   return {
-    hindu, faith: hindu ? 'hindu' : faith,
-    practice: hindu ? null : universalPractice(ref),
-    blessing: hindu ? null : faithBlessing(faith),
     numbers: luckyNumbers(date || chart.date),
     ishta: ishtaTheivam(chart),
     today: colorForDay(chart, weekday),
@@ -224,7 +215,7 @@ export function personalGuide(chart, { date, now = new Date(), weekday = now.get
     gems: gemstones(chart),
     siddhar: proposeSiddhar(chart),
     ayul: ayulBalam(chart),
-    playlist: hindu ? personalPlaylist(chart, now) : [],
+    playlist: personalPlaylist(chart, now),
     lagnaLord: chart.planets.Lagna ? lordOf(chart.planets.Lagna.rasi, 1) : null,
     reference: chart.planets.Lagna ? 'lagna' : 'moon',
     needsBirthTime: !chart.planets.Lagna,

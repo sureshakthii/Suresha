@@ -19,6 +19,7 @@ This records what the rebuild against [`THUNAI-BRIEF.md`](THUNAI-BRIEF.md) deliv
 | §11 Privacy, payments | Export and delete added; payments already verified server-side | `server/auth.js`, `server/billing.js` |
 | §25–26 Themes and practical safeguards | Done; themes *proposed* | `shared/themes.js`, `shared/safeguards.js` |
 | §27–29 First/remarriage matching, consent | Done: modes, adult check, two-person consent, five cards, no verdict | `shared/marriage-context.js` |
+| Faith (owner decision, Oct 2026) | Done: Thunai is a Hindu-only app — no faith field in the family form, a stored faith is dropped on load and ignored, every person gets the full Hindu content; age and safety rules unchanged | `public/core.js` (`dropFaith`), `test/hindu-only.test.js` (`shared/faith.js` removed) |
 | §12, §23, §30 Release evidence | Partly: 620+ automated tests (`npm test`); release and rollback process written; controlled review plan written; expert fixtures and pilot pending | `test/`, `docs/RELEASE.md`, `docs/REVIEW-PLAN.md` |
 
 Run `npm test` to check: every suite passes on this branch.

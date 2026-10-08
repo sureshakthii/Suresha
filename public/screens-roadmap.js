@@ -1,7 +1,6 @@
 // Life Road Map screen (வாழ்க்கை வரைபடம்) — each person's personal plan for the next 10 years,
 // plus a print / save-as-PDF report (ஜாதகப் புத்தகம்) that families can keep or share.
 import { lifeRoadmap, ROAD_AREAS as ALL_AREAS } from './shared/roadmap.js';
-import { faithOf } from './shared/faith.js';
 import { hymnText } from './hymn-links.js';
 // Health is not scored from the chart (THUNAI brief: wellness stays separate from horoscope interpretation).
 let ROAD_AREAS = ALL_AREAS.filter((a) => a.id !== 'health');
@@ -91,7 +90,7 @@ function drawRoadmap(m) {
   const c = chartOf(m);
   const years = REPORT_YEARS.roadmap;
   const married = m.maritalStatus === 'married' || m.relation === 'spouse' || (m.relation === 'self' && state.family.some((x) => x.relation === 'spouse')) ? 'married' : (m.maritalStatus || null);
-  const r = lifeRoadmap(c, { years, faith: faithOf(m), maritalStatus: married });
+  const r = lifeRoadmap(c, { years, maritalStatus: married });
   const cover = `<span class="pill horizon-label">${esc(bi(horizonLabel(years)))}</span>`;
   // Age first: for a child the engine returns only learning / family & home (no career, wealth or marriage scores).
   ROAD_AREAS = (r.areas || ALL_AREAS).filter((a) => a.id !== 'health');
@@ -152,7 +151,7 @@ function drawRoadmap(m) {
       periods: r.periods.map((p) => ({ dasa: `${p.md}/${p.ad}`, from: p.start.toISOString().slice(0, 7), to: p.end.toISOString().slice(0, 7), level: p.level, focus: p.focus, scores: p.scores, transit: p.notes.map((n) => n.en) })),
       milestones: r.milestones.map((x) => ({ event: x.name.en, from: x.from.toISOString().slice(0, 7), to: x.to.toISOString().slice(0, 7) })),
     };
-    await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: r.minor ? `This road map is for a ${r.age}-year-old child. As a kind family Guru, give a warm, simple plan for the coming years focused only on studies, health, good habits, character and family — no career, money, marriage or relationship predictions. Suggest simple prayers${faithOf(m) === 'hindu' ? '' : ` that fit the family's own faith (${faithOf(m)}) — no Hindu rituals`}. About 200 words.` : `Act as my life Guru. From this road map, give me a warm, practical ${years}-year plan: what to focus on in each period (career, money, family, health, learning), the best windows for big decisions, how to prepare for the care periods, and simple daily habits and ${faithOf(m) === 'hindu' ? 'parigarams' : `practices that fit my own faith (${faithOf(m)}) — charity, service, prayer in my own way; no Hindu rituals`}. Positive, no fear. About 300 words.` }],
+    await aiTask({ task: 'chat', context, messages: [{ role: 'user', content: r.minor ? `This road map is for a ${r.age}-year-old child. As a kind family Guru, give a warm, simple plan for the coming years focused only on studies, health, good habits, character and family — no career, money, marriage or relationship predictions. Suggest simple prayers. About 200 words.` : `Act as my life Guru. From this road map, give me a warm, practical ${years}-year plan: what to focus on in each period (career, money, family, health, learning), the best windows for big decisions, how to prepare for the care periods, and simple daily habits and parigarams. Positive, no fear. About 300 words.` }],
       fallbackText: r.now.map((x) => bi(x)).join('\n'), onText: (tx) => { t.textContent = tx; } });
     t.classList.remove('typing');
   });

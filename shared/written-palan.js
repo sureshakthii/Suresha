@@ -12,7 +12,6 @@ import { RASIS, NAKSHATRAS, PLANETS } from './astro.js';
 import { grahaStrength } from './remedies.js';
 import { transitStatus, dasaTone } from './analysis.js';
 import { runningDasa } from './daily.js';
-import { isHinduFaith } from './faith.js';
 import { REPORT_YEARS, horizonEnd, horizonLabel, HORIZON_LINES } from './report-horizon.js';
 import { topicAllowed, adultText } from './age-guard.js';
 
@@ -146,9 +145,7 @@ export const PALAN_AREAS = [
   { id: 'property', houses: [4, 11, 2], negate: [3, 12], karakas: ['Mars', 'Venus'], name: T('Home, land & vehicles', 'வீடு, நிலம், வாகனம்'),
     for: T('buying a home, land or a vehicle', 'வீடு, நிலம், வாகனம் வாங்குவதற்கு'), tip: T('Check documents carefully and decide within your means.', 'ஆவணங்களைக் கவனமாகச் சரிபார்த்து, உங்கள் சக்திக்கு ஏற்ப முடிவெடுங்கள்.') },
   { id: 'spiritual', houses: [9, 12, 5], negate: [], karakas: ['Jupiter', 'Ketu'], name: T('Spiritual life', 'ஆன்மீக வாழ்க்கை'),
-    for: T('spiritual growth and pilgrimage', 'ஆன்மீக முன்னேற்றத்திற்கும் தீர்த்த யாத்திரைக்கும்'), tip: T('A simple daily prayer and an occasional temple visit keep the mind clear.', 'தினசரி ஓர் எளிய வழிபாடும் அவ்வப்போது கோவில் தரிசனமும் மனதைத் தெளிவாக்கும்.'),
-    tipAllFaiths: T('A simple daily prayer in your own faith and quiet time for reflection keep the mind clear.', 'உங்கள் நம்பிக்கைப்படி தினசரி ஓர் எளிய பிரார்த்தனையும் அமைதியான சிந்தனை நேரமும் மனதைத் தெளிவாக்கும்.'),
-    forAllFaiths: T('spiritual growth and reflection', 'ஆன்மீக முன்னேற்றத்திற்கும் அமைதியான சிந்தனைக்கும்') },
+    for: T('spiritual growth and pilgrimage', 'ஆன்மீக முன்னேற்றத்திற்கும் தீர்த்த யாத்திரைக்கும்'), tip: T('A simple daily prayer and an occasional temple visit keep the mind clear.', 'தினசரி ஓர் எளிய வழிபாடும் அவ்வப்போது கோவில் தரிசனமும் மனதைத் தெளிவாக்கும்.') },
 ];
 
 // 60 and over: the same houses and windows, worded for the stage of life — family (not marriage efforts), work as
@@ -307,8 +304,7 @@ const PROMISE = {
  *               tz, maritalStatus: 'married' | other }
  * @returns { title, horizon, mode: 'adult'|'minor', moonOnly, sections: [{ id, title, lines: [{en,ta}], stability, items? }] }
  */
-export function writtenPalan(chart, { now = new Date(), profile = null, years = REPORT_YEARS.analysis, analysis = null, tz = null, maritalStatus = null, faith = 'hindu', remarriage = false } = {}) {
-  const hindu = isHinduFaith(faith);
+export function writtenPalan(chart, { now = new Date(), profile = null, years = REPORT_YEARS.analysis, analysis = null, tz = null, maritalStatus = null, remarriage = false } = {}) {
   const zone = tz ?? (Number.isFinite(Number(chart.tz)) ? Number(chart.tz) : 5.5);
   const prof = profile || { band: 'adult', adult: true, minor: false };
   const adult = !!(prof.adult || prof.organization);
@@ -353,9 +349,7 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
   const nowLines = [];
   const transit = analysis?.transit || transitStatus(chart, now);
   const areas = PALAN_AREAS.filter((a) => topicAllowed(a.id, prof)).map((a) => {
-    let x = senior && SENIOR[a.id] ? { ...a, ...SENIOR[a.id] } : a;
-    if (!hindu && x.tipAllFaiths) x = { ...x, tip: x.tipAllFaiths, for: x.forAllFaiths };
-    return x;
+    return senior && SENIOR[a.id] ? { ...a, ...SENIOR[a.id] } : a;
   });
   if (md) {
     nowLines.push(T(`You are now in ${md.lord} Maha Dasa (${yspan(md.start, md.end, zone)})${ad ? `, in its ${ad.lord} Bhukti (${span(ad.start, ad.end, zone).en})` : ''}.`,
@@ -405,8 +399,7 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
     nowLines.push(satGood ? T('Saturn\'s transit is favourable — a regular study habit pays off well.', 'சனியின் கோசாரம் சாதகம் — தொடர்ந்து படிக்கும் பழக்கத்திற்கு நல்ல பலன்.')
       : T('Saturn\'s transit teaches patience — keep studies, sleep and prayer steady and this passes gently.', 'சனியின் கோசாரம் பொறுமையைக் கற்றுத்தரும் — படிப்பு, உறக்கம், வழிபாட்டைச் சீராக வைத்தால் இது மென்மையாகக் கடக்கும்.'));
     nowLines.push(guru ? T('Jupiter supports studies and good habits now (Guru Balam).', 'குரு பலம் உண்டு — கல்விக்கும் நல்ல பழக்கங்களுக்கும் சாதகமான காலம்.')
-      : hindu ? T('For Jupiter\'s grace, a lamp for Dakshinamurthy on Thursdays and a daily study routine help.', 'குருவின் அருளுக்கு வியாழன்தோறும் தட்சிணாமூர்த்திக்குத் தீபம்; படிப்பில் தினசரி ஒழுங்கு நன்று.')
-        : T('Respect for teachers, a short prayer in your family\'s own way and a daily study routine help.', 'ஆசிரியர்களுக்கு மரியாதை, குடும்ப வழக்கப்படி சிறு பிரார்த்தனை, படிப்பில் தினசரி ஒழுங்கு நன்று.'));
+      : T('For Jupiter\'s grace, a lamp for Dakshinamurthy on Thursdays and a daily study routine help.', 'குருவின் அருளுக்கு வியாழன்தோறும் தட்சிணாமூர்த்திக்குத் தீபம்; படிப்பில் தினசரி ஒழுங்கு நன்று.'));
   }
   nowLines.push(adult ? T('For wellbeing in any period: enough sleep, a daily walk and a calm routine are your best support.', 'எந்தக் காலத்திலும் நலமாக இருக்க: போதுமான உறக்கம், தினசரி நடை, அமைதியான அன்றாட ஒழுங்கு — இவையே சிறந்த துணை.')
     : T('Outdoor play, a fixed bedtime and time with family keep a child happy in every period.', 'வெளியில் விளையாட்டு, நேரத்திற்கு உறக்கம், குடும்பத்துடன் நேரம் — எந்தக் காலத்திலும் குழந்தையை மகிழ்ச்சியாக வைக்கும்.'));
@@ -481,7 +474,7 @@ export function writtenPalan(chart, { now = new Date(), profile = null, years = 
 
   return {
     title: T('Your chart reading — now and ahead', 'உங்கள் ஜாதகப் பலன் — இப்போதும் வரும் காலமும்'),
-    horizon: horizonLabel(years), years, mode: adult ? 'adult' : 'minor', moonOnly: !hasLagna, senior, faith: hindu ? 'hindu' : faith,
+    horizon: horizonLabel(years), years, mode: adult ? 'adult' : 'minor', moonOnly: !hasLagna, senior,
     running: md ? { md: md.lord, ad: ad?.lord || null, mdStart: toDate(md.start), mdEnd: toDate(md.end), adStart: ad ? toDate(ad.start) : null, adEnd: ad ? toDate(ad.end) : null } : null,
     sections,
     note: T('Read on your phone from your chart\'s dasa, houses and transits. These are the tendencies tradition reads — not certainties; your effort and choices matter most.',

@@ -90,10 +90,10 @@ test('Live sky centres the current horai in its strip without scrolling the page
   assert.match(src, /list\.scrollTo\(\{ left:/);
 });
 
-test('Today is faith- and age-aware: no temple question for another faith, no marriage/career goal hint for a child', () => {
+test('Today is Hindu for everyone (no per-faith branch) and age-aware: no marriage/career goal hint for a child', () => {
   const main = read('screens-main.js');
-  assert.match(main, /GUIDE_SUGGESTIONS_OTHER_FAITH/);
-  assert.match(main, /Plan a family trip or pilgrimage/);
+  assert.doesNotMatch(main, /GUIDE_SUGGESTIONS_OTHER_FAITH|faithOf|faithBlessing|faithWelcome|universalPractice/);
+  assert.match(main, /Plan a temple visit/);
   assert.match(read('screens-goals.js'), /Set a goal — studies, journey, health/);
 });
 

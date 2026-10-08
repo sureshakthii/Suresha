@@ -14,12 +14,15 @@
 // The band rules and the reviewed child / teen wording live HERE and are re-used by the server policy
 // (server/policy/age-policy.js and templates.js import them), so the phone and the server never disagree.
 import { ageOn, ageBand } from './datetime.js';
-import { isHinduFaith, CHILD_PRACTICE } from './faith.js';
 
 export const AGE_GUARD_VERSION = 'age-guard-1.0.0';
 export const ADULT_AGE = 18;
 
 const T = (en, ta) => ({ en, ta });
+
+/** A simple, child-safe practice for a minor (no fasting, no money, no ritual). */
+export const CHILD_PRACTICE = T('A short prayer or quiet moment in your family’s own way, kind words and helping at home.',
+  'உங்கள் குடும்ப வழக்கப்படி ஒரு சிறு பிரார்த்தனை அல்லது அமைதியான நிமிடம், இனிய சொல், வீட்டில் உதவி.');
 
 // ------------------------------------------------------------------ band rules (shared with server policy)
 /** Output classes that must never appear for minors (in addition to the always-prohibited list). */
@@ -292,14 +295,11 @@ function bandLines(topic, profile, name) {
   };
 }
 
-/** Another faith (or none): the band's prayer line becomes one that fits every family's faith. */
-const faithLines = (b, faith) => (isHinduFaith(faith) ? b : { ...b, prayer: CHILD_PRACTICE });
-
 /**
  * The warm, age-appropriate reply used INSTEAD of a prediction when a minor's chart (or an unknown age) is asked
  * about an adult topic. Same shape the chat bubble renders — and deliberately no meter, no periods, no percentage.
  */
-export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', question = '', label = null, faith = 'hindu' }) {
+export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', question = '', label = null }) {
   if (label?.en && label?.ta) TOPIC_LABEL.set(topic, label);
   const L = (o) => say(o, lang);
   const sections = [];
@@ -308,7 +308,7 @@ export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', questio
       `${topicName(topic).ta} பற்றிய பலனுக்குப் பிறந்த தேதி தேவை. குடும்பம் பகுதியில் பிறந்த தேதியைச் சேர்க்கவும் — அதுவரை பொதுவான வழிகாட்டல் தருகிறேன்: இன்றைய நல்ல நேரம், கோவில், எளிய பிரார்த்தனை.`))] });
     return { intent: 'age_guard', ageGuard: { band: 'unknown', topic }, topic, question, sections, meter: null, actions: [{ go: 'family', label: L(T('Add birth date', 'பிறந்த தேதி சேர்')) }], followups: suggestionsFor(profile).slice(0, 3).map(L), text: textOf(sections) };
   }
-  const b = faithLines(bandLines(topic, profile, name), faith);
+  const b = bandLines(topic, profile, name);
   sections.push({ key: 'answer', title: L(T('Answer', 'பதில்')), lines: [L(b.answer)] });
   if (b.extra) sections.push({ key: 'note', title: L(T('Remember', 'நினைவில் கொள்ளுங்கள்')), lines: [L(b.extra)] });
   sections.push({ key: 'dos', title: L(profile.band === '0-5' ? T('For parents now', 'பெற்றோருக்கு இப்போது') : T('Focus on now', 'இப்போது கவனம் செலுத்த')), lines: b.focus.map(L) });
@@ -324,10 +324,9 @@ export function ageGuardAnswer({ topic, profile, lang = 'ta', name = '', questio
  * today's deity and a simple prayer, the band's everyday focus, and age-appropriate follow-ups.
  * deity: optional { god: {en,ta}, mantra: {en,ta} } (shared/daily.js dailyReview().deity).
  */
-export function childGeneralAnswer({ profile, lang = 'ta', name = '', deity = null, question = '', faith = 'hindu' }) {
+export function childGeneralAnswer({ profile, lang = 'ta', name = '', deity = null, question = '' }) {
   const L = (o) => say(o, lang);
-  const b = faithLines(bandLines('general', profile, name), faith);
-  if (!isHinduFaith(faith)) deity = null; // no Hindu deity prayer for a child of another faith
+  const b = bandLines('general', profile, name);
   const q = String(question || '');
   const lines = [];
   if (/online|internet|phone|social|இணைய|கைப்பேசி/i.test(q)) {

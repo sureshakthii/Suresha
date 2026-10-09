@@ -4,7 +4,9 @@
 // Tamil and Tanglish checks. If anything fails, the caller shows a reviewed fallback — NEVER the draft.
 // A validator is not a guarantee; false negatives must be reviewed using the evaluation corpus.
 
-export const VALIDATOR_VERSION = 'validator-1.0.0';
+import { scanCertainty } from '../../shared/certainty-guard.js';
+
+export const VALIDATOR_VERSION = 'validator-1.1.0';
 
 export const ANSWER_SCHEMA = {
   type: 'object',
@@ -229,6 +231,9 @@ export function validateAnswer(answer, { decision, evidence, privateValues = [] 
   const classes = decision?.prohibitedOutputs?.length ? decision.prohibitedOutputs : Object.keys(PROHIBITED_PATTERNS);
   const hits = scanProhibited([visible, ...claims.map((c) => c.text)].join('\n'), classes, { privateValues, deadline: Boolean(decision?.deadline) });
   for (const h of hits) errors.push(`prohibited:${h.class}`);
+  // Deterministic-Prediction Safety Standard: the shared banned-phrase library (certainty, fear, guarantees,
+  // "never" outcomes, financial / medical instructions, guaranteed remedies, false urgency, fetal sex).
+  for (const h of scanCertainty([visible, ...claims.map((c) => c.text)].join('\n'))) errors.push(`certainty:${h.category}`);
   return { ok: errors.length === 0, status: errors.length ? 'invalid' : 'valid', errors: [...new Set(errors)], answer: errors.length ? null : a };
 }
 

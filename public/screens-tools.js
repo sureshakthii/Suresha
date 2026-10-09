@@ -29,7 +29,11 @@ import { ageProfile, isAdult, MATCH_ADULTS_NOTE } from './shared/age-guard.js';
 import { dailyReview } from './shared/daily.js';
 import { hymnText } from './hymn-links.js';
 import { diagnoseDoshams, nivarthiPlan } from './shared/dosham.js';
-import { clarityPrompt } from './growth.js';
+import { clarityPrompt, track } from './growth.js';
+import { relatedQuestions } from './shared/pro-questions.js';
+import { scanCertainty } from './shared/certainty-guard.js';
+import { DISCLAIMER } from './shared/responsible.js';
+import { hasPro } from './screens-pro.js';
 import { panchangamSpec, panchangamFilename } from './shared/share-card-layout.js';
 import { fmtDay, fmtMonth, fmtClock, fmtClockRange, until } from './shared/fmt.js';
 import { initialOf } from './shared/relations.js';
@@ -587,6 +591,8 @@ registerScreen('starbday', { render: renderStarBday, parent: 'home', needsLoc: t
 // receives those facts and must not invent others; without AI, the built-in engine answers the actual
 // question in the same six-part structure. Every answer is labelled with its source.
 const chat = { messages: [], memberId: null, busy: false, mode: askModeSaved() };
+/** The person the chat reads (organisation profiles have no personal chart). */
+const chatPerson = () => { const m = activeMember(); return m && m.relation !== 'organization' ? m : null; };
 // "About my chart" or "General (festivals, spiritual)": remembered for this browser session only.
 function askModeSaved() { try { return sessionStorage.getItem('kj_ask_mode') === 'general' ? 'general' : 'chart'; } catch { return 'chart'; } }
 function setAskMode(mode) {
@@ -689,6 +695,7 @@ function renderChat(sec, params = {}) {
       <label class="sr-only" for="chatInput">${L('Message', 'செய்தி')}</label><textarea id="chatInput" class="grow-in" rows="1" autocomplete="off" maxlength="600" placeholder="${esc(L('Ask Thunai…', 'கேள்வியை இங்கே எழுதுங்கள்…'))}"></textarea>
       <button class="send" aria-label="${L('Send', 'அனுப்பு')}">➤</button></form></div>
     ${supportCard()}
+    <p class="small muted center ask-disc">ℹ️ ${esc(bi(DISCLAIMER))} <button class="link-btn" data-go="charter">${L('Our charter', 'எங்கள் உறுதிமொழி')}</button></p>
     <p class="small muted center">${L('Voice: your phone converts speech to text (it may use its own online service). The text appears in the box for you to check.', 'குரல்: உங்கள் கைப்பேசி பேச்சை எழுத்தாக மாற்றும் (அதன் இணைய சேவையைப் பயன்படுத்தலாம்). சரிபார்க்க பெட்டியில் உரை தோன்றும்.')}</p>
     ${copyright()}`;
   for (const msg of chat.messages) addBubble(msg.role, msg.content, msg);
@@ -744,6 +751,25 @@ function addBubble(role, text, meta = {}) {
       row.append(x);
     });
     b.append(row);
+  }
+  // "Related" — deeper questions (Perplexity-style ↳ list). Adults with a chart only; never on high-risk, safety,
+  // policy or general answers (shared/pro-questions.js). A tap opens the Pro page, or the answer for Pro members.
+  const related = meta.typing === true ? [] : relatedQuestions({
+    topic: meta.topic || meta.answer?.topic || 'general', intent: meta.intent || meta.answer?.intent || '',
+    adult: Boolean(chatPerson() && ageOf(chatPerson()).adult), hasChart: Boolean(chatPerson()), general: Boolean(meta.answer?.general) || meta.source === 'policy' || Boolean(meta.resources),
+    asked: chat.messages.filter((mm) => mm.role === 'user').map((mm) => mm.content),
+  });
+  if (related.length) {
+    const box = document.createElement('div'); box.className = 'related';
+    box.innerHTML = `<div class="ans-h">${esc(L('Related', 'தொடர்புடைய கேள்விகள்'))}</div>`;
+    related.forEach((r) => {
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'related-q';
+      x.innerHTML = `<span class="rq-arrow" aria-hidden="true">↳</span><span class="rq-text">${esc(bi(r.q))}</span>${hasPro() ? '' : '<span class="pill rq-pro">Pro</span>'}`;
+      x.addEventListener('click', () => { track('related_click', { feature: r.id }); if (hasPro()) send(bi(r.q)); else go('pro', { id: r.id }); });
+      box.append(x);
+    });
+    b.append(box);
+    track('related_view', { feature: related[0].id });
   }
   if (meta.answer?.actions?.length) {
     const row = document.createElement('div'); row.className = 'btn-row';
@@ -816,7 +842,7 @@ async function send(text, opts = {}) {
   const general = opts.general || Boolean(answer.general);
   const rulesOnly = ['crisis', 'death', 'pain', 'age_guard', 'policy', 'mode_switch'].includes(answer.intent) || Boolean(answer.policy) || answer.validationFallback || Boolean(m?.private) || Boolean(prof?.minor && STATIC)
     || (answer.honest && !opts.forceAI);
-  let msg = { role: 'assistant', content: answer.text, answer, source: 'rules', speakText: answer.text, question: text };
+  let msg = { role: 'assistant', content: answer.text, answer, topic: answer.topic, intent: answer.intent, source: 'rules', speakText: answer.text, question: text };
   if (!rulesOnly) {
     const thinking = addBubble('assistant', L('Thinking…', 'யோசிக்கிறேன்…'), { typing: true });
     thinking.classList.add('typing');
@@ -827,8 +853,13 @@ async function send(text, opts = {}) {
     const meta = r.meta || {};
     // The server's answer wins whenever it is a validated AI reply OR a policy reply (safety / decline / clarify /
     // child / teen) — a policy reply is never replaced by the on-device answer.
-    if ((r.source === 'ai' || r.source === 'policy') && r.text.trim()) {
-      msg = { role: 'assistant', content: r.text, source: r.source, speakText: r.text, resources: meta.resources || null, notice: meta.notice || null, trace: meta.trace || null, question: text,
+    // Defence in depth (Deterministic-Prediction Safety Standard): an AI reply that still carries a banned phrase
+    // (certainty, fear, guarantee, money / medical instruction …) is replaced by the reviewed on-device answer —
+    // never edited invisibly.
+    const unsafe = r.source === 'ai' && scanCertainty(r.text).length > 0;
+    if (unsafe) msg.notice = L('A detailed answer was held back by our safety check; this is the reviewed built-in answer.', 'பாதுகாப்புச் சரிபார்ப்பால் விரிவான பதில் நிறுத்தப்பட்டது; இது சரிபார்க்கப்பட்ட உள்ளமைந்த பதில்.');
+    else if ((r.source === 'ai' || r.source === 'policy') && r.text.trim()) {
+      msg = { role: 'assistant', content: r.text, source: r.source, topic: answer.topic, intent: answer.intent, speakText: r.text, resources: meta.resources || null, notice: meta.notice || null, trace: meta.trace || null, question: text,
         answer: r.source === 'ai' ? { actions: (answer.actions || []).filter((a) => !a.ai), modeNote: answer.modeNote, general } : null };
     } else if (meta.notice) {
       msg.notice = meta.notice; // the server could not add an AI explanation: say so (no_ai_notice)

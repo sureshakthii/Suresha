@@ -53,6 +53,8 @@ const tag = (v) => String(v || '').replace(/[^\w./:-]/g, '_').slice(0, 60);
  */
 export function taskDone(task) { track('task_complete', { feature: tag(task) }); }
 document.addEventListener('kj:task', (e) => { taskDone(e.detail); logTask(e.detail); });
+// The Home "How can I help you today?" box: feature = 'ask' (question sent to Ask Thunai) or 'tool' (a tool opened).
+document.addEventListener('kj:help', (e) => track('help_search', { feature: tag(e.detail) }));
 
 // ---------------------------------------------------------------- value summary log (this phone only)
 // Counts of finished tasks for "Your Thunai so far" (Settings). Kept only in this phone's storage, never sent,
@@ -119,6 +121,24 @@ function metricsCard(m) {
   <ul class="small muted">${m.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></div>`;
 }
 
+/** Responsible Guidance Dashboard (server/policy/audit-events.js): blocked, refused and redirected answers + targets. */
+function safetyCard(sf) {
+  if (!sf) return '';
+  const r = (en, ta, v) => `<div class="factor"><span>${L(en, ta)}</span><b class="zero">${v}</b></div>`;
+  return `<div class="card glass"><div class="card-title">🛡️ ${L('Responsible guidance (since server start)', 'பொறுப்பான வழிகாட்டல் (சேவையகம் தொடங்கியதிலிருந்து)')}</div>
+    ${r('Policy-checked answers', 'சரிபார்த்த பதில்கள்', sf.answers)}${r('Deterministic / fear answers blocked', 'உறுதி / பயமுறுத்தும் பதில்கள் தடுக்கப்பட்டவை', sf.deterministicBlocked)}
+    ${r('Safety redirects (crisis, health, legal)', 'பாதுகாப்பு வழிமாற்றம் (நெருக்கடி, உடல்நலம், சட்டம்)', sf.safetyRedirects)}${r('Declined requests', 'மறுக்கப்பட்ட கோரிக்கைகள்', sf.declined)}
+    ${r('Fetal-sex questions refused', 'கருவின் பாலினக் கேள்விகள் மறுப்பு', sf.fetalSexRefused)}${r('Death / lifespan requests refused', 'மரணம் / ஆயுள் கோரிக்கைகள் மறுப்பு', sf.deathRefused)}
+    ${r('Diagnosis / fertility predictions refused', 'நோய் / கருவுறுதல் கணிப்பு மறுப்பு', sf.diagnosisRefused)}
+    <p class="small muted">${L(`Targets: ${sf.targets.fetalSexRefusedPct}% fetal-sex refusal · ${sf.targets.deathOrDiagnosisToleratedPredictions} tolerated death or diagnosis predictions · ${sf.targets.highRiskWithSafetyNoticePct}% safety notice on high-risk answers · complaints acknowledged within ${sf.targets.complaintAckHours} h`, `இலக்குகள்: ${sf.targets.fetalSexRefusedPct}% பாலினக் கேள்வி மறுப்பு · மரணம் / நோய் கணிப்பு ${sf.targets.deathOrDiagnosisToleratedPredictions} · உயர் ஆபத்துப் பதில்களில் ${sf.targets.highRiskWithSafetyNoticePct}% பாதுகாப்பு அறிவிப்பு · புகார்கள் ${sf.targets.complaintAckHours} மணிக்குள் ஏற்பு`)}</p></div>`;
+}
+
+/** Ask → Pro funnel: one bar per step (share of the first step), with the step-to-step conversion. */
+export function funnelHtml(rows) {
+  if (!Array.isArray(rows) || !rows.length) return '';
+  return `<div class="mini-label">${L('Ask → Pro conversion funnel', 'கேள்வி → Pro மாற்றப் படிநிலை')}</div><div class="tb-list funnel">${rows.map((r, i) => `<div class="tb-row"><span class="tb-label">${esc(bi(r))}</span><span class="tb-value">${r.count}</span><span class="tb-bar"><i class="${i === 0 ? 'good' : r.fromPrev >= 30 ? 'good' : r.fromPrev >= 10 ? 'warn' : 'bad'}" style="width:${i === 0 ? (r.count ? 100 : 0) : Math.min(100, r.fromStart)}%"></i></span><span class="tb-note">${i === 0 ? '' : `${r.fromPrev}% ${L('of previous step', 'முந்தைய படியிலிருந்து')}`}</span></div>`).join('')}</div>`;
+}
+
 /** Product metrics (§14): tool use, completed tasks, paywall → plan click → purchase, sign-ups, "Was this clear?". */
 function productCard(p) {
   if (!p) return '';
@@ -130,6 +150,8 @@ function productCard(p) {
       <dt>${L('Sign-ups / log-ins', 'பதிவு / உள்நுழைவு')}</dt><dd>${p.signups} / ${p.logins}</dd>
       <dt>${L('“Was this clear?”', '“தெளிவாக இருந்ததா?”')}</dt><dd>👍 ${p.comprehension.yes} · 👎 ${p.comprehension.no} (${pc(p.comprehension.clearRate)})</dd>
     </dl>
+    ${funnelHtml(p.askFunnel)}
+    ${p.relatedClicksByQuestion ? `<div class="mini-label">${L('Deeper questions people tapped', 'மக்கள் தொட்ட ஆழமான கேள்விகள்')}</div>${list(p.relatedClicksByQuestion)}` : ''}
     <div class="mini-label">${L('Tasks completed', 'நிறைவு செய்த பணிகள்')}</div>${list(p.tasksCompleted)}
     <div class="mini-label">${L('Tools used', 'பயன்படுத்திய கருவிகள்')}</div>${list(p.featureUse)}</div>`;
 }
@@ -400,9 +422,10 @@ async function renderAdmin(sec) {
       const kpi = (v, en, tx) => `<div class="kpi"><b>${esc(String(v ?? 0))}</b><span>${L(en, tx)}</span></div>`;
       const codes = await adminApi('/api/admin/gift-codes').catch(() => ({ codes: [] }));
       const mx = await adminApi('/api/admin/metrics?days=30').catch(() => null);
+      const pol = await adminApi('/api/admin/policy/metrics').catch(() => null);
       const defects = (await adminApi('/api/admin/feedback?type=defect').catch(() => ({ feedback: [] }))).feedback.slice(0, 10);
       const codeList = codes.giftCodes || [];
-      body.innerHTML = `${mx ? metricsCard(mx) : ''}${productCard(o.stats.product)}<div class="kpis">${kpi(t.devices, 'Devices', 'சாதனங்கள்')}${kpi(t.installs, 'Installs', 'நிறுவல்கள்')}${kpi(t.users, 'Users', 'பயனர்கள்')}${kpi(t.activeToday, 'Active today', 'இன்று செயலில்')}${kpi(t.active7, 'Active 7 days', '7 நாள் செயலில்')}${kpi(t.active30, 'Active 30 days', '30 நாள் செயலில்')}${kpi(t.payingUsers, 'Paying users', 'கட்டணப் பயனர்கள்')}${kpi(`₹${(t.revenueByCurrency?.INR || 0).toLocaleString('en-IN')}`, 'Revenue (INR)', 'வருமானம் (₹)')}${kpi(`AED ${(t.revenueByCurrency?.AED || 0).toLocaleString('en-US')}`, 'Revenue (AED)', 'வருமானம் (AED)')}${kpi(`$${(t.revenueByCurrency?.USD || 0).toLocaleString('en-US')}`, 'Revenue (USD)', 'வருமானம் ($)')}${kpi(t.avgRating ? t.avgRating.toFixed(1) + '★' : '—', 'Avg rating', 'சராசரி மதிப்பீடு')}</div>
+      body.innerHTML = `${mx ? metricsCard(mx) : ''}${productCard(o.stats.product)}${safetyCard(pol?.safety)}<div class="kpis">${kpi(t.devices, 'Devices', 'சாதனங்கள்')}${kpi(t.installs, 'Installs', 'நிறுவல்கள்')}${kpi(t.users, 'Users', 'பயனர்கள்')}${kpi(t.activeToday, 'Active today', 'இன்று செயலில்')}${kpi(t.active7, 'Active 7 days', '7 நாள் செயலில்')}${kpi(t.active30, 'Active 30 days', '30 நாள் செயலில்')}${kpi(t.payingUsers, 'Paying users', 'கட்டணப் பயனர்கள்')}${kpi(`₹${(t.revenueByCurrency?.INR || 0).toLocaleString('en-IN')}`, 'Revenue (INR)', 'வருமானம் (₹)')}${kpi(`AED ${(t.revenueByCurrency?.AED || 0).toLocaleString('en-US')}`, 'Revenue (AED)', 'வருமானம் (AED)')}${kpi(`$${(t.revenueByCurrency?.USD || 0).toLocaleString('en-US')}`, 'Revenue (USD)', 'வருமானம் ($)')}${kpi(t.avgRating ? t.avgRating.toFixed(1) + '★' : '—', 'Avg rating', 'சராசரி மதிப்பீடு')}</div>
         <div class="card glass"><div class="card-title">${L('Daily app opens (30 days)', 'தினசரி திறப்புகள் (30 நாள்)')}</div>${bars(o.stats.daily, 'opens', 'opens')}
           <div class="card-title" style="margin-top:10px">${L('New devices per day', 'தினசரி புதிய சாதனங்கள்')}</div>${bars(o.stats.daily, 'newDevices', 'new devices')}</div>
         <div class="card glass"><div class="card-title">${L('Platforms', 'தளங்கள்')}</div>${Object.entries(o.stats.byPlatform || {}).map(([k, v]) => `<div class="factor"><span>${esc(k)}</span><b class="zero">${v}</b></div>`).join('')}</div>

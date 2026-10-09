@@ -1740,6 +1740,18 @@ h3 { font-size: var(--fs-md); }
 .tl-search:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(var(--gold-rgb), .15); }
 .tl-search input { flex: 1; min-width: 0; margin: 0; border: 0 !important; background: transparent; box-shadow: none !important; padding: 10px 0 !important; color: var(--text); }
 .tl-search input::-webkit-search-cancel-button { cursor: pointer; }
+/* "How can I help you today?" — the working search box on Today / Services */
+.help-box { margin: 0 0 var(--s3); }
+.help-field { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 6px 0 var(--s4); border-radius: 999px; border: 1px solid var(--glass-b); background: var(--glass); box-shadow: var(--card-shadow); cursor: text; }
+.help-field:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(var(--gold-rgb), .15); }
+.help-field .ic { flex: none; color: var(--muted); }
+.help-in { flex: 1; min-width: 0; margin: 0; border: 0 !important; background: transparent; box-shadow: none !important; padding: 12px 0 !important; color: var(--text); font: inherit; font-size: var(--fs-base); }
+.help-in::placeholder { color: var(--muted); opacity: 1; }
+.help-go { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--btn-gold); color: #1a1208; cursor: pointer; }
+.help-results { margin-top: var(--s2); }
+.help-results .help-ask .row-name { font-weight: 600; }
+.help-hint { margin: 6px var(--s3) 0; }
+.help-box:focus-within .help-hint { display: none; }
 .tl-hint { margin: calc(-1 * var(--s1)) var(--s2) var(--s3); }
 .tl-group .section-title:first-child { margin-top: var(--s4); }
 .tl-recent { display: flex; gap: var(--s2); overflow-x: auto; padding: 2px 2px var(--s2); scrollbar-width: none; }
@@ -2739,3 +2751,33 @@ body.ta .easy-tm { grid-template-columns: minmax(0, .85fr) minmax(0, .85fr) minm
 /* Sidebar brand never spills into the page header, whatever the text length. */
 .sn-brand { max-width: 100%; overflow: hidden; }
 .sn-brand-txt, .sn-brand-txt * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Ask Thunai — "Related" deeper questions (↳ list) */
+.related { margin-top: var(--s3); border-top: 1px solid var(--glass-b); padding-top: var(--s2); }
+.related-q { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: var(--tap); padding: 10px 4px; border: 0; border-bottom: 1px solid var(--glass-b); background: transparent; color: var(--text); font: inherit; font-size: var(--fs-base); line-height: 1.5; text-align: left; cursor: pointer; }
+.related-q:last-child { border-bottom: 0; }
+.related-q:hover .rq-text, .related-q:focus-visible .rq-text { color: var(--gold); }
+.rq-arrow { flex: none; color: var(--muted); font-size: 1.1em; line-height: 1.4; }
+.rq-text { flex: 1; min-width: 0; }
+.rq-pro { flex: none; align-self: center; font-size: var(--fs-xs); font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(var(--gold-rgb), .16); color: var(--gold); border: 1px solid rgba(var(--gold-rgb), .4); }
+
+/* Thunai Pro page */
+.pro-q { display: flex; gap: 10px; align-items: flex-start; font-size: var(--fs-md, 1.1rem); line-height: 1.5; }
+.pro-arrow { color: var(--gold); font-size: 1.2em; }
+.pro-list { margin: var(--s2) 0; padding-inline-start: 22px; line-height: 1.6; }
+.pro-list li { margin: 4px 0; }
+.pro-list.ok { list-style: none; padding-inline-start: 0; }
+.pro-list.ok li::before { content: "✓"; color: var(--good, #3fb950); font-weight: 700; margin-inline-end: 8px; }
+.pro-fade { display: grid; gap: 8px; margin: var(--s2) 0; filter: blur(3px); opacity: .55; }
+.pro-fade span { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, rgba(var(--gold-rgb), .45), rgba(var(--gold-rgb), .1)); }
+.pro-fade span:nth-child(2) { width: 82%; } .pro-fade span:nth-child(3) { width: 64%; }
+.pro-offer { border-color: rgba(var(--gold-rgb), .55); }
+.pro-price { margin: var(--s2) 0; text-align: center; }
+.pro-price-main b { font-size: 1.6rem; }
+.pro-cta { width: 100%; margin-top: var(--s2); }
+.pro-trust { list-style: none; padding: 0; margin: var(--s3) 0 var(--s2); text-align: center; }
+.pro-trust li { margin: 2px 0; }
+.pro-disc { margin: var(--s3) var(--s2); }
+.charter-list { padding-inline-start: 34px; line-height: 1.6; }
+.charter-list li { margin: 6px 0; }
+.help-field .help-in, .help-field .help-in:focus, .help-field .help-in:focus-visible { outline: none !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }

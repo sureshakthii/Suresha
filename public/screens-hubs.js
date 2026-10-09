@@ -33,9 +33,55 @@ export function groupList(groupId, { title = true, exclude = [] } = {}) {
   return `<section class="tl-group" aria-label="${esc(L(g.en, g.ta))}">${title ? `<h3 class="section-title">${esc(L(g.en, g.ta))}</h3>` : ''}<div class="menu list">${items.map((t) => toolRow(t)).join('')}</div></section>`;
 }
 
-/** "What are you looking for?" — a search bar that opens the tools launcher (Today's top, Services tab). */
+/**
+ * "How can I help you today?" — a polite, working search box (Today's top, Services tab). Typing shows the
+ * matching tools and an "Ask Thunai" row right under the box; Enter asks Thunai (or opens the one tool a
+ * short word names). The full launcher stays one tap away ("All Tools").
+ */
 export function searchPill() {
-  return `<button class="search-pill" type="button" data-go="tools" data-param='{"focus":true}'>${icon('search', { size: 20 })}<span>${L('What are you looking for?', 'எதைத் தேடுகிறீர்கள்?')}</span></button>`;
+  return `<form class="help-box" role="search" data-help-box novalidate>
+    <div class="help-field">${icon('search', { size: 20 })}
+      <label class="sr-only" for="helpIn">${L('How can I help you today?', 'இன்று உங்களுக்கு எப்படி உதவலாம்?')}</label>
+      <input id="helpIn" class="help-in" type="search" enterkeyhint="go" autocomplete="off" spellcheck="false" maxlength="300"
+        placeholder="${esc(L('How can I help you today?', 'இன்று உங்களுக்கு எப்படி உதவலாம்?'))}">
+      <button class="help-go" type="submit" aria-label="${esc(L('Ask Thunai', 'துணையிடம் கேளுங்கள்'))}">${icon('next', { size: 18 })}</button>
+    </div>
+    <div class="help-results menu list" role="list" aria-live="polite" hidden></div>
+    <p class="help-hint small muted">${L('Ask in Tamil, English or Tanglish — e.g. “good time today”, “porutham”, “which job suits me?”', 'தமிழ், ஆங்கிலம், தங்கிலீஷ் — எப்படியும் கேளுங்கள். எ.கா.: “இன்று நல்ல நேரம்”, “பொருத்தம்”, “எனக்கு எந்த வேலை பொருந்தும்?”')}</p>
+  </form>`;
+}
+/** What Enter does: a short word that names a tool opens it; anything else is a question for Ask Thunai. */
+export function helpTarget(q, hits = searchTools(q, { limit: 4 })) {
+  const text = String(q || '').trim();
+  if (!text) return null;
+  const words = text.split(/\s+/).length;
+  if (words <= 2 && !/[?？]/.test(text) && hits.length) return { go: hits[0].id };
+  return { go: 'chat', params: { q: text } };
+}
+if (typeof document !== 'undefined') {
+  const draw = (form) => {
+    const input = form.querySelector('.help-in');
+    const box = form.querySelector('.help-results');
+    const q = input.value.trim();
+    if (!q) { box.hidden = true; box.innerHTML = ''; return; }
+    const hits = searchTools(q, { limit: 4 });
+    box.innerHTML = `<button class="row help-ask" type="button" data-help-ask>${iconChip('chat', { size: 20, cls: 'mi-icon' })}<span class="row-txt"><span class="row-name">${esc(L('Ask Thunai', 'துணையிடம் கேளுங்கள்'))}: “${esc(q)}”</span><small>${esc(L('A personal answer from your chart, with reasons', 'உங்கள் ஜாதகப்படி, காரணங்களுடன் பதில்'))}</small></span><span class="row-go" aria-hidden="true">${icon('chevron-right', { size: 18 })}</span></button>${hits.map((t) => toolRow(t)).join('')}`;
+    box.hidden = false;
+  };
+  document.addEventListener('input', (e) => { const f = e.target.closest?.('[data-help-box]'); if (f) draw(f); });
+  document.addEventListener('click', (e) => {
+    const ask = e.target.closest?.('[data-help-ask]');
+    if (ask) { const q = ask.closest('[data-help-box]').querySelector('.help-in').value.trim(); if (q) { document.dispatchEvent(new CustomEvent('kj:help', { detail: 'ask' })); go('chat', { q }); } }
+  });
+  document.addEventListener('submit', (e) => {
+    const f = e.target.closest?.('[data-help-box]');
+    if (!f) return;
+    e.preventDefault();
+    const t = helpTarget(f.querySelector('.help-in').value);
+    if (!t) { f.querySelector('.help-in').focus(); return; }
+    document.dispatchEvent(new CustomEvent('kj:help', { detail: t.go === 'chat' ? 'ask' : 'tool' }));
+    go(t.go, t.params || {});
+  });
 }
 
 // Recently used tools ("சமீபத்தில் பயன்படுத்தியவை") — remembered on this phone only.

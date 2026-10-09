@@ -3,6 +3,7 @@ import express from 'express';
 import { getDb } from './db.js';
 import { requireAdmin as adminRole, audit } from './admin.js';
 import { currentUser } from './auth.js';
+import { FUNNEL, funnelTable } from '../shared/pro-questions.js';
 import { PAID_PLAN_IDS, canonicalPlan, grantComplimentary, setBillingClock } from './billing.js';
 
 // Growth: gift / trial codes, usage analytics, feedback & testimonials, referrals and the admin overview.
@@ -19,7 +20,9 @@ const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no I/L/O/0/1
  *   comprehension_feedback (feature = '<where>:yes' | '<where>:no' — "Was this clear?")
  */
 export const EVENT_TYPES = ['first_open', 'app_open', 'install', 'screen_view', 'signup', 'login', 'feature', 'purchase', 'share', 'referral_open',
-  'feature_use', 'task_complete', 'paywall_view', 'plan_click', 'comprehension_feedback'];
+  'feature_use', 'task_complete', 'paywall_view', 'plan_click', 'comprehension_feedback',
+  // Ask → Pro funnel (shared/pro-questions.js FUNNEL): Home box question · related list shown · related tapped · Pro page · Activate tapped.
+  'help_search', 'related_view', 'related_click', 'pro_view', 'pro_cta'];
 /** Feedback kinds: a rating/comment, or a defect report ("Report a problem"). */
 export const FEEDBACK_TYPES = ['feedback', 'defect'];
 const PLATFORMS = ['android', 'ios', 'huawei', 'pwa', 'web'];
@@ -324,6 +327,9 @@ export function productStats(from) {
     planClicksByPlan: byFeature('plan_click'),
     signups: count('signup'), logins: count('login'),
     comprehension: { ...clarity, clearRate: pct(clarity.yes, clarity.yes + clarity.no) },
+    // Ask → Pro conversion funnel: event counts per step, step-to-step and overall conversion (%).
+    askFunnel: funnelTable(Object.fromEntries(FUNNEL.map((f) => [f.step, count(f.step)]))),
+    relatedClicksByQuestion: byFeature('related_click', 10),
   };
 }
 

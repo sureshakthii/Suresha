@@ -80,6 +80,7 @@ export const TOOLS = [
   { id: 'peyarchi', group: 'more', en: 'Peyarchi Palan — Guru / Sani / Rahu-Ketu', ta: 'பெயர்ச்சி பலன் — குரு / சனி / ராகு-கேது', k: 'peyarchi transit guru sani saturn jupiter rahu ketu ezharai sade sati' },
   { id: 'partners', group: 'more', en: 'Business Partner Porutham', ta: 'வணிகக் கூட்டாளி பொருத்தம்', k: 'business partner koottali vyabaram' },
   { id: 'more', group: 'more', en: 'Settings & Account', ta: 'அமைப்புகள் & கணக்கு', k: 'settings amaippugal account language mozhi theme dark light large text sign in login' },
+  { id: 'charter', group: 'more', en: 'Responsible Astrology Charter', ta: 'பொறுப்பான ஜோதிட உறுதிமொழி', k: 'charter responsible safety disclaimer no fear guarantee promise uruthimozhi' },
   { id: 'privacy', group: 'more', en: 'Privacy & Data', ta: 'தனியுரிமை & தரவு', k: 'privacy data delete export consent' },
   { id: 'why', group: 'more', en: 'How Thunai Reads Your Chart', ta: 'துணை ஜாதகத்தைப் படிக்கும் முறை', k: 'how why method explain' },
   { id: 'calc', group: 'more', en: 'Calculation Methods', ta: 'கணிப்பு முறைகள்', k: 'calculation ayanamsa lahiri method' },
@@ -95,6 +96,7 @@ export const TABS = ['home', 'chart', 'familyhub', 'chat', 'services'];
 
 /** Screens that are not tools but are reached from a fixed place (screen id -> the screen that opens it). */
 export const ROUTES = {
+  pro: 'chat', // Thunai Pro page: opened from a "Related" question under an Ask Thunai answer
   tools: 'home', // the launcher itself: Today's search bar, the header search button and the Services tab
   familyhub: 'tab', services: 'tab',
   login: 'more', // Sign in button on Settings

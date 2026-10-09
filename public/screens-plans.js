@@ -4,8 +4,9 @@
 // country → $ USD. The server decides the currency again at checkout from the same country; changing the
 // residence is the only way to see another currency.
 import { state, $, $$, L, esc, bi, api, STATIC, store, registerScreen, subHeader, go, toast, displayName, BRAND } from './core.js';
-import { redeemBox, wireRedeem, trialBanner, track, taskLog, pairKey } from './growth.js';
+import { redeemBox, wireRedeem, trialBanner, track, taskLog, pairKey, loadBilling } from './growth.js';
 import { valueSummary, PLAN_FEATURE_LINES } from './shared/plan-gates.js';
+import { DISCLAIMER } from './shared/responsible.js';
 import { formatPrice, payCountry, payCurrencyFor } from './shared/currency.js';
 import { countryByCode, parseE164 } from './shared/countries.js';
 import { countryOfLoc } from './shared/residence.js';
@@ -43,7 +44,7 @@ function countryLine(cc, source, currency) {
 const dateOf = (t) => fmtDay(new Date(t), lgx(), state.loc?.tz ?? 5.5);
 const bar = (label, used, limit) => `<div class="tb-row"><span class="tb-label">${label}</span><span class="tb-value">${used} / ${limit}</span><span class="tb-bar"><i style="width:${Math.min(100, Math.round(100 * used / limit))}%"></i></span></div>`;
 
-async function loadPlans(country) {
+export async function loadPlans(country) {
   if (STATIC) {
     const currency = payCurrencyFor(country);
     const j = await (await fetch('plans.json')).json();
@@ -139,6 +140,7 @@ async function renderPlans(sec, params = {}) {
       + (terms ? `<div class="card glass"><div class="card-title">📄 ${L('Renewal, cancellation & refunds', 'புதுப்பித்தல், ரத்து, பணத்திருப்பம்')}</div><ul class="small">${['renewal', 'cancellation', 'refund', 'packages'].filter((k) => terms[k]).map((k) => `<li>${esc(bi(terms[k]))}</li>`).join('')}</ul>
         <p class="small muted">${payNote(currency)}</p>
         <button class="link-btn" data-go="legal" data-param='{"open":"refunds"}'>${L('Full terms', 'முழு விதிமுறைகள்')}</button></div>` : '')
+      + `<p class="small muted pro-disc">ℹ️ ${esc(bi(DISCLAIMER))} <button class="link-btn" data-go="charter">${L('Our charter', 'எங்கள் உறுதிமொழி')}</button></p>`
       + `<button class="chip-btn center-block" data-go="value">📒 ${L('Your Thunai so far', 'என் பயன்')}</button>`
       + (params.redeem ? '' : redeemBox());
     wireRedeem(() => renderPlans(sec, params));
@@ -162,7 +164,7 @@ function payNote(currency) {
   return `${currency === 'AED' ? L('Payments in UAE dirhams (AED) are processed by Stripe.', 'அமீரக திர்ஹாம் (AED) கட்டணங்களை Stripe செயலாக்கும்.') : L('Payments in US dollars ($) are processed by Stripe.', 'அமெரிக்க டாலர் ($) கட்டணங்களை Stripe செயலாக்கும்.')} ${card} ${L('Prices include applicable taxes.', 'விலைகளில் பொருந்தும் வரிகள் அடங்கும்.')}`;
 }
 
-async function buy(plan, country, currency, scope) {
+export async function buy(plan, country, currency, scope) {
   if (STATIC) { toast(L('Payments are not available in this version — nothing has been charged.', 'இந்தப் பதிப்பில் கட்டணம் இல்லை — எதுவும் வசூலிக்கப்படவில்லை.'), 4000); return; }
   if (!state.user) { toast(L('Please sign in first', 'முதலில் உள்நுழையவும்')); go('login'); return; }
   try {
@@ -174,13 +176,20 @@ async function buy(plan, country, currency, scope) {
       new window.Razorpay({
         key: r.keyId, amount: r.amount, currency: r.currency, order_id: r.razorpayOrderId, name: BRAND.nameTa, description: plan, theme: { color: '#6e1a35' },
         handler: async (resp) => {
-          try { await api('/api/billing/verify', { method: 'POST', body: { subscriptionId: r.subscriptionId, ...resp } }); track('purchase', { feature: plan }); toast(L(`Welcome to ${planLabel(plan)} 🙏`, `${planLabel(plan)} — நல்வரவு 🙏`)); go('plans'); } catch (e) { toast(e.message); }
+          try { await api('/api/billing/verify', { method: 'POST', body: { subscriptionId: r.subscriptionId, ...resp } }); track('purchase', { feature: plan }); toast(L(`Welcome to ${planLabel(plan)} 🙏`, `${planLabel(plan)} — நல்வரவு 🙏`)); await loadBilling(); afterPurchase(); } catch (e) { toast(e.message); }
         },
       }).open();
       return;
     }
     toast(L('Online payment is not available yet — nothing has been charged.', 'இணையவழிக் கட்டணம் இன்னும் இல்லை — எதுவும் வசூலிக்கப்படவில்லை.'), 5000);
   } catch (e) { toast(e.message); }
+}
+
+/** After a purchase: open the question that led to the Pro page (if any), else the Plans screen. */
+function afterPurchase() {
+  let q = null;
+  try { q = sessionStorage.getItem('kj_pro_then'); sessionStorage.removeItem('kj_pro_then'); } catch { /* storage blocked */ }
+  if (q) go('chat', { q }); else go('plans');
 }
 
 registerScreen('plans', { render: renderPlans, parent: 'more' });

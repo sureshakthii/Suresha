@@ -15,6 +15,7 @@ import './screens-goals.js';
 import './screens-ithihasa.js';
 import './screens-hymns.js';
 import './screens-dosham.js';
+import './screens-pro.js';
 import './easy-date.js';
 import { prefetchLazyScreens } from './lazy-screens.js';
 import { registerServiceWorker } from './pwa.js';

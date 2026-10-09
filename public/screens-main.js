@@ -755,6 +755,7 @@ function renderChart(sec) {
     <div class="card glass"><div class="card-title"><span>${L('Rasi chart', 'ராசி கட்டம்')}</span><button class="link-btn" data-go="chat" data-param='{"topic":"chart"}'>💬 ${L('Ask about my chart', 'என் ஜாதகம் பற்றிக் கேள்')}</button></div><div id="rasiChart" class="si-chart"></div>
       ${showLagna ? (chip('lagna') ? `<p class="small">${L('Lagnam (ல)', 'லக்னம் (ல)')} ${chip('lagna')}</p>` : '') : `<p class="small muted needs-time">${L('Lagnam (ல) is not marked — it needs the birth time. Planet signs are shown; houses are read from the Moon sign.', 'லக்னம் (ல) குறிக்கப்படவில்லை — அதற்குப் பிறந்த நேரம் தேவை. கிரக ராசிகள் காட்டப்படுகின்றன; பாவங்கள் சந்திர ராசியிலிருந்து.')}</p>`}</div>
     <button class="btn-gold" data-go="analysis">📜 ${L('Full chart reading', 'முழு ஜாதக ஆய்வு')}</button>
+    <button class="btn-soft center-block" data-go="analysis" data-param='{"deep":true}'>📖 ${L('Detailed Jathagam reading — nature, star and all 12 kattams', 'ஜாதக விரிவான விளக்கம் — குணம், நட்சத்திரம், 12 கட்டங்கள்')}</button>
     <div class="btn-row"><button class="chip-btn" data-go="parigaram">🪔 ${L('Simple practices', 'எளிய வழிபாடு')}</button><button class="chip-btn" data-go="peyarchi">🪐 ${L('Transits', 'பெயர்ச்சி')}</button><button class="chip-btn" data-go="health">🌿 ${L('Wellbeing', 'பொது நலம்')}</button><button class="chip-btn" data-print="1">🖨️ ${L('Print / PDF', 'அச்சிடு / PDF')}</button></div>
     <details class="card glass advanced"><summary class="card-title">🔬 ${L('Advanced', 'மேம்பட்டவை')}</summary>
       <div class="menu">

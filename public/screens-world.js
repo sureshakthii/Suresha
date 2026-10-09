@@ -24,7 +24,8 @@ import {
   NATIVE, dasaName, periodRangeL, periodYears, untilL, fmtDate, scaleTag,
 } from './core.js';
 import { refreshSnap } from './screens-main.js';
-import { servicesOpen, servicesClosedCard } from './growth.js';
+import { servicesOpen, servicesClosedCard, track } from './growth.js';
+import { deepReading, deepReadingText } from './shared/deep-reading.js';
 import { fetchForecast, weatherAdvice } from './shared/weather.js';
 import { stationObservation } from './shared/station.js';
 
@@ -724,7 +725,7 @@ function palanCard(p, c, asks) {
     <p class="muted small">${esc(L(p.note.en, p.note.ta))}</p></div>`;
 }
 
-function renderAnalysis(sec) {
+function renderAnalysis(sec, params = {}) {
   const m = activeMember();
   const c = chartOf(m);
   sec.innerHTML = `${subHeader(L('Full Jathaga Analysis', 'முழு ஜாதக ஆய்வு'), esc(displayName(m)), 'chart')}<div id="anBody">${loader(L('Studying every house and planet…', 'ஒவ்வொரு பாவமும் கிரகமும் ஆராயப்படுகிறது…'))}</div>`;
@@ -779,13 +780,30 @@ function renderAnalysis(sec) {
           ${b.occupants.length ? `<p>${L('Planets here', 'இங்குள்ள கிரகங்கள்')}: ${b.occupants.map((o) => `${GLYPH[o]} ${esc(planetName(o))}`).join(', ')}</p>` : ''}
           ${b.aspects.length ? `<p>${L('Aspected by', 'பார்வை')}: ${b.aspects.map((o) => esc(planetName(o))).join(', ')}</p>` : ''}
           ${b.notes.map((n) => `<p>• ${esc(bi(n))}</p>`).join('')}</div></details>`; }).join('')}</div>
-      <button class="btn-gold" id="anRead">📜 ${L('Detailed explanation', 'விரிவான விளக்கம்')}</button>
+      <button class="btn-gold" id="anRead">📖 ${L('Detailed explanation — nature, star and all 12 kattams', 'விரிவான விளக்கம் — குணம், நட்சத்திரம், 12 கட்டங்கள்')}</button>
+      <div id="anDeep"></div>
       <div class="card glass" id="anAi" hidden><div class="card-title"><span>📜 ${L('Your reading', 'உங்கள் பலன்')}</span><button class="link-btn" id="anSpeak" aria-label="${esc(L('Read aloud', 'சத்தமாக வாசி'))}">🔊</button></div><div class="reply" id="anText"></div></div>
       ${copyright()}`;
     $$('[data-palan-ask]', sec).forEach((b) => b.addEventListener('click', () => go('chat', { q: b.dataset.palanAsk })));
     bindDosham(sec);
     $('#palanSpeak')?.addEventListener('click', () => speak($('#anPalan').innerText.replace(/🔊|💬/g, '')));
+    // The detailed reading is built on the phone (shared/deep-reading.js): instant, offline, the same words every
+    // time. With the server AI available, an AI explanation is added below it.
+    const showDeep = () => {
+      const r = deepReading(c, { profile: prof });
+      const lines = (ls) => ls.map((l) => `<p>${esc(L(l.en, l.ta))}</p>`).join('');
+      $('#anDeep').innerHTML = `<div class="card glass deep-read" id="deepRead"><div class="card-title"><span>📖 ${esc(L(r.title.en, r.title.ta))}</span><button class="link-btn" id="deepSpeak" aria-label="${esc(L('Read aloud', 'சத்தமாக வாசி'))}">🔊</button></div>
+        ${r.sections.map((s) => `<section class="deep-sec"><h3 class="palan-h">${esc(L(s.title.en, s.title.ta))}</h3>${lines(s.lines)}
+          ${(s.items || []).map((it, i) => `<details class="deep-house"${i < 1 ? ' open' : ''}><summary><b>${esc(L(it.title.en, it.title.ta))}</b> ${scaleTag(it.score >= 66 ? 'strong' : it.score >= 48 ? 'average' : 'care')}</summary>${lines(it.lines)}</details>`).join('')}</section>`).join('')}
+        <p class="muted small">ℹ️ ${esc(L(r.note.en, r.note.ta))}</p></div>`;
+      $('#deepSpeak').addEventListener('click', () => speak(deepReadingText(r, state.lang === 'en' ? 'en' : 'ta')));
+      track('task_complete', { feature: 'deep_reading' });
+      requestAnimationFrame(() => $('#deepRead')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    };
+    if (params.deep) showDeep();
     $('#anRead').addEventListener('click', async () => {
+      showDeep();
+      if (STATIC) return; // phone-only build: no AI server — the on-device reading above is the full reading
       $('#anAi').hidden = false;
       const out = $('#anText');
       out.textContent = L('Preparing your reading…', 'உங்கள் பலன் தயாராகிறது…');

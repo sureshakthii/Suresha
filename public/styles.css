@@ -2781,3 +2781,9 @@ body.ta .easy-tm { grid-template-columns: minmax(0, .85fr) minmax(0, .85fr) minm
 .charter-list { padding-inline-start: 34px; line-height: 1.6; }
 .charter-list li { margin: 6px 0; }
 .help-field .help-in, .help-field .help-in:focus, .help-field .help-in:focus-visible { outline: none !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+
+/* Detailed Jathagam reading (shared/deep-reading.js) */
+.deep-read p { line-height: 1.7; margin: 6px 0; }
+.deep-sec { margin-top: var(--s3); }
+.deep-house { border-top: 1px solid var(--glass-b); padding: 8px 0; }
+.deep-house summary { cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: var(--tap); }

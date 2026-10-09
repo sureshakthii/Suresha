@@ -1847,7 +1847,7 @@ function overviewAnswer({ text, chart, rel, lang, name, now, shared, delay, prof
     { key: 'ask', title: pick(ASK_TITLE, lang), lines: [L('Which area feels most important to you right now?', 'இப்போது உங்களுக்கு எந்தப் பகுதி மிக முக்கியம்?')] },
     { key: 'uncertainty', title: pick(LIMITS_TITLE, lang), lines: [pick(LIMITS_LINE, lang)] },
   ];
-  return shell('overview', text, sections, { actions: [{ go: 'roadmap', label: L('Dasa Road Map', 'தசா வரைபடம்') }], followups: generalFollowups(prof).map((f) => pick(f, lang)) });
+  return shell('overview', text, sections, { actions: [{ go: 'analysis', param: { deep: true }, label: L('Detailed Jathagam reading', 'ஜாதக விரிவான விளக்கம்') }, { go: 'roadmap', label: L('Dasa Road Map', 'தசா வரைபடம்') }], followups: generalFollowups(prof).map((f) => pick(f, lang)) });
 }
 
 // ---- Guru peyarchi for me, and a planet's dasa asked by name

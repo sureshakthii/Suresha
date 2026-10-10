@@ -2879,3 +2879,11 @@ body.camp-on #views { padding-bottom: 80px; }
 .fy-star { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--glass-b); background: rgba(var(--ink-rgb), .04); line-height: 1.45; }
 .fy-grid { display: grid; gap: 4px 12px; grid-template-columns: 1fr; }
 @media (min-width: 560px) { .fy-grid { grid-template-columns: 1fr 1fr; } }
+.fy-tabs { flex-wrap: wrap; }
+.fy-tabs button { flex: 1 1 30%; min-height: 44px; }
+.fy-choice { margin-top: 8px; }
+.fy-engine { border-color: rgba(var(--gold-rgb), .55); }
+.fy-go { display: block; width: 100%; min-height: 52px; margin: 8px 0; }
+.fy-results { display: grid; gap: 10px; margin: 10px 0; }
+.fy-res { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-b); background: rgba(var(--ink-rgb), .04); line-height: 1.55; }
+.fy-res a { color: var(--gold); text-decoration: none; }

@@ -1,9 +1,9 @@
 // Thunai For You (துணை உங்களுக்காக): from the person's jathagam, Thunai goes out into the world for them — job
 // openings that suit their chart and education, matrimony searches with the stars that match theirs, remarriage
 // with respect, and the right hospitals nearby — with periods, parigaram and practical steps (shared/for-you.js).
-import { state, L, esc, bi, store, registerScreen, subHeader, activeMember, chartOf, displayName, planetName, copyright, fmtTimeRange, STATIC } from './core.js';
+import { state, L, esc, bi, store, registerScreen, subHeader, activeMember, chartOf, displayName, planetName, copyright, fmtTimeRange, STATIC, api } from './core.js';
 import { reliabilityOf, ageOf, isMarried } from './screens-main.js';
-import { jobPlan, marriagePlan, healthPlan, EDUCATION, SPECIALTIES } from './shared/for-you.js';
+import { jobPlan, marriagePlan, healthPlan, legalPlan, studyPlan, engineQuery, EDUCATION, SPECIALTIES, LEGAL_PROBLEMS } from './shared/for-you.js';
 import { tamilDay } from './shared/tamilcal.js';
 import { fmtMonth } from './shared/fmt.js';
 import { hymnText } from './hymn-links.js';
@@ -11,7 +11,8 @@ import { isLocked, lockCard } from './growth.js';
 
 const KEY = 'kj_foryou';
 const ui = { tab: null };
-const prefsOf = (id) => ({ education: 'arts', experience: 'fresher', community: '', specialty: 'general', ...(store.get(KEY, {})[id] || {}) });
+const prefsOf = (id) => ({ education: 'arts', experience: 'fresher', community: '', specialty: 'general', problem: 'police', ...(store.get(KEY, {})[id] || {}) });
+let lastPlan = null; // the plan on screen — the Thunai Engine searches for it
 const savePrefs = (id, p) => { const all = store.get(KEY, {}); all[id] = { ...(all[id] || {}), ...p }; store.set(KEY, all); };
 const lgx = () => (state.lang === 'en' ? 'en' : 'ta');
 const ext = (l) => `<a class="fy-link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(typeof l.site === 'string' ? l.site : bi(l.site))} ↗</a>`;
@@ -36,6 +37,7 @@ const remedy = (r) => (r ? `<section class="card glass"><div class="card-title">
 
 function jobHtml(p, pr) {
   const g = jobPlan({ chart: p.chart, rel: p.rel, education: pr.education, experience: pr.experience, place: state.loc?.name || p.m.place, cc: state.loc?.cc || 'IN', td: todayTd() });
+  lastPlan = { kind: 'job', plan: g };
   return `<section class="card glass"><div class="card-title">🎓 ${L('Your details', 'உங்கள் விவரம்')}</div>
       <div class="fy-grid"><label>${L('Education', 'கல்வி')}<select data-pref="education">${EDUCATION.map((e) => `<option value="${e.id}"${e.id === pr.education ? ' selected' : ''}>${esc(bi(e.label))}</option>`).join('')}</select></label>
       <label>${L('Experience', 'அனுபவம்')}<select data-pref="experience">${[['fresher', 'Fresher', 'புதியவர்'], ['some', '1–3 years', '1–3 ஆண்டுகள்'], ['many', 'More than 3 years', '3 ஆண்டுக்கு மேல்']].map(([v, en, ta]) => `<option value="${v}"${v === pr.experience ? ' selected' : ''}>${L(en, ta)}</option>`).join('')}</select></label></div></section>
@@ -52,6 +54,7 @@ function jobHtml(p, pr) {
 
 function marriageHtml(p, pr, second) {
   const g = marriagePlan({ chart: p.chart, rel: p.rel, gender: p.m.gender === 'female' ? 'female' : 'male', second, community: pr.community, place: state.loc?.name || p.m.place });
+  lastPlan = { kind: second ? 'second' : 'marriage', plan: g };
   const seek = g.seeking === 'groom' ? L('groom', 'மணமகன்') : L('bride', 'மணமகள்');
   return `${second ? `<section class="card glass"><p>${L('A new beginning deserves respect. Thunai helps you look again, calmly and with your family.', 'புதிய தொடக்கம் மரியாதைக்குரியது. குடும்பத்துடன், அமைதியாக மீண்டும் தேட துணை உதவும்.')}</p></section>` : ''}
     <section class="card glass"><div class="card-title">⭐ ${L(`Stars that match yours (${g.myStar.en}, ${g.myRasi.en})`, `உங்கள் நட்சத்திரத்துடன் பொருந்தும் நட்சத்திரங்கள் (${g.myStar.ta}, ${g.myRasi.ta})`)}</div>
@@ -70,12 +73,66 @@ function marriageHtml(p, pr, second) {
 
 function healthHtml(p, pr) {
   const g = healthPlan({ specialty: pr.specialty, place: state.loc?.name || p.m.place, cc: state.loc?.cc || 'IN', profile: p.prof });
+  lastPlan = { kind: 'health', plan: g };
   return `<section class="card glass"><p class="note-box">🩺 ${esc(bi(g.first))}</p>
       <label>${L('What do you need?', 'உங்களுக்கு என்ன தேவை?')}<select data-pref="specialty">${SPECIALTIES.map((s) => `<option value="${s.id}"${s.id === pr.specialty ? ' selected' : ''}>${esc(bi(s.label))}</option>`).join('')}</select></label>
       <div class="fy-links">${g.links.map((l, i) => `<a class="fy-link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${i ? L('Government hospitals', 'அரசு மருத்துவமனைகள்') : L('Hospitals near you', 'அருகிலுள்ள மருத்துவமனைகள்')} ↗</a>`).join('')}</div>
       <p><b>🚑 ${esc(bi(g.emergency))}</b></p></section>
     ${g.prayer ? `<section class="card glass"><div class="card-title">🙏 ${L('Prayer (optional)', 'வழிபாடு (விருப்பம்)')}</div><p><b>${esc(bi(g.prayer.deity))}</b></p><p class="small">${esc(bi(g.prayer.free))}</p></section>` : ''}
     <div class="btn-row"><button class="chip-btn" data-go="health">🌿 ${L('Jathagam health guide', 'ஜாதக ஆரோக்கிய வழிகாட்டி')} ›</button></div>`;
+}
+
+function legalHtml(p, pr) {
+  const g = legalPlan({ chart: p.chart, problem: pr.problem, place: state.loc?.name || p.m.place, cc: state.loc?.cc || 'IN' });
+  lastPlan = { kind: 'legal', plan: g };
+  return `<section class="card glass"><p class="note-box">⚖️ ${esc(bi(g.first))}</p>
+      <div class="lg-k">${L('What is the problem?', 'என்ன பிரச்சினை?')}</div>
+      <div class="lg-opts fy-choice">${LEGAL_PROBLEMS.map((o) => `<button type="button" class="lg-opt${o.id === pr.problem ? ' sel' : ''}" data-pick="problem" data-val="${o.id}">${esc(bi(o.label))}</button>`).join('')}</div></section>
+    <section class="card glass"><div class="card-title">📞 ${L('Help right now', 'இப்போதே உதவி')}</div><div class="fy-links col">${g.help.filter((h) => h.url).map(ext).join('')}</div>
+      <div class="fy-links">${g.links.map((l) => `<a class="fy-link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${L('Lawyers near you', 'அருகிலுள்ள வழக்கறிஞர்கள்')} ↗</a>`).join('')}</div></section>
+    ${g.when ? `<section class="card glass"><div class="card-title">📅 ${L('If it goes to court — supportive periods', 'வழக்கு நீதிமன்றம் சென்றால் — சாதகமான காலம்')}</div>${periods(g.when, p.tz)}</section>` : ''}
+    <section class="card glass"><div class="card-title">✅ ${L('Steps', 'அடிகள்')}</div><ol class="lg-list">${g.steps.map(li).join('')}</ol></section>
+    ${remedy(g.parigaram)}`;
+}
+
+function studyHtml(p) {
+  const g = studyPlan({ chart: p.chart, rel: p.rel, place: state.loc?.name || p.m.place });
+  lastPlan = { kind: 'study', plan: g };
+  return `<section class="card glass"><div class="card-title">🎓 ${L('Studies that suit your chart', 'உங்கள் ஜாதகத்திற்கு ஏற்ற படிப்புகள்')}</div>
+      ${g.streams.length ? g.streams.map((s) => `<div class="fy-field"><b>${esc(bi(s.name))}</b>${s.planet ? ` <span class="pill">${L('chart', 'ஜாதகம்')} · ${esc(planetName(s.planet))}</span>` : ''}<div class="fy-links">${s.links.map(ext).join('')}</div></div>`).join('') : `<p class="small muted">${L('Add an exact birth time for study streams.', 'படிப்புப் பிரிவுகளுக்குத் துல்லியமான பிறந்த நேரத்தைச் சேருங்கள்.')}</p>`}</section>
+    <section class="card glass"><div class="card-title">🏛️ ${L('Admissions and scholarships', 'சேர்க்கை & கல்வி உதவித்தொகை')}</div><div class="fy-links col">${g.official.map(ext).join('')}</div></section>
+    <section class="card glass"><div class="card-title">📅 ${L('Supportive periods for studies', 'படிப்புக்குச் சாதகமான காலம்')}</div>${periods(g.when, p.tz)}</section>
+    ${remedy(g.parigaram)}`;
+}
+
+// The Thunai Engine: a live web search on the Thunai server (Claude + web search). Phone-only and review builds have
+// no server, so the button opens the same search on Google instead — and says so.
+const ENGINE_LABEL = { job: ['job openings', 'வேலை வாய்ப்புகள்'], matrimony: ['matrimony services', 'திருமணத் தகவல் சேவைகள்'], hospital: ['hospitals', 'மருத்துவமனைகள்'], lawyer: ['lawyers and legal aid', 'வழக்கறிஞர்கள் & சட்ட உதவி'], college: ['colleges', 'கல்லூரிகள்'] };
+function enginePanel() {
+  const q = lastPlan && engineQuery(lastPlan.kind, lastPlan.plan);
+  if (!q) return '';
+  const lab = ENGINE_LABEL[q.category];
+  return `<section class="card glass fy-engine"><div class="card-title">🔍 ${L('Thunai Engine', 'துணை தேடல் இயந்திரம்')}</div>
+    <p class="small">${L(`Thunai searches the web now for ${lab[0]} near you that fit your chart, and lists them with their sources.`, `உங்கள் ஜாதகத்திற்கு ஏற்ற, உங்கள் அருகிலுள்ள ${lab[1]} — துணை இப்போதே இணையத்தில் தேடி, ஆதாரங்களுடன் பட்டியலிடும்.`)}</p>
+    <button type="button" class="btn-gold fy-go" data-engine>🔍 ${L('Start the search', 'தேடலைத் தொடங்கு')}</button><div id="fyEngineOut" aria-live="polite"></div></section>`;
+}
+function engineFallback(out, q) {
+  const city = String(state.loc?.name || '').split(',')[0];
+  const url = `https://www.google.com/search?q=${encodeURIComponent(`${q.keywords.join(' ')} ${city}`)}`;
+  out.innerHTML = `<p class="small muted">${L('Live search runs on the Thunai server. On this app it opens the same search on Google:', 'நேரலைத் தேடல் துணை சேவையகத்தில் இயங்கும். இந்தச் செயலியில் அதே தேடல் Google-இல் திறக்கும்:')}</p><div class="fy-links"><a class="fy-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Google ↗</a></div>`;
+}
+async function runEngine(out) {
+  const q = lastPlan && engineQuery(lastPlan.kind, lastPlan.plan);
+  if (!q) return;
+  if (STATIC) { engineFallback(out, q); return; }
+  out.innerHTML = `<div class="loader"><i></i><i></i><i></i></div><p class="small muted center">${L('Searching the web…', 'இணையத்தில் தேடுகிறது…')}</p>`;
+  try {
+    const r = await api('/api/foryou/search', { method: 'POST', body: { ...q, place: state.loc?.name || '', cc: state.loc?.cc || '', lang: lgx() } });
+    if (!r.items?.length) { out.innerHTML = `<p class="small">${L('Nothing reliable found just now — try the links above.', 'இப்போது நம்பகமான முடிவு கிடைக்கவில்லை — மேலே உள்ள இணைப்புகளை முயலுங்கள்.')}</p>`; return; }
+    out.innerHTML = `${r.summary ? `<p>${esc(r.summary)}</p>` : ''}<div class="fy-results">${r.items.map((it) => `<div class="fy-res"><a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><b>${esc(it.name)}</b> ↗</a> <span class="pill">${esc({ government: L('Government', 'அரசு'), private: L('Private', 'தனியார்'), aid: L('Free aid', 'இலவச உதவி'), listing: L('Listing', 'பட்டியல்') }[it.kind] || it.kind)}</span>
+      ${it.why ? `<div class="small">${esc(it.why)}</div>` : ''}${it.address ? `<div class="small muted">📍 ${esc(it.address)}</div>` : ''}${it.phone ? `<div class="small">📞 <a href="tel:${esc(it.phone.replace(/[^\d+]/g, ''))}">${esc(it.phone)}</a></div>` : ''}<div class="small muted">${L('Source', 'ஆதாரம்')}: ${esc(it.source)}</div></div>`).join('')}</div>
+      <p class="small muted">${L('Found on the web just now. Please check the details yourself before you visit, sign or pay.', 'இப்போது இணையத்தில் கண்டறியப்பட்டது. செல்லும், கையெழுத்திடும், பணம் செலுத்தும் முன் விவரங்களை நீங்களே சரிபாருங்கள்.')}</p>`;
+  } catch (e) { engineFallback(out, q); }
 }
 
 function renderForYou(sec) {
@@ -90,18 +147,20 @@ function renderForYou(sec) {
   const tabs = [['job', '💼', L('Job', 'வேலை')]];
   if (!married && status !== 'other') tabs.push(['marriage', '💐', L('Marriage', 'திருமணம்')]);
   if (!married && (status === 'other' || status === '')) tabs.push(['second', '🤝', L('Remarriage', 'மறுமணம்')]);
-  tabs.push(['health', '🏥', L('Health', 'உடல்நலம்')]);
+  tabs.push(['health', '🏥', L('Health', 'உடல்நலம்')], ['legal', '⚖️', L('Legal help', 'சட்ட உதவி')], ['study', '🎓', L('Studies', 'படிப்பு')]);
   if (!tabs.some((t) => t[0] === ui.tab)) ui.tab = tabs[0][0];
   const pr = prefsOf(m.id);
   const locked = isLocked('predictions');
   const testing = STATIC || !state.billing?.enforced;
   const body = locked ? lockCard(L('Job, marriage and hospital searches from your jathagam are part of Thunai Pro.', 'உங்கள் ஜாதகப்படி வேலை, திருமணம், மருத்துவமனைத் தேடல் — துணை Pro வசதி.'))
-    : ui.tab === 'job' ? jobHtml(p, pr) : ui.tab === 'marriage' ? marriageHtml(p, pr, false) : ui.tab === 'second' ? marriageHtml(p, pr, true) : healthHtml(p, pr);
+    : ui.tab === 'job' ? jobHtml(p, pr) : ui.tab === 'marriage' ? marriageHtml(p, pr, false) : ui.tab === 'second' ? marriageHtml(p, pr, true) : ui.tab === 'legal' ? legalHtml(p, pr) : ui.tab === 'study' ? studyHtml(p) : healthHtml(p, pr);
   sec.innerHTML = `${head}
     <p class="small">👤 <b>${esc(displayName(m))}</b>${testing && !locked ? ` · <span class="pill rq-pro">Pro</span> <span class="small muted">${L('open to all while testing', 'சோதனையின்போது அனைவருக்கும் திறந்தது')}</span>` : ''}</p>
     <div class="seg fy-tabs" role="tablist">${tabs.map(([id, ic, label]) => `<button type="button" role="tab" aria-selected="${id === ui.tab}" class="${id === ui.tab ? 'sel' : ''}" data-tab-fy="${id}">${ic} ${label}</button>`).join('')}</div>
-    ${body}${copyright()}`;
+    ${locked ? '' : enginePanel()}${body}${copyright()}`;
   sec.querySelectorAll('[data-tab-fy]').forEach((b) => b.addEventListener('click', () => { ui.tab = b.dataset.tabFy; renderForYou(sec); }));
+  sec.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => { savePrefs(m.id, { [b.dataset.pick]: b.dataset.val }); renderForYou(sec); }));
+  sec.querySelector('[data-engine]')?.addEventListener('click', () => runEngine(sec.querySelector('#fyEngineOut')));
   sec.querySelectorAll('[data-pref]').forEach((el) => el.addEventListener('change', () => { savePrefs(m.id, { [el.dataset.pref]: el.value.trim() }); renderForYou(sec); }));
 }
 registerScreen('foryou', { render: renderForYou, parent: 'home' });

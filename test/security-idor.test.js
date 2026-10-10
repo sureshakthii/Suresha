@@ -43,6 +43,7 @@ function account(name) {
 const PUBLIC = [
   'GET /api/health', 'GET /api/categories', 'GET /api/places', 'POST /api/chart', 'GET /api/panchang', 'POST /api/ask',
   'GET /api/calendar', 'POST /api/porutham', 'POST /api/muhurtham', 'POST /api/ai/:task',
+  'POST /api/foryou/search', // Thunai Engine: like /api/ai — rate-limited, daily-capped, AI_REQUIRE_LOGIN applies; no personal data
   'GET /api/auth/providers', 'POST /api/auth/otp/request', 'POST /api/auth/otp/verify', 'GET /api/auth/facebook/start',
   'GET /api/auth/facebook/callback', 'POST /api/auth/logout', 'GET /api/weather', 'GET /api/push/key', 'POST /api/push/subscribe',
   'POST /api/push/unsubscribe', 'POST /api/push/test', 'GET /api/store/products', 'GET /api/services', 'GET /api/service-status',

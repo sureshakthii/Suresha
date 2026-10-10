@@ -10,7 +10,7 @@
 //   • Health: no timing and no chart verdict — the right specialist near them, emergency numbers, doctor first.
 // Pure — no DOM.
 import { NAKSHATRAS, RASIS } from './astro.js';
-import { careerReading, FIELDS } from './ask-which.js';
+import { careerReading, studyReading, STREAM, FIELDS } from './ask-which.js';
 import { predictEvent } from './predict.js';
 import { matchPorutham, doshams } from './porutham.js';
 import { remedyFor } from './remedies.js';
@@ -160,7 +160,7 @@ export function marriagePlan({ chart, rel = null, gender = 'male', second = fals
   const seeking = gender === 'female' ? 'groom' : 'bride';
   const topNames = stars.slice(0, 3).map((s) => s.name.en);
   return {
-    version: FOR_YOU_VERSION, kind: second ? 'second' : 'marriage', seeking, second,
+    version: FOR_YOU_VERSION, kind: second ? 'second' : 'marriage', seeking, second, community: String(community || '').trim(),
     myStar: T(NAKSHATRAS[star].en, NAKSHATRAS[star].ta), myRasi: T(RASIS[rasi].en, RASIS[rasi].ta), starOk,
     stars,
     dosham: d ? { chevvai: Boolean(d.chevvai?.present), rahuKetu: Boolean(d.rahuKetu?.present) } : null,
@@ -215,4 +215,68 @@ function safePredict(chart, id, now) {
     const p = predictEvent(chart, id, { from: now, years: 6 });
     return { windows: (p.windows || []).slice(0, 3).map((w) => ({ start: w.peakFrom || w.start, end: w.peakTo || w.end, md: w.md, ad: w.ad, reason: w.reasons?.[0] || null })), needsBirthTime: Boolean(p.needsBirthTime), remedy: p.remedy, karakaRemedies: p.karakaRemedies || [], current: p.current || null };
   } catch { return null; }
+}
+
+// ---------------------------------------------------------------- legal help
+export const LEGAL_PROBLEMS = Object.freeze([
+  { id: 'police', label: T('Police complaint / criminal case', 'காவல் புகார் / குற்ற வழக்கு'), kw: 'criminal lawyer', court: false },
+  { id: 'family', label: T('Family, divorce or maintenance', 'குடும்பம், விவாகரத்து, ஜீவனாம்சம்'), kw: 'family court lawyer', court: true },
+  { id: 'property', label: T('Property or land dispute', 'சொத்து / நிலத் தகராறு'), kw: 'property civil lawyer', court: true },
+  { id: 'money', label: T('Money, loan or cheque bounce', 'பணம், கடன், காசோலை திரும்புதல்'), kw: 'cheque bounce lawyer', court: true },
+  { id: 'cyber', label: T('Online fraud / cyber crime', 'இணைய மோசடி / சைபர் குற்றம்'), kw: 'cyber crime lawyer', court: false },
+  { id: 'consumer', label: T('Consumer complaint', 'நுகர்வோர் புகார்'), kw: 'consumer court lawyer', court: false },
+  { id: 'work', label: T('Salary or workplace problem', 'சம்பளம் / பணியிடப் பிரச்சினை'), kw: 'labour lawyer', court: true },
+  { id: 'violence', label: T('Violence at home', 'வீட்டில் வன்முறை'), kw: 'domestic violence lawyer', court: false },
+]);
+const LEGAL_HELP_IN = [
+  { id: 'emergency', site: T('Emergency 112 · Police 100', 'அவசரம் 112 · காவல் 100'), url: 'tel:112' },
+  { id: 'women', site: T('Women Helpline 181 (24×7)', 'பெண்கள் உதவி எண் 181 (24×7)'), url: 'tel:181', for: ['violence', 'family', 'police'] },
+  { id: 'cyber', site: T('Cyber crime: call 1930 · report online', 'சைபர் குற்றம்: 1930 அழையுங்கள் · இணையத்தில் புகார்'), url: 'https://cybercrime.gov.in', for: ['cyber', 'money'] },
+  { id: 'aid', site: T('Free legal aid — NALSA (call 15100)', 'இலவச சட்ட உதவி — NALSA (15100)'), url: 'https://nalsa.gov.in' },
+  { id: 'consumer', site: T('National Consumer Helpline 1915 · e-Daakhil', 'தேசிய நுகர்வோர் உதவி 1915 · e-Daakhil'), url: 'https://edaakhil.nic.in', for: ['consumer'] },
+  { id: 'courts', site: T('eCourts — case status', 'eCourts — வழக்கு நிலை'), url: 'https://ecourts.gov.in', for: ['family', 'property', 'money', 'work', 'police'] },
+];
+
+/** Legal help: official help lines first, a lawyer search near them, court periods only for disputes, steps. */
+export function legalPlan({ chart, problem = 'police', place = '', cc = 'IN', now = new Date() }) {
+  const pb = LEGAL_PROBLEMS.find((p) => p.id === problem) || LEGAL_PROBLEMS[0];
+  const help = cc === 'IN' ? LEGAL_HELP_IN.filter((h) => !h.for || h.for.includes(pb.id)) : [{ id: 'emergency', site: cc === 'AE' ? T('Police 999 · Ambulance 998', 'காவல் 999 · ஆம்புலன்ஸ் 998') : T('Call your local emergency number', 'உங்கள் நாட்டின் அவசர எண்ணை அழையுங்கள்'), url: cc === 'AE' ? 'tel:999' : '' }];
+  const pr = pb.court && chart ? safePredict(chart, 'court', now) : null;
+  return {
+    version: FOR_YOU_VERSION, kind: 'legal', problem: pb, help,
+    links: [{ site: 'Google Maps', url: `https://www.google.com/maps/search/?api=1&query=${enc(`${pb.kw} near ${cityOf(place) || 'me'}`)}` }],
+    when: pr, parigaram: pr?.remedy || null,
+    first: T('A qualified lawyer’s advice comes first. If you are in danger, call the emergency number now.', 'தகுதியான வழக்கறிஞரின் ஆலோசனையே முதன்மை. ஆபத்தில் இருந்தால் இப்போதே அவசர எண்ணை அழையுங்கள்.'),
+    steps: [
+      T('Write down what happened, with dates, and keep every document, message and receipt.', 'நடந்ததைத் தேதிகளுடன் எழுதுங்கள்; ஒவ்வொரு ஆவணம், செய்தி, ரசீதையும் பாதுகாத்து வையுங்கள்.'),
+      T('Give a written complaint and get an acknowledgement (CSR / FIR copy).', 'எழுத்துப்பூர்வ புகார் கொடுத்து ஒப்புகைச் சீட்டு (CSR / FIR நகல்) பெறுங்கள்.'),
+      T('Never sign blank papers, and do not pay anyone who promises a “quick result”.', 'வெற்றுத் தாள்களில் கையெழுத்திடாதீர்கள்; "விரைவான முடிவு" என்று வாக்களிப்பவருக்குப் பணம் கொடுக்காதீர்கள்.'),
+      T('Women, children, workers and low-income families can get a free lawyer through Legal Services Authority.', 'பெண்கள், குழந்தைகள், தொழிலாளர்கள், குறைந்த வருமானக் குடும்பங்கள் சட்ட உதவி ஆணையம் மூலம் இலவச வழக்கறிஞர் பெறலாம்.'),
+    ],
+  };
+}
+
+// ---------------------------------------------------------------- studies
+/** Studies: the streams the chart supports (shared/ask-which.js studyReading) and college searches. */
+export function studyPlan({ chart, rel = null, place = '', now = new Date() }) {
+  let top = [];
+  try { const r = careerReading(chart, { rel, now }); top = r ? studyReading(r).top : []; } catch { top = []; }
+  const streams = top.map((t) => ({ id: t.id, name: T(STREAM[t.id].en, STREAM[t.id].ta), planet: t.group?.planet || null }));
+  const kw = (id) => ({ maths: 'engineering computer science college', bio: 'medical nursing pharmacy college', commerce: 'commerce CA college', arts: 'arts law college', applied: 'hotel management design college' }[id] || 'college');
+  const pr = safePredict(chart, 'education', now);
+  return {
+    version: FOR_YOU_VERSION, kind: 'study', streams: streams.map((s) => ({ ...s, keyword: kw(s.id), links: [{ site: 'Google', url: `https://www.google.com/search?q=${enc(`best ${kw(s.id)} in ${cityOf(place)}`)}` }] })),
+    official: [{ site: T('TNEA — engineering admissions', 'TNEA — பொறியியல் சேர்க்கை'), url: 'https://www.tneaonline.org' }, { site: T('Naan Mudhalvan — courses and guidance', 'நான் முதல்வன் — படிப்பு வழிகாட்டல்'), url: 'https://www.naanmudhalvan.tn.gov.in' }, { site: T('National Scholarship Portal', 'தேசிய கல்வி உதவித்தொகை தளம்'), url: 'https://scholarships.gov.in' }],
+    when: pr, parigaram: pr?.remedy || null,
+  };
+}
+
+/** What the live Thunai Engine is asked to search for each tab (category + short keywords). */
+export function engineQuery(kind, plan) {
+  if (kind === 'job') return { category: 'job', keywords: plan.fields.slice(0, 3).map((f) => f.keyword) };
+  if (kind === 'marriage' || kind === 'second') return { category: 'matrimony', keywords: [plan.second ? 'second marriage remarriage' : 'tamil matrimony', ...(plan.community ? [plan.community] : [])] };
+  if (kind === 'health') return { category: 'hospital', keywords: [plan.specialty.q] };
+  if (kind === 'legal') return { category: 'lawyer', keywords: [plan.problem.kw, 'free legal aid'] };
+  if (kind === 'study') return { category: 'college', keywords: plan.streams.map((s) => s.keyword) };
+  return null;
 }

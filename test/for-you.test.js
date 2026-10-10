@@ -3,14 +3,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { birthChart } from '../shared/astro.js';
-import { jobPlan, marriagePlan, healthPlan, compatibleStars, jobLinks, matrimonyLinks, EDUCATION, SPECIALTIES } from '../shared/for-you.js';
+import { jobPlan, marriagePlan, healthPlan, legalPlan, studyPlan, engineQuery, compatibleStars, jobLinks, matrimonyLinks, EDUCATION, SPECIALTIES, LEGAL_PROBLEMS } from '../shared/for-you.js';
 import { matchPorutham } from '../shared/porutham.js';
 import { scanCertainty } from '../shared/certainty-guard.js';
 import { findProhibited } from '../shared/themes.js';
 
 const NOW = new Date('2026-10-10T06:00:00Z');
 const C = birthChart({ date: '2002-03-21', time: '10:15:00', lat: 13.08, lon: 80.27, tz: 5.5 });
-const HOSTS = /^https:\/\/(www\.)?(google\.com|naukri\.com|in\.indeed\.com|linkedin\.com|naukrigulf\.com|tamilmatrimony\.com|bharatmatrimony\.com|shaadi\.com|tnvelaivaaippu\.gov\.in|tnpsc\.gov\.in|naanmudhalvan\.tn\.gov\.in|ncs\.gov\.in|apprenticeshipindia\.gov\.in)(\/|$)/;
+const HOSTS = /^https:\/\/(www\.)?(google\.com|naukri\.com|in\.indeed\.com|linkedin\.com|naukrigulf\.com|tamilmatrimony\.com|bharatmatrimony\.com|shaadi\.com|tnvelaivaaippu\.gov\.in|tnpsc\.gov\.in|naanmudhalvan\.tn\.gov\.in|ncs\.gov\.in|apprenticeshipindia\.gov\.in|cybercrime\.gov\.in|nalsa\.gov\.in|edaakhil\.nic\.in|ecourts\.gov\.in|tneaonline\.org|scholarships\.gov\.in)(\/|$)/;
 const urls = (o) => JSON.stringify(o).match(/https:\/\/[^"\s]+/g) || [];
 
 test('job plan: fields come from the chart and the education, each with search links; every link is a known https site', () => {
@@ -60,4 +60,26 @@ test('health: no timing, doctor first, local emergency numbers', () => {
     for (const u of urls(h)) assert.match(u, HOSTS, u);
   }
   assert.match(healthPlan({ place: 'Dubai', cc: 'AE' }).emergency.en, /998/);
+});
+
+test('legal help: official help lines first, lawyer search, court periods only for disputes — never for crime or violence', () => {
+  for (const pb of LEGAL_PROBLEMS) {
+    const g = legalPlan({ chart: C, problem: pb.id, place: 'Chennai', cc: 'IN', now: NOW });
+    assert.ok(g.help.some((h) => h.url === 'tel:112'));
+    assert.match(g.first.en, /lawyer/);
+    assert.equal(Boolean(g.when), pb.court, pb.id);
+    for (const u of urls(g)) assert.match(u, HOSTS, u);
+    assert.deepEqual(scanCertainty(JSON.stringify(g)), []);
+  }
+  assert.ok(legalPlan({ chart: C, problem: 'cyber' }).help.some((h) => /cybercrime/.test(h.url)));
+  assert.ok(legalPlan({ chart: C, problem: 'police', cc: 'AE' }).help.some((h) => h.url === 'tel:999'));
+});
+
+test('studies and the engine query: chart streams, college searches, and only short keywords for the live search', () => {
+  const s = studyPlan({ chart: C, place: 'Chennai', now: NOW });
+  for (const u of urls(s)) assert.match(u, HOSTS, u);
+  const qs = [engineQuery('job', jobPlan({ chart: C, education: 'engineering', now: NOW })), engineQuery('study', s), engineQuery('health', healthPlan({ specialty: 'heart' })),
+    engineQuery('legal', legalPlan({ chart: C, problem: 'property' })), engineQuery('second', marriagePlan({ chart: C, second: true, community: 'Mudaliar', now: NOW }))];
+  assert.deepEqual(qs.map((q) => q.category), ['job', 'college', 'hospital', 'lawyer', 'matrimony']);
+  for (const q of qs) { assert.ok(q.keywords.length <= 6 && q.keywords.every((k) => typeof k === 'string' && k.length <= 80)); assert.doesNotMatch(JSON.stringify(q), /2002|Karthik|nakshatra/i); }
 });

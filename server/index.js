@@ -7,6 +7,7 @@ import { birthChart, panchang } from '../shared/astro.js';
 import { CATEGORIES, evaluatePrasna, getCategory } from '../shared/prasna.js';
 import { searchLocalPlaces, searchOnline } from './places.js';
 import { aiEnabled, buildContext, generateReply, runTask, ruleBasedReply } from './ai.js';
+import { findResources, SEARCH_CATEGORIES } from './web-search.js';
 import { authRouter, currentUser } from './auth.js';
 import { weatherRouter } from './weather.js';
 import { pushRouter, startPushScheduler } from './push.js';
@@ -306,6 +307,30 @@ export function createApp() {
     if (!Array.isArray(persons) || persons.length > 8) throw new BadRequest('Invalid persons');
     const ps = persons.map((p, i) => ({ name: String(p.name || `Person ${i + 1}`).slice(0, 40), janmaNakshatra: num(p.janmaNakshatra, 'janmaNakshatra', 0, 26), janmaRasi: num(p.janmaRasi, 'janmaRasi', 0, 11) }));
     res.json(findMuhurtham({ category, loc, persons: ps, days: num(days, 'days', 1, 90) }));
+  });
+
+  /**
+   * Thunai Engine — live web search for "Thunai For You". Body: { category, place, cc?, keywords?:string[], lang }.
+   * Only the category, city / country and short keywords reach the model (no name, birth data or chart). Items are
+   * kept only when their URL comes from this search's own results. 503 when AI is off — the app then shows its own links.
+   */
+  app.post('/api/foryou/search', async (req, res) => {
+    const { category, place = '', cc = '', keywords = [], lang = 'en' } = req.body || {};
+    if (!Object.hasOwn(SEARCH_CATEGORIES, category)) throw new BadRequest('Unknown category');
+    if (typeof place !== 'string' || place.length > 120) throw new BadRequest('Invalid place');
+    if (!Array.isArray(keywords) || keywords.length > 6 || keywords.some((k) => typeof k !== 'string' || k.length > 80)) throw new BadRequest('Invalid keywords');
+    if (!aiEnabled()) return res.status(503).json({ error: 'Live search is not available — opening the search sites instead', offline: true });
+    const user = currentUser(req);
+    if (process.env.AI_REQUIRE_LOGIN === '1' && !user) return res.status(401).json({ error: 'Please sign in to use the Thunai Engine' });
+    if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many searches — please wait a few minutes' });
+    if (aiDailyCapped(req, user)) return res.status(429).json({ error: 'Daily limit for live searches reached — the search links keep working' });
+    try {
+      const r = await findResources({ category, place, cc: String(cc).toUpperCase().slice(0, 2), keywords, lang: lang === 'ta' ? 'ta' : 'en',
+        onUsage: (u) => recordAiCost({ userId: user?.id || null, task: `search:${category}`, model: u.model, usage: u }) });
+      res.json({ ...r, category, at: new Date().toISOString() });
+    } catch (e) {
+      res.status(502).json({ error: 'Live search did not finish — opening the search sites instead', offline: true });
+    }
   });
 
   /**

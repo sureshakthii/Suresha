@@ -389,7 +389,7 @@ export function partnerLines(chart, lang = 'ta', { rel = null, gender = null, na
 }
 
 // ------------------------------------------------------------------ study stream
-const STREAM = {
+export const STREAM = {
   maths: { en: 'Maths / Computer Science (B.E., B.Tech, B.Sc CS, BCA)', ta: 'கணிதம் / கணினி அறிவியல் (பி.இ., பி.டெக், பி.எஸ்சி கணினி, பிசிஏ)', minor: T('Maths and Computer Science', 'கணிதம், கணினி அறிவியல்'), fields: ['engineering', 'it', 'coding', 'tech', 'aviation'] },
   bio: { en: 'Biology / health sciences (MBBS, BDS, Nursing, Pharmacy, Siddha)', ta: 'உயிரியல் / மருத்துவ அறிவியல் (எம்.பி.பி.எஸ், பல் மருத்துவம், செவிலியர், மருந்தியல், சித்தா)', minor: T('Biology and life sciences', 'உயிரியல், மருத்துவ அறிவியல்'), fields: ['medicine', 'surgery', 'nursing', 'altmed', 'chemicals', 'research'] },
   commerce: { en: 'Commerce / Accounts (B.Com, CA, CMA, BBA)', ta: 'வணிகவியல் / கணக்கியல் (பி.காம், சி.ஏ, சி.எம்.ஏ, பி.பி.ஏ)', minor: T('Commerce and Accountancy', 'வணிகவியல், கணக்குப்பதிவியல்'), fields: ['accounts', 'finance', 'trade', 'leadership'] },

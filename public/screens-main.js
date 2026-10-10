@@ -120,7 +120,10 @@ function lifeGuideCard(m) {
   if (m && m.relation === 'organization') return '';
   return `<button type="button" class="card glass cta-card lg-cta" data-go="lifeguide">
     <b>🪷 ${L('Life Guide — who am I?', 'வாழ்க்கை வழிகாட்டி — நான் யார்?')}</b>
-    <span class="small">${L('Your character from your jathagam, and the Magic Tap: why, when, what to do and where — with parigaram and practical steps.', 'உங்கள் ஜாதகத்திலிருந்து உங்கள் இயல்பு; மேஜிக் டேப்: ஏன், எப்போது, என்ன செய்யலாம், எங்கே — பரிகாரமும் நடைமுறை வழியும்.')}</span></button>`;
+    <span class="small">${L('Your character from your jathagam, and the Magic Tap: why, when, what to do and where — with parigaram and practical steps.', 'உங்கள் ஜாதகத்திலிருந்து உங்கள் இயல்பு; மேஜிக் டேப்: ஏன், எப்போது, என்ன செய்யலாம், எங்கே — பரிகாரமும் நடைமுறை வழியும்.')}</span></button>
+  ${m && !ageOf(m).adult ? '' : `<button type="button" class="card glass cta-card lg-cta" data-go="foryou">
+    <b>🌍 ${L('Thunai For You', 'துணை உங்களுக்காக')}</b>
+    <span class="small">${L('From your jathagam: jobs that suit you, matching stars for marriage, hospitals near you — with the right time and parigaram.', 'உங்கள் ஜாதகப்படி: உங்களுக்கு ஏற்ற வேலைகள், திருமணத்திற்குப் பொருந்தும் நட்சத்திரங்கள், அருகிலுள்ள மருத்துவமனைகள் — சரியான நேரமும் பரிகாரமும்.')}</span></button>`}`;
 }
 
 // Nalla neram / Rahu kalam / Horai — one live strip: what is true NOW and what comes next.

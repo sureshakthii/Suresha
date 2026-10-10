@@ -2866,3 +2866,16 @@ body.camp-on #views { padding-bottom: 80px; }
 .camp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
 .camp-stats b { display: block; font-size: 1.8rem; color: var(--gold); }
 .camp-stats span { font-size: var(--fs-sm); color: var(--muted); }
+
+/* Thunai For You (screens-foryou.js) */
+.fy-tabs { margin: 0 0 var(--s3); }
+.fy-field { padding: var(--s2) 0; border-top: 1px solid rgba(var(--ink-rgb), .07); }
+.fy-field:first-of-type { border-top: 0; }
+.fy-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.fy-links.col { flex-direction: column; }
+.fy-link { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 14px; border-radius: 12px; border: 1px solid rgba(var(--gold-rgb), .4); background: rgba(var(--gold-rgb), .08); color: var(--gold); font-weight: 600; text-decoration: none; line-height: 1.35; }
+.fy-link:hover, .fy-link:focus-visible { background: rgba(var(--gold-rgb), .18); }
+.fy-stars { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.fy-star { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--glass-b); background: rgba(var(--ink-rgb), .04); line-height: 1.45; }
+.fy-grid { display: grid; gap: 4px 12px; grid-template-columns: 1fr; }
+@media (min-width: 560px) { .fy-grid { grid-template-columns: 1fr 1fr; } }

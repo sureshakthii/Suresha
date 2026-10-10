@@ -74,7 +74,7 @@ function resultHtml(p) {
       <ol class="lg-list">${g.week.map((x, i) => `<li><b>${L(`Day ${i + 1}`, `நாள் ${i + 1}`)}:</b> ${esc(bi(x))}</li>`).join('')}</ol></section>
     <section class="card glass lg-karma"><p class="lg-karma-line">${esc(bi(g.karma.line))}</p><p class="small">${esc(bi(g.karma.meaning))}</p></section>
     <p class="small muted center">${esc(bi(g.note))}</p>
-    <div class="btn-row center"><button type="button" class="chip-btn" data-lg="again">↺ ${L('Start again', 'மீண்டும் தொடங்கு')}</button><button type="button" class="chip-btn" data-lg="ask">💬 ${L('Ask Thunai more', 'துணையிடம் மேலும் கேளுங்கள்')} ›</button></div>`;
+    <div class="btn-row center"><button type="button" class="chip-btn" data-lg="again">↺ ${L('Start again', 'மீண்டும் தொடங்கு')}</button><button type="button" class="chip-btn" data-lg="ask">💬 ${L('Ask Thunai more', 'துணையிடம் மேலும் கேளுங்கள்')} ›</button>${['job_change', 'business', 'marriage', 'health', 'abroad'].includes(g.concern) && p.prof.adult ? `<button type="button" class="chip-btn" data-go="foryou">🌍 ${L('Thunai For You — find openings', 'துணை உங்களுக்காக — வாய்ப்புகளைத் தேடுங்கள்')} ›</button>` : ''}</div>`;
 }
 
 function renderLifeGuide(sec, params = {}) {

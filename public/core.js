@@ -514,7 +514,7 @@ export const HUB_OF = {
   panchangam: 'home', calendar: 'home', live: 'home', vratham: 'home', weather: 'home', reminders: 'home', tools: 'home', plans: 'home',
   campwelcome: 'home', campreview: 'home', campadmin: null,
   // My Chart (and Advanced)
-  analysis: 'chart', vargas: 'chart', roadmap: 'chart', life: 'chart', lifeguide: 'chart', health: 'chart', guide: 'chart', peyarchi: 'chart', numerology: 'chart', parigaram: 'chart', mantras: 'chart', birthtime: 'chart', why: 'chart',
+  analysis: 'chart', vargas: 'chart', roadmap: 'chart', life: 'chart', lifeguide: 'chart', foryou: 'chart', health: 'chart', guide: 'chart', peyarchi: 'chart', numerology: 'chart', parigaram: 'chart', mantras: 'chart', birthtime: 'chart', why: 'chart',
   // Family
   family: 'familyhub', kattam: 'familyhub', relations: 'familyhub', porutham: 'familyhub', couple: 'familyhub', lovematch: 'familyhub', gunamilan: 'familyhub', partners: 'familyhub',
   muhurtham: 'familyhub', thivasam: 'familyhub', starbday: 'familyhub', names: 'familyhub', ruthu: 'familyhub', familyplan: 'familyhub', share: 'familyhub',

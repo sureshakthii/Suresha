@@ -17,6 +17,7 @@ import './screens-hymns.js';
 import './screens-dosham.js';
 import './screens-pro.js';
 import './screens-lifeguide.js';
+import './screens-foryou.js';
 import { campFromUrl, startCamp } from './camp.js';
 import './easy-date.js';
 import { prefetchLazyScreens } from './lazy-screens.js';

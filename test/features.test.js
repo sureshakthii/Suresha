@@ -27,7 +27,7 @@ test('Tamil calendar: Deepavali 2025 and Gowri slots', () => {
   const d = tamilDay(noon(2025, 10, 20), loc.lat, loc.lon, loc.tz);
   assert.ok(d.festivals.some((f) => f.en === 'Deepavali'));
   assert.equal(d.gowri.length, 16);
-  assert.ok(d.nallaNeram.length >= 4);
+  assert.ok(d.nallaNeram.length >= 3);
   const month = tamilMonth(2026, 0, loc.lat, loc.lon, loc.tz);
   assert.equal(month.length, 31);
   // Consecutive Tamil dates never skip.

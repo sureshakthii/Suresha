@@ -37,7 +37,7 @@ async function getJsonNative(url) {
   return r.json();
 }
 const phoneStation = (lat, lon) => stationObservation(lat, lon, getJsonNative);
-import { tamilDay } from './shared/tamilcal.js';
+import { tamilDay, isNallaNeram } from './shared/tamilcal.js';
 import { doshamCardHtml, bindDosham } from './screens-dosham.js';
 import { remindBtn } from './remind.js';
 import { upcomingReminders, deleteReminder } from './remind.js';
@@ -80,7 +80,7 @@ function adviceFor(w, lat, lon, td) {
     const [d, mo, y] = new Date(Date.now() + tz * 3600000).toISOString().slice(0, 10).split('-').reverse().map(Number);
     day = tamilDay(new Date(Date.UTC(y, mo - 1, d, 12) - tz * 3600000), lat, lon, tz);
   }
-  return weatherAdvice(w, { tz, good: day.gowri.filter((g) => g.good && g.part === 'day'), avoid: [day.rahuKalam, day.yamagandam] });
+  return weatherAdvice(w, { tz, good: day.gowri.filter((g) => isNallaNeram(g) && g.part === 'day'), avoid: [day.rahuKalam, day.yamagandam, day.guligai] });
 }
 const adviceHtml = (a, { max = 9 } = {}) => `${a.tips.slice(0, max).map((t) => `<div class="wx-tip ${t.kind}">${{ heat: '🔥', rain: '🌧️', humid: '💦', wind: '💨', good: '🌿' }[t.kind]} ${esc(bi(t))}${t.at ? ` ${remindBtn({ title: bi(t), at: new Date(t.at.getTime() - 3600000) })}` : ''}</div>`).join('')}
   ${a.bestOut ? `<div class="wx-tip best">🚶 <b>${esc(bi(a.bestOut))}</b> ${remindBtn({ title: bi(a.bestOut), at: a.bestOut.start })}</div>` : ''}`;
@@ -642,8 +642,14 @@ export function relationsList(limit) {
 export function relationRow(r, detail = false) {
   const tag = r.level === 'harmony' ? 'good' : r.level === 'careful' ? 'warn' : 'bad';
   const label = r.level === 'harmony' ? L('Harmony', 'இணக்கம்') : r.level === 'careful' ? L('Be gentle', 'மென்மை தேவை') : L('Avoid arguments', 'வாக்குவாதம் தவிர்');
+  const why = () => r.reasons.map((x) => `<div class="small">${x.pts > 0 ? '▲' : '▼'} ${esc(L(x.en, x.ta))}</div>`).join('');
+  // Home: each pair opens in place on tap — today's advice and the reasons behind the label.
+  if (detail === 'tap') {
+    return `<details class="rel-row rel-tap"><summary><div style="flex:1"><b>${esc(bi(r.label))}</b><div class="muted small">${esc(displayName(r.a))} ↔ ${esc(displayName(r.b))}</div></div><span class="tag ${tag}">${label}</span></summary>
+      <div class="rel-why"><p class="small">${esc(bi(r.advice))}</p><div class="small muted">${L('Why:', 'காரணம்:')}</div>${why()}</div></details>`;
+  }
   return `<div class="rel-row"><div style="flex:1"><b>${esc(bi(r.label))}</b><div class="muted small">${esc(displayName(r.a))} ↔ ${esc(displayName(r.b))}</div>
-    ${detail ? `<p class="small">${esc(bi(r.advice))}</p><details><summary>${L('Why?', 'ஏன்?')}</summary>${r.reasons.map((x) => `<div class="small">${x.pts > 0 ? '▲' : '▼'} ${esc(L(x.en, x.ta))}</div>`).join('')}</details>` : ''}</div>
+    ${detail ? `<p class="small">${esc(bi(r.advice))}</p><details><summary>${L('Why?', 'ஏன்?')}</summary>${why()}</details>` : ''}</div>
     <span class="tag ${tag}">${label}</span></div>`;
 }
 function renderRelations(sec) {

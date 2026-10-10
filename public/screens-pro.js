@@ -44,7 +44,7 @@ function renderPro(sec, params = {}) {
   const adult = m && m.relation !== 'organization' && ageOf(m).adult;
   // Never an upsell for a child or teen profile, or without a question: go back to Ask Thunai.
   if (!q || !adult) { go('chat', q ? { q } : {}); return; }
-  if (hasPro()) { go('chat', { q }); return; }
+  if (hasPro()) { go('chat', item ? { q, id: item.id } : { q }); return; }
   track('pro_view', { feature: tag(item?.id || 'question') });
   const ready = personFacts(m);
   const testing = STATIC || !state.billing?.enforced; // test builds: everything is open, so the page says so honestly
@@ -81,7 +81,7 @@ function renderPro(sec, params = {}) {
     </section>
     <p class="small muted pro-disc">ℹ️ ${esc(bi(DISCLAIMER))}</p>
     ${copyright()}`;
-  $('[data-pro-go]', sec)?.addEventListener('click', () => { track('pro_cta', { feature: tag(item?.id || 'question') }); go('chat', { q }); });
+  $('[data-pro-go]', sec)?.addEventListener('click', () => { track('pro_cta', { feature: tag(item?.id || 'question') }); go('chat', item ? { q, id: item.id } : { q }); });
   if (testing) return;
   const { cc: country } = priceCountry();
   loadPlans(country).then(({ plans, currency }) => {

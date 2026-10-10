@@ -1,7 +1,7 @@
 // Personal guide (என் வழிகாட்டி) for every family member, and a big, simple Panchangam (பஞ்சாங்கம்)
 // for elders with a quick "vibe" card for the young generation.
 import { NAKSHATRAS, RASIS, panchang, todaySnapshot, calendarWeekday } from './shared/astro.js';
-import { tamilDay, offsetOnDay } from './shared/tamilcal.js';
+import { tamilDay, offsetOnDay, nallaNeramWindows } from './shared/tamilcal.js';
 import { personalGuide, DAY_COLOR } from './shared/personal.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtDate, activeMember, chartOf,
@@ -186,6 +186,7 @@ function renderPanchangam(sec) {
   let karanaEnd = null;
   try { karanaEnd = (isToday ? panchang(noon, loc.lat, loc.lon, loc.tz) : snapNow).karanaEndsAt || null; } catch { karanaEnd = null; }
   const good = td.gowri.filter((g) => g.good);
+  const best = nallaNeramWindows(td).filter((w) => w.part === 'day');
   const vibe = m && m.relation !== 'organization' && isToday ? vibeCard(m, snapNow) : '';
   const spokenTa = `${td.tamil.year.ta} வருடம், ${td.tamil.monthTa} ${td.tamil.day}, ${td.weekday.ta}. திதி ${td.tithi.index === 14 || td.tithi.index === 29 ? td.tithi.ta : `${td.paksha === 'Shukla' ? 'வளர்பிறை' : 'தேய்பிறை'} ${td.tithi.ta}`}. நட்சத்திரம் ${NAKSHATRAS[td.nakshatra.index].ta}. யோகம் ${td.yoga.ta || td.yoga.name}. ராகு காலம் ${t(td.rahuKalam.start)} முதல் ${t(td.rahuKalam.end)} வரை. எமகண்டம் ${t(td.yamagandam.start)} முதல் ${t(td.yamagandam.end)} வரை. சூலம் ${so[1]}, பரிகாரம் ${so[3]}. சந்திராஷ்டமம் ${starsInRasi(cRasi).map((s) => NAKSHATRAS[s].ta).join(', ')}.`;
   const spokenEn = `${td.weekday.en}, ${td.tamil.monthEn} ${td.tamil.day}. Tithi ${td.tithi.index === 14 || td.tithi.index === 29 ? td.tithi.name : `${td.paksha} ${td.tithi.name}`}. Star ${NAKSHATRAS[td.nakshatra.index].en}. Rahu kalam ${t(td.rahuKalam.start)} to ${t(td.rahuKalam.end)}. Soolam ${so[0]}.`;
@@ -210,7 +211,12 @@ function renderPanchangam(sec) {
       <div class="pan-row"><span>☀️ ${L('Sunrise / Sunset', 'சூரிய உதயம் / அஸ்தமனம்')}</span><b>${t(td.sunrise)} / ${t(td.sunset)}</b></div></div>
 
     <div class="card glass pan-big"><div class="card-title">✨ ${L('Nalla Neram (Gowri)', 'நல்ல நேரம் (கௌரி)')}</div>
-      ${good.map((g) => `<div class="pan-row good"><span>${g.part === 'day' ? '🌞' : '🌙'} ${esc(bi(g))}</span><b>${tr(g.start, g.end)} ${remindBtn({ title: `${L('Nalla neram', 'நல்ல நேரம்')} · ${bi(g)} ${t(g.start)}`, at: g.start })}</b></div>`).join('')}</div>
+      ${best.length ? `<p class="pan-best">✅ ${L('Best times today', 'இன்றைய சிறந்த நேரம்')}: <b>${best.map((w) => tr(w.start, w.end)).join(' · ')}</b></p>` : ''}
+      ${[['day', '🌞', L('Day', 'பகல்')], ['night', '🌙', L('Night', 'இரவு')]].map(([part, ic, label]) => `<div class="pan-sub">${ic} ${label}</div>
+      ${good.filter((g) => g.part === part).map((g) => (g.clash
+    ? `<div class="pan-row clash"><span>${esc(bi(g))}</span><b>${tr(g.start, g.end)}<small class="clash-note">⛔ ${esc(L(`${g.clash.en} — avoid`, `${g.clash.ta} — தவிர்க்கவும்`))}</small></b></div>`
+    : `<div class="pan-row good"><span>${esc(bi(g))}</span><b>${tr(g.start, g.end)} ${remindBtn({ title: `${L('Nalla neram', 'நல்ல நேரம்')} · ${bi(g)} ${t(g.start)}`, at: g.start })}</b></div>`)).join('')}`).join('')}
+      <p class="small muted">${L('Rahu Kalam, Yamagandam and Kuligai are avoided even inside a Gowri good time.', 'கௌரி நல்ல நேரத்திற்குள் வந்தாலும் ராகு காலம், எமகண்டம், குளிகை தவிர்க்கப்படும்.')}</p></div>
 
     <div class="card glass pan-big"><div class="card-title">⛔ ${L('Avoid these times', 'தவிர்க்க வேண்டிய நேரம்')}</div>
       <div class="pan-row bad"><span>🐍 ${L('Rahu Kalam', 'ராகு காலம்')}</span><b>${tr(td.rahuKalam.start, td.rahuKalam.end)} ${remindBtn({ title: `${L('Rahu Kalam starts', 'ராகு காலம் தொடக்கம்')} ${t(td.rahuKalam.start)}`, at: td.rahuKalam.start })}</b></div>

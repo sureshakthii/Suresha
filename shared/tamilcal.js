@@ -39,9 +39,20 @@ export const GOWRI = [
   { en: 'Soram', ta: 'சோரம்', good: false },
   { en: 'Visham', ta: 'விஷம்', good: false },
 ];
-// Starting slot per weekday (Sun..Sat) for day and night; the order then continues cyclically.
-const GOWRI_DAY_START = [0, 1, 2, 3, 4, 5, 6];
-const GOWRI_NIGHT_START = [4, 5, 6, 7, 0, 1, 2];
+// The traditional Gowri table (Pambu Panchangam; matches Drik Panchang and Prokerala). Leaving out Visham, the other
+// seven always run in one cycle — Uthi, Amirtham, Rogam, Laabam, Dhanam, Sugam, Soram. The day starts one step on per
+// weekday (Sun Uthi … Sat Soram), the night starts four steps on from the day, and Visham sits in its own slot:
+// by day it is always the Rahu Kalam slot, so a Gowri good time never falls inside Rahu Kalam.
+const GOWRI_CYCLE = [0, 1, 2, 3, 4, 5, 6];
+const GOWRI_VISHAM_DAY = [8, 2, 7, 5, 6, 4, 3];   // 1-based slot, Sun..Sat (= the Rahu Kalam slot)
+const GOWRI_VISHAM_NIGHT = [4, 5, 3, 8, 2, 7, 6]; // 1-based slot, Sun..Sat night
+const gowriRow = (start, vishamSlot) => {
+  const row = Array.from({ length: 7 }, (_, i) => GOWRI_CYCLE[(start + i) % 7]);
+  row.splice(vishamSlot - 1, 0, 7);
+  return row;
+};
+/** GOWRI indexes for the 8 day and 8 night slots of a weekday (0 = Sunday). */
+export const gowriOrder = (weekday) => ({ day: gowriRow(weekday, GOWRI_VISHAM_DAY[weekday]), night: gowriRow((weekday + 4) % 7, GOWRI_VISHAM_NIGHT[weekday]) });
 
 const localDate = (d, tz) => new Date(d.getTime() + tz * 3600000);
 const ymd = (d, tz) => localDate(d, tz).toISOString().slice(0, 10);
@@ -93,15 +104,57 @@ export function gowriPanchangam(day, weekday) {
   const approximate = !!day.polar;
   const dayLen = (day.sunset - day.sunrise) / 8;
   const nightLen = (day.nextSunrise - day.sunset) / 8;
+  const order = gowriOrder(weekday);
   for (let i = 0; i < 8; i++) {
-    const g = GOWRI[(GOWRI_DAY_START[weekday] + i) % 8];
+    const g = GOWRI[order.day[i]];
     slots.push({ ...g, part: 'day', approximate, start: new Date(day.sunrise.getTime() + i * dayLen), end: new Date(day.sunrise.getTime() + (i + 1) * dayLen) });
   }
   for (let i = 0; i < 8; i++) {
-    const g = GOWRI[(GOWRI_NIGHT_START[weekday] + i) % 8];
+    const g = GOWRI[order.night[i]];
     slots.push({ ...g, part: 'night', approximate, start: new Date(day.sunset.getTime() + i * nightLen), end: new Date(day.sunset.getTime() + (i + 1) * nightLen) });
   }
   return slots;
+}
+
+// Rahu Kalam, Yamagandam and Kuligai are avoided even inside a Gowri good slot (the rule every Tamil panchangam
+// follows). A good slot they overlap keeps its name but carries `clash`, and is never offered as nalla neram.
+const CLASH = [['rahuKalam', 'rahu', 'Rahu Kalam', 'ராகு காலம்'], ['yamagandam', 'yama', 'Yamagandam', 'எமகண்டம்'], ['guligai', 'kuligai', 'Kuligai', 'குளிகை']];
+const MIN_CLASH = 60000;
+function markClashes(slots, periods) {
+  return slots.map((g) => {
+    if (!g.good) return g;
+    const hit = CLASH.find(([k]) => periods[k] && Math.min(g.end, periods[k].end) - Math.max(g.start, periods[k].start) > MIN_CLASH);
+    return hit ? { ...g, clash: { id: hit[1], en: hit[2], ta: hit[3] } } : g;
+  });
+}
+/** A Gowri slot that is truly nalla neram: good, and not inside Rahu Kalam, Yamagandam or Kuligai. */
+export const isNallaNeram = (g) => Boolean(g && g.good && !g.clash);
+
+/**
+ * The day's nalla neram windows from `from` on (day and night): clean Gowri good slots, back-to-back slots merged into
+ * one window ("Dhanam, Sugam 3:01 – 5:56"). Every screen takes its good times from here, so they always agree.
+ * @returns {{ start: Date, end: Date, part: 'day'|'night', names: {en,ta}[] }[]}
+ */
+export function nallaNeramWindows(td, from = null) {
+  const t0 = from ? new Date(from).getTime() : -Infinity;
+  const out = [];
+  for (const g of (td?.gowri || []).filter(isNallaNeram).sort((a, b) => new Date(a.start) - new Date(b.start))) {
+    const s = new Date(g.start).getTime(), e = new Date(g.end).getTime();
+    if (e <= t0) continue;
+    const last = out[out.length - 1];
+    if (last && Math.abs(last.end.getTime() - s) < 1000 && last.part === g.part) { last.end = new Date(e); last.names.push({ en: g.en, ta: g.ta }); continue; }
+    out.push({ start: new Date(s), end: new Date(e), part: g.part, names: [{ en: g.en, ta: g.ta }] });
+  }
+  // Slots and kalams are computed separately, so their edges can differ by a millisecond: snap each window to the
+  // neighbouring kalam's edge so a window never touches Rahu Kalam, Yamagandam or Kuligai.
+  const kalams = CLASH.map(([k]) => td?.[k]).filter(Boolean).map((k) => [new Date(k.start).getTime(), new Date(k.end).getTime()]);
+  for (const w of out) {
+    for (const [ks, ke] of kalams) {
+      if (ke > w.start.getTime() && ke - w.start.getTime() <= MIN_CLASH) w.start = new Date(ke);
+      if (ks < w.end.getTime() && w.end.getTime() - ks <= MIN_CLASH) w.end = new Date(ks);
+    }
+  }
+  return out.filter((w) => w.end > w.start && w.end.getTime() > t0);
 }
 
 const MUHURTHA_STARS = new Set([3, 4, 9, 11, 12, 14, 16, 18, 20, 21, 25, 26]); // Rohini, Mrigasirisham, Magam, Uthiram, Hastham, Swathi, Anusham, Moolam, Uthiradam, Thiruvonam, Uthirattathi, Revathi
@@ -198,7 +251,7 @@ export function tamilDay(dateLocalNoon, lat, lon, tz) {
   const p = panchang(atSunrise, lat, lon, tz);
   // The Tamil date follows the Sun's rasi at sunset (a Sankranti before sunset starts the new month that day).
   const td = tamilDate(new Date(day.sunset.getTime() - 60000), lat, lon, tz);
-  const gowri = gowriPanchangam(day, p.weekday.index);
+  const gowri = markClashes(gowriPanchangam(day, p.weekday.index), p);
   const pakshaTithi = p.tithi.index % 15;
   // Aadi, Purattasi and Margazhi carry no wedding muhurtham in Tamil practice (the same months Prasnam avoids for
   // marriage and griha pravesam — shared/prasna.js avoidMonths), so the calendar does not mark them.
@@ -214,7 +267,7 @@ export function tamilDay(dateLocalNoon, lat, lon, tz) {
     tithi: p.tithi, nakshatra: p.nakshatra, yoga: p.yoga, karana: p.karana, karanaTa: p.karanaTa, moonRasi: p.moonRasi,
     rahuKalam: p.rahuKalam, yamagandam: p.yamagandam, guligai: p.guligai,
     gowri,
-    nallaNeram: gowri.filter((g) => g.good && g.part === 'day'),
+    nallaNeram: gowri.filter((g) => isNallaNeram(g) && g.part === 'day'),
     festivals: festivalsFor(iso, td, lat, lon, tz),
     muhurthaDay,
     paksha: p.tithi.paksha,

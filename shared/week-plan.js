@@ -128,7 +128,7 @@ function subtract(free, busy) {
 const MIN_WINDOW = 30 * 60000;
 const BUSY_AFTER_FIXED = 60 * 60000; // a fixed appointment blocks an hour from its start
 /**
- * Optional good-time windows on one day: Gowri nalla neram (daytime) minus Rahu Kalam, Yamagandam, the person's
+ * Optional good-time windows on one day: Gowri nalla neram (daytime) minus Rahu Kalam, Yamagandam, Kuligai, the person's
  * timed fixed items (one hour each) and anything already past. Windows shorter than 30 minutes are dropped.
  */
 export function goodWindows(td, { fixedAt = [], now = Date.now() } = {}) {
@@ -136,7 +136,7 @@ export function goodWindows(td, { fixedAt = [], now = Date.now() } = {}) {
   let free = (td.nallaNeram || []).map((g) => ({ start: ms(g.start), end: ms(g.end) })).sort((a, b) => a.start - b.start);
   // merge touching slots
   free = free.reduce((acc, f) => { const l = acc[acc.length - 1]; if (l && f.start <= l.end) l.end = Math.max(l.end, f.end); else acc.push({ ...f }); return acc; }, []);
-  const busy = [td.rahuKalam, td.yamagandam].filter(Boolean).map((k) => ({ start: ms(k.start), end: ms(k.end) }))
+  const busy = [td.rahuKalam, td.yamagandam, td.guligai].filter(Boolean).map((k) => ({ start: ms(k.start), end: ms(k.end) }))
     .concat(fixedAt.map((t) => ({ start: ms(t), end: ms(t) + BUSY_AFTER_FIXED })))
     .concat([{ start: -Infinity, end: ms(now) }]);
   return subtract(free, busy).filter((w) => w.end - w.start >= MIN_WINDOW).map((w) => ({ start: new Date(w.start), end: new Date(w.end) }));

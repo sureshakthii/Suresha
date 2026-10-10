@@ -34,14 +34,14 @@ test('morning brief: three lines — quality, one thing to do, one spiritual tou
   assert.ok(n.title.includes('காலை வணக்கம்') && n.body.split('\n').length === 3);
 });
 
-test('morning brief: the time window is never inside Rahu Kalam or Yamagandam, and starts after the brief time', () => {
+test('morning brief: the time window is never inside Rahu Kalam, Yamagandam or Kuligai, and starts after the brief time', () => {
   for (const iso of DAYS) {
     const at = instantAt(iso, '06:30', 5.5);
     const td = tamilDay(instantAt(iso, '12:00', 5.5), LOC.lat, LOC.lon, 5.5);
     const w = goodWindow(td, at);
     if (!w) continue;
     assert.ok(w.start >= at, `${iso}: window starts before the brief`);
-    for (const k of [td.rahuKalam, td.yamagandam]) {
+    for (const k of [td.rahuKalam, td.yamagandam, td.guligai]) {
       const overlap = w.start < new Date(k.end) && new Date(k.start) < w.end;
       assert.ok(!overlap, `${iso}: window overlaps a kalam`);
     }

@@ -10,7 +10,7 @@
 // fasting advice; a small child's brief is written for the caregiver. Wording is reflective ("tradition says"),
 // never a promise, never fear (findProhibited in shared/themes.js scans every line in the tests).
 import { panchang, todaySnapshot, RASIS, NAKSHATRAS, PLANETS } from './astro.js';
-import { tamilDay } from './tamilcal.js';
+import { tamilDay, nallaNeramWindows } from './tamilcal.js';
 import { dailyReview, dayVerdict, DAY_DEITY, runningDasa } from './daily.js';
 import { dayPartTa, planetAdjTa } from './fmt.js';
 import { ageProfile } from './age-guard.js';
@@ -83,19 +83,17 @@ export const monthLabel = (ym) => { const [y, m] = ym.split('-').map(Number); re
 
 // ---------------------------------------------------------------- good window
 /**
- * The next good window of the day from `from`: a Gowri nalla neram slot (day part) with Rahu Kalam and Yamagandam
- * cut out, at least 20 minutes long. Returns { start, end, name } or null.
+ * The next good window from `from`: a clean Gowri nalla neram window (shared/tamilcal.js nallaNeramWindows — never inside
+ * Rahu Kalam, Yamagandam or Kuligai), at least 20 minutes long. Evening windows count until 4 hours after sunset.
+ * Returns { start, end, name, part } or null.
  */
 export function goodWindow(td, from) {
   const t0 = new Date(from).getTime();
-  const bad = [td.rahuKalam, td.yamagandam].filter(Boolean).map((k) => [new Date(k.start).getTime(), new Date(k.end).getTime()]);
-  const slots = (td.gowri || []).filter((g) => g.good && g.part === 'day').map((g) => ({ s: new Date(g.start).getTime(), e: new Date(g.end).getTime(), g }))
-    .sort((a, b) => a.s - b.s);
-  for (const sl of slots) {
-    let pieces = [[Math.max(sl.s, t0), sl.e]];
-    for (const [bs, be] of bad) pieces = pieces.flatMap(([s, e]) => (be <= s || bs >= e ? [[s, e]] : [[s, bs], [be, e]]));
-    const ok = pieces.find(([s, e]) => e - s >= 20 * 60000);
-    if (ok) return { start: new Date(ok[0]), end: new Date(ok[1]), name: T(sl.g.en, sl.g.ta) };
+  const lastStart = td.sunset ? new Date(td.sunset).getTime() + 4 * 3600000 : Infinity;
+  for (const w of nallaNeramWindows(td, from)) {
+    const s = Math.max(w.start.getTime(), t0), e = w.end.getTime();
+    if (s >= lastStart) break;
+    if (e - s >= 20 * 60000) return { start: new Date(s), end: new Date(e), part: w.part, name: T(w.names.map((n) => n.en).join(', '), w.names.map((n) => n.ta).join(', ')) };
   }
   return null;
 }
@@ -182,7 +180,8 @@ export function morningBrief(o = {}) {
   const rkText = rk && new Date(rk.end) > from ? T(` (avoid Rahu Kalam ${rkR.en})`, ` (ராகு காலம் ${rkR.ta} தவிர்க்கவும்)`) : T('', '');
   if (win) {
     const w = range(win.start, win.end, tz);
-    lines.push({ key: 'do', icon: '⏰', text: T(`${w.en}: ${what.en}${rkText.en}.`, `${w.ta}: ${what.ta}${rkText.ta}.`) });
+    const whatNow = win.part === 'night' ? T('a good time for prayer, a family talk and tomorrow’s plan', 'வழிபாடு, குடும்ப உரையாடல், நாளைய திட்டமிடலுக்கு ஏற்ற நேரம்') : what;
+    lines.push({ key: 'do', icon: '⏰', text: T(`${w.en}: ${whatNow.en}${rkText.en}.`, `${w.ta}: ${whatNow.ta}${rkText.ta}.`) });
   } else {
     lines.push({ key: 'do', icon: '⏰', text: T(`Today's good times are over — a calm evening; plan tomorrow's work${rkText.en}.`, `இன்றைய நல்ல நேரம் முடிந்தது — அமைதியான மாலை; நாளைய வேலையைத் திட்டமிடுங்கள்${rkText.ta}.`) });
   }

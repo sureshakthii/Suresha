@@ -2,7 +2,7 @@
 import { panchang, todaySnapshot, calendarDate, planetPositions, buildCharts, RASIS, NAKSHATRAS, PLANETS, listedDasaPeriods } from './shared/astro.js';
 import { CATEGORIES, evaluatePrasna } from './shared/prasna.js';
 import { buildContext, ruleBasedReply } from './shared/narrator.js';
-import { tamilDay } from './shared/tamilcal.js';
+import { tamilDay, nallaNeramWindows } from './shared/tamilcal.js';
 import { grahaStrength, dailyParigaram, NAVAGRAHA } from './shared/remedies.js';
 import { doshams } from './shared/porutham.js';
 import { diagnoseDoshams, primarySthalam } from './shared/dosham.js';
@@ -120,14 +120,17 @@ function timeStrip(td, snap, loc) {
   const now = Date.now();
   const t = (d) => fmtTime(d, loc.tz);
   const ms = (d) => new Date(d).getTime();
-  const gw = (td.gowri || []).filter((g) => ms(g.end) > now).sort((x, y) => ms(x.start) - ms(y.start));
-  const cur = gw.find((g) => ms(g.start) <= now);
-  const nextGood = gw.find((g) => g.good && ms(g.start) > now);
+  // One rule everywhere (shared/tamilcal.js nallaNeramWindows): Gowri good time with Rahu Kalam, Yamagandam and
+  // Kuligai taken out, back-to-back slots merged — so "next good time" can never equal Rahu Kalam.
+  const wins = nallaNeramWindows(td, new Date(now));
+  const cur = wins.find((w) => ms(w.start) <= now);
+  const nextGood = wins.find((w) => ms(w.start) > now);
+  const names = (w) => w.names.map((n) => bi(n)).join(', ');
   const flips = [];
   let good;
   const tr = (a, b) => fmtTimeRange(a, b, loc.tz);
-  if (cur?.good) { good = { cls: 'good', k: L('Good time now', 'இப்போது நல்ல நேரம்'), v: untilL(t(cur.end)), s: bi(cur) }; flips.push(ms(cur.end)); }
-  else if (nextGood) { good = { cls: '', k: L('Next good time', 'அடுத்த நல்ல நேரம்'), v: tr(nextGood.start, nextGood.end), s: bi(nextGood) }; flips.push(ms(nextGood.start)); }
+  if (cur) { good = { cls: 'good', k: L('Good time now', 'இப்போது நல்ல நேரம்'), v: untilL(t(cur.end)), s: names(cur) }; flips.push(ms(cur.end)); }
+  else if (nextGood) { good = { cls: '', k: L('Next good time', 'அடுத்த நல்ல நேரம்'), v: tr(nextGood.start, nextGood.end), s: names(nextGood) }; flips.push(ms(nextGood.start)); }
   else good = { cls: '', k: L('Nalla neram', 'நல்ல நேரம்'), v: L('over for today', 'இன்று முடிந்தது'), s: '' };
   const rk = td.rahuKalam || snap.rahuKalam;
   let rahu;
@@ -408,7 +411,9 @@ export function setupVoiceInput(btn, input) {
 function gowriCell(g, loc) {
   const now = Date.now();
   const cur = now >= new Date(g.start).getTime() && now < new Date(g.end).getTime();
-  return `<div class="gw ${g.good ? 'good' : 'bad'}${cur ? ' now' : ''}"><b>${esc(bi(g))}</b><span>${fmtTime(g.start, loc.tz)}</span></div>`;
+  // A good slot inside Rahu Kalam / Yamagandam / Kuligai is shown as avoid, with the reason.
+  const cls = g.good && !g.clash ? 'good' : 'bad';
+  return `<div class="gw ${cls}${cur ? ' now' : ''}"${g.clash ? ` title="${esc(bi(g.clash))}"` : ''}><b>${esc(bi(g))}</b><span>${fmtTime(g.start, loc.tz)}</span>${g.clash ? `<small class="gw-clash">${esc(bi(g.clash))}</small>` : ''}</div>`;
 }
 function kalamCell(label, r, active, loc) {
   return `<div class="${active ? 'active' : ''}"><b>${label}</b>${fmtTime(r.start, loc.tz)} – ${fmtTime(r.end, loc.tz)}${active ? `<br><span class="tag bad">${L('NOW', 'இப்போது')}</span>` : ''}</div>`;
@@ -433,7 +438,8 @@ function familyCard(snap) {
 function relationsCard() {
   const list = relationsList(3);
   if (!list) return '';
-  return `<div class="card glass" data-go="relations"><div class="card-title"><span>💞 ${L('Family Relations Today', 'இன்று குடும்ப உறவு நிலை')}</span><span class="link-btn">${L('All', 'அனைத்தும்')} ›</span></div>${list.map((r) => relationRow(r)).join('')}</div>`;
+  return `<div class="card glass"><div class="card-title"><span>💞 ${L('Family Relations Today', 'இன்று குடும்ப உறவு நிலை')}</span><button class="link-btn" data-go="relations">${L('All', 'அனைத்தும்')} ›</button></div>
+    <p class="small muted">${L('Tap a pair to see why.', 'காரணம் அறிய ஒரு ஜோடியைத் தொடுங்கள்.')}</p>${list.map((r) => relationRow(r, 'tap')).join('')}</div>`;
 }
 
 function parigaramCard(snap) {

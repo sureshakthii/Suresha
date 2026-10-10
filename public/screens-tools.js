@@ -2,7 +2,7 @@
 // Natchathira birthday, Jothidar chat and the shareable daily card.
 import { panchang, vedicDay, dayAnchor, calendarNoon, calendarDate, RASIS, NAKSHATRAS } from './shared/astro.js';
 import { CATEGORIES, getCategory } from './shared/prasna.js';
-import { tamilMonth, tamilDay, TAMIL_MONTHS } from './shared/tamilcal.js';
+import { tamilMonth, tamilDay, TAMIL_MONTHS, nallaNeramWindows } from './shared/tamilcal.js';
 import { matchPorutham, doshams, doshaSamyam } from './shared/porutham.js';
 import { poruthamView, discussionHtml } from './screens-couple.js';
 import { grahaStrength, dailyParigaram, NAVAGRAHA, governsFor, mantraOnly } from './shared/remedies.js';
@@ -30,7 +30,7 @@ import { dailyReview } from './shared/daily.js';
 import { hymnText } from './hymn-links.js';
 import { diagnoseDoshams, nivarthiPlan } from './shared/dosham.js';
 import { clarityPrompt, track } from './growth.js';
-import { relatedQuestions } from './shared/pro-questions.js';
+import { relatedQuestions, relatedAsk } from './shared/pro-questions.js';
 import { scanCertainty } from './shared/certainty-guard.js';
 import { DISCLAIMER } from './shared/responsible.js';
 import { hasPro } from './screens-pro.js';
@@ -143,7 +143,7 @@ function renderCalDay(d, c) {
       <dt>${L('Chandrashtamam', 'சந்திராஷ்டமம்')}</dt><dd>${esc(rasiName(d.chandrashtamaRasi))} ${L('rasi', 'ராசி')}</dd>
     </dl>
     <div class="card-title" style="margin-top:12px">${L('Nalla Neram (Gowri)', 'நல்ல நேரம் (கௌரி)')}</div>
-    <div class="gowri">${d.gowri.filter((g) => g.good).map((g) => `<div class="gw good"><b>${esc(bi(g))}</b><span>${rng(g.start, g.end, loc.tz)}</span></div>`).join('')}</div>
+    <div class="gowri">${nallaNeramWindows(d).map((w) => `<div class="gw good"><b>${w.part === 'night' ? '🌙 ' : ''}${esc(w.names.map((n) => bi(n)).join(', '))}</b><span>${rng(w.start, w.end, loc.tz)}</span></div>`).join('')}</div>
   </div>`;
 }
 registerScreen('calendar', { render: renderCalendar, parent: 'home', needsLoc: true });
@@ -620,7 +620,7 @@ function todayFacts() {
   return {
     rahuKalam: `${rng(td.rahuKalam.start, td.rahuKalam.end, loc.tz)}`,
     yamagandam: `${rng(td.yamagandam.start, td.yamagandam.end, loc.tz)}`,
-    goodTimes: td.gowri.filter((g) => g.good && new Date(g.end).getTime() > now).slice(0, 3).map((g) => `${clk(g.start, loc.tz)} (${bi(g)})`),
+    goodTimes: nallaNeramWindows(td, new Date(now)).slice(0, 3).map((w) => `${rng(w.start, w.end, loc.tz)} (${w.names.map((n) => bi(n)).join(', ')})`),
     horai: `${planetName(s.currentHora.lord)}`,
     chandrashtamam: m ? dayOutlook(chartOf(m), s).chandrashtama : false,
   };
@@ -705,7 +705,7 @@ function renderChat(sec, params = {}) {
   setupVoiceInput($('#micBtn'), $('#chatInput'));
   const log = $('#chatLog');
   log.scrollTop = log.scrollHeight;
-  if (params.q && !chat.messages.some((x) => x.content === params.q)) send(params.q);
+  if (params.q && !chat.messages.some((x) => x.content === params.q)) send(params.q, params.id ? { route: bi(relatedAsk(params.id)), fresh: true } : {});
   else if (params.topic === 'chart' && !chat.messages.length) send(L('Please read my chart and explain the main strengths, challenges and the current dasa.', 'என் ஜாதகத்தைப் பார்த்து முக்கிய பலம், சவால்கள், நடப்பு தசையை விளக்கவும்.'));
 }
 
@@ -765,7 +765,7 @@ function addBubble(role, text, meta = {}) {
     related.forEach((r) => {
       const x = document.createElement('button'); x.type = 'button'; x.className = 'related-q';
       x.innerHTML = `<span class="rq-arrow" aria-hidden="true">↳</span><span class="rq-text">${esc(bi(r.q))}</span>${hasPro() ? '' : '<span class="pill rq-pro">Pro</span>'}`;
-      x.addEventListener('click', () => { track('related_click', { feature: r.id }); if (hasPro()) send(bi(r.q)); else go('pro', { id: r.id }); });
+      x.addEventListener('click', () => { track('related_click', { feature: r.id }); if (hasPro()) send(bi(r.q), { route: bi(relatedAsk(r.id)), fresh: true }); else go('pro', { id: r.id }); });
       box.append(x);
     });
     b.append(box);
@@ -831,7 +831,8 @@ async function send(text, opts = {}) {
     requestAnimationFrame(() => ub.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
   const { m, facts } = memberFacts();
-  const answer = askAnswer(text, m, facts, chatTurns());
+  // A tapped related question is answered from its tested phrasing, as a fresh question (no earlier topic carried over).
+  const answer = askAnswer(opts.route || text, m, facts, opts.fresh ? [] : chatTurns());
   // Safety-critical topics and on-device policy answers (decline / child / teen) are always the reviewed rules,
   // never free AI text. Private profiles never send their questions to the AI service.
   // Age-guarded answers are never handed to free AI text; a minor's chat goes to the AI only through the server,

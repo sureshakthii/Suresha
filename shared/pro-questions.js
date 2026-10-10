@@ -84,6 +84,20 @@ const RELATED = {
       [T('The lord’s strength, houses it rules and where it sits', 'அதிபதியின் வலிமை, ஆளும் வீடுகள், இருக்கும் இடம்'), T('Supportive and patient phases inside it, dated', 'அதற்குள் ஆதரவான, பொறுமைக் கட்டங்கள் — தேதியுடன்'), T('Practical focus and a free prayer', 'நடைமுறைக் கவனம், ஒரு இலவச வழிபாடு')]),
   ],
 };
+// What a related question sends to the answer engine when tapped — a phrasing the engine routes to the right topic
+// (checked in test/pro-questions-route.test.js). The person still sees their own question. Missing id → the question itself.
+const ASK = {
+  marriage_periods: T('Which periods are good for marriage?', 'எனக்குத் திருமணம் எப்போது நடக்கும்?'),
+  marriage_delay: T('Why is my marriage getting delayed?', 'என் திருமணம் ஏன் தாமதமாகிறது?'),
+  career_periods: T('When is a good time for a job change or promotion?', 'வேலை மாற்றம், பதவி உயர்வுக்கு நல்ல காலம் எப்போது?'),
+  property_periods: T('When can I buy a house or property?', 'வீடு, சொத்து வாங்க நல்ல காலம் எப்போது?'),
+  family_harmony: T('How to improve family harmony and peace at home?', 'குடும்ப ஒற்றுமை, வீட்டில் அமைதி கூட என்ன செய்யலாம்?'),
+  remedy_plan: T('Which parigaram, prayers and temples suit my chart?', 'என் ஜாதகத்திற்கு ஏற்ற பரிகாரம், வழிபாடு, கோவில் எது?'),
+  chart_year: T('How will this year be for me? Next 12 months palan', 'இந்த ஆண்டு எனக்கு எப்படி இருக்கும்? அடுத்த 12 மாத பலன்'),
+};
+/** The engine phrasing for a related question id ({en, ta}), or null. */
+export const relatedAsk = (id) => ASK[id] || relatedById(id)?.q || null;
+
 // Topics that share a set.
 const ALIAS = { second_marriage: 'marriage', harmony: 'family', job: 'career', job_change: 'career', business: 'career', luck: 'remedy', temple: 'remedy', kuladeivam: 'remedy', vehicle: 'property', muhurtham: 'property' };
 

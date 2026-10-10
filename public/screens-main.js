@@ -115,6 +115,14 @@ function todayPlanCard(m, snap, loc, td) {
   </section>`;
 }
 
+// Life Guide entry: who am I, and the Magic Tap (screens-lifeguide.js). Hidden for an organisation profile.
+function lifeGuideCard(m) {
+  if (m && m.relation === 'organization') return '';
+  return `<button type="button" class="card glass cta-card lg-cta" data-go="lifeguide">
+    <b>🪷 ${L('Life Guide — who am I?', 'வாழ்க்கை வழிகாட்டி — நான் யார்?')}</b>
+    <span class="small">${L('Your character from your jathagam, and the Magic Tap: why, when, what to do and where — with parigaram and practical steps.', 'உங்கள் ஜாதகத்திலிருந்து உங்கள் இயல்பு; மேஜிக் டேப்: ஏன், எப்போது, என்ன செய்யலாம், எங்கே — பரிகாரமும் நடைமுறை வழியும்.')}</span></button>`;
+}
+
 // Nalla neram / Rahu kalam / Horai — one live strip: what is true NOW and what comes next.
 function timeStrip(td, snap, loc) {
   const now = Date.now();
@@ -294,6 +302,7 @@ function renderHome(sec) {
     ${growHomeHtml(m, snap, loc, td)}
     ${todayPlanCard(m, snap, loc, td)}
     ${timeStrip(td, snap, loc)}
+    ${lifeGuideCard(m)}
     ${weekCardHtml()}
     ${goalsCardHtml()}
     ${dailyCard(m, snap, loc)}

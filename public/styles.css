@@ -2791,8 +2791,8 @@ body.ta .easy-tm { grid-template-columns: minmax(0, .85fr) minmax(0, .85fr) minm
 /* One border on search boxes: the wrapper shows focus, the input inside never draws its own ring */
 .tl-search input:focus, .tl-search input:focus-visible { outline: none !important; border: 0 !important; box-shadow: none !important; background: transparent !important; }
 /* "Add your birth details" chip wraps inside the screen instead of running off the edge */
-.who-row:has(.mchip.who.add) { overflow: visible; }
-.mchip.who.add { flex: 1 1 auto; min-width: 0; max-width: 100%; border-radius: 18px; }
+.who-row:has(.mchip.who.add:only-child) { overflow: visible; }
+.mchip.who.add:only-child { flex: 1 1 auto; min-width: 0; max-width: 100%; border-radius: 18px; }
 /* Birth-time picker: "மணி" / "நிமி" / "முற்பகல்" are never cut — with a large phone font, AM/PM moves to its own row */
 .easy-dt.easy-tm { display: flex !important; flex-wrap: wrap; gap: 6px; }
 .easy-tm .et-h, .easy-tm .et-m { flex: 1 1 5.2em; min-width: 5.2em; }
@@ -2802,9 +2802,67 @@ body.ta .easy-tm { grid-template-columns: minmax(0, .85fr) minmax(0, .85fr) minm
 .rel-row.rel-tap { display: block; }
 .rel-tap > summary { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; list-style: none; min-height: var(--tap); }
 .rel-tap > summary::-webkit-details-marker { display: none; }
-.rel-tap > summary::after { content: "›"; color: var(--muted); font-size: 1.2em; transition: transform .2s; align-self: center; }
-.rel-tap[open] > summary::after { transform: rotate(90deg); }
+.rel-tap > summary { flex-wrap: wrap; }
+.rel-why-btn { flex: 1 1 100%; display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding: 8px 12px; border-radius: 10px; background: rgba(var(--gold-rgb), .12); border: 1px solid rgba(var(--gold-rgb), .3); color: var(--gold); font-weight: 600; font-size: var(--fs-sm); }
+.rel-why-btn i { font-style: normal; font-size: 1.2em; transition: transform .2s; }
+.rel-tap[open] .rel-why-btn i { transform: rotate(90deg); }
 .rel-why { padding: 6px 0 4px; }
 /* Date and time pickers: the native dropdown arrow took ~20px on top of our padding and cut "மணி" to "மண" — draw our
    own arrow inside the padding instead, so the whole word always shows */
 .easy-dt select { -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23c9a45c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-size: 12px 8px; }
+
+/* Life Guide (screens-lifeguide.js) */
+.lg-cta { text-align: left; border-color: rgba(var(--gold-rgb), .45); }
+.lg-block { padding: var(--s2) 0; border-top: 1px solid rgba(var(--ink-rgb), .07); }
+.lg-block:first-of-type { border-top: 0; }
+.lg-k { font-weight: 700; color: var(--gold); margin-bottom: 4px; line-height: 1.5; }
+.lg-block p { margin: 4px 0; line-height: 1.6; }
+.lg-list { margin: 4px 0; padding-inline-start: 22px; line-height: 1.6; }
+.lg-list li { margin: 6px 0; }
+.lg-magic { display: block; width: 100%; min-height: 56px; margin: var(--s3) 0 6px; font-size: var(--fs-base); line-height: 1.45; white-space: normal; }
+.lg-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: var(--s3); }
+.lg-dots i { width: 28px; height: 6px; border-radius: 3px; background: rgba(var(--ink-rgb), .15); }
+.lg-dots i.done { background: rgba(var(--gold-rgb), .55); }
+.lg-dots i.cur { background: var(--gold); }
+.lg-q { margin: 0 0 var(--s3); font-size: 1.15rem; line-height: 1.5; text-align: center; }
+.lg-opts { display: grid; gap: 10px; }
+.lg-opt { min-height: 52px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--glass-b); background: rgba(var(--ink-rgb), .04); color: var(--text); font: inherit; font-size: var(--fs-base); line-height: 1.45; text-align: left; cursor: pointer; }
+.lg-opt:hover, .lg-opt:focus-visible, .lg-opt.sel { border-color: var(--gold); background: rgba(var(--gold-rgb), .14); }
+.lg-help { border-color: rgba(var(--bad-rgb, 229, 83, 75), .55); }
+.lg-karma { text-align: center; }
+.lg-karma-line { font-weight: 700; color: var(--gold); line-height: 1.6; }
+@media (min-width: 720px) { .lg-opts { grid-template-columns: 1fr 1fr; } }
+
+/* Camp mode (camp.js): a bar above the tab bar on phones, bottom-right on computers */
+#campBar { position: fixed; left: 8px; right: 8px; bottom: calc(var(--tabbar-h, 64px) + 8px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-radius: 16px; background: var(--surface, #1d1720); border: 1px solid rgba(var(--gold-rgb), .45); box-shadow: 0 6px 24px rgba(0, 0, 0, .35); }
+#campBar .cb-name { flex: 1; min-width: 0; font-weight: 700; color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#campBar .cb-btn { min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--glass-b); background: rgba(var(--ink-rgb), .06); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+#campBar .cb-btn.gold { background: var(--btn-gold); color: #1a1208; border-color: transparent; }
+#campBar .cb-gear { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--muted); font-size: 1.1rem; cursor: pointer; }
+body.camp-on #views { padding-bottom: 80px; }
+#campBar .cb-btn { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 520px) { #campBar .cb-name { display: none; } #campBar .cb-btn { flex: 1 1 0; padding: 0 8px; } }
+@media (min-width: 900px) { #campBar { left: auto; right: 20px; bottom: 20px; max-width: 620px; } }
+.camp-idle { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: rgba(0, 0, 0, .6); padding: 16px; }
+.camp-idle .ci-box { max-width: 420px; padding: 24px; border-radius: 18px; background: var(--surface, #1d1720); text-align: center; line-height: 1.6; }
+.camp-hero { text-align: center; padding: 28px 20px; }
+.camp-hero h2 { margin: 8px 0; }
+.camp-logo { font-size: 3rem; }
+.camp-steps { display: grid; gap: 10px; margin: 18px 0; text-align: left; }
+.camp-steps div { display: flex; gap: 12px; align-items: center; padding: 10px 14px; border-radius: 12px; background: rgba(var(--ink-rgb), .05); }
+.camp-steps b { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--btn-gold); color: #1a1208; }
+.camp-start { display: block; width: 100%; min-height: 56px; margin: 14px 0 8px; font-size: var(--fs-base); }
+.camp-review fieldset { border: 0; padding: 0; margin: 0 0 16px; }
+.camp-review legend { font-weight: 700; margin-bottom: 8px; line-height: 1.5; }
+.cr-stars { display: flex; gap: 6px; flex-direction: row-reverse; justify-content: flex-end; }
+.cr-star input, .cr-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.cr-star span { font-size: 2.4rem; line-height: 1; color: rgba(var(--ink-rgb), .25); cursor: pointer; padding: 2px; }
+.cr-star:hover span, .cr-star:hover ~ .cr-star span, .cr-star input:checked + span, .cr-star:has(input:checked) ~ .cr-star span { color: var(--gold); }
+.cr-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cr-chip { margin: 0; font-size: var(--fs-base); color: var(--text); }
+.cr-chip span { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--glass-b); cursor: pointer; line-height: 1.4; }
+.cr-chip input:checked + span { border-color: var(--gold); background: rgba(var(--gold-rgb), .18); color: var(--gold2, var(--gold)); }
+.cr-chip input:focus-visible + span, .cr-star input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+.camp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+.camp-stats b { display: block; font-size: 1.8rem; color: var(--gold); }
+.camp-stats span { font-size: var(--fs-sm); color: var(--muted); }

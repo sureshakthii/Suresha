@@ -16,6 +16,8 @@ import './screens-ithihasa.js';
 import './screens-hymns.js';
 import './screens-dosham.js';
 import './screens-pro.js';
+import './screens-lifeguide.js';
+import { campFromUrl, startCamp } from './camp.js';
 import './easy-date.js';
 import { prefetchLazyScreens } from './lazy-screens.js';
 import { registerServiceWorker } from './pwa.js';
@@ -163,6 +165,7 @@ const typingOnScreen = () => { const a = document.activeElement; return !!(a && 
 const SESSION_WAIT_MS = 1500;
 
 async function boot() {
+  const inCamp = campFromUrl(); // ?camp=1 / ?camp=0 — read before any URL clean-up below
   const hideSplash = splash();
   applyLang();
   saveSettings();
@@ -210,8 +213,10 @@ async function boot() {
   // First run: one friendly step — where do you live now? Existing users: a gentle one-time prompt when the
   // phone's clock zone differs from the saved residence (e.g. landed in Dubai).
   const deferred = Date.now() - Number(store.get('kj_res_later', 0)) < 3 * 86400000; // "Decide later": ask again in 3 days
-  if (firstRun || (state.residence?.confirmed === false && !deferred)) residenceStep({ first: true });
-  else setTimeout(() => zonePrompt(), 1200);
+  // Camp mode (camp.js): the organiser sets the place once; visitors are not asked again.
+  if (firstRun || (!inCamp && state.residence?.confirmed === false && !deferred)) residenceStep({ first: true });
+  else if (!inCamp) setTimeout(() => zonePrompt(), 1200);
+  if (inCamp) startCamp();
   hideSplash();
   syncStatusBar();
   // Not needed for the first screen: started once Today is drawn.

@@ -645,7 +645,7 @@ export function relationRow(r, detail = false) {
   const why = () => r.reasons.map((x) => `<div class="small">${x.pts > 0 ? '▲' : '▼'} ${esc(L(x.en, x.ta))}</div>`).join('');
   // Home: each pair opens in place on tap — today's advice and the reasons behind the label.
   if (detail === 'tap') {
-    return `<details class="rel-row rel-tap"><summary><div style="flex:1"><b>${esc(bi(r.label))}</b><div class="muted small">${esc(displayName(r.a))} ↔ ${esc(displayName(r.b))}</div></div><span class="tag ${tag}">${label}</span></summary>
+    return `<details class="rel-row rel-tap"><summary><div style="flex:1"><b>${esc(bi(r.label))}</b><div class="muted small">${esc(displayName(r.a))} ↔ ${esc(displayName(r.b))}</div></div><span class="tag ${tag}">${label}</span><span class="rel-why-btn" aria-hidden="true">${L('Why?', 'ஏன்?')} <i>›</i></span></summary>
       <div class="rel-why"><p class="small">${esc(bi(r.advice))}</p><div class="small muted">${L('Why:', 'காரணம்:')}</div>${why()}</div></details>`;
   }
   return `<div class="rel-row"><div style="flex:1"><b>${esc(bi(r.label))}</b><div class="muted small">${esc(displayName(r.a))} ↔ ${esc(displayName(r.b))}</div>

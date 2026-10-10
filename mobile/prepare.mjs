@@ -13,7 +13,7 @@
 //     always show the latest deployed version without a store update.
 //
 // Usage: node mobile/prepare.mjs                                    # standalone (offline) app
-//        KJ_APP_URL=https://kaippesi.example.com node mobile/prepare.mjs   # server-backed app
+//        KJ_APP_URL=https://thunai.example node mobile/prepare.mjs   # server-backed app
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -49,21 +49,22 @@ function appUrlFromEnv() {
 function launcherHtml(appUrl) {
   const target = appUrl.href.replace(/\/$/, '');
   return `<!doctype html>
-<html lang="ta">
+<html lang="ta" translate="no" class="notranslate">
 <head>
+<meta name="google" content="notranslate" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0620" />
-  <title>கைப்பேசி ஜோதிடர்</title>
+  <meta name="theme-color" content="#3d0d1f" />
+  <title>துணை · THUNAI</title>
   <style>
-    :root { --bg0: #06031a; --bg1: #140a3a; --bg2: #2a0f4f; --gold: #f5c26b; --gold2: #ffdf9e; --text: #f4ecff; --muted: #b7a9d6; }
+    :root { --bg0: #140a10; --bg1: #2a1220; --bg2: #4a1a2c; --gold: #f0c27a; --gold2: #f7d9a6; --text: #f7f0e8; --muted: #cbbfb4; }
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
     body {
       display: flex; align-items: center; justify-content: center; text-align: center;
       padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
       color: var(--text); font-family: 'Noto Sans Tamil', 'Latha', system-ui, sans-serif;
-      background: radial-gradient(120% 80% at 50% 0%, var(--bg2), transparent 70%), linear-gradient(180deg, var(--bg1), var(--bg0));
+      background: #3d0d1f; /* the launch colour: same as the native splash and window (no colour jump) */
     }
     .wrap { max-width: 360px; width: 100%; }
     .logo { width: 112px; height: 112px; border-radius: 28px; box-shadow: 0 0 40px rgba(245, 194, 107, .35); }
@@ -84,8 +85,8 @@ function launcherHtml(appUrl) {
 <body>
   <main class="wrap">
     <img class="logo" src="icon.png" alt="" />
-    <h1>கைப்பேசி ஜோதிடர்</h1>
-    <p class="en">Kaippesi Jothidar</p>
+    <h1>துணை</h1>
+    <p class="en">THUNAI · Personal Astrology &amp; Spiritual Guidance</p>
     <section id="loading">
       <div class="ring" aria-hidden="true"></div>
       <p>ஏற்றுகிறது…</p>
@@ -137,11 +138,12 @@ function wrapArtifactPage(page) {
   const head = page.slice(0, cut + '</style>'.length);
   const body = page.slice(cut + '</style>'.length);
   return `<!doctype html>
-<html lang="ta">
+<html lang="ta" translate="no" class="notranslate">
 <head>
+<meta name="google" content="notranslate" />
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0b0620" />
+<meta name="theme-color" content="#18131a" />
 ${head}
 </head>
 <body>${body}
@@ -175,16 +177,19 @@ function buildStandalone() {
     fs.mkdirSync(path.join(wwwDir, 'vendor'), { recursive: true });
     fs.copyFileSync(aeSrc, path.join(wwwDir, 'vendor', 'astronomy.js'));
     const sharedDir = path.join(wwwDir, 'shared');
-    for (const f of fs.readdirSync(sharedDir).filter((x) => x.endsWith('.js'))) {
+    for (const f of fs.readdirSync(sharedDir, { recursive: true }).map(String).filter((x) => x.endsWith('.js'))) {
       const file = path.join(sharedDir, f);
       const src = fs.readFileSync(file, 'utf8');
-      if (src.includes(AE_CDN)) fs.writeFileSync(file, src.split(AE_CDN).join('../vendor/astronomy.js'));
+      const rel = path.relative(path.dirname(file), path.join(wwwDir, 'vendor', 'astronomy.js')).split(path.sep).join('/');
+      if (src.includes(AE_CDN)) fs.writeFileSync(file, src.split(AE_CDN).join(rel));
     }
   } else {
     console.warn('⚠ node_modules/astronomy-engine not found (run npm ci) — the app will load it from the CDN and needs internet on first use.');
   }
   const leftovers = fs.readdirSync(wwwDir, { recursive: true })
     .filter((f) => String(f).endsWith('.js'))
+    // vendor/ocr/*: tesseract.js keeps its jsDelivr defaults in the code, but ocr-import.js always passes local paths.
+    .filter((f) => !String(f).split(path.sep).join('/').startsWith('vendor/ocr/'))
     .filter((f) => fs.readFileSync(path.join(wwwDir, String(f)), 'utf8').includes('cdn.jsdelivr.net'));
   if (leftovers.length) console.warn(`⚠ still loading from a CDN: ${leftovers.join(', ')}`);
 
@@ -194,7 +199,12 @@ function buildStandalone() {
   writeConfig(config);
 
   console.log('✔ mobile/www = standalone offline app (dist/artifact); capacitor.config.json has no server.url');
-  console.log('  Google Fonts load when online; offline the phone\'s Tamil system font is used.');
+  console.log('  Noto Sans/Serif Tamil and Inter are bundled, so Tamil text renders the same offline.');
+  const ocrDir = path.join(wwwDir, 'vendor', 'ocr');
+  if (fs.existsSync(ocrDir)) {
+    const mb = fs.readdirSync(ocrDir, { recursive: true }).map((f) => path.join(ocrDir, String(f))).filter((f) => fs.statSync(f).isFile()).reduce((a, f) => a + fs.statSync(f).size, 0) / 1048576;
+    console.log(`  Horoscope import (OCR, Tamil + English, PDF) is bundled in vendor/ocr (${mb.toFixed(1)} MB), loaded only on Import.`);
+  } else console.warn('⚠ vendor/ocr missing in mobile/www — horoscope import will not work offline.');
 }
 
 function buildServer() {

@@ -35,12 +35,15 @@ test('personal guide: ishta theivam, colours, gems, siddhar, playlist', () => {
   assert.ok(typeof c.clash === 'boolean');
 });
 
-test('ayul balam is a strength level, never years', () => {
+// Adapted after the merge: Ayul Balam (a long-life strength level) is retired — Thunai gives no longevity
+// output at all, so the function is a crash-safe stub with no level, score or text.
+test('ayul balam is retired: no level, score or years', () => {
   for (const ch of [bride, groom]) {
     const a = ayulBalam(ch);
-    assert.ok(['strong', 'medium', 'care'].includes(a.level));
-    assert.ok(a.score >= 15 && a.score <= 95);
-    assert.ok(!/year|ஆண்டு வரை|வயது/.test(a.text.en + a.text.ta));
+    assert.equal(a.removed, true);
+    assert.equal(a.level, null);
+    assert.equal(a.score, null);
+    assert.ok(!/year|ஆண்டு வரை|வயது/.test(a.reason.en + a.reason.ta));
   }
   assert.ok(papaPoints(bride).total >= 0);
 });
@@ -48,9 +51,12 @@ test('ayul balam is a strength level, never years', () => {
 test('deep marriage checks feed the complete porutham', () => {
   const wedding = new Date('2026-11-20T06:00:00Z');
   const d = deepMarriageChecks(bride, groom, wedding);
-  assert.ok(d.checks.length >= 9);
+  assert.ok(d.checks.length >= 8);
+  // Longevity is never part of matching (THUNAI brief: no lifespan assessments).
+  assert.ok(!d.checks.some((c) => c.id === 'ayul'));
+  assert.equal(d.ayul, undefined);
   assert.ok(d.score >= 0 && d.score <= 100);
   const r = marriageReport(bride, groom, { weddingDate: wedding });
   assert.ok(r.deep && r.deep.checks.length === d.checks.length);
-  assert.ok(r.total >= 0 && r.total <= 100);
+  assert.equal(r.total, undefined); // no combined match score (owner checklist §6)
 });

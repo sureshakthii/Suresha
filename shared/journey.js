@@ -1,0 +1,496 @@
+// My Spiritual Journey — planning engine (runs on the phone; no server needed).
+//
+// Honesty rules built into the output:
+//  • Traditional associations come from the in-app temple list and the Navagraha table. They are labelled
+//    with their source and review status. Nothing here has been expert-reviewed yet (REVIEW below).
+//  • Opening hours are compiled approximations, labelled UNVERIFIED with a link to the official source.
+//  • Distances, travel times and costs are ESTIMATES from straight-line distance and the assumptions
+//    in COST_ASSUMPTIONS — always shown next to the numbers.
+//  • Accessibility is "not verified" for every temple until a verified source is added.
+//  • Ranking uses only distance, preferences and chart associations. No payment or partner affects it.
+//  • Every practical item carries ONE provenance label from the model below (brief §9c), also used by
+//    shared/temple-planner.js: live / saved / estimated / verified / needs checking.
+import { TEMPLES, distanceKm, countryAt } from './temples.js';
+import { templeInfo, templeRanges } from './temple-info.js';
+import { NAVAGRAHA } from './remedies.js';
+import { PLANETS } from './astro.js';
+import { tamilDay } from './tamilcal.js';
+import { verifiedField, STALE_DAYS } from './temple-verified.js';
+import { planFlights } from './airports.js';
+import { placeTa } from './places.js';
+
+const B = (en, ta) => ({ en, ta });
+
+/** Data review status — update when a reviewer verifies records (keep the date). */
+export const REVIEW = {
+  associations: { status: 'compiled', reviewedOn: null, source: B('In-app temple list and Navagraha sthalam tradition (compiled by the Thunai team)', 'செயலியின் கோவில் பட்டியல், நவகிரகத் தல மரபு (துணை குழு தொகுத்தது)') },
+  hours: { status: 'unverified', verifiedOn: null, source: B('Approximate timings compiled from common listings — confirm with the temple office or hrce.tn.gov.in before travelling', 'பொதுப் பட்டியல்களிலிருந்து தொகுத்த தோராய நேரம் — பயணத்திற்கு முன் கோவில் அலுவலகம் அல்லது hrce.tn.gov.in-ல் உறுதி செய்யவும்'), url: 'https://hrce.tn.gov.in/' },
+  accessibility: { status: 'unverified', source: B('No verified accessibility information yet — please call the temple office', 'சரிபார்க்கப்பட்ட அணுகல் தகவல் இன்னும் இல்லை — கோவில் அலுவலகத்தை அழைக்கவும்') },
+  bookingOperational: false,
+};
+
+// ---------------------------------------------------------------- provenance (brief §9c) — the one model
+/**
+ * Where a practical fact comes from. Every practical item in a journey plan or temple card carries one:
+ *  live      — fetched just now (weather); `checkedAt` ISO time.            "நேரலை / Live (checked HH:MM)"
+ *  saved     — shown from a saved plan; `savedOn` YYYY-MM-DD.               "சேமித்தது / Saved (on date)"
+ *  estimated — computed by the app (crowd, travel time, costs, flight times). "மதிப்பீடு / Estimated"
+ *  verified  — reviewed record in shared/temple-verified.js; `source`, `verifiedOn`. "சரிபார்த்தது / Verified (source, date)"
+ *  check     — unknown, unreviewed or stale; `source` may say where to check. "சரிபார்க்க வேண்டும் / Needs checking"
+ * Traditional associations are NOT practical facts and never carry these labels; they live in a separate "Tradition" block.
+ */
+export const PROVENANCE = Object.freeze({
+  live: B('Live', 'நேரலை'),
+  saved: B('Saved', 'சேமித்தது'),
+  estimated: B('Estimated', 'மதிப்பீடு'),
+  verified: B('Verified', 'சரிபார்த்தது'),
+  check: B('Needs checking', 'சரிபார்க்க வேண்டும்'),
+});
+/** A provenance record. `extra`: checkedAt | savedOn | source ({en,ta}|string) | verifiedOn | url | note | stale. */
+export function prov(kind, extra = {}) {
+  if (!PROVENANCE[kind]) throw new Error(`unknown provenance kind ${kind}`);
+  return { kind, ...extra };
+}
+const txt = (x, lang) => (x == null ? '' : typeof x === 'string' ? x : x[lang] || x.en || '');
+const hhmm = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+/**
+ * Bilingual label for a provenance record. `fmt.time(iso)` and `fmt.date(ymd)` let the screen format in the
+ * person's language and zone (defaults: local HH:MM and YYYY-MM-DD).
+ */
+export function provLabel(p, fmt = {}) {
+  const time = fmt.time || hhmm;
+  const date = fmt.date || ((x) => x);
+  const both = (fn) => ({ en: fn('en'), ta: fn('ta') });
+  switch (p?.kind) {
+    case 'live': return both((l) => (l === 'en' ? `Live (checked ${time(p.checkedAt)})` : `நேரலை (${time(p.checkedAt)}-க்குச் சரிபார்த்தது)`));
+    case 'saved': return both((l) => (l === 'en' ? `Saved (on ${date(p.savedOn)})` : `சேமித்தது (${date(p.savedOn)})`));
+    case 'estimated': return { ...PROVENANCE.estimated };
+    case 'verified': return both((l) => (l === 'en' ? `Verified (${txt(p.source, l)}, last checked ${date(p.verifiedOn)})` : `சரிபார்த்தது (${txt(p.source, l)}, ${date(p.verifiedOn)})`));
+    default: return p?.verifiedOn
+      ? both((l) => (l === 'en' ? `Needs checking (last verified ${date(p.verifiedOn)}, over ${STALE_DAYS} days ago)` : `சரிபார்க்க வேண்டும் (கடைசியாக ${date(p.verifiedOn)}, ${STALE_DAYS} நாளுக்கு மேல்)`))
+      : { ...PROVENANCE.check };
+  }
+}
+/** A plan read back from storage: estimates become "Saved (on date)"; verified facts keep their own date. */
+export function asSaved(p, savedOn) {
+  if (!p || !savedOn) return p;
+  return p.kind === 'estimated' || p.kind === 'live' ? prov('saved', { savedOn, basis: p.kind }) : p;
+}
+const HRCE_SRC = B('temple office or hrce.tn.gov.in', 'கோவில் அலுவலகம் அல்லது hrce.tn.gov.in');
+/** A reviewed field (temple-verified.js) as a provenance record, or null when nothing is on file. */
+function reviewed(templeId, field, now) {
+  const v = verifiedField(templeId, field, now);
+  if (!v) return null;
+  return {
+    value: { en: v.en, ta: v.ta || v.en },
+    prov: v.stale ? prov('check', { source: v.source, verifiedOn: v.verifiedOn, stale: true }) : prov('verified', { source: v.source, verifiedOn: v.verifiedOn }),
+  };
+}
+/**
+ * Practical temple facts with provenance: hours, phone, accessibility. Compiled timings (temple-info.js) are
+ * approximate and have no review date, so they are shown but labelled "Needs checking".
+ */
+export function templeFacts(templeId, now = new Date()) {
+  const info = templeInfo(templeId);
+  return {
+    hours: reviewed(templeId, 'hours', now) || { value: info?.timings || null, approx: !!info?.timings, prov: prov('check', { source: HRCE_SRC, url: REVIEW_URL }) },
+    phone: reviewed(templeId, 'phone', now) || { value: null, prov: prov('check', { source: B('Google Maps listing or temple office', 'Google Maps பட்டியல் அல்லது கோவில் அலுவலகம்') }) },
+    accessibility: reviewed(templeId, 'accessibility', now) || { value: null, prov: prov('check', { source: B('please call the temple office', 'கோவில் அலுவலகத்தை அழைக்கவும்') }) },
+  };
+}
+const REVIEW_URL = 'https://hrce.tn.gov.in/';
+
+/** Last day of a trip that starts on `startIso` and lasts `days` days (inclusive). */
+export function tripEndDate(startIso, days) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startIso || '') || !(Number(days) >= 1)) return null;
+  const d = new Date(`${startIso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + Math.round(Number(days)) - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+// ---------------------------------------------------------------- accessibility needs (beyond mobility)
+/** Needs a traveller may tick. Each one slows the pace and adds a planning note. */
+export const ACCESS_NEEDS = Object.freeze({
+  wheelchair: { ...B('Wheelchair user', 'சக்கர நாற்காலி'), extraVisitMin: 30, note: B('Ask the temple office about ramps, a step-free entrance and wheelchair loan before travelling; carry a foldable chair.', 'சாய்தளம், படியில்லா நுழைவு, சக்கர நாற்காலி கிடைப்பது பற்றிப் புறப்படும் முன் கோவில் அலுவலகத்திடம் கேளுங்கள்; மடக்கும் நாற்காலி எடுத்துச் செல்லுங்கள்.') },
+  limited_walking: { ...B('Limited walking', 'குறைந்த நடை'), extraVisitMin: 30, note: B('Large temples have long corridors and stone floors — plan a drop-off at the gate and use the shortest darshan queue.', 'பெரிய கோவில்களில் நீண்ட பிராகாரம், கல் தரை — வாசலில் இறக்கிவிட்டு, குறுகிய தரிசன வரிசையைத் தேர்வு செய்யுங்கள்.') },
+  elderly: { ...B('Elderly companion', 'முதியவர் உடன்'), extraVisitMin: 20, note: B('Avoid midday heat; keep water, medicines and a light snack; a senior-citizen queue may exist — ask at the counter.', 'மதிய வெயிலைத் தவிருங்கள்; தண்ணீர், மருந்து, லேசான சிற்றுண்டி வைத்திருங்கள்; முதியோர் வரிசை உண்டா எனக் கவுண்டரில் கேளுங்கள்.') },
+  toilet: { ...B('Toilet access', 'கழிப்பறை வசதி'), extraVisitMin: 0, note: B('Toilets near temples are not verified — plan stops at hotels or fuel stations on the way.', 'கோவில் அருகே கழிப்பறை வசதி சரிபார்க்கப்படவில்லை — வழியில் உணவகம் / எரிபொருள் நிலையங்களில் நிறுத்தத் திட்டமிடுங்கள்.') },
+  rest: { ...B('Rest breaks', 'ஓய்வு இடைவேளை'), extraVisitMin: 0, restMin: 30, note: B('A 30-minute rest is added after every temple.', 'ஒவ்வொரு கோவிலுக்குப் பின் 30 நிமிட ஓய்வு சேர்க்கப்பட்டது.') },
+});
+const SLOW_NEEDS = ['wheelchair', 'limited_walking', 'elderly', 'rest'];
+/** Normalise needs from the form (and from older saved plans that only had `mobility`). */
+export function normaliseNeeds(needs, mobility) {
+  const out = new Set((needs || []).filter((n) => ACCESS_NEEDS[n]));
+  if (mobility === 'wheelchair') out.add('wheelchair');
+  if (mobility === 'limited') out.add('limited_walking');
+  return [...out];
+}
+
+/** Assumptions behind every cost estimate (INR, 2026). Shown to the user with the estimate. */
+export const COST_ASSUMPTIONS = {
+  roadFactor: 1.3,                                   // road km ≈ straight-line × 1.3
+  speedKmh: { own_car: 45, taxi: 45, bus: 35, train: 50 },
+  perKm: { own_car: 8, taxi: 14 },                  // per vehicle (fuel / taxi tariff incl. driver)
+  perKmPerPerson: { bus: 1.3, train: 1.0 },         // ordinary bus / sleeper-class train
+  lastMileTaxiPerDay: { bus: 400, train: 400 },     // autos/taxis between station and temples
+  roomPerNight: { economy: 1200, standard: 2500, comfort: 4500 }, // one room ≈ 2–3 people
+  foodPerPersonDay: { economy: 350, standard: 650, comfort: 1100 },
+  offeringsPerPersonTemple: 50,                     // archanai ticket / small offering; free darshan always possible
+};
+export const PACE_HOURS = { relaxed: 3, moderate: 5, packed: 7 }; // max driving hours per day
+export const TEMPLES_PER_DAY = { relaxed: 2, moderate: 3, packed: 4 };
+
+const roadKm = (a, b) => distanceKm(a.lat, a.lon, b.lat, b.lon) * COST_ASSUMPTIONS.roadFactor;
+
+/** Parse a free-text / voice request for days, budget, travellers and a start city name (to CONFIRM, never to trust). */
+export function parseTripText(text) {
+  const t = String(text || '').toLowerCase();
+  const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, ஒரு: 1, ஒன்று: 1, இரண்டு: 2, மூன்று: 3, நான்கு: 4, ஐந்து: 5, ஆறு: 6, ஏழு: 7 };
+  const num = (s) => (/^\d+$/.test(s) ? Number(s) : WORDS[s]);
+  const out = {};
+  const d = /(\d+|one|two|three|four|five|six|seven|eight|ஒரு|ஒன்று|இரண்டு|மூன்று|நான்கு|ஐந்து|ஆறு|ஏழு)\s*(?:-|\s)?(?:days?|நாள்|நாட்கள்)/.exec(t);
+  if (d) out.days = num(d[1]);
+  const b = /(?:₹|rs\.?|inr|budget)\s*([\d,]+)\s*(k|thousand|ஆயிரம்)?|([\d,]+)\s*(k|thousand|ஆயிரம்|rupees|ரூபாய்)/.exec(t);
+  if (b) { const n = Number((b[1] || b[3]).replace(/,/g, '')); const k = b[2] || b[4]; out.budget = /k|thousand|ஆயிரம்/.test(k || '') ? n * 1000 : n; }
+  const p = /(\d+|two|three|four|five|six)\s*(?:people|persons|of us|members|பேர்)/.exec(t);
+  if (p) out.travellers = num(p[1]);
+  if (/next month|அடுத்த மாத/.test(t)) out.when = 'next_month';
+  if (/next week|அடுத்த வார/.test(t)) out.when = 'next_week';
+  const from = /from\s+([a-z\s]{3,30}?)(?:\s+(?:to|for|with|on|next|in)\b|[,.]|$)/.exec(t);
+  if (from) out.fromText = from[1].trim();
+  return out;
+}
+
+/** Relevance of a temple for this person: preference tags and chart associations. Returns { score, reasons[] }. */
+function relevance(t, { prefs = [], planets = [] }) {
+  let score = 0;
+  const reasons = [];
+  if (t.planet && planets.includes(t.planet)) {
+    score += 3;
+    reasons.push({ kind: 'chart', planet: t.planet, ...B(`Traditionally associated with ${t.planet}, which is relevant in your chart (${planets.indexOf(t.planet) === 0 ? 'current dasa lord' : 'needs care'})`, `உங்கள் ஜாதகத்தில் முக்கியமான ${NAVAGRAHA[t.planet] ? (PLANETS[t.planet]?.ta || t.planet) : ''} கிரகத்துடன் பாரம்பரியமாக இணைந்த தலம் (${planets.indexOf(t.planet) === 0 ? 'நடப்பு தசா நாதன்' : 'கவனம் தேவை'})`) });
+  }
+  const tagHit = prefs.filter((p) => t.tags.includes(p));
+  if (tagHit.length) { score += 2; reasons.push({ kind: 'pref', ...B(`Matches your preference (${tagHit.join(', ')})`, `உங்கள் விருப்பத்துடன் பொருந்துகிறது (${tagHit.join(', ')})`) }); }
+  if (!prefs.length && !t.planet) score += 0.5;
+  return { score, reasons };
+}
+
+function hoursOf(t) {
+  const v = verifiedField(t.id, 'hours');
+  if (v) return { text: { en: v.en, ta: v.ta || v.en }, status: v.stale ? 'stale' : 'verified', verifiedOn: v.verifiedOn, source: v.source };
+  const info = templeInfo(t.id);
+  return info ? { text: info.timings, status: 'unverified' } : { text: B('Not available — please check with the temple', 'தகவல் இல்லை — கோவிலில் உறுதி செய்யவும்'), status: 'missing' };
+}
+
+/** Cost estimate for a plan. Returns { total, lines:[{en,ta,amount}], perPerson }. */
+export function estimateCost({ km, days, nights, travellers, transport, tier, templeCount }) {
+  const A = COST_ASSUMPTIONS;
+  const lines = [];
+  const rooms = Math.max(1, Math.ceil(travellers / 3));
+  if (transport === 'own_car' || transport === 'taxi') {
+    const vehicles = Math.max(1, Math.ceil(travellers / (transport === 'taxi' ? 4 : 5)));
+    lines.push({ ...B(`${transport === 'taxi' ? 'Taxi' : 'Fuel (own car)'}: ~${Math.round(km)} km × ₹${A.perKm[transport]}/km${vehicles > 1 ? ` × ${vehicles} vehicles` : ''}`, `${transport === 'taxi' ? 'டாக்ஸி' : 'எரிபொருள் (சொந்த கார்)'}: ~${Math.round(km)} கி.மீ × ₹${A.perKm[transport]}/கி.மீ${vehicles > 1 ? ` × ${vehicles} வாகனம்` : ''}`), amount: km * A.perKm[transport] * vehicles });
+  } else {
+    lines.push({ ...B(`${transport === 'bus' ? 'Bus' : 'Train'} fares: ~${Math.round(km)} km × ₹${A.perKmPerPerson[transport]}/km × ${travellers}`, `${transport === 'bus' ? 'பேருந்து' : 'ரயில்'} கட்டணம்: ~${Math.round(km)} கி.மீ × ₹${A.perKmPerPerson[transport]}/கி.மீ × ${travellers}`), amount: km * A.perKmPerPerson[transport] * travellers });
+    lines.push({ ...B(`Local autos/taxis: ₹${A.lastMileTaxiPerDay[transport]} × ${days} day(s)`, `உள்ளூர் ஆட்டோ/டாக்ஸி: ₹${A.lastMileTaxiPerDay[transport]} × ${days} நாள்`), amount: A.lastMileTaxiPerDay[transport] * days });
+  }
+  if (nights > 0) lines.push({ ...B(`Stay: ${rooms} room(s) × ${nights} night(s) × ₹${A.roomPerNight[tier]}`, `தங்குமிடம்: ${rooms} அறை × ${nights} இரவு × ₹${A.roomPerNight[tier]}`), amount: rooms * nights * A.roomPerNight[tier] });
+  lines.push({ ...B(`Food: ${travellers} × ${days} day(s) × ₹${A.foodPerPersonDay[tier]}`, `உணவு: ${travellers} × ${days} நாள் × ₹${A.foodPerPersonDay[tier]}`), amount: travellers * days * A.foodPerPersonDay[tier] });
+  lines.push({ ...B(`Small offerings (optional): ${travellers} × ${templeCount} temple(s) × ₹${A.offeringsPerPersonTemple}`, `சிறு காணிக்கை (விருப்பம்): ${travellers} × ${templeCount} கோவில் × ₹${A.offeringsPerPersonTemple}`), amount: travellers * templeCount * A.offeringsPerPersonTemple });
+  const total = Math.round(lines.reduce((a, l) => a + l.amount, 0) / 100) * 100;
+  lines.forEach((l) => { l.amount = Math.round(l.amount / 10) * 10; });
+  return { total, perPerson: Math.round(total / travellers / 10) * 10, lines };
+}
+
+/** Greedy nearest-neighbour route through chosen temples, split into days by pace. */
+const hm = (min) => { const m = Math.round(min); return `${Math.floor(m / 60) % 24}:${String(m % 60).padStart(2, '0')}`; };
+/**
+ * Clock times for a day's stops against each temple's opening hours (approximate): start 6:00, drive, wait if the
+ * temple is closed (afternoon break), allow darshan time, and warn when a stop would reach after closing.
+ */
+function scheduleDay(stops, pace, needs = []) {
+  const extra = Math.max(0, ...needs.map((n) => ACCESS_NEEDS[n]?.extraVisitMin || 0));
+  const rest = Math.max(0, ...needs.map((n) => ACCESS_NEEDS[n]?.restMin || 0));
+  const visit = (pace === 'relaxed' ? 90 : pace === 'packed' ? 45 : 60) + extra;
+  let clock = 6 * 60;
+  for (const s of stops) {
+    let arrive = clock + s.hours * 60;
+    const ranges = templeRanges(s.temple.id);
+    let open = ranges.find(([a, b]) => arrive < b - 20);
+    let wait = 0;
+    if (open && arrive < open[0]) { wait = open[0] - arrive; arrive = open[0]; }
+    const closedToday = !open;
+    const leave = arrive + visit;
+    s.arrive = hm(arrive); s.leave = hm(leave); s.wait = Math.round(wait);
+    s.opens = open ? hm(open[0]) : null; s.closes = open ? hm(open[1]) : hm(ranges[ranges.length - 1][1]);
+    s.tight = !!open && leave > open[1];
+    s.closedToday = closedToday;
+    s.reachBy = open ? hm(open[1] - visit) : null;
+    s.restMin = rest || 0;
+    s.prov = prov('estimated');
+    clock = closedToday ? arrive : leave + rest;
+  }
+}
+
+function buildDays(start, temples, { days, pace, transport, needs = [] }) {
+  const maxH = PACE_HOURS[pace] || 5;
+  const perDay = TEMPLES_PER_DAY[pace] || 3;
+  const speed = COST_ASSUMPTIONS.speedKmh[transport] || 45;
+  const left = [...temples];
+  const out = [];
+  let here = start, totalKm = 0;
+  for (let d = 0; d < days && left.length; d++) {
+    const stops = [];
+    let hours = 0;
+    while (left.length && stops.length < perDay) {
+      left.sort((a, b) => roadKm(here, a) - roadKm(here, b));
+      const next = left[0];
+      const km = roadKm(here, next);
+      const h = km / speed;
+      if (stops.length && hours + h > maxH) break;
+      left.shift();
+      stops.push({ temple: next, km, hours: h });
+      hours += h; totalKm += km; here = next;
+    }
+    scheduleDay(stops, pace, needs);
+    out.push({ day: d + 1, stops, driveHours: hours, prov: prov('estimated') });
+  }
+  const back = roadKm(here, start);
+  totalKm += back;
+  if (out.length) out[out.length - 1].returnKm = back;
+  if (out.length) out[out.length - 1].returnHours = back / speed;
+  return { days: out, totalKm };
+}
+
+/**
+ * Plan three alternatives.
+ * @param {object} p
+ *   start {lat, lon, name}, days (1–10), travellers (≥1), transport ('own_car'|'taxi'|'bus'|'train'),
+ *   tier ('economy'|'standard'|'comfort'), budget (₹, optional), pace, prefs (tags), planets (chart planets, most relevant first),
+ *   mobility ('none'|'limited'|'wheelchair')
+ */
+export function planJourney(p) {
+  const days = Math.max(1, Math.min(14, Number(p.days) || 2));
+  const travellers = Math.max(1, Number(p.travellers) || 1);
+  // ✈️ Flight is for the long legs; between temples the plan uses a taxi (or the chosen bus / train).
+  let transport = p.flightFrom && (p.transport === 'flight' || p.transport === 'own_car') ? 'taxi' : p.transport || 'bus';
+  const tier = p.tier || 'economy';
+  const needs = normaliseNeeds(p.needs, p.mobility);
+  const pace = needs.some((n) => SLOW_NEEDS.includes(n)) ? 'relaxed' : p.pace || 'moderate';
+  const accessNotes = needs.map((n) => ({ need: n, ...ACCESS_NEEDS[n].note }));
+  const ctx = { prefs: p.prefs || [], planets: p.planets || [] };
+  // Road trips stay in the start's country (Colombo → Sri Lankan temples, London → UK temples). If that country has
+  // no temples in the list, the plan uses the nearest ones and says a flight is needed first (not costed).
+  const startCc = p.start.cc || countryAt(p.start.lat, p.start.lon);
+  const all = TEMPLES.map((t) => {
+    const r = relevance(t, ctx);
+    return { t, km: roadKm(p.start, t), ...r };
+  });
+  const domestic = startCc ? all.filter((x) => x.t.cc === startCc) : all;
+  // From abroad (e.g. Dubai → Tamil Nadu temples): an international flight, road legs between the temples in that
+  // country, and the return flight. Also a domestic flight when the person chose ✈️ and the temples are far away.
+  if (!p.flightFrom) {
+    const destCc = destinationCountry(p, startCc, domestic);
+    if (destCc && (destCc !== startCc || transport === 'flight')) {
+      const fp = flightPlan({ ...p, days, travellers, transport, tier, pace }, startCc, destCc, ctx);
+      if (fp) return fp;
+    }
+  }
+  if (transport === 'flight') transport = 'taxi'; // temples are within road distance: no flight needed
+  if (!domestic.length && !p.flightFrom) {
+    // e.g. Oslo: plan the road trip from the town of the nearest listed temple, reached by air first (not costed).
+    const near = [...all].sort((a, b) => a.km - b.km)[0].t;
+    const inner = planJourney({ ...p, start: { lat: near.lat, lon: near.lon, name: near.town, cc: near.cc }, flightFrom: p.start });
+    return { ...inner, inputs: { ...inner.inputs, start: p.start }, flightFirst: true, flightTo: { town: near.town, cc: near.cc, km: Math.round(distanceKm(p.start.lat, p.start.lon, near.lat, near.lon)) } };
+  }
+  const focusIds = new Set(p.focus || []);
+  const scored = domestic.length ? [...domestic, ...all.filter((x) => focusIds.has(x.t.id) && !domestic.includes(x))] : all;
+  const flightFirst = false;
+  const make = (key, title, picked, d, extra = {}) => {
+    const route = buildDays(p.start, picked.map((x) => x.t), { days: d, pace, transport, needs });
+    const nights = Math.max(0, route.days.length - 1);
+    const cost = estimateCost({ km: route.totalKm, days: route.days.length || 1, nights, travellers, transport, tier, templeCount: picked.length });
+    const why = [];
+    picked.forEach((x) => x.reasons.forEach((r) => why.push({ temple: x.t.name, ...r })));
+    return {
+      key, title, ...extra,
+      temples: picked.map((x) => ({
+        id: x.t.id, name: x.t.name, deity: x.t.deity, town: x.t.town, planet: x.t.planet, tags: x.t.tags, note: x.t.note,
+        km: x.km, hours: hoursOf(x.t), associationReview: verifiedField(x.t.id, 'association'), accessibilityInfo: verifiedField(x.t.id, 'accessibility'),
+        association: verifiedField(x.t.id, 'association') ? { en: verifiedField(x.t.id, 'association').en, ta: verifiedField(x.t.id, 'association').ta || verifiedField(x.t.id, 'association').en } : x.t.planet ? B(`Navagraha sthalam for ${x.t.planet}; deity ${NAVAGRAHA[x.t.planet].deity.en}`, `${x.t.planet} நவகிரகத் தலம்; தெய்வம் ${NAVAGRAHA[x.t.planet].deity.ta}`) : x.t.deity,
+        accessibility: verifiedField(x.t.id, 'accessibility') ? (verifiedField(x.t.id, 'accessibility').stale ? 'stale' : 'verified') : 'unverified', lat: x.t.lat, lon: x.t.lon,
+        facts: templeFacts(x.t.id),
+      })),
+      itinerary: route.days, totalKm: Math.round(route.totalKm), cost: { ...cost, prov: prov('estimated') },
+      overBudget: p.budget ? cost.total > p.budget : false,
+      why,
+    };
+  };
+  const rank = (arr) => arr.sort((a, b) => b.score - a.score || a.km - b.km);
+  // Temples already recommended from the person's chart come first (the person only picks date and travellers).
+  const focus = (p.focus || []).filter((id) => TEMPLES.some((t) => t.id === id));
+  if (focus.length) {
+    // `picked`: temples the person chose with the temple search (not from the chart) — worded as their choice.
+    const picked = new Set(p.picked || []);
+    for (const x of scored) {
+      if (!focus.includes(x.t.id)) continue;
+      x.score += 100;
+      x.reasons = [{ kind: 'focus', ...(picked.has(x.t.id) ? B('You chose this temple', 'நீங்கள் தேர்ந்தெடுத்த கோவில்') : B('Recommended from your chart (Dasa / planet that needs support)', 'உங்கள் ஜாதகப்படி பரிந்துரை (தசை / ஆதரவு தேவைப்படும் கிரகம்)')) }, ...x.reasons];
+    }
+    const focusPick = rank(scored.filter((x) => focus.includes(x.t.id))).slice(0, days * TEMPLES_PER_DAY[pace]);
+    const allPicked = focus.every((id) => picked.has(id));
+    const A0 = make('A', allPicked ? B('Your chosen temples', 'நீங்கள் தேர்ந்தெடுத்த கோவில்கள்') : B('Your recommended temples', 'உங்களுக்குப் பரிந்துரைக்கப்பட்ட கோவில்கள்'), focusPick, days);
+    const local0 = [...scored].sort((a, b) => a.km - b.km);
+    const localPick0 = local0.filter((x) => x.km <= 30).slice(0, 2);
+    const C0 = make('C', B('Minimal travel or worship close to home', 'குறைந்த பயணம் அல்லது வீட்டருகே வழிபாடு'), localPick0.length ? localPick0 : local0.slice(0, 1), 1, { homeWorship: true });
+    return { options: [A0, C0], inputs: { ...p, days, travellers, transport, tier, pace, needs }, accessNotes, review: REVIEW, assumptions: COST_ASSUMPTIONS, focus, startCc, flightFirst };
+  }
+  // A. Nearby and economical: within ~150 km road, at most 2 days, cheapest transport.
+  const nearPool = rank(scored.filter((x) => x.km <= 150));
+  const nearPick = (nearPool.length ? nearPool : rank([...scored].sort((a, b) => a.km - b.km).slice(0, 4))).slice(0, Math.min(4, TEMPLES_PER_DAY[pace] * Math.min(days, 2)));
+  const A = make('A', B('Nearby and economical', 'அருகில், சிக்கனமாக'), nearPick, nearPick.length <= TEMPLES_PER_DAY[pace] ? 1 : Math.min(days, 2));
+  // B. A journey matching the leave: wider radius by days and pace.
+  const radius = Math.min(700, days * (PACE_HOURS[pace] * COST_ASSUMPTIONS.speedKmh[transport]) * 0.6);
+  const widePool = rank(scored.filter((x) => x.km <= radius));
+  const want = Math.min(widePool.length, days * TEMPLES_PER_DAY[pace]);
+  // Prefer the relevant ones, then fill with temples near them (so the route stays compact).
+  const core = widePool.filter((x) => x.score > 0).slice(0, Math.max(1, Math.ceil(want / 2)));
+  const fill = widePool.filter((x) => !core.includes(x)).sort((a, b) => Math.min(...core.map((c) => roadKm(c.t, a.t))) - Math.min(...core.map((c) => roadKm(c.t, b.t))));
+  const Bplan = make('B', B(`A ${days}-day journey matching your leave`, `உங்கள் விடுப்புக்கு ஏற்ற ${days} நாள் பயணம்`), [...core, ...fill].slice(0, want || 1), days);
+  // C. Minimal travel: the nearest temple(s) within 30 km (or the single nearest), plus worship at home.
+  const local = [...scored].sort((a, b) => a.km - b.km);
+  const localPick = local.filter((x) => x.km <= 30).slice(0, 2);
+  const C = make('C', B('Minimal travel or worship close to home', 'குறைந்த பயணம் அல்லது வீட்டருகே வழிபாடு'), localPick.length ? localPick : local.slice(0, 1), 1, { homeWorship: true });
+  return { options: [A, Bplan, C], inputs: { ...p, days, travellers, transport, tier, pace, needs }, accessNotes, review: REVIEW, assumptions: COST_ASSUMPTIONS, startCc, flightFirst };
+}
+
+// ---------------------------------------------------------------- journeys from abroad (flight + road)
+// Default region for a pilgrimage from abroad, when no temple is chosen: the Madurai / Tiruchi belt of Tamil Nadu
+// (a few hours by road from IXM / TRZ), else the first listed temple of that country.
+const DEST_HUB = { IN: { lat: 10.2, lon: 78.4 }, LK: { lat: 7.5, lon: 80.2 }, MY: { lat: 3.1, lon: 101.7 }, SG: { lat: 1.33, lon: 103.85 } };
+
+/** Which country's temples the trip goes to: the chosen destination, else the chosen temples, else at home. */
+export function destinationCountry(p, startCc, domestic = null) {
+  if (p.destCc) return String(p.destCc).toUpperCase();
+  const focus = (p.focus || []).map((id) => TEMPLES.find((t) => t.id === id)).filter(Boolean);
+  const away = focus.filter((t) => t.cc !== startCc);
+  if (away.length) {
+    const n = {}; away.forEach((t) => { n[t.cc] = (n[t.cc] || 0) + 1; });
+    return Object.entries(n).sort((a, b) => b[1] - a[1])[0][0];
+  }
+  if (focus.length) return startCc;
+  const dom = domestic || TEMPLES.filter((t) => t.cc === startCc);
+  if (!dom.length && p.start) return [...TEMPLES].sort((a, b) => distanceKm(p.start.lat, p.start.lon, a.lat, a.lon) - distanceKm(p.start.lat, p.start.lon, b.lat, b.lon))[0].cc;
+  return startCc;
+}
+
+/** Option C for a family abroad: a temple near home (no flight), else worship at home. */
+function homeOption(p, startCc) {
+  const near = TEMPLES.filter((t) => t.cc === startCc && distanceKm(p.start.lat, p.start.lon, t.lat, t.lon) <= 60);
+  const title = B('No flight — a temple near your home, or worship at home', 'விமானம் வேண்டாம் — வீட்டருகே கோவில் அல்லது வீட்டிலேயே வழிபாடு');
+  if (near.length) {
+    const local = planJourney({ ...p, transport: p.transport === 'flight' || p.transport === 'own_car' ? 'taxi' : p.transport, days: 1, destCc: startCc, focus: [], picked: [], flightFrom: p.start });
+    const c = local.options.find((o) => o.key === 'C');
+    if (c) return { ...c, title, homeWorship: true, local: true };
+  }
+  return { key: 'C', title, temples: [], itinerary: [], totalKm: 0, cost: { total: 0, perPerson: 0, lines: [], prov: prov('estimated') }, overBudget: false, why: [], homeWorship: true, local: true };
+}
+
+/**
+ * Journey from abroad: ✈️ start airport → nearest suitable airport to the temples (MAA / IXM / TRZ / CJB / COK / TRV /
+ * BLR …), road legs between the temples (darshan timings in temple-local time), and the flight home. The days
+ * the person gives INCLUDE the travel days. Flight time and fare are typical ranges only ("≈", check the airline);
+ * nothing is booked and no exact fare is invented.
+ */
+function flightPlan(p, startCc, destCc, ctx) {
+  const destTemples = TEMPLES.filter((t) => t.cc === destCc);
+  if (!destTemples.length) return null;
+  const intl = startCc !== destCc;
+  const focus = (p.focus || []).map((id) => TEMPLES.find((t) => t.id === id)).filter((t) => t && t.cc === destCc);
+  let anchor;
+  if (focus.length) anchor = { lat: focus.reduce((a, t) => a + t.lat, 0) / focus.length, lon: focus.reduce((a, t) => a + t.lon, 0) / focus.length };
+  else {
+    const hub = DEST_HUB[destCc] || destTemples[0];
+    const best = destTemples.map((t) => ({ t, score: relevance(t, ctx).score, d: distanceKm(hub.lat, hub.lon, t.lat, t.lon) }))
+      .sort((a, b) => b.score - a.score || a.d - b.d)[0].t;
+    anchor = { lat: best.lat, lon: best.lon };
+  }
+  const fl = planFlights(p.start, anchor, { startCc, destCc });
+  if (!fl) return null;
+  const { airport: arr, out } = fl;
+  const outboundDays = 1 + Math.max(0, out.dayOffset);
+  const templeDays = Math.max(1, p.days - outboundDays - 1);
+  const totalDays = outboundDays + templeDays + 1;
+  const inner = planJourney({ ...p, start: { lat: arr.lat, lon: arr.lon, name: `${arr.city} (${arr.code})`, cc: destCc, airport: arr.code }, days: templeDays, flightFrom: p.start, destCc });
+  const fare = fl.farePerPerson;
+  const low = fare.low * p.travellers, high = fare.high * p.travellers;
+  const arrTa = placeTa(arr.city) || arr.city;
+  const options = inner.options.filter((o) => !o.homeWorship).map((o) => ({
+    ...o,
+    title: o.key === 'A' && !(inner.focus || []).length ? B(`Short yatra around ${arr.city}`, `${arrTa} அருகே குறுகிய யாத்திரை`) : o.key === 'B' ? B(`A ${totalDays}-day journey with flights`, `விமானத்துடன் ${totalDays} நாள் பயணம்`) : o.title,
+    flight: true,
+    flightCost: { low, high, perPersonLow: fare.low, perPersonHigh: fare.high, prov: prov('estimated') },
+    totalRange: { low: o.cost.total + low, high: o.cost.total + high },
+    overBudget: p.budget ? o.cost.total + low > p.budget : false,
+  }));
+  const C = homeOption(p, startCc);
+  return {
+    options: intl ? [...options, C] : options,
+    inputs: { ...inner.inputs, start: p.start, days: totalDays, requestedDays: p.days, transport: p.transport, roadTransport: inner.inputs.transport },
+    accessNotes: inner.accessNotes, review: REVIEW, assumptions: COST_ASSUMPTIONS, focus: inner.focus || [], startCc, destCc,
+    flightFirst: true, flightTo: { town: arr.city, cc: destCc, km: out.km },
+    flight: {
+      prov: prov('estimated'), intl, out, back: fl.back, airport: arr, origin: fl.origin, alternatives: fl.alternatives,
+      diffHours: out.diffHours, fromZone: fl.fromZone, toZone: fl.toZone, outboundDays, templeDays, totalDays, addedDays: Math.max(0, totalDays - p.days),
+      fare: { perPersonLow: fare.low, perPersonHigh: fare.high, low, high, returnTrip: true },
+    },
+  };
+}
+
+// National / state public holidays with fixed dates (month-day). Festival holidays come from the Tamil calendar.
+const FIXED_HOLIDAYS = { '01-01': T2('New Year’s Day', 'ஆங்கிலப் புத்தாண்டு'), '01-26': T2('Republic Day', 'குடியரசு தினம்'), '05-01': T2('May Day', 'மே தினம்'),
+  '08-15': T2('Independence Day', 'சுதந்திர தினம்'), '10-02': T2('Gandhi Jayanthi', 'காந்தி ஜெயந்தி'), '12-25': T2('Christmas', 'கிறிஸ்துமஸ்') };
+function T2(en, ta) { return { en, ta }; }
+const SHIVA_DAYS = /Pradosham|Sivarathri|Arudra|Pournami/; const MURUGA_DAYS = /Sashti|Karthigai|Poosam|Visakam|Soorasamharam/;
+const PERUMAL_DAYS = /Ekadasi|Thiruvonam|Vaikunta/; const AMMAN_DAYS = /Pooram|Navarathri|Pournami|Aadi/;
+
+/**
+ * Day facts for one temple visit: festivals / vrathams that day (Tamil calendar), public holiday, weekend,
+ * school-holiday season, and an expected crowd level with the reasons. Weather is added by the screen.
+ */
+export function dayInfo(dateIso, temple) {
+  const d = new Date(`${dateIso}T12:00:00+05:30`);
+  let festivals = [];
+  try { festivals = tamilDay(d, temple.lat, temple.lon, 5.5).festivals || []; } catch { /* calendar unavailable */ }
+  const md = dateIso.slice(5);
+  const holiday = FIXED_HOLIDAYS[md] || null;
+  const wd = d.getUTCDay();
+  const weekend = wd === 0 || wd === 6;
+  const month = Number(dateIso.slice(5, 7));
+  const schoolHols = month === 5 || (month === 12 && Number(dateIso.slice(8)) >= 22) || (month === 4 && Number(dateIso.slice(8)) >= 25);
+  const tags = temple.tags || [];
+  let score = 0; const why = [];
+  if (weekend) { score += 1; why.push(wd === 6 ? T2('Saturday', 'சனிக்கிழமை') : T2('Sunday', 'ஞாயிற்றுக்கிழமை')); }
+  if (wd === 6 && temple.planet === 'Saturn') { score += 2; why.push(T2('Saturday at a Sani sthalam — very busy', 'சனி தலத்தில் சனிக்கிழமை — மிகக் கூட்டம்')); }
+  if (holiday) { score += 1; why.push(holiday); }
+  if (schoolHols) { score += 1; why.push(T2('School holiday season', 'பள்ளி விடுமுறைக் காலம்')); }
+  for (const f of festivals) {
+    const shivaLike = tags.includes('shiva') || tags.includes('navagraha') || !!temple.planet;
+    const hit = (shivaLike && SHIVA_DAYS.test(f.en)) || (tags.includes('murugan') && MURUGA_DAYS.test(f.en))
+      || (tags.includes('perumal') && PERUMAL_DAYS.test(f.en)) || (tags.includes('amman') && AMMAN_DAYS.test(f.en)) || f.kind === 'festival';
+    if (hit) { score += 2; why.push(T2(`${f.en} — special at this temple`, `${f.ta} — இந்தக் கோவிலில் சிறப்பு`)); }
+  }
+  const crowd = score >= 3 ? 'high' : score >= 1 ? 'medium' : 'low';
+  return { date: dateIso, festivals, holiday, weekend, crowd, why, prov: prov('estimated') };
+}
+
+/** Optional worship suggestions — free and simple first. */
+export function worshipOptions(planet) {
+  const n = planet && NAVAGRAHA[planet];
+  return [
+    B('Free: darshan, a quiet prayer and walking around the temple (pradakshinam).', 'இலவசம்: தரிசனம், அமைதியான பிரார்த்தனை, பிரதட்சணம்.'),
+    B('Simple: light a ghee or sesame-oil lamp; offer flowers.', 'எளியது: நெய் / நல்லெண்ணெய் தீபம்; மலர் சமர்ப்பணம்.'),
+    n ? B(`For ${planet}: ${n.free.en}`, `${PLANETS[planet]?.ta || planet} கிரகத்திற்கு: ${n.free.ta}`) : null,
+    B('Optional paid archanai or abhishekam — book only at the temple counter or the official HR&CE site.', 'விருப்பக் கட்டண அர்ச்சனை / அபிஷேகம் — கோவில் கவுண்டரில் அல்லது அதிகாரப்பூர்வ HR&CE தளத்தில் மட்டும்.'),
+  ].filter(Boolean);
+}

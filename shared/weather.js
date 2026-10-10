@@ -126,11 +126,12 @@ export function travelAdvice(current, today) {
 
 
 /** Fetch and map the forecast directly (used by the phone app when there is no server). */
-export async function fetchForecast(lat, lon, fetchFn = fetch) {
-  const r = await fetchFn(forecastUrl(lat, lon));
+export async function fetchForecast(lat, lon, fetchFn = fetch, stationFn = null) {
+  const [r, station] = await Promise.all([fetchFn(forecastUrl(lat, lon)), stationFn ? stationFn(lat, lon).catch(() => null) : null]);
   if (!r.ok) throw new Error(`forecast ${r.status}`);
   const f = mapForecast(await r.json());
-  return { ...f, station: null, travel: travelAdvice(f.current, f.daily[0]), source: { station: 'Open-Meteo', forecast: 'open-meteo.com' } };
+  return { ...f, station, travel: travelAdvice(f.current, f.daily[0]), fetchedAt: new Date().toISOString(),
+    source: { station: station ? 'NOAA Aviation Weather (METAR)' : null, forecast: 'Open-Meteo' } };
 }
 
 // ---------------------------------------------------------------- Smart advice ("go early, come back before the heat")
@@ -170,7 +171,7 @@ export function weatherAdvice(w, { tz = 5.5, good = [], avoid = [], now = new Da
     tips.push({ kind: 'rain', at: wet.at, ...T(`Rain likely around ${t.en} (${wet.rainChance}%) — finish outdoor work and temple visits before that; keep an umbrella.`,
       `${t.ta} அளவில் மழை வாய்ப்பு (${wet.rainChance}%) — வெளி வேலை, கோவில் தரிசனத்தை அதற்கு முன் முடியுங்கள்; குடை எடுத்துச் செல்லுங்கள்.`) });
   }
-  if ((w.current?.humidity ?? 0) >= 80 && (w.current?.tempC ?? 0) >= 28) tips.push({ kind: 'humid', ...T('Very humid — light cotton clothes and extra water, especially for elders and children.', 'ஈரப்பதம் அதிகம் — மெல்லிய பருத்தி உடை, கூடுதல் தண்ணீர்; பெரியோர், குழந்தைகளுக்கு கவனம்.') });
+  if ((w.current?.humidity ?? 0) >= 80 && (w.current?.tempC ?? 0) >= 28) tips.push({ kind: 'humid', ...T('Very humid — light cotton clothes and extra water, especially for elders and children.', 'ஈரப்பதம் அதிகம் — மெல்லிய பருத்தி உடை, கூடுதல் தண்ணீர்; பெரியோர், குழந்தைகளுக்குக் கவனம்.') });
   if ((w.current?.windKph ?? 0) >= 35) tips.push({ kind: 'wind', ...T('Strong wind — careful on two-wheelers and near the sea.', 'பலத்த காற்று — இருசக்கர வாகனம், கடற்கரையில் கவனம்.') });
 
   // Best time to go out: a daylight hour that is not too hot, not rainy, not in rahu kalam / yamagandam, preferring nalla neram.

@@ -1,9 +1,29 @@
-// Daily family relationship forecast ("இன்று உறவு நிலை"): for each pair of family members,
-// how harmonious today is, and the chance of arguments (வாக்குவாதம்), with gentle advice.
+// Daily family relationship prompts ("இன்று உறவு நிலை"): for each pair of family members, a gentle
+// respectful-communication prompt coloured by today's traditional factors. It never predicts arguments,
+// fights or separation and never exposes another person's private chart details — only the pair's own
+// traditional factors are listed, as reasons for choosing a gentler tone.
+// `level` keys are kept for older screens: 'harmony' | 'careful' | 'avoid' (= "extra gentle"); use `levelLabel`.
+const ordEn = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 const houseFrom = (from, to) => ((to - from + 12) % 12) + 1;
 
-const REL_TA = { self: 'நான்', spouse: 'வாழ்க்கைத் துணை', son: 'மகன்', daughter: 'மகள்', father: 'தந்தை', mother: 'தாய்', other: 'உறவினர்', organization: 'நிறுவனம்' };
-const REL_EN = { self: 'Me', spouse: 'Spouse', son: 'Son', daughter: 'Daughter', father: 'Father', mother: 'Mother', other: 'Relative', organization: 'Company' };
+// "other" is one label everywhere — the same as the family form's relation list (core.js RELATIONS): மற்றவர் · Other.
+const REL_TA = { self: 'நான்', spouse: 'வாழ்க்கைத் துணை', son: 'மகன்', daughter: 'மகள்', father: 'தந்தை', mother: 'தாய்', other: 'மற்றவர்', organization: 'நிறுவனம்' };
+const REL_EN = { self: 'Me', spouse: 'Spouse', son: 'Son', daughter: 'Daughter', father: 'Father', mother: 'Mother', other: 'Other', organization: 'Company' };
+
+/**
+ * Avatar initial: the first whole letter as the eye reads it (a Tamil consonant with its vowel sign — "ரா" for
+ * ராஜா, "ஸ்ரீ" for ஸ்ரீதர் — or an upper-case Latin letter), the same on every screen.
+ */
+export function initialOf(name) {
+  const s = String(name || '').trim();
+  if (!s) return '';
+  let first;
+  try { first = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)[Symbol.iterator]().next().value?.segment; } catch { first = null; }
+  if (!first) first = (/^[\u0B80-\u0BFF][\u0BBE-\u0BCD\u0BD7]*/.exec(s) || [[...s][0]])[0];
+  // ஸ்ரீ is written as one letter.
+  if (first === 'ஸ்' && s.startsWith('ஸ்ரீ')) first = 'ஸ்ரீ';
+  return first.toUpperCase();
+}
 
 /**
  * Relationship label between two members, from the point of view of the family's "self" member.
@@ -42,26 +62,32 @@ export function relationToday(ca, cb, snap) {
   let risk = 0;
   const add = (pts, en, ta) => { risk += pts; reasons.push({ pts, en, ta }); };
   const natal = houseFrom(ca.janmaRasi.index, cb.janmaRasi.index);
-  if ([6, 8].includes(natal)) add(2, 'Your Moon signs are 6–8 apart (natural difference in temperament)', 'ராசிகள் 6–8 (சஷ்டாஷ்டகம்) — சுபாவ வேறுபாடு');
-  else if ([2, 12].includes(natal)) add(1, 'Moon signs 2–12 apart (different priorities)', 'ராசிகள் 2–12 — முன்னுரிமைகள் வேறு');
+  if ([6, 8].includes(natal)) add(2, 'Moon signs 6–8 apart — tradition notes different temperaments', 'ராசிகள் 6–8 (சஷ்டாஷ்டகம்) — மரபுப்படி சுபாவ வேறுபாடு');
+  else if ([2, 12].includes(natal)) add(1, 'Moon signs 2–12 apart — tradition notes different priorities', 'ராசிகள் 2–12 — மரபுப்படி முன்னுரிமைகள் வேறு');
   else if ([1, 5, 9, 7, 3, 11].includes(natal)) add(-1, 'Your Moon signs are naturally compatible', 'ராசிப் பொருத்தம் இயல்பாக நன்று');
   for (const c of [ca, cb]) {
     const pos = houseFrom(c.janmaRasi.index, snap.moonRasi.index);
-    if (pos === 8) add(3, `Chandrashtamam for ${c.name} — moods may run high`, `${c.name} — சந்திராஷ்டமம், மனநிலை மாறலாம்`);
-    else if ([6, 12].includes(pos)) add(1, `Moon ${pos}th from ${c.name}'s rasi`, `${c.name} ராசிக்கு ${pos}-ல் சந்திரன்`);
+    if (pos === 8) add(3, `Chandrashtamam for ${c.name} — tradition suggests a calm, unhurried day`, `${c.name} — சந்திராஷ்டமம், மரபுப்படி அமைதியான நாள்`);
+    else if ([6, 12].includes(pos)) add(1, `Moon ${ordEn(pos)} from ${c.name}'s rasi`, `${c.name} ராசிக்கு ${pos}-ல் சந்திரன்`);
     const mars = houseFrom(c.janmaRasi.index, snap.planets.Mars.rasi);
-    if ([1, 8].includes(mars)) add(1, `Mars transits ${mars === 1 ? 'over' : 'the 8th from'} ${c.name}'s Moon — quick temper`, `${c.name} ராசிக்கு ${mars}-ல் செவ்வாய் — சீக்கிரம் கோபம்`);
+    if ([1, 8].includes(mars)) add(1, `Mars transits ${mars === 1 ? 'over' : 'the 8th from'} ${c.name}'s Moon — tradition suggests patience`, `${c.name} ராசிக்கு ${mars}-ல் செவ்வாய் — மரபுப்படி பொறுமை நல்லது`);
     const tara = ((snap.nakshatra.index - c.janmaNakshatra.index + 27) % 27) % 9;
     if ([2, 4, 6].includes(tara)) add(1, `Weak Tara Bala for ${c.name} today`, `${c.name} — இன்று தாரா பலம் குறைவு`);
   }
-  if (snap.weekday.index === 2) add(1, 'Tuesday (Mars day) — words can be sharp', 'செவ்வாய்க்கிழமை — வார்த்தைகள் கடுமையாகலாம்');
+  if (snap.weekday.index === 2) add(1, 'Tuesday (Mars day) — tradition suggests choosing kind words', 'செவ்வாய்க்கிழமை — மரபுப்படி இனிய சொற்களைத் தேர்ந்தெடுங்கள்');
   const level = risk >= 4 ? 'avoid' : risk >= 2 ? 'careful' : 'harmony';
   const text = {
     harmony: { en: 'Harmonious day — a good time to talk, plan together and share a meal.', ta: 'இணக்கமான நாள் — மனம் விட்டுப் பேச, சேர்ந்து திட்டமிட, ஒன்றாக உணவருந்த நல்ல நேரம்.' },
-    careful: { en: 'Be gentle today — listen first; postpone sensitive topics to the evening.', ta: 'இன்று மென்மையாக இருங்கள் — முதலில் கேளுங்கள்; முக்கிய விஷயங்களை மாலைக்கு ஒத்திவையுங்கள்.' },
-    avoid: { en: 'Arguments (vaakkuvaadham) are likely — avoid money or property discussions today; a short walk or prayer together helps.', ta: 'வாக்குவாதம் வர வாய்ப்பு — இன்று பணம், சொத்து பேச்சைத் தவிர்க்கவும்; சிறிது நடை அல்லது சேர்ந்து வழிபாடு உதவும்.' },
+    careful: { en: 'A day for gentle words — listen first and ask how the other person is feeling.', ta: 'மென்மையான சொற்களுக்கான நாள் — முதலில் கேளுங்கள்; மற்றவர் எப்படி உணர்கிறார் என்று கேளுங்கள்.' },
+    avoid: { en: 'A day to be extra gentle — speak kindly, take a pause before replying, and choose a calm time for big topics like money. A short walk or prayer together can help.', ta: 'கூடுதல் மென்மைக்கான நாள் — அன்பாகப் பேசுங்கள், பதில் சொல்லும் முன் சற்று நிதானியுங்கள்; பணம் போன்ற பெரிய விஷயங்களுக்கு அமைதியான நேரத்தைத் தேர்ந்தெடுங்கள். சிறு நடை அல்லது சேர்ந்த வழிபாடு உதவும்.' },
   }[level];
-  return { level, risk, reasons, advice: text };
+  const levelLabel = {
+    harmony: { en: 'Harmony', ta: 'இணக்கம்' },
+    careful: { en: 'Be gentle', ta: 'மென்மை' },
+    avoid: { en: 'Extra gentle today', ta: 'இன்று கூடுதல் மென்மை' },
+  }[level];
+  // `risk` is kept for sorting in older screens; it is a tradition-weight, not a probability of conflict.
+  return { level, levelLabel, risk, weight: risk, reasons, advice: text, predictsConflict: false };
 }
 
 /** All pairs in the family (organisations excluded), most sensitive first. */

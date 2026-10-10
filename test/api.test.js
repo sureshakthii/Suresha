@@ -4,6 +4,9 @@ import { createApp } from '../server/index.js';
 import { CATEGORIES, scoreSnapshot } from '../shared/prasna.js';
 import { panchang } from '../shared/astro.js';
 
+// Own in-memory database: the SQLite-backed rate limiter (server/admin.js) would otherwise share
+// data/kaippesi.db — and its per-IP window — with every other test file running in parallel.
+process.env.DB_PATH = ':memory:';
 delete process.env.ANTHROPIC_API_KEY;
 delete process.env.ANTHROPIC_AUTH_TOKEN;
 let server, base;
@@ -34,7 +37,7 @@ test('places search finds Tamil Nadu cities offline', async () => {
 test('chart endpoint validates and returns a chart', async () => {
   assert.equal((await post('/api/chart', { date: 'x' })).status, 400);
   const c = await (await post('/api/chart', birth)).json();
-  assert.equal(c.janmaRasi.name, 'Kumbha');
+  assert.equal(c.janmaRasi.name, 'Kumbam');
   assert.equal(c.charts.rasi.length, 12);
 });
 
@@ -71,4 +74,14 @@ test('Rahu Kalam and Chandrashtamam pull the score down', () => {
   const eighth = (s.moonRasi.index - 7 + 12) % 12;
   const f = scoreSnapshot(s, 'contract', { janmaNakshatra: 0, janmaRasi: eighth }).factors;
   assert.ok(f.some((x) => x.key === 'chandrashtama'));
+});
+
+test('POST /api/chart honours IANA zone and unknown birth time', async () => {
+  const war = await post('/api/chart', { name: 'T', date: '1943-06-01', time: '10:00', lat: 13.08, lon: 80.27, zone: 'Asia/Kolkata' });
+  assert.equal(war.status, 200);
+  assert.equal(new Date((await war.json()).utc).toISOString(), '1943-06-01T03:30:00.000Z'); // wartime +6:30
+  const unk = await post('/api/chart', { name: 'U', date: '1990-05-01', lat: 13.08, lon: 80.27, tz: 5.5, timePrecision: 'unknown' });
+  assert.equal(unk.status, 200);
+  assert.equal((await unk.json()).lagna, null);
+  assert.equal((await post('/api/chart', { date: '1990-05-01', time: '10:00', lat: 13, lon: 80, zone: 'Mars/Base' })).status, 400);
 });

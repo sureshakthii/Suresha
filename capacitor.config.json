@@ -1,9 +1,10 @@
 {
   "appId": "app.kaippesi.jothidar",
-  "appName": "கைப்பேசி ஜோதிடர்",
+  "appName": "துணை",
   "webDir": "mobile/www",
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": false,
+    "backgroundColor": "#3d0d1f"
   },
   "ios": {
     "contentInset": "never"
@@ -12,13 +13,14 @@
     "SplashScreen": {
       "launchShowDuration": 1500,
       "launchAutoHide": true,
-      "backgroundColor": "#0b0620",
+      "backgroundColor": "#3d0d1f",
       "androidScaleType": "CENTER_CROP",
-      "showSpinner": false
+      "showSpinner": false,
+      "launchFadeOutDuration": 150
     },
     "StatusBar": {
       "style": "DARK",
-      "backgroundColor": "#0b0620",
+      "backgroundColor": "#3d0d1f",
       "overlaysWebView": false
     },
     "PushNotifications": {
@@ -28,5 +30,6 @@
         "alert"
       ]
     }
-  }
+  },
+  "backgroundColor": "#3d0d1f"
 }

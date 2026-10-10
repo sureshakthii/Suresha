@@ -6,9 +6,25 @@ import {
 } from './shared/peyarchi.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, fmtIsoDate,
-  activeMember, chartOf, registerScreen, subHeader, speak, displayName, placeName,
+  activeMember, chartOf, registerScreen, subHeader, speak, displayName, placeName, scaleName, untilL, fromL, fmtMonthOf,
 } from './core.js';
 import { remindBtn } from './remind.js';
+import { ageProfile, adultText } from './shared/age-guard.js';
+import { hymnText } from './hymn-links.js';
+
+// Age first: when the selected person is a child and this is their own rasi, keep only child-appropriate sentences
+// (no marriage, spouse, business, money) and hide the career / money bars.
+const kidView = () => { const m = activeMember(); return Boolean(m && pyRasi === defaultRasi() && ageProfile(m, { tz: state.loc?.tz }).minor); };
+const kidText = (o) => {
+  if (!o || !kidView()) return o;
+  // A dropped adult clause must not leave "…family harmony;" hanging; an all-adult text gets a child line instead.
+  const keep = (t, fallback) => {
+    const src = String(t || '');
+    const out = src.split(/(?<=[.;।])\s+/).filter((x) => !adultText(x)).join(' ').trim().replace(/[;,:]$/, '.');
+    return out || (src.trim() ? fallback : '');
+  };
+  return { en: keep(o.en, 'A steady time — keep studies, play and sleep regular.'), ta: keep(o.ta, 'நிதானமான காலம் — படிப்பு, விளையாட்டு, உறக்கத்தைச் சீராக வையுங்கள்.') };
+};
 
 const localAt = (date, time) => { const [y, mo, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(Date.UTC(y, mo - 1, d, h, mi) - (state.loc?.tz ?? 5.5) * 3600000); };
 const LOADER = '<div class="loader"><i></i><i></i><i></i></div>';
@@ -17,7 +33,7 @@ const tz = () => state.loc?.tz ?? 5.5;
 const isoLocal = (d) => new Date(new Date(d).getTime() + tz() * 3600000).toISOString().slice(0, 10);
 const fmtD = (d) => (d ? fmtIsoDate(isoLocal(d)) : '—');
 const TAG = { good: 'good', mixed: 'warn', care: 'bad' };
-const levelLabel = (lv) => ({ good: L('Good', 'நன்மை'), mixed: L('Mixed', 'கலவை'), care: L('Needs care', 'கவனம் தேவை') }[lv]);
+const levelLabel = (lv) => scaleName(lv);
 const BAR = { good: 'strong', mixed: 'average', care: 'weak' };
 const houseLabel = (h) => (ta() ? `${houseOrdinal(h).ta} இடம்` : `${houseOrdinal(h).en} house`);
 const gName = (p) => (ta() ? PEYARCHI_NAMES[p].ta.replace('ப் பெயர்ச்சி', '') : ({ Jupiter: 'Guru', Saturn: 'Sani' }[p] || p));
@@ -53,7 +69,7 @@ function injectCss() {
 .vr-row .tx span { color: var(--muted); font-size: 14px; }
 .vr-row .chip-btn { flex: 0 0 auto; }
 .vr-row.today { background: rgba(245,194,107,.08); border-radius: 10px; padding-left: 8px; }
-.vr-row.past { opacity: .55; }
+.vr-row.past .ic { opacity: .55; } .vr-row.past .tx b { color: var(--muted); font-weight: 600; } /* past days: dimmed but still AA-readable */
 `;
   document.head.append(s);
 }
@@ -69,20 +85,34 @@ function defaultRasi() {
   return c ? c.janmaRasi.index : null;
 }
 
+/** Peyarchi palan is read from the Moon sign (no birth time needed); say so when that sign itself is uncertain. */
+function moonRasiNote(m) {
+  const c = m && chartOf(m);
+  const st = c?.stability;
+  if (!st || !st.unstable.includes('moonRasi')) return '';
+  const alt = [...new Set(st.items.find((i) => i.key === 'moonRasi')?.values || [])];
+  const names = alt.map((i) => rasiName(i)).join(' / ');
+  return `<p class="small note-box unv" role="note">🕰️ ${st.timePrecision === 'unknown'
+    ? L(`The Moon changes sign on the birth day (${names}) — the birth time decides which rasi is yours.`, `பிறந்த நாளில் சந்திரன் ராசி மாறுகிறது (${names}) — எந்த ராசி என்பதைப் பிறந்த நேரமே தீர்மானிக்கும்.`)
+    : L(`The Moon sign may change within your ±${Math.round(st.windowMinutes)} min (${names}).`, `உங்கள் ±${Math.round(st.windowMinutes)} நிமிடத்திற்குள் சந்திர ராசி மாறக்கூடும் (${names}).`)}</p>`;
+}
+
 function renderPeyarchi(sec) {
   injectCss();
   const mine = defaultRasi();
   if (pyRasi == null) pyRasi = mine ?? 0;
   const m = activeMember();
   sec.innerHTML = `${subHeader(L('Peyarchi Palan', 'பெயர்ச்சி பலன்'), L('Guru, Sani, Rahu and Ketu transits for all 12 rasis', 'குரு, சனி, ராகு, கேது பெயர்ச்சி — 12 ராசிகளுக்கும்'))}
+    <div class="note-box" role="note">${L('Transit readings are traditional tendencies for a whole Moon sign — not personal guarantees. For money, health or legal decisions, the professional’s advice comes first.', 'பெயர்ச்சி பலன்கள் ஒரு ராசி முழுமைக்குமான பாரம்பரியப் போக்குகள் — தனிப்பட்ட உத்தரவாதம் அல்ல. பணம், உடல்நலம், சட்ட முடிவுகளுக்கு நிபுணர் ஆலோசனையே முதன்மை.')}</div>
     <div id="pyNow">${LOADER}</div>
     <div class="card glass">
       <div class="card-title"><span>${L('Choose your rasi', 'உங்கள் ராசியைத் தேர்ந்தெடுங்கள்')}</span>${mine != null && m ? `<span class="pill">★ ${esc(displayName(m))}</span>` : ''}</div>
+      ${moonRasiNote(m)}
       <div class="member-switch py-rasis">${RASIS.map((_, i) => `<button class="mchip${i === pyRasi ? ' sel' : ''}" data-rasi="${i}">${i === mine ? '★ ' : ''}${esc(rasiName(i))}</button>`).join('')}</div>
     </div>
     <div id="pyPalan"></div>
     <div id="pyPeriodCard" class="card glass">
-      <div class="card-title"><span>${L('Rasi Palan', 'ராசி பலன்')} · ${esc(rasiName(pyRasi))}</span><button class="link-btn" id="pySpeak" aria-label="${L('Read aloud', 'வாசித்துக் காட்டு')}">🔊</button></div>
+      <div class="card-title"><span>${L('Rasi Palan', 'ராசி பலன்')} · ${esc(rasiName(pyRasi))}</span><button class="link-btn" id="pySpeak" aria-label="${esc(L('Read aloud', 'சத்தமாக வாசி'))}">🔊</button></div>
       <div class="py-tabs"><button class="chip-btn${pyTab === 'month' ? ' sel' : ''}" data-pytab="month">${L('This month', 'இந்த மாதம்')}</button><button class="chip-btn${pyTab === 'year' ? ' sel' : ''}" data-pytab="year">${L('This year', 'இந்த ஆண்டு')}</button></div>
       <div id="pyPeriod">${LOADER}</div>
     </div>`;
@@ -104,13 +134,14 @@ function renderPeyarchi(sec) {
 }
 
 function fillNow(cur) {
+  // Every member sees the next transit change — no age cutoff.
   $('#pyNow').innerHTML = `<div class="py-grid">${PEYARCHI_PLANETS.map((p) => {
     const c = cur[p];
     return `<div class="card glass rp">
       <span class="gl" style="color:${COLOR[p]}">${GLYPH[p]}</span>
       <b>${esc(planetName(p))} · ${esc(rasiName(c.rasi))}${c.retrograde && p !== 'Rahu' && p !== 'Ketu' ? ` <span class="pill">${L('retro', 'வக்ரம்')}</span>` : ''}</b>
       <small>${L('Since', 'முதல்')}: ${fmtD(c.since)}</small>
-      <small>${L('Next', 'அடுத்து')}: ${c.next ? `${esc(rasiName(c.nextRasi))} · ${fmtD(c.next)}${c.nextRetro && p !== 'Rahu' && p !== 'Ketu' ? ` (${L('retro', 'வக்ரம்')})` : ''}` : '—'}</small>
+      ${c.next ? `<small>${L('Next', 'அடுத்து')}: ${esc(rasiName(c.nextRasi))} · ${fmtD(c.next)}${c.nextRetro && p !== 'Rahu' && p !== 'Ketu' ? ` (${L('retro', 'வக்ரம்')})` : ''}</small>` : ''}
       ${c.next ? remindBtn({ title: L(`${p} peyarchi to ${RASIS[c.nextRasi].en}`, `${planetName(p)} பெயர்ச்சி — ${RASIS[c.nextRasi].ta}`), at: c.next, label: L('Remind', 'நினைவூட்டு') }) : ''}
     </div>`;
   }).join('')}</div>`;
@@ -124,8 +155,8 @@ function fillPalan(cur) {
     ${lastPalans.map(({ p, rasi, x }) => `<div class="py-palan">
       <div class="hd"><b style="color:${COLOR[p]}">${GLYPH[p]} ${esc(planetName(p))} · ${esc(rasiName(rasi))} <span class="muted small">(${houseLabel(x.house)})</span></b><span class="tag ${TAG[x.level]}">${levelLabel(x.level)}</span></div>
       ${x.special ? `<span class="pill">${esc(bi(x.special))}</span>` : ''}
-      <p>${esc(bi(x.text))}</p>
-      <p class="rem">🙏 ${esc(bi(x.remedy))}</p>
+      <p>${esc(bi(kidText(x.text)))}</p>
+      <p class="rem">🙏 ${hymnText(bi(x.remedy))}</p>
     </div>`).join('')}
   </div>`;
 }
@@ -156,13 +187,13 @@ function fillPeriod() {
     <p class="muted small">${fmtD(r.from)} – ${fmtD(r.to)}</p>
     <div class="py-area"><div class="row"><b>${L('Overall', 'மொத்தம்')}</b><span class="tag ${TAG[r.level]}">${levelLabel(r.level)} · ${r.score}</span></div>
       <div class="gb-bar"><i class="${BAR[r.level]}" style="width:${r.score}%"></i></div></div>
-    <p>${esc(bi(r.summary))}</p>
+    <p>${esc(bi(kidText(r.summary)))}</p>
     <div class="factor"><span>☉ ${L('Sun', 'சூரியன்')} · ${houseLabel(r.sun.house)}</span><b class="${r.sun.level === 'good' ? 'pos' : r.sun.level === 'care' ? 'neg' : 'zero'}">${levelLabel(r.sun.level)}</b></div>
     <div class="factor"><span>♂ ${L('Mars', 'செவ்வாய்')} · ${houseLabel(r.mars.house)}</span><b class="${r.mars.level === 'good' ? 'pos' : r.mars.level === 'care' ? 'neg' : 'zero'}">${levelLabel(r.mars.level)}</b></div>
     ${changes.length ? `<div class="mini-label" style="margin-top:12px">${L('Transits in this period', 'இந்தக் காலத்தில் பெயர்ச்சிகள்')}</div>
       ${changes.map((c) => `<div class="factor"><span>${GLYPH[c.p]} ${esc(planetName(c.p))}: ${esc(rasiName(c.fromRasi))} → ${esc(rasiName(c.toRasi))}</span><b>${fmtD(c.date)}</b></div>`).join('')}` : ''}
-    ${area('career', 'Career', 'தொழில்', '💼')}
-    ${area('money', 'Money', 'பணம்', '💰')}
+    ${kidView() ? '' : `${area('career', 'Career', 'தொழில்', '💼')}
+    ${area('money', 'Money', 'பணம்', '💰')}`}
     ${area('family', 'Family', 'குடும்பம்', '🏠')}
     ${area('health', 'Health', 'உடல்நலம்', '🌿')}
     ${months}
@@ -196,7 +227,7 @@ function renderVratham(sec) {
   const loc = state.loc;
   const y0 = localYear();
   if (vrYear == null || (vrYear !== y0 && vrYear !== y0 + 1)) vrYear = y0;
-  sec.innerHTML = `${subHeader(L('Viratha Naatkal', 'விரத நாட்கள்'), L('Every vratham and festival day of the year', 'ஆண்டின் அனைத்து விரத, பண்டிகை நாட்கள்'))}
+  sec.innerHTML = `${subHeader(L('Vratham Days', 'விரத நாட்கள்'), L('Every vratham and festival day of the year', 'ஆண்டின் அனைத்து விரத, பண்டிகை நாட்கள்'))}
     <div class="card glass">
       <div class="py-tabs">${[y0, y0 + 1].map((y) => `<button class="chip-btn${y === vrYear ? ' sel' : ''}" data-year="${y}">${y}</button>`).join('')}</div>
       <div class="member-switch wrap vr-filter">${[{ id: 'all', en: 'All', ta: 'அனைத்தும்', icon: '📿' }, ...VRATHAM_TYPES]
@@ -272,8 +303,8 @@ function downloadIcs(x) {
   const d = x.date.replace(/-/g, '');
   const next = new Date(Date.parse(x.date) + 86400000).toISOString().slice(0, 10).replace(/-/g, '');
   const title = `${x.ta} / ${x.en}`.replace(/[,;\\]/g, ' ');
-  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Kaippesi Jothidar//Vratham//TA', 'BEGIN:VEVENT',
-    `UID:${d}-${x.type}-${Math.random().toString(36).slice(2)}@kaippesi`,
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Thunai//Vratham//TA', 'BEGIN:VEVENT',
+    `UID:${d}-${x.type}-${Math.random().toString(36).slice(2)}@thunai`,
     `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
     `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${next}`, `SUMMARY:${title}`,
     'BEGIN:VALARM', 'TRIGGER:-PT12H', 'ACTION:DISPLAY', `DESCRIPTION:${title}`, 'END:VALARM',

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Thunai device preview</title>
+  <meta name="description" content="Thunai (துணை) shown side by side at phone, tablet, laptop and desktop sizes." />
+  <style>
+    :root {
+      --bg: #f6f1e8; --panel: #ffffff; --text: #241a2b; --muted: #5e5367; --line: #e8dccd; --brand: #6e1a35; --accent: #c0601d;
+      --chip: #fcf1e4; --shadow: 0 1px 2px rgba(60, 40, 20, .06), 0 10px 30px rgba(60, 40, 20, .10); --bezel: #1d1520;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #120c14; --panel: #1d1520; --text: #f4ede6; --muted: #c9bdb2; --line: #33293a; --brand: #f0c27a; --accent: #f29a52;
+        --chip: rgba(242, 154, 82, .12); --shadow: 0 10px 30px rgba(0, 0, 0, .45); --bezel: #000; color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #120c14; --panel: #1d1520; --text: #f4ede6; --muted: #c9bdb2; --line: #33293a; --brand: #f0c27a; --accent: #f29a52;
+      --chip: rgba(242, 154, 82, .12); --shadow: 0 10px 30px rgba(0, 0, 0, .45); --bezel: #000; color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Tamil', sans-serif; }
+    header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 16px;
+      background: var(--panel); border-bottom: 1px solid var(--line); }
+    h1 { margin: 0; font-size: 18px; line-height: 1.35; color: var(--brand); }
+    h1 small { display: block; font-size: 13px; font-weight: 400; color: var(--muted); }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-left: auto; }
+    .controls label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+    select, button { font: inherit; font-size: 14px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; min-height: 38px; padding: 0 12px; cursor: pointer; }
+    select:hover, button:hover { border-color: var(--accent); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    main { padding: 20px 16px 40px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 28px 24px; align-items: flex-start; }
+    figure { margin: 0; display: flex; flex-direction: column; gap: 10px; max-width: 100%; }
+    figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+    figcaption b { font-size: 14.5px; }
+    .dim { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+    .pct { font-size: 12px; font-weight: 700; color: var(--brand); background: var(--chip); border-radius: 999px; padding: 1px 8px; }
+    figcaption button { margin-left: auto; min-height: 32px; font-size: 13px; padding: 0 10px; }
+    .frame { position: relative; overflow: hidden; border-radius: 14px; background: var(--bezel); box-shadow: var(--shadow); outline: 6px solid var(--bezel); outline-offset: 0; }
+    .frame iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: #fff; }
+    .note { color: var(--muted); font-size: 13px; margin: 0 0 16px; max-width: 900px; }
+    @media (max-width: 640px) { .controls { margin-left: 0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>துணை · Thunai — device preview<small>The live app at real screen sizes, scaled to fit</small></h1>
+    <div class="controls">
+      <label>Language <select id="lang"><option value="ta">தமிழ்</option><option value="en">English</option></select></label>
+      <label>Theme <select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+      <label>Size <select id="fit"><option value="fit">Fit</option><option value="0.25">25%</option><option value="0.33">33%</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option></select></label>
+      <button type="button" id="reload">Reload all</button>
+    </div>
+  </header>
+  <main>
+    <p class="note">Each frame runs the real app at the exact device size (CSS pixels), shrunk with a CSS transform. Language and theme here apply to the previews only — nothing is saved in the app. “Open” shows that size at 100% in a new window.</p>
+    <div class="grid" id="grid"></div>
+  </main>
+  <script>
+    // Server build: the app is at "/". The hosted test build (scripts/build-artifact.mjs) rewrites this to "./index.html".
+    const APP_URL = '/';
+    const DEVICES = [
+      { name: 'Phone S', w: 360, h: 780 },
+      { name: 'iPhone 15 Pro', w: 393, h: 852 },
+      { name: 'Phone L', w: 412, h: 915 },
+      { name: 'Tablet', w: 768, h: 1024 },
+      { name: 'iPad landscape', w: 1180, h: 820 },
+      { name: 'Laptop', w: 1366, h: 768 },
+      { name: 'Desktop', w: 1920, h: 1080 },
+    ];
+    const $ = (s) => document.querySelector(s);
+    const grid = $('#grid');
+    const store = { get(k, d) { try { return localStorage.getItem(k) || d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
+    $('#lang').value = store.get('thunai_dev_lang', 'ta');
+    $('#theme').value = store.get('thunai_dev_theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    $('#fit').value = store.get('thunai_dev_fit', 'fit');
+
+    const url = () => `${APP_URL}${APP_URL.includes('?') ? '&' : '?'}lang=${$('#lang').value}&theme=${$('#theme').value}`;
+    function scaleFor(d) {
+      const fit = $('#fit').value;
+      if (fit !== 'fit') return Number(fit);
+      const maxW = Math.max(240, grid.clientWidth);
+      const maxH = d.w < 600 ? 560 : d.w < 1100 ? 480 : 420; // phones a little larger so text stays legible
+      return Math.min(1, maxH / d.h, maxW / d.w);
+    }
+    function build() {
+      grid.innerHTML = '';
+      for (const d of DEVICES) {
+        const s = scaleFor(d);
+        const fig = document.createElement('figure');
+        fig.innerHTML = `<figcaption><b></b><span class="dim">${d.w}×${d.h}</span><span class="pct">${Math.round(s * 100)}%</span><button type="button">Open ↗</button></figcaption>
+          <div class="frame" style="width:${Math.round(d.w * s)}px;height:${Math.round(d.h * s)}px"><iframe loading="lazy" width="${d.w}" height="${d.h}" style="width:${d.w}px;height:${d.h}px;transform:scale(${s})"></iframe></div>`;
+        fig.querySelector('b').textContent = d.name;
+        const frame = fig.querySelector('iframe');
+        frame.title = `Thunai at ${d.name} size, ${d.w} by ${d.h}`;
+        frame.src = url();
+        fig.querySelector('button').addEventListener('click', () => window.open(url(), `thunai_${d.w}x${d.h}`, `popup,width=${d.w},height=${d.h}`));
+        grid.append(fig);
+      }
+    }
+    // Rebuild on resize only when a frame's scale really changes (rebuilding reloads every frame).
+    const sig = () => DEVICES.map((d) => scaleFor(d).toFixed(3)).join();
+    let last = '', t;
+    const rebuild = () => { last = sig(); document.documentElement.dataset.theme = $('#theme').value; build(); };
+    for (const id of ['lang', 'theme', 'fit']) $(`#${id}`).addEventListener('change', (e) => { store.set(`thunai_dev_${id}`, e.target.value); rebuild(); });
+    $('#reload').addEventListener('click', rebuild);
+    addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (sig() !== last) rebuild(); }, 250); });
+    rebuild();
+  </script>
+</body>
+</html>

@@ -41,6 +41,11 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.testing
+            // Time-limited review build (./gradlew assembleDebug -PreviewBuild): separate app id, so it installs
+            // next to the full test app and keeps its own data.
+            if (project.hasProperty('reviewBuild')) {
+                applicationIdSuffix '.review'
+            }
         }
         release {
             if (signingConfigs.release.storeFile != null) {

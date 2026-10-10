@@ -1,6 +1,7 @@
 // Pilgrimage & parigaram packages (யாத்திரை பேக்கேஜ்): temples, day-wise route and what is included.
 // Prices are quoted per family by the operations team, so no prices are shown here.
-import { TEMPLES, distanceKm } from './temples.js';
+import { TEMPLES, distanceKm, countryAt } from './temples.js';
+import { planFlights } from './airports.js';
 
 const P = (id, icon, en, ta, days, stops, forEn, forTa, extraEn = [], extraTa = []) => ({ id, icon, name: { en, ta }, days, stops, for: { en: forEn, ta: forTa }, extra: { en: extraEn, ta: extraTa } });
 
@@ -57,6 +58,15 @@ export const PACKAGES = [
     [['madurai_meenakshi', 'koodal_azhagar', 'alagar_kovil'], ['rameswaram'], ['tiruchendur', 'srivaikuntam'], ['suchindram', 'kanyakumari']],
     'A complete family pilgrimage — ideal for NRI families and elders', 'முழுமையான குடும்ப யாத்திரை — வெளிநாட்டுவாழ் குடும்பங்கள், பெரியோருக்கு ஏற்றது',
     ['Elder-friendly pace with rest breaks', 'Airport pickup at Madurai'], ['பெரியோருக்கு ஏற்ற நிதானமான பயணம்', 'மதுரை விமான நிலைய வரவேற்பு']),
+  // Abroad
+  P('lanka_ishwaram', '🌊', 'Sri Lanka Ishwaram & Murugan yatra', 'இலங்கை ஈச்சரம் & முருகன் யாத்திரை', 5,
+    [['munneswaram'], ['ketheeswaram'], ['nallur', 'nainativu'], ['koneswaram'], ['kataragama']],
+    'For ancestors\' blessings, removal of obstacles and Murugan\'s grace', 'முன்னோர் ஆசி, தடை நீக்கம், முருகன் அருளுக்கு',
+    ['Boat crossing to Nainativu arranged', 'Elder-friendly pace with rest breaks'], ['நயினாதீவுக்குப் படகு ஏற்பாடு', 'பெரியோருக்கு ஏற்ற நிதானமான பயணம்']),
+  P('malaysia_singapore', '🦚', 'Malaysia & Singapore Murugan temples', 'மலேசியா & சிங்கப்பூர் முருகன் கோவில்கள்', 3,
+    [['batu_caves', 'kl_mahamariamman'], ['penang_waterfall'], ['sg_thendayuthapani', 'sg_srinivasa_perumal', 'sg_mariamman']],
+    'For courage, vows (kavadi) and family welfare', 'தைரியம், நேர்த்திக்கடன் (காவடி), குடும்ப நலனுக்கு',
+    ['Thaipusam-season guidance', 'Flights between the cities are not included'], ['தைப்பூசக் கால வழிகாட்டல்', 'நகரங்களுக்கு இடையிலான விமானக் கட்டணம் சேர்க்கப்படவில்லை']),
 ];
 
 export const PACKAGE_INCLUDES = [
@@ -67,13 +77,25 @@ export const PACKAGE_INCLUDES = [
   { en: 'Muhurtham for each pooja from your Jathagam', ta: 'உங்கள் ஜாதகப்படி ஒவ்வொரு பூஜைக்கும் முகூர்த்தம்' },
 ];
 
-/** Resolve a package's temples and approximate total road distance along the route. */
+/**
+ * Resolve a package's temples and approximate total road distance along the route. When the start is far away
+ * (another country / over ~800 km — e.g. a family in London), the first leg is a flight: `flight` is true,
+ * `flightKm` is the straight-line distance to the first temple and `km` covers only the road part of the yatra.
+ */
 export function packageRoute(pkg, start) {
   const days = pkg.stops.map((ids) => ids.map((id) => TEMPLES.find((t) => t.id === id)).filter(Boolean));
   const flat = days.flat();
   let km = 0;
-  let prev = start ? { lat: start.lat, lon: start.lon } : flat[0];
+  const firstLeg = start && flat[0] ? distanceKm(start.lat, start.lon, flat[0].lat, flat[0].lon) : 0;
+  const startCc = start ? start.cc || countryAt(start.lat, start.lon) : null;
+  const destCc = flat[0]?.cc || 'IN';
+  // From abroad (Dubai → Tamil Nadu) or far away: fly to the nearest suitable airport, then the road yatra.
+  const flight = !!start && !!flat[0] && (firstLeg > 800 || (!!startCc && startCc !== destCc && firstLeg > 120));
+  const flights = flight ? planFlights(start, flat[0], { startCc, destCc, minKm: 0 }) : null;
+  let prev = start && !flight ? { lat: start.lat, lon: start.lon } : flights ? { lat: flights.airport.lat, lon: flights.airport.lon } : flat[0];
   for (const t of flat) { km += distanceKm(prev.lat, prev.lon, t.lat, t.lon) * 1.3; prev = t; }
-  const mapsUrl = `https://www.google.com/maps/dir/${[start ? `${start.lat},${start.lon}` : null, ...flat.map((t) => `${t.lat},${t.lon}`)].filter(Boolean).join('/')}`;
-  return { days, km, mapsUrl, firstTemple: flat[0] };
+  const mapsUrl = `https://www.google.com/maps/dir/${[start && !flight ? `${start.lat},${start.lon}` : flights ? `${flights.airport.lat},${flights.airport.lon}` : null, ...flat.map((t) => `${t.lat},${t.lon}`)].filter(Boolean).join('/')}`;
+  // Days include the flights: outbound (plus a day when landing after midnight) and the return day.
+  const totalDays = flights ? pkg.days + 1 + Math.max(0, flights.out.dayOffset) + 1 : pkg.days;
+  return { days, km, mapsUrl, firstTemple: flat[0], flight, flightKm: flight ? Math.round(firstLeg) : 0, flights, totalDays };
 }

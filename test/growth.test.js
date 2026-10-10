@@ -2,6 +2,7 @@ import { test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 process.env.DB_PATH = ':memory:';
+process.env.SERVICES_OPEN = '1'; // request intake is off by default (see the SERVICES_OPEN tests in market.test.js)
 process.env.AUTH_DEV_MODE = '1';
 process.env.AUTH_SECRET = 't';
 process.env.ADMIN_TOKEN = 'admin-test';
@@ -104,7 +105,7 @@ test('gift access locks automatically after expiry', async () => {
   const code = await makeCode({ plan: 'premium_month', hours: 2, maxUses: 5 });
   const r = await redeem(bhavani, code);
   assert.equal(r.status, 200);
-  assert.equal((await me(bhavani)).plan, 'premium_month');
+  assert.equal((await me(bhavani)).plan, 'personal_month');
   growth.setGrowthClock(() => Date.now() + 3 * HOUR);
   const m = await me(bhavani);
   assert.equal(m.plan, 'free');
@@ -121,7 +122,7 @@ test('TRIAL_HOURS grants a one-time automatic trial on first /billing/me', async
   process.env.TRIAL_HOURS = '24';
   const t0 = Date.now();
   const m = await me(dhana);
-  assert.equal(m.plan, 'premium_month');
+  assert.equal(m.plan, 'personal_month');
   near(m.trialEndsAt, t0 + 24 * HOUR, 'trial end');
   assert.equal((await me(dhana)).trialEndsAt, m.trialEndsAt); // no second trial
   assert.equal((await me()).plan, 'free'); // signed-out never gets a trial
@@ -173,7 +174,7 @@ test('events ingest → admin stats by platform, daily and top lists', async () 
   assert.equal(s.totals.active7, 6);
   assert.equal(s.totals.active30, 6);
   assert.ok(s.totals.users >= 4);
-  assert.deepEqual(s.totals.revenueByCurrency, { INR: 0, USD: 0 }); // gift / trial excluded
+  assert.deepEqual(s.totals.revenueByCurrency, { INR: 0, AED: 0, USD: 0 }); // gift / trial excluded
   assert.equal(s.totals.payingUsers, 0);
   assert.deepEqual(s.byPlatform, { android: 2, ios: 1, huawei: 1, pwa: 1, web: 1 });
   assert.equal(s.daily.length, 7);
@@ -192,7 +193,7 @@ test('feedback → admin approval → testimonials; avgRating; rate limit', asyn
   assert.equal((await req('POST', '/api/feedback', { deviceId: 'x', rating: 5 })).status, 400);
   const ok = await req('POST', '/api/feedback', { deviceId: 'device-fb-0001', rating: 5, comment: 'மிகவும் அருமை!', screen: 'home' }, as(anbu));
   assert.equal(ok.status, 200);
-  assert.deepEqual(await ok.json(), { ok: true });
+  assert.deepEqual(await ok.json(), { ok: true, type: 'feedback' });
   await req('POST', '/api/feedback', { deviceId: 'device-fb-0002', rating: 3, comment: 'Good' });
   await req('POST', '/api/feedback', { deviceId: 'device-fb-0003', rating: 4 });
 
@@ -248,9 +249,9 @@ test('referrals: both get days; self / duplicate / old account blocked', async (
   const out = await ok.json();
   assert.equal(out.days, 10);
   near(out.expiresAt, t0 + 10 * DAY, 'new user reward');
-  assert.equal((await me(ezhil)).plan, 'premium_month');
+  assert.equal((await me(ezhil)).plan, 'personal_month');
   const cm = await me(chezhian);
-  assert.equal(cm.plan, 'premium_month');
+  assert.equal(cm.plan, 'personal_month');
   near(cm.expiresAt, t0 + 10 * DAY, 'referrer reward');
   assert.equal(cm.trialEndsAt, null); // referral is not a gift / trial
 
@@ -290,7 +291,7 @@ test('market: package requests are accepted', async () => {
   assert.equal(request.type, 'package');
   assert.equal(request.packageId, 'grahapravesam-complete');
   assert.equal(request.people, 25);
-  assert.equal(request.status, 'requested');
+  assert.equal(request.status, 'awaiting_confirmation');
 });
 
 test('admin overview', async () => {

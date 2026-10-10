@@ -1,20 +1,33 @@
+import { BRAND } from '../shared/brand.js';
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { birthChart, panchang } from '../shared/astro.js';
 import { CATEGORIES, evaluatePrasna, getCategory } from '../shared/prasna.js';
 import { searchLocalPlaces, searchOnline } from './places.js';
-import { aiEnabled, buildContext, generateReply, runTask } from './ai.js';
+import { aiEnabled, buildContext, generateReply, runTask, ruleBasedReply } from './ai.js';
+import { findResources, SEARCH_CATEGORIES } from './web-search.js';
 import { authRouter, currentUser } from './auth.js';
 import { weatherRouter } from './weather.js';
 import { pushRouter, startPushScheduler } from './push.js';
 import { marketRouter } from './market.js';
-import { billingEnforced, billingRouter, checkAiQuota, recordAiUsage } from './billing.js';
+import { billingEnforced, billingRouter, checkAiQuota, familyProfileGuard, recordAiUsage } from './billing.js';
 import { growthRouter } from './growth.js';
+import { familyRouter } from './family.js';
+import { rateLimit, requireAdmin, auditLog } from './admin.js';
+import { businessMetrics, recordAiCost } from './metrics.js';
+import { startBackupSchedule } from './backup.js';
 import { tamilMonth } from '../shared/tamilcal.js';
+import { isValidZone, zonedToUtc } from '../shared/datetime.js';
 import { matchPorutham, doshams, doshaSamyam } from '../shared/porutham.js';
 import { findMuhurtham } from '../shared/special.js';
-import { AI_TASKS } from '../shared/narrator.js';
+import { AI_TASKS, DEADLINE_FIRST } from '../shared/narrator.js';
+import { securityHeaders, httpsRedirect, sameOriginWrites, productionConfig } from './security.js';
+import { compression, staticCacheControl } from './compress.js';
+import { hit } from './admin.js';
+import { evaluatePolicy, templateAnswer, deadlineNote, publicPolicy, audit, buildEvidence, publicEvidence, templateText, traceFor } from './policy/index.js';
+import { policyRouter } from './policy/routes.js';
 
 // Simple per-IP limiter for AI calls (protects the API budget).
 const aiHits = new Map();
@@ -24,6 +37,26 @@ function aiRateLimited(ip, max = Number(process.env.AI_RATE_LIMIT) || 40, window
   hits.push(now);
   aiHits.set(ip, hits);
   return hits.length > max;
+}
+
+/**
+ * Durable daily AI caps (SQLite, shared by every process): per signed-in person, per anonymous IP, per IP overall,
+ * and an optional global ceiling (AI_DAILY_LIMIT_GLOBAL) that protects the monthly API budget. Counted only when
+ * the model would really be called. Returns true when this call must not use the model.
+ */
+function aiDailyCapped(req, user) {
+  if (!aiEnabled() || process.env.RATE_LIMITS === 'off') return false;
+  const DAY = 24 * 3600000;
+  const lim = (k, d) => { const n = Number(process.env[k]); return Number.isFinite(n) && n >= 0 ? n : d; };
+  const checks = [
+    user ? [`aiday:u:${user.id}`, lim('AI_DAILY_LIMIT_USER', 200)] : [`aiday:anon:${req.ip}`, lim('AI_DAILY_LIMIT_ANON', 100)],
+    [`aiday:ip:${req.ip}`, lim('AI_DAILY_LIMIT_IP', 500)],
+  ];
+  const global = lim('AI_DAILY_LIMIT_GLOBAL', 0);
+  if (global > 0) checks.push(['aiday:global', global]);
+  if (checks.some(([key, max]) => hit(key, DAY, { peek: true }) >= max)) return true;
+  for (const [key] of checks) hit(key, DAY);
+  return false;
 }
 
 function openStream(res) {
@@ -53,32 +86,84 @@ function parseLoc(src) {
   };
 }
 
+const TIME_PRECISIONS = ['exact', 'approximate', 'unknown'];
+
+/**
+ * Birth details. Optional `zone` (IANA name, e.g. Asia/Kolkata): when `tz` is missing the zone's offset on the
+ * birth date is used. Optional `timePrecision` exact | approximate | unknown: an unknown time needs no clock
+ * time (the engine computes at 12:00 and gives no Lagna).
+ */
 function parseBirth(b) {
   if (!b || typeof b !== 'object') throw new BadRequest('Missing birth details');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) throw new BadRequest('Invalid date (YYYY-MM-DD)');
-  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(b.time || '')) throw new BadRequest('Invalid time (HH:MM)');
-  const loc = parseLoc(b);
+  const timePrecision = b.timePrecision == null ? 'exact' : String(b.timePrecision);
+  if (!TIME_PRECISIONS.includes(timePrecision)) throw new BadRequest('Invalid timePrecision (exact | approximate | unknown)');
+  const time = timePrecision === 'unknown' && !b.time ? '12:00' : b.time;
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time || '')) throw new BadRequest('Invalid time (HH:MM)');
+  if (b.zone != null && !isValidZone(String(b.zone))) throw new BadRequest('Invalid time zone (IANA name such as Asia/Kolkata)');
+  const loc = parseLoc(b.zone != null && (b.tz === undefined || b.tz === null || b.tz === '')
+    ? { ...b, tz: zonedToUtc(b.date, time, String(b.zone)).offsetMinutes / 60 } : b);
   return {
     name: String(b.name || 'Guest').slice(0, 80),
     place: String(b.place || loc.name || '').slice(0, 120),
-    date: b.date, time: b.time, lat: loc.lat, lon: loc.lon, tz: loc.tz,
+    date: b.date, time, lat: loc.lat, lon: loc.lon, tz: loc.tz,
+    ...(b.zone != null ? { zone: String(b.zone) } : {}),
+    timePrecision,
   };
+}
+
+const SHARE_PLACEHOLDER = 'https://thunai.example';
+let shellCache = null;
+/** public/index.html with the placeholder origin replaced by PUBLIC_URL's origin; null when PUBLIC_URL is unset. */
+function shellHtml() {
+  let origin;
+  try { origin = new URL(String(process.env.PUBLIC_URL || '').trim()).origin; } catch { return null; }
+  if (!/^https?:/.test(origin)) return null;
+  const file = path.join(root, 'public', 'index.html');
+  let mtime;
+  try { mtime = fs.statSync(file).mtimeMs; } catch { return null; }
+  if (!shellCache || shellCache.mtime !== mtime || shellCache.origin !== origin) {
+    shellCache = { mtime, origin, html: fs.readFileSync(file, 'utf8').replaceAll(SHARE_PLACEHOLDER, origin) };
+  }
+  return shellCache.html;
 }
 
 export function createApp() {
   const app = express();
+  app.disable('x-powered-by');
   if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
+  // Security headers (CSP, HSTS on HTTPS, Permissions-Policy, no-store for /api), optional HTTPS redirect and a
+  // same-origin check for state-changing API calls (server/security.js).
+  app.use(securityHeaders({ publicDir: path.join(root, 'public') }));
+  app.use(compression()); // brotli / gzip for pages, scripts, CSS, JSON (server/compress.js)
+  app.use(httpsRedirect());
+  app.use(sameOriginWrites());
   app.use('/api/billing/stripe/webhook', express.raw({ type: '*/*', limit: '256kb' })); // Stripe signs the raw bytes
+  app.use('/api/billing/razorpay/webhook', express.raw({ type: '*/*', limit: '256kb' })); // Razorpay signs the raw bytes
   app.use('/api/me/data', express.json({ limit: '256kb' })); // saved family profiles can be larger
   app.use(express.json({ limit: '64kb' }));
+  // Per-IP rate limits (SQLite-backed: shared by processes on the same database).
+  if (process.env.RATE_LIMITS !== 'off') {
+    app.use(['/api/chart', '/api/places', '/api/weather', '/api/panchang', '/api/calendar'], rateLimit({ windowMs: 60000, max: Number(process.env.RATE_READ_PER_MIN) || 120 }));
+    const writes = rateLimit({ windowMs: 10 * 60000, max: Number(process.env.RATE_WRITE_PER_10MIN) || 30 });
+    app.use(['/api/store/orders', '/api/requests', '/api/billing/redeem', '/api/billing/checkout', '/api/billing/restore'], (req, res, next) => (req.method === 'POST' ? writes(req, res, next) : next()));
+    // Anonymous writes (device ids can be rotated freely): a per-IP ceiling against database spam.
+    const anonWrites = rateLimit({ windowMs: 10 * 60000, max: Number(process.env.RATE_ANON_WRITE_PER_10MIN) || 60 });
+    app.use(['/api/feedback', '/api/push/subscribe', '/api/push/test', '/api/priests/register'], (req, res, next) => (req.method === 'POST' ? anonWrites(req, res, next) : next()));
+  }
+  app.put('/api/me/data', familyProfileGuard); // BILLING_ENFORCE: account backup keeps the plan's profile count
   app.use('/api', authRouter());
   app.use('/api', weatherRouter());
   app.use('/api', pushRouter());
   app.use('/api', marketRouter());
   app.use('/api', billingRouter());
   app.use('/api', growthRouter());
+  app.use('/api', familyRouter());
+  app.use('/api', policyRouter());
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, ai: aiEnabled() }));
+  app.get('/api/admin/metrics', requireAdmin('viewer'), (req, res) => res.json(businessMetrics({ days: Math.min(365, Math.max(1, Number(req.query.days) || 30)) })));
+  app.get('/api/admin/audit', requireAdmin('owner'), (req, res) => res.json({ audit: auditLog(Number(req.query.limit) || 200) }));
 
   app.get('/api/categories', (_req, res) => {
     res.json(CATEGORIES.map(({ id, icon, en, ta }) => ({ id, icon, en, ta })));
@@ -107,49 +192,86 @@ export function createApp() {
   });
 
   /**
-   * Ask the Jothidar. Body: { category, question?, lang?, loc:{lat,lon,tz,name}, birth?:{date,time,lat,lon,tz,...} }
-   * Streams Server-Sent Events when the client accepts text/event-stream, else returns JSON.
+   * Ask the Jothidar (Prasnam). Body: { category, question?, lang?, loc:{lat,lon,tz,name}, birth?:{date,time,lat,lon,tz,...},
+   *   speaker?, subject?, participants?, sessionFlags?, sessionId?, country? } — see docs/AI-SAFETY-POLICY.md.
+   * Policy runs FIRST: when astrology is not appropriate no chart or Prasna is computed and a reviewed answer
+   * (with help contacts where needed) is returned. Otherwise SSE: evaluation → policy → delta (the whole,
+   * validated reply) → done. JSON without Accept: text/event-stream.
    */
   app.post('/api/ask', async (req, res) => {
     const { category, question = '', lang = 'en' } = req.body || {};
     if (!getCategory(category)) throw new BadRequest('Unknown category');
     const loc = parseLoc(req.body.loc || {});
-    let chart = null;
-    if (req.body.birth) chart = birthChart(parseBirth(req.body.birth));
+    const birthIn = req.body.birth ? parseBirth(req.body.birth) : null;
+    const q = String(question).slice(0, 500);
+    const wantsStream = (req.headers.accept || '').includes('text/event-stream');
+    const started = Date.now();
+    const user = currentUser(req);
+    const { intent, ctx: pctx, decision } = await evaluatePolicy({ body: req.body, user, turns: q.trim() ? [q] : [], lang, category });
 
+    const trace = traceFor(pctx, req.body);
+    if (!decision.allowAstrology) {
+      const t = templateAnswer(decision, pctx, lang);
+      const policy = publicPolicy(decision, pctx);
+      audit('ask', { decision, ctx: pctx, intent, source: 'policy', latencyMs: Date.now() - started, trace });
+      if (!wantsStream) return res.json({ category, route: decision.route, reply: t.text, source: 'policy', policy, resources: t.resources, trace });
+      const send = openStream(res);
+      send('policy', { ...policy, resources: t.resources, trace });
+      send('delta', { text: t.text });
+      send('done', { source: 'policy', route: decision.route });
+      return res.end();
+    }
+
+    const chart = birthIn ? birthChart(birthIn) : null;
     const birth = chart && { janmaNakshatra: chart.janmaNakshatra.index, janmaRasi: chart.janmaRasi.index };
-    const evaluation = evaluatePrasna({ at: new Date(), category, loc, birth });
+    const evaluation = evaluatePrasna({ at: new Date(), category, loc, birth, deadline: Boolean(decision.deadline) });
     const profile = chart && {
-      name: chart.name,
       janmaNakshatraName: chart.janmaNakshatra.name,
       janmaRasiName: chart.janmaRasi.name,
-      lagnaName: chart.lagna.rasiName,
+      lagnaName: chart.lagna?.rasiName ?? null,
       currentDasa: chart.dasa.current && `${chart.dasa.current.lord} Dasa / ${chart.dasa.currentBhukti?.lord} Bhukti`,
     };
-    const ctx = buildContext({ evaluation, question: String(question).slice(0, 500), category, lang, profile, loc });
+    const ctx = buildContext({ evaluation, question: q, category, lang, profile, loc });
+    const evidence = buildEvidence({ chart, evaluation, loc });
+    decision.permittedEvidenceIds = evidence.ids;
+    const engineNote = evaluation.practicalFirst && evaluation.deadlineNote ? (lang === 'ta' ? evaluation.deadlineNote.ta : evaluation.deadlineNote.en) : null;
+    const note = engineNote || deadlineNote(decision, lang);
+    const practical = note ? { deadlineFirst: true, note, questions: evaluation.practicalQuestions || null } : { deadlineFirst: false };
     const summary = {
       category, score: evaluation.score, verdict: evaluation.verdict, verdictText: evaluation.verdictText,
-      factors: evaluation.factors, bestTimes: evaluation.bestTimes,
+      factors: evaluation.factors, bestTimes: evaluation.bestTimes, practical,
       snapshot: {
         at: evaluation.snapshot.at, nakshatra: evaluation.snapshot.nakshatra, tithi: evaluation.snapshot.tithi,
         currentHora: evaluation.snapshot.currentHora, lagna: evaluation.snapshot.lagna, moonRasi: evaluation.snapshot.moonRasi,
       },
     };
 
-    const wantsStream = (req.headers.accept || '').includes('text/event-stream');
-    if (!wantsStream) {
-      const reply = await generateReply({ ctx, evaluation, lang });
-      return res.json({ ...summary, reply: reply.text, source: reply.source });
-    }
-
-    const send = openStream(res);
-    send('evaluation', summary);
-    const reply = await generateReply({
-      ctx, evaluation, lang,
-      onText: (t) => send('delta', { text: t }),
-      onReset: () => send('reset', {}),
+    const send = wantsStream ? openStream(res) : null;
+    send?.('evaluation', summary); // deterministic engine output — safe to show before the explanation
+    // Cost guard: over the per-IP burst limit or a daily cap, the rule-based answer is used (no model call).
+    const capped = aiEnabled() && (aiRateLimited(req.ip) || aiDailyCapped(req, user));
+    const reply = capped ? { text: ruleBasedReply(ctx, evaluation, lang), source: 'rules', validation: { status: 'not_run', errors: ['rate_limited'] } } : await generateReply({
+      ctx, evaluation, lang, decision, evidence, practicalNote: note,
+      onUsage: (u) => recordAiCost({ userId: user?.id || null, task: 'ask', model: u.model, usage: u }),
     });
-    send('done', { source: reply.source });
+    // Deadline-first: the practical note always leads (the rule-based narrator already includes it).
+    const narratorHasNote = Boolean(DEADLINE_FIRST[category] || evaluation.practicalFirst);
+    const text = note && (reply.source === 'ai' || !narratorHasNote) ? `${note}\n\n${reply.text}` : reply.text;
+    const cited = reply.answer?.claims?.flatMap((c) => c.evidenceIds);
+    const extra = {
+      route: decision.route,
+      policy: publicPolicy(decision, pctx),
+      evidence: publicEvidence(evidence, cited || null),
+      claims: reply.answer?.claims || [],
+      validation: reply.validation.status,
+      notice: reply.source === 'ai' ? null : templateText('no_ai_notice', lang),
+      trace,
+    };
+    audit('ask', { decision, ctx: pctx, intent, validation: reply.validation.status, validationErrors: reply.validation.errors, source: reply.source, latencyMs: Date.now() - started, trace });
+    if (!send) return res.json({ ...summary, reply: text, source: reply.source, ...extra });
+    send('policy', extra);
+    send('delta', { text });
+    send('done', { source: reply.source, route: decision.route });
     res.end();
   });
 
@@ -188,16 +310,40 @@ export function createApp() {
   });
 
   /**
+   * Thunai Engine — live web search for "Thunai For You". Body: { category, place, cc?, keywords?:string[], lang }.
+   * Only the category, city / country and short keywords reach the model (no name, birth data or chart). Items are
+   * kept only when their URL comes from this search's own results. 503 when AI is off — the app then shows its own links.
+   */
+  app.post('/api/foryou/search', async (req, res) => {
+    const { category, place = '', cc = '', keywords = [], lang = 'en' } = req.body || {};
+    if (!Object.hasOwn(SEARCH_CATEGORIES, category)) throw new BadRequest('Unknown category');
+    if (typeof place !== 'string' || place.length > 120) throw new BadRequest('Invalid place');
+    if (!Array.isArray(keywords) || keywords.length > 6 || keywords.some((k) => typeof k !== 'string' || k.length > 80)) throw new BadRequest('Invalid keywords');
+    if (!aiEnabled()) return res.status(503).json({ error: 'Live search is not available — opening the search sites instead', offline: true });
+    const user = currentUser(req);
+    if (process.env.AI_REQUIRE_LOGIN === '1' && !user) return res.status(401).json({ error: 'Please sign in to use the Thunai Engine' });
+    if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many searches — please wait a few minutes' });
+    if (aiDailyCapped(req, user)) return res.status(429).json({ error: 'Daily limit for live searches reached — the search links keep working' });
+    try {
+      const r = await findResources({ category, place, cc: String(cc).toUpperCase().slice(0, 2), keywords, lang: lang === 'ta' ? 'ta' : 'en',
+        onUsage: (u) => recordAiCost({ userId: user?.id || null, task: `search:${category}`, model: u.model, usage: u }) });
+      res.json({ ...r, category, at: new Date().toISOString() });
+    } catch (e) {
+      res.status(502).json({ error: 'Live search did not finish — opening the search sites instead', offline: true });
+    }
+  });
+
+  /**
    * AI tasks: POST /api/ai/chat | /api/ai/porutham | /api/ai/names
-   * Body: { context, messages?:[{role,content}], lang, fallbackText } — streams SSE like /api/ask.
+   * Body: { context, messages?:[{role,content}], lang, fallbackText, birth?, speaker?, subject?, participants?,
+   *   sessionFlags?, sessionId?, country?, loc? } — SSE: policy → delta (the whole, validated reply) → done.
+   * Safety / decline / clarify answers are reviewed templates: no chart work, no model call, no login or quota.
+   * Ordinary questions: the model explains the app's own facts (context); its draft is validated before it is
+   * shown, otherwise the app's built-in answer (fallbackText) is sent.
    */
   app.post('/api/ai/:task', async (req, res) => {
     const { task } = req.params;
-    if (!AI_TASKS[task]) throw new BadRequest('Unknown task');
-    if (process.env.AI_REQUIRE_LOGIN === '1' && !currentUser(req)) return res.status(401).json({ error: 'Please sign in to use the AI Jothidar' });
-    if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many questions — please wait a few minutes' });
-    const metered = billingEnforced();
-    if (metered && !checkAiQuota(req).allowed) return res.status(402).json({ error: 'Free daily limit reached — upgrade to Premium for unlimited answers', upgrade: true });
+    if (!Object.hasOwn(AI_TASKS, task)) throw new BadRequest('Unknown task');
     const { context = {}, messages = [], lang = 'en', fallbackText = '' } = req.body || {};
     if (JSON.stringify(context).length > 20000) throw new BadRequest('Context too large');
     if (!Array.isArray(messages) || messages.length > 24) throw new BadRequest('Invalid messages');
@@ -206,31 +352,94 @@ export function createApp() {
       return { role: m.role, content: m.content.slice(0, 2000) };
     });
     if (msgs.length && (msgs[0].role !== 'user' || msgs[msgs.length - 1].role !== 'user')) throw new BadRequest('Conversation must start and end with the person');
-    const args = { task, context, messages: msgs, lang, fallbackText: String(fallbackText).slice(0, 4000) || '🙏' };
-    if (!(req.headers.accept || '').includes('text/event-stream')) {
-      const r = await runTask(args);
-      if (metered) recordAiUsage(req);
-      return res.json({ reply: r.text, source: r.source });
+    const wantsStream = (req.headers.accept || '').includes('text/event-stream');
+    const started = Date.now();
+    const user = currentUser(req);
+    const { intent, ctx: pctx, decision } = await evaluatePolicy({ body: req.body, user, turns: msgs.filter((m) => m.role === 'user').map((m) => m.content), lang });
+
+    const respond = (payload, source) => {
+      if (!wantsStream) return res.json(payload);
+      const send = openStream(res);
+      const { reply, ...meta } = payload;
+      send('policy', meta);
+      send('delta', { text: reply });
+      send('done', { source, route: decision.route });
+      return res.end();
+    };
+
+    const trace = traceFor(pctx, req.body);
+    if (!decision.allowAstrology) {
+      const t = templateAnswer(decision, pctx, lang);
+      audit(`ai:${task}`, { decision, ctx: pctx, intent, source: 'policy', latencyMs: Date.now() - started, trace });
+      return respond({ reply: t.text, source: 'policy', route: decision.route, policy: publicPolicy(decision, pctx), resources: t.resources, trace }, 'policy');
     }
-    const send = openStream(res);
-    const r = await runTask({ ...args, onText: (t) => send('delta', { text: t }), onReset: () => send('reset', {}) });
+
+    if (process.env.AI_REQUIRE_LOGIN === '1' && !user) return res.status(401).json({ error: 'Please sign in to use the AI Jothidar' });
+    if (aiRateLimited(req.ip)) return res.status(429).json({ error: 'Too many questions — please wait a few minutes' });
+    if (aiDailyCapped(req, user)) return res.status(429).json({ error: 'Daily limit for detailed answers reached — built-in guidance keeps working' });
+    const metered = billingEnforced();
+    const quota = metered ? checkAiQuota(req) : null;
+    if (quota && !quota.allowed) {
+      return res.status(402).json(quota.period === 'month'
+        ? { error: `Monthly AI allowance of ${quota.limit} answers reached — built-in guidance keeps working`, upgrade: false }
+        : { error: 'Free daily AI limit reached — built-in guidance keeps working; the Personal plan includes a monthly AI allowance', upgrade: true });
+    }
+
+    // Evidence: a server-computed chart when birth details are sent; otherwise the app's deterministic facts
+    // (minimised: names, birth data, places and relations are dropped). Today's date is added as a fact.
+    let chart = null;
+    if (req.body?.birth) { try { chart = birthChart(parseBirth(req.body.birth)); } catch { chart = null; } }
+    const evidence = buildEvidence({ chart, clientContext: context });
+    const today = pctx.reference?.date;
+    if (today) { evidence.facts.unshift({ id: 'NOW.date', text: `Today's date: ${today}`, source: 'engine', rule: 'server-clock' }); evidence.ids.unshift('NOW.date'); }
+    decision.permittedEvidenceIds = evidence.ids;
+    const r = await runTask({
+      task, evidence, messages: msgs, lang, decision,
+      onUsage: (u) => recordAiCost({ userId: user?.id || null, task, model: u.model, usage: u }),
+    });
     if (metered) recordAiUsage(req);
-    send('done', { source: r.source });
-    res.end();
+    let reply = r.text;
+    let templateId = null;
+    if (!reply) {
+      const adultLove = r.validation.status === 'not_run' && intent.flags.romanticOrSexual && pctx.speaker.minor === false;
+      if (adultLove) { templateId = 'adult_love_any_age'; reply = templateText('adult_love_any_age', lang); }
+      // The app's own built-in answer (deterministic, computed on the device) — or a reviewed fallback.
+      else reply = String(fallbackText).slice(0, 4000) || templateText('validation_fallback', lang);
+    }
+    const cited = r.answer?.claims?.flatMap((c) => c.evidenceIds);
+    audit(`ai:${task}`, { decision, ctx: pctx, intent, validation: r.validation.status, validationErrors: r.validation.errors, source: r.source, latencyMs: Date.now() - started, trace });
+    return respond({
+      reply, source: r.source, route: decision.route, policy: publicPolicy(decision, pctx, templateId ? { templateId } : {}),
+      evidence: r.answer ? publicEvidence(evidence, cited) : [],
+      claims: r.answer?.claims || [], uncertainty: r.answer?.uncertainty || null, nextSteps: r.answer?.nextSteps || [],
+      validation: r.validation.status,
+      notice: r.source === 'ai' ? null : templateText('no_ai_notice', lang),
+      trace,
+    }, r.source);
   });
 
-  app.use('/shared', express.static(path.join(root, 'shared')));
-  app.get('/vendor/astronomy-engine.js', (_req, res) => {
-    res.sendFile(path.join(root, 'node_modules/astronomy-engine/esm/astronomy.js'));
+  // Static files: no-cache (revalidate by ETag) for the unhashed app files, immutable for vendored libraries and fonts.
+  const staticOpts = { setHeaders: (res) => res.setHeader('Cache-Control', staticCacheControl(res.req.originalUrl.split('?')[0])) };
+  // The page's canonical / Open Graph URLs say https://thunai.example until launch; with PUBLIC_URL set they are
+  // served with the real address (WhatsApp / Facebook previews need absolute URLs).
+  app.get(['/', '/index.html'], (req, res, next) => {
+    const html = shellHtml();
+    if (!html) return next();
+    res.setHeader('Cache-Control', 'no-cache');
+    res.type('html').send(html);
   });
-  app.use(express.static(path.join(root, 'public')));
+  app.use('/shared', express.static(path.join(root, 'shared'), staticOpts));
+  app.get('/vendor/astronomy-engine.js', (_req, res) => {
+    res.sendFile(path.join(root, 'node_modules/astronomy-engine/esm/astronomy.js'), { headers: { 'Cache-Control': staticCacheControl('/vendor/astronomy-engine.js') } });
+  });
+  app.use(express.static(path.join(root, 'public'), staticOpts));
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
     if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Request too large' });
-    if (err instanceof BadRequest || err.type === 'entity.parse.failed') {
-      return res.status(400).json({ error: err.message });
-    }
+    if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON body' }); // never echo the body back
+    if (err instanceof BadRequest) return res.status(400).json({ error: err.message });
+    if (err.status >= 400 && err.status < 500 && err.expose) return res.status(err.status).json({ error: 'Bad request' });
     console.error(err);
     res.status(500).json({ error: 'Internal error' });
   });
@@ -238,9 +447,17 @@ export function createApp() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { errors, warnings } = productionConfig();
+  for (const w of warnings) console.warn(`⚠️  ${w}`);
+  if (errors.length) {
+    for (const e of errors) console.error(`✖ ${e}`);
+    console.error('Refusing to start in production with an unsafe configuration (docs/SECURITY-REVIEW.md).');
+    process.exit(1);
+  }
   const port = Number(process.env.PORT) || 3000;
   createApp().listen(port, '0.0.0.0', () => {
-    console.log(`🪐 Kaippesi Jothidar running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);
+    console.log(`🪔 ${BRAND.name} running at http://localhost:${port}  (AI: ${aiEnabled() ? 'Claude' : 'rule-based'})`);
     startPushScheduler();
+    startBackupSchedule();
   });
 }

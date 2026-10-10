@@ -1,3 +1,4 @@
+import { BRAND } from '../shared/brand.js';
 import crypto from 'node:crypto';
 import { getWeather } from './weather.js';
 import { weatherAdvice } from '../shared/weather.js';
@@ -16,7 +17,7 @@ const MORNING_WINDOW_MIN = 60; // still send if the server was briefly down at t
 const TRIP_LEAD_MS = 60 * 60000;
 const MAX_TRIPS = 60;
 const DEFAULT_LOC = { lat: 13.0827, lon: 80.2707 }; // Chennai
-const APP_TA = 'கைப்பேசி ஜோதிடர்';
+const APP_TA = BRAND.nameTa;
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS push_subs (
@@ -43,7 +44,8 @@ let vapid = null;
 export function getVapid() {
   if (vapid) return vapid;
   const env = (k) => (process.env[k] || '').trim();
-  const subject = env('VAPID_SUBJECT') || 'mailto:admin@kaippesi.app';
+  // Push services want a contact: VAPID_SUBJECT, else the public site address (an https: URL is valid).
+  const subject = env('VAPID_SUBJECT') || (/^https:\/\//.test(env('PUBLIC_URL')) ? env('PUBLIC_URL') : 'mailto:admin@kaippesi.app');
   if (env('VAPID_PUBLIC_KEY') && env('VAPID_PRIVATE_KEY')) {
     vapid = { publicKey: env('VAPID_PUBLIC_KEY'), privateKey: env('VAPID_PRIVATE_KEY'), subject };
     return vapid;
@@ -174,7 +176,7 @@ export function morningMessage(prefs, localDate) {
   if (fests) parts.push(`🎉 ${fests}`);
   const greet = prefs.name ? `${prefs.name}, ` : '';
   return {
-    title: ta ? `${APP_TA} · காலை வணக்கம்` : 'Kaippesi Jothidar · Good morning',
+    title: ta ? `${APP_TA} · காலை வணக்கம்` : `${BRAND.name} · Good morning`,
     body: greet + parts.join(' · '),
     url: '/',
     tag: `morning-${localDate}`,
@@ -201,7 +203,7 @@ export function tripMessage(prefs, trip) {
   const at = fmtHM(trip.time);
   const place = trip.place ? ` · ${trip.place}` : '';
   return {
-    title: ta ? `${APP_TA} · பயண நினைவூட்டல்` : 'Kaippesi Jothidar · Trip reminder',
+    title: ta ? `${APP_TA} · பயண நினைவூட்டல்` : `${BRAND.name} · Trip reminder`,
     body: ta ? `🛕 பரிகாரப் பயணம்: ${trip.title} — ${at} மணிக்கு${place}` : `🛕 Parigaram trip: ${trip.title} at ${at}${place}`,
     url: '/',
     tag: `trip-${trip.id}`,
@@ -212,7 +214,7 @@ const REMINDER_WINDOW_MS = 30 * 60000;
 export function reminderMessage(prefs, r) {
   const ta = prefs.lang !== 'en';
   return {
-    title: ta ? `${APP_TA} · நினைவூட்டல்` : 'Kaippesi Jothidar · Reminder',
+    title: ta ? `${APP_TA} · நினைவூட்டல்` : `${BRAND.name} · Reminder`,
     body: `🔔 ${r.title}${r.place ? ` · ${r.place}` : ''}`,
     url: '/',
     tag: `rem-${r.id}`,
@@ -283,6 +285,21 @@ export async function runPushTick(now = Date.now(), send = pushSender) {
     if (next !== row.last_sent) db().prepare('UPDATE push_subs SET last_sent = ? WHERE id = ?').run(next, row.id);
   }
   return { sent, removed };
+}
+
+/**
+ * Send one notification to every device a signed-in user subscribed (e.g. a booking status change).
+ * Never throws; subscriptions that the push service reports as gone are removed.
+ */
+export async function notifyUser(userId, payload, send = pushSender) {
+  if (!userId) return 0;
+  let rows = [];
+  try { rows = db().prepare('SELECT * FROM push_subs WHERE user_id = ?').all(userId); } catch { return 0; }
+  let sent = 0;
+  for (const row of rows) {
+    try { await send(JSON.parse(row.subscription), payload); sent++; } catch (err) { if (isGone(err)) removeSub(row.id); }
+  }
+  return sent;
 }
 
 let timer = null;

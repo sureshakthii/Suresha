@@ -1,6 +1,12 @@
-# 🪐 Kaippesi Jothidar — கைப்பேசி ஜோதிடர்
+# 🪔 துணை · THUNAI — Personal Astrology & Spiritual Guidance
 
-An AI South Indian astrology mobile app. It covers the Jathagam, a live Rasi Mandalam, Nakshatra, Horai, and Prasnam questions answered as *Do or Don't*.
+**உங்கள் வாழ்வின் வழித்துணை.** A Tamil/English app for daily panchangam, family horoscopes, explainable guidance and temple journeys. It was formerly "Thunai". THUNAI is a *working* brand, configurable in `shared/brand.js`.
+
+> **Before going public:** [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md) lists everything the owner and outside reviewers must supply (contacts, domain, keys, store listing, expert sign-offs).
+>
+> **Start here:** [docs/THUNAI-REVISION.md](docs/THUNAI-REVISION.md) covers what changed, what is still mocked or blocked, the server configuration, validation results, screenshots and the next-release checklist.
+
+**Navigation:** Today · My Chart · Family · Ask · Services, with Settings behind the gear icon. The calendar and basic guidance work without signing in. Ask answers from verified chart facts in six parts, and labels each answer as AI-generated or built-in. Birth time can be Exact, Approximate or Unknown. My Spiritual Journey offers three honest options with sources and estimates clearly labelled.
 
 ## What makes it different
 
@@ -72,7 +78,7 @@ The tests cover:
 |---|---|---|
 | GET | `/api/health` | returns `{ ok, ai }` |
 | GET | `/api/categories` | list of question categories |
-| GET | `/api/places?q=madurai` | built-in gazetteer, plus an OpenStreetMap fallback |
+| GET | `/api/places?q=madurai` | built-in world gazetteer, plus an OpenStreetMap (Nominatim) fallback; every result has an IANA `zone` |
 | POST | `/api/chart` | `{ name, date:"YYYY-MM-DD", time:"HH:MM:SS", lat, lon, tz, place }` |
 | GET | `/api/panchang?lat=&lon=&tz=&at=` | live Panchangam snapshot |
 | GET | `/api/calendar?year=&month=&lat=&lon=&tz=` | Tamil calendar month (month 1–12) |
@@ -102,21 +108,27 @@ test/     node:test suites
 
 > Astrology gives guidance on timing only. For surgery, legal and financial decisions, the professional's advice always comes first. The AI is instructed to say so.
 
+## Places & time zones (worldwide)
+
+Every place field (birth place, current location, journey start, kattam, matching) searches `shared/world-places.js`, an offline gazetteer of ~3,700 places in 240+ countries (GeoNames, CC BY 4.0 — all capitals, major cities everywhere, every Sri Lankan district, Malaysian / Singapore / Gulf towns, UK / US / Canada / Australia metros), with Tamil names and Tamil-script search for the main Tamil places. When the phone is online and the built-in list has few matches, OpenStreetMap Nominatim is asked too (through `/api/places` on the server, or directly from the offline app — debounced, one request a second, cached). Each place carries its **IANA time zone**; for online results the zone comes from the country (single-zone countries) or the nearest built-in city in the same country (US, CA, AU, RU, BR …) — never from the longitude. Charts use the offset in force on the birth date (`birthChart({ zone })`, daylight saving and historical changes included). Old profiles with only a numeric `tz` keep working; when their place is in the list the zone is attached quietly. Regenerate the data with `scripts/build-world-data.mjs` (instructions inside). Rupee estimates (journeys) also show an approximate amount in the user's currency (`shared/currency.js`); payments stay in INR.
+
 ## Login
 
 Users sign in with a one-time code (OTP) sent by **SMS** or **email**, or with **Facebook**. Accounts, sessions and each user's saved data (family birth profiles, settings) live in SQLite (`node:sqlite`, file at `DB_PATH`, default `data/kaippesi.db`). Sessions are 30-day `httpOnly` cookies (`kj_session`).
 
-| Channel | Provider (first configured wins) |
+| Channel | Provider |
 |---|---|
-| SMS | Twilio (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`), else MSG91 (`MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`) |
+| SMS | Chosen per number: Indian numbers (`+91`) go through MSG91 (`MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`) when it is configured, every other country through Twilio (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`). With only Twilio, Twilio sends everywhere (India too). With only MSG91, SMS login works for `+91` numbers only — other countries get a clear "use email" message (MSG91 is India-only; Twilio is international). |
 | Email | SMTP via nodemailer (`SMTP_URL`, `MAIL_FROM`) |
 | Facebook | `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, `PUBLIC_URL` |
+
+**Mobile numbers worldwide.** The login screen and every other mobile-number field (priest registration, bookings, contact numbers) have a searchable country-code picker (flag, Tamil / English country name, dialling code; all ITU calling regions from Google's libphonenumber metadata in `shared/country-data.js`). It defaults to the country of the phone's locale / time zone (India when unknown), checks the length loosely per country and sends the number in E.164 (`+94771234567`). The server also still accepts a bare 10-digit Indian mobile.
 
 **Dev mode** (`AUTH_DEV_MODE=1`, or automatically outside production for any channel with no provider): nothing is sent; the code is printed to the server console and returned as `devCode` in the response, so you can log in locally with no accounts set up. In production a channel without a provider returns 503. Set `AUTH_SECRET` in production.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/auth/providers` | `{ sms, email, facebook, devMode }` |
+| GET | `/api/auth/providers` | `{ sms, smsWorldwide, email, facebook, devMode }` |
 | POST | `/api/auth/otp/request` | `{ channel:"sms"\|"email", to }`: 5 per number/email and 30 per IP per hour |
 | POST | `/api/auth/otp/verify` | `{ channel, to, code, name? }` → `{ user }` + session cookie (5 tries per code) |
 | GET | `/api/auth/facebook/start` | redirects to Facebook; callback returns to `/#welcome` or `/#login-failed` |
@@ -157,21 +169,21 @@ Pooja store, priest (Iyer / Purohit / Vadhyar) directory and service bookings �
 
 ## Subscriptions
 
-`server/billing.js` — plans, payments and entitlements (tables `subscriptions` and `ai_usage`, created on first use). Plans: **Free** (panchangam, charts, calendar, porutham table, 5 Jothidar answers a day), **Premium** ₹199 / $4.99 a month or ₹1,999 / $49 a year (unlimited chat, life-timing predictions, full analysis, porutham explanation, priority seva booking) and **Family** ₹399 / $9.99 a month or ₹3,999 / $99 a year (Premium for up to 8 family profiles). INR is paid through Razorpay (`RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`), USD through Stripe Checkout (`STRIPE_SECRET_KEY`, webhook secret `STRIPE_WEBHOOK_SECRET`). Without a gateway, checkout returns `payment_setup_pending`. Buying while a plan is active extends it from the current expiry. The free AI quota (`AI_FREE_DAILY`, default 5 a day per user or per IP when signed out, India time) is enforced only when `BILLING_ENFORCE=1`: once it is used up, `/api/ai/:task` returns 402 `{ error, upgrade: true }`. Only successful answers count.
+`server/billing.js` — plans, payments and entitlements (tables `subscriptions` and `ai_usage`, created on first use). Plans: **Free** (panchangam, charts, calendar, porutham table, 5 Jothidar answers a day), **Personal** (formerly "Premium"; old plan ids map to it) ₹199 / $4.99 a month or ₹1,999 / $49 a year (detailed answers up to a monthly allowance, `AI_PERSONAL_MONTHLY`; life-timing predictions, full analysis, porutham explanation) and **Family** ₹399 / $9.99 a month or ₹3,999 / $99 a year (Personal for up to 8 family profiles, allowance `AI_FAMILY_MONTHLY`). The exact feature list is `PLANS` in `server/billing.js`. Exactly three payment currencies, chosen by the server from the residence country the app sends: India → INR through Razorpay (`RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`); United Arab Emirates → AED (Personal AED 18 / AED 179, Family AED 36 / AED 359) and every other country → USD, both through Stripe Checkout (`STRIPE_SECRET_KEY`, webhook secret `STRIPE_WEBHOOK_SECRET`). Prices: `PRICE_{INR,AED,USD}_*` (`docs/COSTING.md`). Without a gateway, checkout returns `payment_setup_pending`. Buying while a plan is active extends it from the current expiry. The free AI quota (`AI_FREE_DAILY`, default 5 a day per user or per IP when signed out, India time) is enforced only when `BILLING_ENFORCE=1`: once it is used up, `/api/ai/:task` returns 402 `{ error, upgrade: true }`. Only successful answers count.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/billing/plans?currency=INR\|USD` | `{ currency, plans:[{ id, name:{en,ta}, interval, price:{INR,USD}, amount, currency, features }] }` |
+| GET | `/api/billing/plans?country=AE` (or `?currency=INR\|AED\|USD`) | `{ country, currency, gateway, currencies, plans:[{ id, name:{en,ta}, interval, price:{INR,AED,USD}, amount, display, currency, features }] }` — the country decides the currency; a mismatched `currency` is 400 |
 | GET | `/api/billing/me` | `{ plan, status, expiresAt, entitlements:{ unlimitedAi, predictions, familyProfiles }, aiUsedToday, aiFreeDaily }` (works signed out) |
-| POST | `/api/billing/checkout` | sign-in · `{ plan, currency }` → Razorpay `{ subscriptionId, gateway:"razorpay", keyId, razorpayOrderId, amount, currency }`, Stripe `{ subscriptionId, gateway:"stripe", url }`, or `{ subscriptionId, gateway:null, status:"payment_setup_pending" }` |
+| POST | `/api/billing/checkout` | sign-in · `{ plan, country, currency? }` (country = residence, else the account phone's country; a currency that does not match the country is 400) → Razorpay `{ subscriptionId, gateway:"razorpay", keyId, razorpayOrderId, amount, currency }`, Stripe `{ subscriptionId, gateway:"stripe", url }`, or `{ subscriptionId, gateway:null, status:"payment_setup_pending" }` |
 | POST | `/api/billing/verify` | sign-in · `{ subscriptionId, razorpay_order_id, razorpay_payment_id, razorpay_signature }` → `{ subscription }` |
-| POST | `/api/billing/stripe/webhook` | Stripe `checkout.session.completed` (raw body, `Stripe-Signature` checked, 5-minute tolerance) |
+| POST | `/api/billing/stripe/webhook` | Stripe `checkout.session.completed` (currency and amount must match) and `charge.refunded` (raw body, `Stripe-Signature` checked, 5-minute tolerance) |
 | POST | `/api/admin/billing/grant` | admin · `{ userId, plan, days }` complimentary access |
 | GET | `/api/admin/billing/subscriptions` | admin · all subscriptions |
 
 ## Growth & admin
 
-`server/growth.js` — gift / trial codes, privacy-friendly usage analytics, feedback & testimonials, referrals and an admin overview (tables `gift_codes`, `gift_redemptions`, `events`, `feedback`, `referral_codes`, `referral_claims`, created on first use). Complimentary access is a normal row in `subscriptions` (gateway `gift`, `trial` or `referral`, amount 0), so it **locks automatically** at `expires_at`; `/api/billing/me` then reports `locked: true`. A gift never shortens a later expiry; referral days stack on top of the current expiry. `TRIAL_HOURS` (unset = off) gives every new signed-in user a one-time Premium trial; `REFERRAL_DAYS` (default 7) sets the referral reward. Analytics store only an app-generated `deviceId`, never IPs or personal data. `/api/billing/me` also returns `trialEndsAt` (gift/trial only), `locked` and `enforced` (`BILLING_ENFORCE=1`).
+`server/growth.js` — gift / trial codes, privacy-friendly usage analytics, feedback & testimonials, referrals and an admin overview (tables `gift_codes`, `gift_redemptions`, `events`, `feedback`, `referral_codes`, `referral_claims`, created on first use). Complimentary access is a normal row in `subscriptions` (gateway `gift`, `trial` or `referral`, amount 0), so it **locks automatically** at `expires_at`; `/api/billing/me` then reports `locked: true`. A gift never shortens a later expiry; referral days stack on top of the current expiry. `TRIAL_HOURS` (unset = off) gives every new signed-in user a one-time Personal-plan trial; `REFERRAL_DAYS` (default 7) sets the referral reward. Analytics store only an app-generated `deviceId`, never IPs or personal data. `/api/billing/me` also returns `trialEndsAt` (gift/trial only), `locked` and `enforced` (`BILLING_ENFORCE=1`).
 
 | Method | Path | Notes |
 |---|---|---|
@@ -179,7 +191,7 @@ Pooja store, priest (Iyer / Purohit / Vadhyar) directory and service bookings �
 | GET | `/api/admin/gift-codes` | admin · `{ giftCodes:[{ code, plan, hours, maxUses, uses, note, createdAt, expiresAt }] }` |
 | POST | `/api/billing/redeem` | sign-in · `{ code }` → `{ subscription, expiresAt }`; 404 unknown, 409 already redeemed by you, 410 expired / used up |
 | POST | `/api/events` | `{ deviceId (8–64 [A-Za-z0-9_-]), events:[{ type, screen?, feature?, platform?:"web"\|"pwa"\|"android"\|"ios"\|"huawei", appVersion? }] (max 50) }` → `{ ok:true }`; types `first_open, app_open, install, screen_view, signup, login, feature, purchase, share, referral_open`; 300 calls / 10 min per IP |
-| GET | `/api/admin/stats?days=30` | admin · `{ totals:{ devices, installs, users, activeToday, active7, active30, payingUsers, revenueByCurrency:{INR,USD}, orders, requests, feedbackCount, avgRating }, byPlatform, daily:[{ date, opens, newDevices, installs, signups }], topScreens, topFeatures }` (days in India time) |
+| GET | `/api/admin/stats?days=30` | admin · `{ totals:{ devices, installs, users, activeToday, active7, active30, payingUsers, revenueByCurrency:{INR,AED,USD}, orders, requests, feedbackCount, avgRating }, byPlatform, daily:[{ date, opens, newDevices, installs, signups }], topScreens, topFeatures }` (days in India time) |
 | POST | `/api/feedback` | `{ deviceId, rating:1–5, comment? (≤1000), screen? }` → `{ ok:true }`; 10 / hour per device |
 | GET | `/api/testimonials` | up to 20 approved `{ rating, comment, name, createdAt }` (first name, or "அன்பர்") |
 | GET / POST | `/api/admin/feedback?status=new\|approved\|hidden`, `/api/admin/feedback/:id` | admin · update `{ status?, reply? }` |

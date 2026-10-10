@@ -3,9 +3,12 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 
 process.env.DB_PATH = ':memory:';
+process.env.SERVICES_OPEN = '1'; // request intake is off by default (see the SERVICES_OPEN tests in market.test.js)
 process.env.AUTH_DEV_MODE = '1';
 process.env.AUTH_SECRET = 't';
 process.env.ADMIN_TOKEN = 'admin-test';
+process.env.RATE_LIMITS = 'off'; // validation-heavy suite; the limiter has its own test
+process.env.STORE_ALLOW_SAMPLE = '1'; // the shipped catalogue is a sample; real checkout refuses it (see production.test.js)
 for (const k of ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'ANNADHANAM_RATE', 'TWILIO_ACCOUNT_SID', 'MSG91_AUTH_KEY', 'SMTP_URL']) delete process.env[k];
 
 let server, base, market, buyer, priestUser;
@@ -198,7 +201,7 @@ test('service + annadhanam + temple requests: create and list', async () => {
   const r1 = await req('POST', '/api/requests', { ...base, type: 'service', service: 'gomatha_pooja', time: '07:30', people: 6, notes: 'Near Kapaleeswarar temple' }, as(buyer));
   assert.equal(r1.status, 201);
   const { request } = await r1.json();
-  assert.equal(request.status, 'requested');
+  assert.equal(request.status, 'awaiting_confirmation');
   assert.equal(request.service, 'gomatha_pooja');
   assert.equal(request.contactPhone, '+919876500001');
   serviceReqId = request.id;
@@ -274,4 +277,27 @@ test('admin auth: 401 without token, 403 wrong token, 503 when ADMIN_TOKEN unset
   try {
     assert.equal((await req('GET', '/api/admin/orders', undefined, ADMIN)).status, 503);
   } finally { process.env.ADMIN_TOKEN = 'admin-test'; }
+});
+
+test('fulfilment tracking: history, priest accepts or declines, customer sees every step', async () => {
+  const ok = await req('POST', `/api/priests/me/requests/${serviceReqId}/respond`, { decision: 'accept' }, as(priestUser));
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).request.status, 'assigned');
+  assert.equal((await req('POST', `/api/priests/me/requests/${serviceReqId}/respond`, { decision: 'maybe' }, as(priestUser))).status, 400);
+  const dec = await (await req('POST', `/api/priests/me/requests/${serviceReqId}/respond`, { decision: 'decline' }, as(priestUser))).json();
+  assert.equal(dec.request.status, 'confirmed');
+  assert.equal(dec.request.priestId, null);
+  const mine = (await (await req('GET', '/api/requests', undefined, as(buyer))).json()).requests.find((r) => r.id === serviceReqId);
+  assert.deepEqual(mine.history.map((h) => h.status), ['requested', 'awaiting_confirmation', 'assigned', 'accepted', 'declined']);
+});
+
+test('stock: paid and recently held orders reduce what is left; the last items cannot be sold twice', async () => {
+  const before = (await (await req('GET', '/api/store/products')).json()).products.find((p) => p.id === 'lamp-kuthu-vilakku-18').stock;
+  const r1 = await req('POST', '/api/store/orders', { items: [{ id: 'lamp-kuthu-vilakku-18', qty: before - 1 }], address }, as(buyer));
+  assert.equal(r1.status, 201);
+  const left = (await (await req('GET', '/api/store/products')).json()).products.find((p) => p.id === 'lamp-kuthu-vilakku-18').stock;
+  assert.equal(left, 1);
+  const r2 = await req('POST', '/api/store/orders', { items: [{ id: 'lamp-kuthu-vilakku-18', qty: 2 }], address }, as(buyer));
+  assert.equal(r2.status, 400);
+  assert.match((await r2.json()).error, /Only 1 left/);
 });

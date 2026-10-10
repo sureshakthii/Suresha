@@ -1,10 +1,16 @@
+import { BRAND } from '../shared/brand.js';
 import crypto from 'node:crypto';
 import express from 'express';
 import nodemailer from 'nodemailer';
 import { getDb } from './db.js';
+import { familyExport, deleteFamilyData } from './family.js';
+import { hit } from './admin.js';
+import { cleanDisplayText } from './security.js';
 
 const OTP_TTL = 5 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
+const OTP_FAILS_PER_ID_PER_DAY = 20; // across re-sent codes: caps guessing at ~0.002% a day per account
+const OTP_FAILS_PER_IP = 30; // wrong codes per IP per 15 minutes, across all numbers / emails
 const SENDS_PER_ID = 5;
 const SENDS_PER_IP = 30;
 const HOUR = 60 * 60 * 1000;
@@ -15,7 +21,6 @@ const DATA_MAX = 200 * 1024;
 const FB = 'https://graph.facebook.com/v19.0';
 
 let secret = null;
-const ipHits = new Map(); // ip -> { count, start }
 let mailer = null;
 
 const env = (k) => (process.env[k] || '').trim();
@@ -31,33 +36,55 @@ function resolveSecret() {
 
 // ---- providers ----
 
+const twilioOk = () => !!(env('TWILIO_ACCOUNT_SID') && env('TWILIO_AUTH_TOKEN') && env('TWILIO_FROM'));
+const msg91Ok = () => !!(env('MSG91_AUTH_KEY') && env('MSG91_TEMPLATE_ID'));
+
+/**
+ * SMS provider for a number (E.164). MSG91 only delivers to Indian (+91) numbers through a DLT-approved template;
+ * Twilio sends worldwide. With both configured: +91 → MSG91 (cheaper, DLT-compliant), every other country → Twilio.
+ * With only one configured: Twilio sends everywhere; MSG91 sends to +91 only (others get "not available").
+ * Without a number: whether any SMS provider is configured at all.
+ */
+export function smsProviderFor(to) {
+  const india = to == null || String(to).startsWith('+91');
+  if (india && msg91Ok()) return 'msg91';
+  if (twilioOk()) return 'twilio';
+  return null;
+}
 function smsProvider() {
-  if (env('TWILIO_ACCOUNT_SID') && env('TWILIO_AUTH_TOKEN') && env('TWILIO_FROM')) return 'twilio';
-  if (env('MSG91_AUTH_KEY') && env('MSG91_TEMPLATE_ID')) return 'msg91';
+  if (twilioOk()) return 'twilio';
+  if (msg91Ok()) return 'msg91';
   return null;
 }
 const emailProvider = () => (env('SMTP_URL') && env('MAIL_FROM') ? 'smtp' : null);
 const providerFor = (channel) => (channel === 'sms' ? smsProvider() : emailProvider());
 
-/** Dev mode: forced by AUTH_DEV_MODE=1, or automatic outside production when the channel has no provider. */
+/**
+ * Dev mode (the code is returned on screen): forced by AUTH_DEV_MODE=1, or automatic when the channel has no
+ * provider — and NEVER in production (NODE_ENV=production), whatever AUTH_DEV_MODE says.
+ */
 function devModeFor(channel) {
-  return env('AUTH_DEV_MODE') === '1' || (!isProd() && !providerFor(channel));
+  if (isProd()) return false;
+  return env('AUTH_DEV_MODE') === '1' || !providerFor(channel);
 }
 
 function providers() {
   const pick = (ch) => (devModeFor(ch) ? 'dev' : providerFor(ch));
   return {
     sms: pick('sms'),
+    smsWorldwide: devModeFor('sms') || twilioOk(), // false: SMS codes reach Indian (+91) numbers only (MSG91)
     email: pick('email'),
     facebook: facebookConfigured(),
     devMode: devModeFor('sms') || devModeFor('email'),
   };
 }
 
-const otpText = (code) => `உங்கள் கைப்பேசி ஜோதிடர் OTP: ${code} (5 நிமிடங்கள் செல்லும்)\nYour Kaippesi Jothidar OTP: ${code} (valid for 5 minutes)`;
+const otpText = (code) => `உங்கள் ${BRAND.nameTa} OTP: ${code} (5 நிமிடங்கள் செல்லும்)\nYour ${BRAND.name} OTP: ${code} (valid for 5 minutes)`;
 
 async function sendSms(to, code) {
-  if (smsProvider() === 'twilio') {
+  const provider = smsProviderFor(to);
+  if (!provider) throw Object.assign(new Error('No SMS provider for this country'), { code: 'NO_SMS_ROUTE' });
+  if (provider === 'twilio') {
     const sid = env('TWILIO_ACCOUNT_SID');
     const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
       method: 'POST',
@@ -86,7 +113,7 @@ async function sendEmail(to, code) {
   mailer ||= nodemailer.createTransport(env('SMTP_URL'));
   await mailer.sendMail({
     from: env('MAIL_FROM'), to,
-    subject: `கைப்பேசி ஜோதிடர் OTP: ${code}`,
+    subject: `${BRAND.nameTa} · ${BRAND.name} OTP: ${code}`,
     text: otpText(code),
   });
 }
@@ -133,7 +160,7 @@ function parseCookies(req) {
 }
 
 function setCookie(req, res, name, value, { maxAge, path = '/' } = {}) {
-  const secure = env('PUBLIC_URL').startsWith('https') || req.secure;
+  const secure = isProd() || env('PUBLIC_URL').startsWith('https') || req.secure;
   const parts = [`${name}=${encodeURIComponent(value)}`, `Path=${path}`, 'HttpOnly', 'SameSite=Lax', `Max-Age=${Math.floor(maxAge / 1000)}`];
   if (secure) parts.push('Secure');
   res.append('Set-Cookie', parts.join('; '));
@@ -158,8 +185,11 @@ export function currentUser(req) {
 
 function createSession(req, res, userId) {
   const db = getDb();
-  const token = crypto.randomBytes(32).toString('base64url');
+  const token = crypto.randomBytes(32).toString('base64url'); // 256 bits; only its SHA-256 is stored
   db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now());
+  // Rotation: a session token presented with this sign-in (an older or someone else's session) stops working.
+  const old = parseCookies(req)[SESSION_COOKIE];
+  if (old) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256(old));
   db.prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)').run(sha256(token), userId, now() + SESSION_TTL);
   setCookie(req, res, SESSION_COOKIE, token, { maxAge: SESSION_TTL });
 }
@@ -171,20 +201,18 @@ function createUser(fields) {
   return getDb().prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
+/** Code sends per IP per hour (SQLite rate_hits: survives restarts, shared by every process on the database). */
 function ipLimited(ip) {
-  const t = now();
-  if (ipHits.size > 5000) for (const [k, v] of ipHits) if (t - v.start > HOUR) ipHits.delete(k);
-  const e = ipHits.get(ip);
-  if (!e || t - e.start > HOUR) { ipHits.set(ip, { count: 1, start: t }); return false; }
-  if (e.count >= SENDS_PER_IP) return true;
-  e.count++;
+  const key = `otpsend-ip:${ip}`;
+  if (hit(key, HOUR, { peek: true }) >= SENDS_PER_IP) return true;
+  hit(key, HOUR);
   return false;
 }
 
 function parseTarget(channel, to) {
   if (channel === 'sms') {
     const id = normalizePhone(to);
-    return id ? { id } : { error: 'Enter a valid mobile number: 10 digits (India) or +<country code><number>' };
+    return id ? { id } : { error: 'Enter a valid mobile number with its country code, e.g. +94 77 123 4567 or +44 7700 900123 (10-digit Indian numbers work without +91)' };
   }
   if (channel === 'email') {
     const id = normalizeEmail(to);
@@ -215,9 +243,14 @@ export function authRouter() {
     if (!dev && !providerFor(channel)) {
       return res.status(503).json({ error: `${channel === 'sms' ? 'SMS' : 'Email'} login is not configured` });
     }
+    if (!dev && channel === 'sms' && !smsProviderFor(id)) {
+      return res.status(503).json({ error: 'SMS codes cannot be sent to this country yet. Please sign in with email instead.' });
+    }
 
     const db = getDb();
     const t = now();
+    // Retention: a pending code row names a phone number / email; drop rows whose code and send window are both over.
+    db.prepare('DELETE FROM otps WHERE expires_at < ? AND window_start < ?').run(t - HOUR, t - HOUR);
     const row = db.prepare('SELECT sends, window_start FROM otps WHERE identifier = ?').get(id);
     const fresh = !row || t - row.window_start > HOUR;
     const sends = fresh ? 0 : row.sends;
@@ -234,13 +267,13 @@ export function authRouter() {
 
     const masked = channel === 'sms' ? maskPhone(id) : maskEmail(id);
     if (dev) {
-      console.log(`[auth dev] OTP for ${id}: ${code}`);
+      console.log(`[auth dev] OTP for ${masked}: ${code}`); // dev mode never runs in production
       return res.json({ sent: true, channel, to: masked, devCode: code });
     }
     try {
       await (channel === 'sms' ? sendSms(id, code) : sendEmail(id, code));
     } catch (err) {
-      console.error('OTP send failed:', err.message);
+      console.error('OTP send failed:', String(err.message || '').split(':')[0]); // provider + status only (bodies can echo the number)
       return res.status(502).json({ error: 'Could not send the OTP right now. Please try again.' });
     }
     res.json({ sent: true, channel, to: masked });
@@ -252,6 +285,12 @@ export function authRouter() {
     if (target.error) return res.status(400).json({ error: target.error });
     const id = target.id;
     const db = getDb();
+    const ipKey = `otpfail-ip:${req.ip || 'unknown'}`;
+    const idKey = `otpfail-id:${hmac(id)}`; // the number / email itself is never stored in rate_hits
+    if ((process.env.RATE_LIMITS !== 'off' && hit(ipKey, 15 * 60000, { peek: true }) >= OTP_FAILS_PER_IP)
+      || hit(idKey, 24 * HOUR, { peek: true }) >= OTP_FAILS_PER_ID_PER_DAY) {
+      return res.status(429).json({ error: 'Too many wrong codes. Please try again later.' });
+    }
     const row = db.prepare('SELECT * FROM otps WHERE identifier = ?').get(id);
     if (!row || !row.code_hash || row.expires_at <= now()) {
       return res.status(401).json({ error: 'Code expired or not found. Please request a new OTP.' });
@@ -262,20 +301,23 @@ export function authRouter() {
     const clean = String(code ?? '').replace(/\s/g, '');
     if (!/^\d{6}$/.test(clean) || !safeEqual(hmac(`${id}:${clean}`), row.code_hash)) {
       db.prepare('UPDATE otps SET attempts = attempts + 1 WHERE identifier = ?').run(id);
+      hit(ipKey, 15 * 60000);
+      hit(idKey, 24 * HOUR);
       return res.status(401).json({ error: 'Incorrect code' });
     }
     db.prepare('DELETE FROM otps WHERE identifier = ?').run(id);
 
     const col = channel === 'sms' ? 'phone' : 'email';
-    const cleanName = typeof name === 'string' ? name.trim().slice(0, 80) : '';
+    const cleanName = typeof name === 'string' ? cleanDisplayText(name, 80) : ''; // shown to family members
     let user = db.prepare(`SELECT * FROM users WHERE ${col} = ?`).get(id);
+    const isNew = !user; // lets the app count sign-up vs log-in (analytics, only with the person's consent)
     if (!user) user = createUser({ [col]: id, name: cleanName });
     else if (cleanName && !user.name) {
       db.prepare('UPDATE users SET name = ? WHERE id = ?').run(cleanName, user.id);
       user.name = cleanName;
     }
     createSession(req, res, user.id);
-    res.json({ user: publicUser(user) });
+    res.json({ user: publicUser(user), isNew });
   });
 
   r.get('/auth/facebook/start', (req, res) => {
@@ -335,6 +377,15 @@ export function authRouter() {
     res.json({ ok: true });
   });
 
+  // Sign out everywhere: every session of this account ends (e.g. a lost phone).
+  r.post('/auth/logout-all', (req, res) => {
+    const user = currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const { changes } = getDb().prepare('DELETE FROM sessions WHERE user_id = ?').run(user.id);
+    setCookie(req, res, SESSION_COOKIE, '', { maxAge: 0 });
+    res.json({ ok: true, sessionsEnded: changes });
+  });
+
   r.get('/me/data', (req, res) => {
     const user = currentUser(req);
     if (!user) return res.status(401).json({ error: 'Not signed in' });
@@ -356,6 +407,99 @@ export function authRouter() {
     getDb().prepare(`INSERT INTO user_data (user_id, data, updated_at) VALUES (?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`).run(user.id, json, updatedAt);
     res.json({ ok: true, updatedAt });
+  });
+
+  // Clear saved profiles only (the account stays).
+  r.delete('/me/data', (req, res) => {
+    const user = currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    getDb().prepare('DELETE FROM user_data WHERE user_id = ?').run(user.id);
+    res.json({ ok: true });
+  });
+
+  // Data export: everything stored about this account (everything account deletion removes or de-identifies),
+  // as JSON. Secrets are never exported: OTP hashes, session tokens and push-subscription keys are left out.
+  r.get('/me/export', (req, res) => {
+    const user = currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const d = getDb();
+    const tryAll = (sql, ...args) => { try { return d.prepare(sql).all(...(args.length ? args : [user.id])); } catch { return []; } };
+    const row = d.prepare('SELECT data, updated_at FROM user_data WHERE user_id = ?').get(user.id);
+    const account = d.prepare('SELECT id, name, phone, email, created_at FROM users WHERE id = ?').get(user.id);
+    const parse = (v) => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
+    const priest = tryAll('SELECT id, name, phone, city, languages, services, experience_years, about, status, created_at, updated_at FROM priests WHERE user_id = ?')
+      .map((p) => ({ ...p, languages: parse(p.languages), services: parse(p.services) }))[0] || null;
+    const endpointHost = (e) => { try { return new URL(e).host; } catch { return null; } };
+    res.setHeader('Content-Disposition', 'attachment; filename="thunai-account-export.json"');
+    res.json({
+      exportedAt: new Date(now()).toISOString(),
+      account,
+      savedData: row?.data ? parse(row.data) : null,
+      savedDataUpdatedAt: row?.updated_at ?? null,
+      subscriptions: tryAll('SELECT id, plan, status, currency, amount_minor, gateway, starts_at, expires_at, created_at FROM subscriptions WHERE user_id = ?'),
+      aiUsage: tryAll('SELECT day, count FROM ai_usage WHERE usage_key = ? ORDER BY day', `u:${user.id}`),
+      aiCost: tryAll('SELECT task, model, input_tokens, output_tokens, at FROM ai_cost WHERE user_id = ? ORDER BY at'),
+      giftRedemptions: tryAll('SELECT code, redeemed_at FROM gift_redemptions WHERE user_id = ?'),
+      referral: {
+        code: tryAll('SELECT code, created_at FROM referral_codes WHERE user_id = ?')[0] || null,
+        claimed: tryAll('SELECT code, created_at FROM referral_claims WHERE user_id = ?')[0] || null,
+        referredCount: tryAll('SELECT COUNT(*) AS n FROM referral_claims WHERE referrer_id = ?')[0]?.n || 0,
+      },
+      storeOrders: tryAll('SELECT id, items, address, total, status, created_at, updated_at FROM store_orders WHERE user_id = ?')
+        .map((o) => ({ ...o, items: parse(o.items), address: parse(o.address) })),
+      refundRequests: tryAll('SELECT id, order_id, reason, status, created_at, resolved_at FROM order_refund_requests WHERE user_id = ?'),
+      serviceRequests: tryAll('SELECT * FROM service_requests WHERE user_id = ?'),
+      requestHistory: tryAll('SELECT request_id, status, actor, at FROM request_events WHERE request_id IN (SELECT id FROM service_requests WHERE user_id = ?) ORDER BY id'),
+      priestProfile: priest,
+      feedback: tryAll("SELECT id, type, rating, comment, screen, meta, status, created_at FROM feedback WHERE user_id = ?").map((x) => ({ ...x, meta: parse(x.meta) })),
+      pushSubscriptions: tryAll('SELECT id, endpoint, prefs, created_at FROM push_subs WHERE user_id = ?')
+        .map((p) => ({ id: p.id, service: endpointHost(p.endpoint), prefs: parse(p.prefs), createdAt: p.created_at })), // keys and the endpoint URL are secrets
+      analyticsEvents: tryAll('SELECT type, screen, feature, platform, app_version, created_at FROM events WHERE user_id = ? ORDER BY created_at'),
+      family: (() => { try { return familyExport(user.id); } catch { return null; } })(), // memberships, invites, shares (no code hashes)
+      accountActivity: tryAll('SELECT at, action, target FROM audit_log WHERE actor = ? ORDER BY id', `user:${user.id}`), // own cancellations / refund requests
+      pendingSignInCodes: tryAll('SELECT identifier, expires_at FROM otps WHERE identifier IN (?, ?)', account?.phone || '', account?.email || ''), // code hashes withheld
+    });
+  });
+
+  // Account deletion: removes profile data, sessions, usage counters, referral and gift records, the priest profile,
+  // push subscriptions, analytics events, pending sign-in codes and the account. Payment, order and booking records
+  // are de-identified (kept only where tax/accounting law requires), never shown again in the app.
+  r.delete('/me', (req, res) => {
+    const user = currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const d = getDb();
+    const run = (sql, ...args) => { try { d.prepare(sql).run(...(args.length ? args : [user.id])); } catch { /* table not present on this instance */ } };
+    const account = d.prepare('SELECT phone, email FROM users WHERE id = ?').get(user.id) || {};
+    let priestIds = [];
+    try { priestIds = d.prepare('SELECT id FROM priests WHERE user_id = ? OR (phone = ? AND ? <> \'\')').all(user.id, account.phone || '', account.phone || '').map((p) => p.id); } catch { /* no market tables */ }
+    run('DELETE FROM user_data WHERE user_id = ?');
+    deleteFamilyData(user.id); // shares + server copies, invites, memberships; owned groups pass to an adult or go
+    run('DELETE FROM sessions WHERE user_id = ?');
+    run('DELETE FROM push_subs WHERE user_id = ?');
+    run('DELETE FROM feedback WHERE user_id = ?');
+    run('DELETE FROM events WHERE user_id = ?');
+    run('DELETE FROM ai_usage WHERE usage_key = ?', `u:${user.id}`);
+    run('UPDATE ai_cost SET user_id = NULL WHERE user_id = ?');
+    run('DELETE FROM gift_redemptions WHERE user_id = ?');
+    run('DELETE FROM referral_codes WHERE user_id = ?');
+    run('DELETE FROM referral_claims WHERE user_id = ?');
+    run("UPDATE referral_claims SET referrer_id = 'deleted' WHERE referrer_id = ?"); // the friend's own claim stays theirs
+    if (account.phone || account.email) run('DELETE FROM otps WHERE identifier IN (?, ?)', account.phone || '', account.email || '');
+    for (const pid of priestIds) {
+      run('UPDATE service_requests SET priest_id = NULL WHERE priest_id = ?', pid);
+      run("UPDATE request_events SET actor = 'priest:deleted' WHERE actor = ?", `priest:${pid}`);
+      run('DELETE FROM priests WHERE id = ?', pid);
+    }
+    run('DELETE FROM request_events WHERE request_id IN (SELECT id FROM service_requests WHERE user_id = ?)');
+    run("UPDATE order_refund_requests SET reason = '', user_id = 'deleted' WHERE user_id = ?");
+    run("UPDATE store_orders SET address = '{}', user_id = 'deleted' WHERE user_id = ?");
+    run("UPDATE service_requests SET contact_phone = '', notes = '', user_id = 'deleted' WHERE user_id = ?");
+    run("UPDATE subscriptions SET user_id = 'deleted' WHERE user_id = ?");
+    run("UPDATE audit_log SET actor = 'user:deleted', ip = NULL WHERE actor = ?", `user:${user.id}`);
+    run('DELETE FROM rate_hits WHERE key LIKE ?', `%:${user.id}`); // per-person limiter counters (family, AI) name the account
+    run('DELETE FROM users WHERE id = ?');
+    setCookie(req, res, SESSION_COOKIE, '', { maxAge: 0 });
+    res.json({ ok: true, deleted: true });
   });
 
   return r;

@@ -41,32 +41,50 @@ test('health guide: life stage follows age', () => {
   assert.ok(e.yoga.length >= 3 && e.yoga.length <= 4);
 });
 
-test('health guide: constitution, body areas, period and months', () => {
+test('health guide: general wellbeing and an optional traditional reflection, clearly separated', () => {
   for (const chart of [adult, elder, child]) {
     const h = healthGuide(chart, { now });
-    const c = h.constitution;
-    assert.equal(c.vata + c.pitta + c.kapha, 100);
-    assert.ok(['vata', 'pitta', 'kapha'].includes(c.dominant));
-    assert.ok(c.name.en && c.name.ta && c.desc.en && c.desc.ta);
-    assert.ok(h.bodyAreas.length >= 4 && h.bodyAreas.length <= 6);
-    for (const a of h.bodyAreas) {
-      assert.ok(['watch', 'care'].includes(a.level));
-      assert.ok(a.reasons.length >= 1 && a.reasons.every((r) => r.en && r.ta));
-      assert.ok(a.tip.en && a.tip.ta);
-    }
-    assert.ok(['good', 'steady', 'care'].includes(h.period.level));
-    assert.ok(h.period.summary.en && h.period.summary.ta);
+    const w = h.wellbeing;
+    assert.equal(w.fromAstrology, false);
+    assert.equal(w.needsMedicalReview, true);
+    assert.equal(w.label.ta, 'பொது நலம்');
+    assert.deepEqual(w.habits.map((x) => x.id), ['sleep', 'water', 'walk', 'checkups', 'doctor']);
+    assert.ok(w.habits.every((x) => x.needsMedicalReview === true && x.fromAstrology === false && x.en && x.ta));
+    assert.ok(w.yoga.every((x) => x.needsMedicalReview === true));
+    const r = h.reflection;
+    assert.equal(r.optional, true);
+    assert.equal(r.notHealthAdvice, true);
+    assert.equal(r.label.ta, 'மரபுச் சிந்தனை (விருப்பம்)');
+    assert.match(r.note.en, /not health advice/);
     assert.ok(h.period.md && h.period.ad);
-    assert.equal(h.months.length, 12);
-    assert.equal(h.months[0].month, '2026-10');
-    assert.equal(h.months[11].month, '2027-09');
-    for (const m of h.months) assert.ok(['good', 'steady', 'care'].includes(m.level) && m.note.en && m.note.ta);
-    assert.ok(h.diet.eat.length > 0 && h.diet.avoid.length > 0 && h.diet.habits.length > 0);
-    assert.ok(h.diet.fasting.day.en && h.diet.fasting.why.ta);
-    assert.ok(h.remedies.planets.length >= 1 && h.remedies.healing.some((x) => /Dhanvantari/.test(x.en)));
-    assert.ok(/Tryambakam/.test(h.remedies.mantra.en));
-    assert.ok(/not medical advice/.test(h.disclaimer.en) && h.disclaimer.ta);
+    assert.ok(r.practices.length >= 1 && r.practices.every((x) => x.lamp.en && x.lamp.ta && x.deity && x.mantra && x.why));
+    assert.equal(r.practices[0].planet, h.period.md.lord);
+    assert.ok(r.healing.some((x) => /Dhanvantari/.test(x.en)));
+    assert.ok(/Tryambakam/.test(r.mantra.en));
+    assert.ok(/not medical advice/.test(h.disclaimer.en) && /not a diagnosis/.test(h.disclaimer.en) && /நோய் கண்டறிதல் அல்ல/.test(h.disclaimer.ta));
   }
+});
+
+// The Jathagam health guide was restored for adults at the owner's request (Oct 2026): body areas, food tips and the
+// period outlook are traditional indications for adults only (test/health-guide.test.js). Children still get none,
+// and the spiritual reflection (shown on Today and in Ask Thunai) still carries no food, body or injury wording.
+test('health guide: children get no food rules, body-part warnings or period verdicts; the reflection stays spiritual', () => {
+  const c = healthGuide(child, { now });
+  for (const gone of ['diet', 'bodyAreas', 'months', 'constitution', 'outlook', 'upcoming', 'now']) assert.equal(c[gone], null, gone);
+  assert.equal(c.minor, true);
+  for (const chart of [adult, elder, child]) {
+    const h = healthGuide(chart, { now });
+    const all = JSON.stringify({ reflection: h.reflection, habits: h.wellbeing.habits });
+    assert.doesNotMatch(all, /\b(eat|avoid|injur(y|ies)|fasting|diet)\b/i);
+    assert.doesNotMatch(all, /உண்ண|தவிர்க்க|காயம்|விரதம்/);
+    for (const g of [...h.reflection.gochara, ...h.reflection.practices.map((x) => x.lamp)]) assert.doesNotMatch(g.en, /joint|chest|heat|food|sleep|BP|blood/i);
+  }
+  const a = healthGuide(adult, { now });
+  assert.equal(a.minor, false);
+  assert.ok(a.diet.favour.length && a.bodyAreas.items.length && a.months.items.length === 12 && a.outlook.ad);
+  assert.equal(a.flags.lifespanInference, false);
+  assert.equal(a.flags.diseaseInference, false);
+  assert.equal(a.flags.canDriveTreatment, false);
 });
 
 test('health guide: every Tamil string is pure Tamil (no Latin letters)', () => {

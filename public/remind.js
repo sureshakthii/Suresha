@@ -5,8 +5,13 @@
 //   2. Server push (when the morning alarm is on) — the reminder is synced with the push scheduler.
 //   3. In-app: due reminders show on the home screen, and as a browser notification while the app is open.
 //   4. "Add to phone calendar" (.ics with alarm) — works on every phone.
-import { state, $, L, esc, store, toast, fmtTime, monthName, STATIC, api, activeMember, displayName } from './core.js';
+import { state, $, L, esc, store, toast, STATIC, api, activeMember, displayName, BRAND } from './core.js';
 import { icon } from './icons.js';
+import { fmtDay, fmtClock } from './shared/fmt.js';
+// Dates and times the one way the app writes them (shared/fmt.js), in the app language.
+const lgx = () => (state.lang === 'en' ? 'en' : 'ta');
+const fDay = (iso) => fmtDay(iso, lgx());
+
 
 const KEY = 'kj_reminders';
 const load = () => store.get(KEY, { morningTime: '05:30', trips: [], pushEndpoint: null });
@@ -14,7 +19,10 @@ const save = (r) => store.set(KEY, r);
 const native = () => window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.LocalNotifications;
 const tz = () => state.loc?.tz ?? 5.5;
 const localParts = (d) => { const x = new Date(d.getTime() + tz() * 3600000); return { date: x.toISOString().slice(0, 10), time: x.toISOString().slice(11, 16) }; };
-const fromLocal = (date, time) => { const [y, m, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(Date.UTC(y, m - 1, d, h, mi) - tz() * 3600000); };
+const fromLocal = (date, time, off = tz()) => { const [y, m, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(Date.UTC(y, m - 1, d, h, mi) - off * 3600000); };
+// A reminder keeps its exact instant (alarmAt): moving to Dubai or travelling never shifts an alarm. Older entries
+// saved only a wall-clock date/time are read in the zone they were saved in (t.tz) when known.
+const alarmOf = (t) => (t.alarmAt ? new Date(t.alarmAt) : fromLocal(t.date, t.time, t.tz ?? tz()));
 
 /** HTML for a bell button. at: Date (instant of the event); title: text shown in the alarm. */
 export function remindBtn({ title, at, place = '', label = '' }) {
@@ -34,7 +42,7 @@ function openSheet(item) {
   const at = new Date(item.at);
   const now = Date.now();
   const opts = OPTIONS.map((o) => ({ ...o, when: o.calc(at) })).filter((o) => o.when.getTime() > now - 60000);
-  const dt = (d) => { const p = localParts(d); return `${Number(p.date.slice(8))} ${monthName(Number(p.date.slice(5, 7)) - 1)} · ${fmtTime(d, tz())}`; };
+  const dt = (d) => `${fmtDay(d, lgx(), tz(), { year: false })} · ${fmtClock(d, lgx(), tz())}`;
   const box = document.createElement('div');
   box.className = 'modal';
   box.innerHTML = `<div class="modal-card remind-sheet" role="dialog" aria-modal="true">
@@ -52,7 +60,7 @@ function openSheet(item) {
     await addReminder({ title: item.title, place: item.place, eventAt: at, alarmAt: o.when });
     close();
   }));
-  box.querySelector('[data-ics]').addEventListener('click', () => { downloadIcs([{ title: item.title, start: at, place: item.place, alarm: '-PT60M' }], 'kaippesi-reminder.ics'); });
+  box.querySelector('[data-ics]').addEventListener('click', () => { downloadIcs([{ title: item.title, start: at, place: item.place, alarm: '-PT60M' }], 'thunai-reminder.ics'); });
 }
 
 /** Save a reminder and schedule it everywhere we can. */
@@ -60,7 +68,7 @@ export async function addReminder({ title, place = '', eventAt, alarmAt }) {
   const r = load();
   const id = Math.random().toString(36).slice(2, 10);
   const p = localParts(alarmAt);
-  r.trips.push({ id, kind: 'reminder', title, place, date: p.date, time: p.time, eventAt: new Date(eventAt).toISOString() });
+  r.trips.push({ id, kind: 'reminder', title, place, date: p.date, time: p.time, tz: tz(), alarmAt: new Date(alarmAt).toISOString(), eventAt: new Date(eventAt).toISOString() });
   save(r);
   let how = L('Saved in the app', 'செயலியில் சேமிக்கப்பட்டது');
   const LN = native();
@@ -68,7 +76,7 @@ export async function addReminder({ title, place = '', eventAt, alarmAt }) {
     try {
       const perm = await LN.requestPermissions();
       if (perm.display === 'granted') {
-        await LN.schedule({ notifications: [{ id: Number.parseInt(id, 36) % 2147483000, title: L('Kaippesi Jothidar', 'கைப்பேசி ஜோதிடர்'), body: `🔔 ${title}`, schedule: { at: new Date(alarmAt), allowWhileIdle: true } }] });
+        await LN.schedule({ notifications: [{ id: Number.parseInt(id, 36) % 2147483000, title: L(BRAND.name, BRAND.nameTa), body: `🔔 ${title}`, schedule: { at: new Date(alarmAt), allowWhileIdle: true } }] });
         how = L('Alarm set on this phone', 'இந்தக் கைப்பேசியில் அலாரம் அமைக்கப்பட்டது');
       }
     } catch { /* fall back */ }
@@ -90,7 +98,8 @@ async function syncPushTrips(r) {
   const today = localParts(new Date()).date;
   await api('/api/push/subscribe', { method: 'POST', body: { subscription: sub.toJSON(), prefs: {
     morningTime: r.morningTime || null, tz: tz(), lat: state.loc?.lat, lon: state.loc?.lon, place: state.loc?.name, lang: state.lang, name: m ? displayName(m) : '',
-    trips: r.trips.filter((t) => t.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 60)
+    // Push prefs carry the current zone: re-express each reminder's instant in it.
+    trips: r.trips.map((t) => (t.alarmAt ? { ...t, ...localParts(new Date(t.alarmAt)) } : t)).filter((t) => t.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 60)
       .map((t) => ({ id: t.id, date: t.date, time: t.time, title: t.title, place: t.place, kind: t.kind || 'trip' })),
   } } });
 }
@@ -98,7 +107,7 @@ async function syncPushTrips(r) {
 /** Upcoming reminders (alarm time from now on), soonest first. */
 export function upcomingReminders(limit = 50) {
   const now = Date.now();
-  return load().trips.map((t) => ({ ...t, alarm: fromLocal(t.date, t.time) })).filter((t) => t.alarm.getTime() > now - 3600000)
+  return load().trips.map((t) => ({ ...t, alarm: alarmOf(t) })).filter((t) => t.alarm.getTime() > now - 3600000)
     .sort((a, b) => a.alarm - b.alarm).slice(0, limit);
 }
 export function deleteReminder(id) {
@@ -115,7 +124,7 @@ export function reminderCard() {
   const soon = upcomingReminders().filter((t) => t.alarm.getTime() < Date.now() + 48 * 3600000);
   if (!soon.length) return '';
   return `<div class="card glass remind-card" data-go="reminders"><div class="card-title"><span>${icon('alarm-clock', { size: 18 })} ${L('Your reminders', 'உங்கள் நினைவூட்டல்கள்')}</span><span class="pill">${soon.length}</span></div>
-    ${soon.slice(0, 4).map((t) => `<div class="factor"><span>🔔 ${esc(t.title)}</span><b class="zero">${fmtTime(t.alarm, tz())}</b></div>`).join('')}</div>`;
+    ${soon.slice(0, 4).map((t) => `<div class="factor"><span>🔔 ${esc(t.title)}</span><b class="zero">${fmtClock(new Date(t.alarm), lgx(), tz())}</b></div>`).join('')}</div>`;
 }
 
 // While the app is open, ring due reminders as a notification (or a toast).
@@ -130,21 +139,21 @@ export function scheduleInApp() {
     timers.set(r.id, setTimeout(() => {
       const body = `🔔 ${r.title}`;
       if ('Notification' in window && Notification.permission === 'granted') {
-        navigator.serviceWorker?.ready.then((reg) => reg.showNotification(L('Kaippesi Jothidar', 'கைப்பேசி ஜோதிடர்'), { body, tag: `rem-${r.id}` })).catch(() => toast(body, 8000));
+        navigator.serviceWorker?.ready.then((reg) => reg.showNotification(L(BRAND.name, BRAND.nameTa), { body, tag: `rem-${r.id}` })).catch(() => toast(body, 8000));
       } else toast(body, 8000);
     }, ms));
   }
 }
 
 /** Calendar file with alarms — works on every phone. */
-export function downloadIcs(events, filename = 'kaippesi.ics') {
+export function downloadIcs(events, filename = 'thunai.ics') {
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
   const clean = (x) => String(x || '').replace(/[,;\n]/g, ' ');
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Kaippesi Jothidar//TA', 'CALSCALE:GREGORIAN'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Thunai//TA', 'CALSCALE:GREGORIAN'];
   for (const ev of events) {
     const s = new Date(ev.start);
-    lines.push('BEGIN:VEVENT', `UID:${Math.random().toString(36).slice(2)}@kaippesi`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(s)}`, `DTEND:${stamp(new Date(s.getTime() + 30 * 60000))}`,
+    lines.push('BEGIN:VEVENT', `UID:${Math.random().toString(36).slice(2)}@thunai`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(s)}`, `DTEND:${stamp(new Date(s.getTime() + 30 * 60000))}`,
       `SUMMARY:${clean(ev.title)}`, ev.place ? `LOCATION:${clean(ev.place)}` : '', 'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${clean(ev.title)}`, `TRIGGER:${ev.alarm || '-PT60M'}`, 'END:VALARM', 'END:VEVENT');
   }
   lines.push('END:VCALENDAR');

@@ -71,7 +71,7 @@ test('Totals bounded 0–36 and symmetric kootas symmetric for all star pairs', 
     assert.ok(x.total >= 0 && x.total <= 36);
     assert.equal(x.total, x.rows.reduce((s, r) => s + r.got, 0));
     for (const id of symmetric) assert.equal(row(x, id).got, row(y, id).got, `${id} ${a}/${b}`);
-    assert.ok(['excellent', 'good', 'average', 'low'].includes(x.verdict));
+    assert.equal(x.verdict, undefined); // traditional score only — no verdict label
   }
 });
 

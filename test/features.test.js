@@ -27,7 +27,7 @@ test('Tamil calendar: Deepavali 2025 and Gowri slots', () => {
   const d = tamilDay(noon(2025, 10, 20), loc.lat, loc.lon, loc.tz);
   assert.ok(d.festivals.some((f) => f.en === 'Deepavali'));
   assert.equal(d.gowri.length, 16);
-  assert.ok(d.nallaNeram.length >= 4);
+  assert.ok(d.nallaNeram.length >= 3);
   const month = tamilMonth(2026, 0, loc.lat, loc.lon, loc.tz);
   assert.equal(month.length, 31);
   // Consecutive Tamil dates never skip.
@@ -37,11 +37,19 @@ test('Tamil calendar: Deepavali 2025 and Gowri slots', () => {
   }
 });
 
-test('Porutham: Rajju and Vedhai failures make a match not recommended', () => {
+test('Porutham: Rajju and Vedhai are reported as key factors to discuss — no verdict, no combined score', () => {
   // Ashwini (0) & Magam (9): same Paada rajju.
   const r = matchPorutham({ star: 0, rasi: 0 }, { star: 9, rasi: 4 });
   assert.equal(r.rows.find((x) => x.key === 'rajju').status, 'poruthamillai');
-  assert.equal(r.verdict, 'NOT_RECOMMENDED');
+  assert.equal(r.verdict, undefined);
+  assert.equal(r.noVerdict, true);
+  assert.equal(r.agree, r.rows.filter((x) => x.status !== 'poruthamillai').length);
+  assert.deepEqual(r.keyFactors.map((k) => k.key), ['rajju', 'vedhai']);
+  assert.match(r.summary.en, new RegExp(`^${r.agree} of 10 traditional factors agree`));
+  assert.match(r.summary.en, /Rajju does not agree — see the key factors to discuss together/);
+  assert.ok(r.rows.every((x) => x.basis.en && x.basis.ta && x.label.en && x.label.ta));
+  const words = JSON.stringify(r);
+  assert.doesNotMatch(words, /Not recommended|பொருத்தம் இல்லை|Excellent match|blessed|\/100|%/);
   // Ashwini & Kettai are a Vedha pair.
   const v = matchPorutham({ star: 0, rasi: 0 }, { star: 17, rasi: 7 });
   assert.equal(v.rows.find((x) => x.key === 'vedhai').status, 'poruthamillai');

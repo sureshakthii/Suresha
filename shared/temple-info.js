@@ -16,12 +16,35 @@ const AIRPORTS = [
   { code: 'TRV', en: 'Thiruvananthapuram', ta: 'திருவனந்தபுரம்', lat: 8.4821, lon: 76.9201 },
   { code: 'COK', en: 'Kochi', ta: 'கொச்சி', lat: 10.1520, lon: 76.4019 },
   { code: 'TCR', en: 'Thoothukudi', ta: 'தூத்துக்குடி', lat: 8.7242, lon: 78.0258 },
+  // Abroad (for the diaspora temples)
+  { code: 'CMB', en: 'Colombo', ta: 'கொழும்பு', lat: 7.1808, lon: 79.8841 },
+  { code: 'JAF', en: 'Jaffna', ta: 'யாழ்ப்பாணம்', lat: 9.7923, lon: 80.0700 },
+  { code: 'TRR', en: 'Trincomalee', ta: 'திருகோணமலை', lat: 8.5385, lon: 81.1819 },
+  { code: 'HRI', en: 'Hambantota (Mattala)', ta: 'அம்பாந்தோட்டை (மத்தள)', lat: 6.2845, lon: 81.1241 },
+  { code: 'KUL', en: 'Kuala Lumpur', ta: 'கோலாலம்பூர்', lat: 2.7456, lon: 101.7072 },
+  { code: 'PEN', en: 'Penang', ta: 'பினாங்கு', lat: 5.2971, lon: 100.2770 },
+  { code: 'SIN', en: 'Singapore Changi', ta: 'சிங்கப்பூர் சாங்கி', lat: 1.3644, lon: 103.9915 },
+  { code: 'MRU', en: 'Mauritius', ta: 'மொரீஷியஸ்', lat: -20.4302, lon: 57.6836 },
+  { code: 'LHR', en: 'London Heathrow', ta: 'லண்டன் ஹீத்ரோ', lat: 51.4700, lon: -0.4543 },
+  { code: 'BHX', en: 'Birmingham', ta: 'பர்மிங்காம்', lat: 52.4539, lon: -1.7480 },
+  { code: 'PIT', en: 'Pittsburgh', ta: 'பிட்ஸ்பர்க்', lat: 40.4915, lon: -80.2329 },
+  { code: 'LGA', en: 'New York LaGuardia', ta: 'நியூயார்க் லாகார்டியா', lat: 40.7769, lon: -73.8740 },
+  { code: 'LAX', en: 'Los Angeles', ta: 'லாஸ் ஏஞ்சலஸ்', lat: 33.9416, lon: -118.4085 },
+  { code: 'IAH', en: 'Houston', ta: 'ஹூஸ்டன்', lat: 29.9902, lon: -95.3368 },
+  { code: 'YYZ', en: 'Toronto Pearson', ta: 'டொரன்டோ பியர்சன்', lat: 43.6777, lon: -79.6248 },
+  { code: 'SYD', en: 'Sydney', ta: 'சிட்னி', lat: -33.9399, lon: 151.1753 },
+  { code: 'MEL', en: 'Melbourne', ta: 'மெல்போர்ன்', lat: -37.6690, lon: 144.8410 },
+  { code: 'DUR', en: 'Durban (King Shaka)', ta: 'டர்பன் (கிங் ஷாகா)', lat: -29.6144, lon: 31.1197 },
+  { code: 'DXB', en: 'Dubai', ta: 'துபாய்', lat: 25.2532, lon: 55.3657 },
+  { code: 'NAN', en: 'Nadi', ta: 'நாடி', lat: -17.7554, lon: 177.4434 },
+  { code: 'DTM', en: 'Dortmund', ta: 'டார்ட்மண்ட்', lat: 51.5183, lon: 7.6122 },
 ];
 
+const INDIA_AIRPORTS = new Set(['MAA', 'TRZ', 'IXM', 'CJB', 'TIR', 'TRV', 'COK', 'TCR']);
 const roundKm = (km) => (km < 10 ? Math.max(1, Math.round(km)) : Math.round(km / 5) * 5);
 
 function nearestAirport(t) {
-  const best = AIRPORTS.map((a) => ({ a, km: distanceKm(t.lat, t.lon, a.lat, a.lon) * 1.3 })).sort((x, y) => x.km - y.km)[0];
+  const best = AIRPORTS.filter((a) => (t.abroad ? !INDIA_AIRPORTS.has(a.code) : INDIA_AIRPORTS.has(a.code))).map((a) => ({ a, km: distanceKm(t.lat, t.lon, a.lat, a.lon) * 1.3 })).sort((x, y) => x.km - y.km)[0];
   const km = roundKm(best.km);
   return B(`${best.a.en} (${best.a.code}) ~${km} km`, `${best.a.ta} விமான நிலையம் (~${km} கி.மீ)`);
 }
@@ -37,9 +60,12 @@ function tm(ranges, noteEn = '', noteTa = '') {
   const ta = `சுமார் ${ranges.map(([a, b]) => (period(hour(a)) === period(hour(b))
     ? `${period(hour(a))} ${h12(a)}–${h12(b)}`
     : `${period(hour(a))} ${h12(a)} – ${period(hour(b))} ${h12(b)}`)).join(', ')}${noteTa ? ` (${noteTa})` : ''}`;
-  return B(en, ta);
+  return { ...B(en, ta), ranges };
 }
 const STD = tm([['6:00', '12:00'], ['16:00', '20:30']]);
+// Temples abroad: hours are not listed (we only show what we are sure of); planning uses a typical day.
+const ASK = { ...B('— (please check with the temple)', '— (கோவிலில் உறுதி செய்யவும்)'), ranges: STD.ranges, unknown: true };
+const NO_RAIL = B('— (local train / bus: check locally)', '— (உள்ளூர் ரயில் / பேருந்து: உள்ளூரில் கேட்டறியவும்)');
 const VILLAGE = tm([['6:30', '12:00'], ['16:30', '20:00']]);
 
 // Per temple: s = sirappu, p = power, v = varalaru, r = rail [en, ta, km], t = timings, f = festival
@@ -75,7 +101,7 @@ const RAW = {
   chidambaram: {
     s: B('Nataraja\'s cosmic dance in the golden hall; the Chidambara Rahasyam of space.', 'பொன்னம்பலத்தில் நடராஜரின் ஆனந்தத் தாண்டவம்; சிதம்பர ரகசியம்.'),
     p: B('Wisdom, arts, dance and liberation.', 'ஞானம், கலை, நடனம், முக்தி.'),
-    v: B('Shiva danced here for the sages Patanjali and Vyaghrapada. The Chola kings covered the hall with gold.', 'பதஞ்சலி, வியாக்ரபாதர் முனிவர்களுக்காக சிவன் இங்கு நடனம் ஆடினார். சோழ மன்னர்கள் சபைக்குப் பொன் வேய்ந்தனர்.'),
+    v: B('Shiva danced here for the sages Patanjali and Vyaghrapada. The Chola kings covered the hall with gold.', 'பதஞ்சலி, வியாக்ரபாதர் முனிவர்களுக்காகச் சிவன் இங்கு நடனம் ஆடினார். சோழ மன்னர்கள் சபைக்குப் பொன் வேய்ந்தனர்.'),
     r: ['Chidambaram', 'சிதம்பரம்', 1.5], t: tm([['6:00', '12:00'], ['17:00', '22:00']]),
     f: B('Margazhi Arudra Darisanam and Aani Thirumanjanam', 'மார்கழி ஆருத்ரா தரிசனம், ஆனித் திருமஞ்சனம்'),
   },
@@ -96,7 +122,7 @@ const RAW = {
   thiruvanaikaval: {
     s: B('Water lingam (Appu) with a spring that keeps the sanctum moist.', 'கருவறையில் எப்போதும் நீர் ஊறும் அப்பு லிங்கம்.'),
     p: B('Knowledge, health and relief from sins.', 'கல்வி, உடல்நலம், பாவ நிவர்த்தி.'),
-    v: B('Parvati as Akilandeswari worshipped a lingam made of Cauvery water under a jambu (naaval) tree. An elephant and a spider also worshipped here.', 'அகிலாண்டேஸ்வரியாக பார்வதி நாவல் மரத்தடியில் காவிரி நீரால் லிங்கம் அமைத்து வழிபட்டாள். யானையும் சிலந்தியும் வழிபட்ட தலம்.'),
+    v: B('Parvati as Akilandeswari worshipped a lingam made of Cauvery water under a jambu (naaval) tree. An elephant and a spider also worshipped here.', 'அகிலாண்டேஸ்வரியாகப் பார்வதி நாவல் மரத்தடியில் காவிரி நீரால் லிங்கம் அமைத்து வழிபட்டாள். யானையும் சிலந்தியும் வழிபட்ட தலம்.'),
     r: ['Srirangam', 'ஸ்ரீரங்கம்', 3], t: tm([['6:00', '13:00'], ['15:00', '21:00']]),
     f: B('Panguni Brahmotsavam', 'பங்குனிப் பிரம்மோற்சவம்'),
   },
@@ -278,14 +304,14 @@ const RAW = {
   tirumala: {
     s: B('One of the most visited shrines in the world; famous laddu prasadam.', 'உலகில் அதிகம் பேர் வழிபடும் தலங்களில் ஒன்று; லட்டு பிரசாதம்.'),
     p: B('Wealth, removal of debts and wishes granted; hair offering.', 'செல்வம், கடன் நீக்கம், வேண்டுதல் நிறைவேற்றம்; முடி காணிக்கை.'),
-    v: B('Vishnu came to the Seven Hills as Srinivasa and married Padmavathi. He is said to repay the wedding loan from Kubera with devotees\' offerings.', 'விஷ்ணு சீனிவாசராக ஏழுமலைக்கு வந்து பத்மாவதியை மணந்தார்; குபேரனிடம் பெற்ற கடனை பக்தர் காணிக்கையால் செலுத்துவதாக ஐதீகம்.'),
+    v: B('Vishnu came to the Seven Hills as Srinivasa and married Padmavathi. He is said to repay the wedding loan from Kubera with devotees\' offerings.', 'விஷ்ணு சீனிவாசராக ஏழுமலைக்கு வந்து பத்மாவதியை மணந்தார்; குபேரனிடம் பெற்ற கடனைப் பக்தர் காணிக்கையால் செலுத்துவதாக ஐதீகம்.'),
     r: ['Tirupati', 'திருப்பதி', 22], t: tm([['3:00', '23:30']], 'darshan slots vary; book on the official TTD site', 'தரிசன நேரம் மாறும்; அதிகாரப்பூர்வ தேவஸ்தான இணையதளத்தில் முன்பதிவு'),
     f: B('Brahmotsavam (Purattasi) and Vaikunta Ekadasi', 'புரட்டாசி பிரம்மோற்சவம், வைகுண்ட ஏகாதசி'),
   },
   guruvayur: {
     s: B('Child Krishna worshipped with elaborate rituals; Thulabharam and first-rice feeding.', 'குழந்தைக் கண்ணன் வழிபாடு; துலாபாரம், அன்னப்பிராசனம்.'),
     p: B('Child welfare, health and marriage.', 'குழந்தை நலன், உடல்நலம், திருமணம்.'),
-    v: B('The idol worshipped by Krishna\'s parents was installed here by Guru (Brihaspati) and Vayu, hence Guruvayur. Narayana Bhattathiri composed the Narayaneeyam here.', 'கண்ணனின் பெற்றோர் வழிபட்ட விக்கிரகத்தை குருவும் வாயுவும் இங்கு நிறுவினர்; எனவே குருவாயூர். நாராயண பட்டதிரி நாராயணீயம் இயற்றிய தலம்.'),
+    v: B('The idol worshipped by Krishna\'s parents was installed here by Guru (Brihaspati) and Vayu, hence Guruvayur. Narayana Bhattathiri composed the Narayaneeyam here.', 'கண்ணனின் பெற்றோர் வழிபட்ட விக்கிரகத்தைக் குருவும் வாயுவும் இங்கு நிறுவினர்; எனவே குருவாயூர். நாராயண பட்டதிரி நாராயணீயம் இயற்றிய தலம்.'),
     r: ['Guruvayur', 'குருவாயூர்', 1], t: tm([['3:00', '12:30'], ['16:30', '21:15']], 'dress code applies', 'உடைக் கட்டுப்பாடு உண்டு'),
     f: B('Ekadasi (Vrischikam) and Ulsavam', 'குருவாயூர் ஏகாதசி, உற்சவம்'),
   },
@@ -311,9 +337,9 @@ const RAW = {
     f: B('Panguni Uthiram and Pournami days', 'பங்குனி உத்திரம், பௌர்ணமி நாட்கள்'),
   },
   vaitheeswaran: {
-    s: B('Shiva as the divine physician; Mars (Angarakan) shrine; famous nadi astrologers in town.', 'மருத்துவராக சிவன்; அங்காரகன் சன்னிதி; ஊரில் நாடி ஜோதிடம் பிரசித்தம்.'),
+    s: B('Shiva as the divine physician; Mars (Angarakan) shrine; famous nadi astrologers in town.', 'மருத்துவராகச் சிவன்; அங்காரகன் சன்னிதி; ஊரில் நாடி ஜோதிடம் பிரசித்தம்.'),
     p: B('Cure of diseases, Mars (sevvai) dosha relief.', 'நோய் தீர்தல், செவ்வாய் தோஷ நிவர்த்தி.'),
-    v: B('Shiva came as Vaidyanathar with Thaiyalnayaki carrying healing oil to cure devotees. Mars was cured of leprosy here.', 'தைலம் ஏந்திய தையல்நாயகியுடன் வைத்தியநாதராக சிவன் நோய் தீர்த்தார். அங்காரகன் தொழுநோய் நீங்கப்பெற்ற தலம்.'),
+    v: B('Shiva came as Vaidyanathar with Thaiyalnayaki carrying healing oil to cure devotees. Mars was cured of leprosy here.', 'தைலம் ஏந்திய தையல்நாயகியுடன் வைத்தியநாதராகச் சிவன் நோய் தீர்த்தார். அங்காரகன் தொழுநோய் நீங்கப்பெற்ற தலம்.'),
     r: ['Vaitheeswaran Kovil', 'வைத்தீஸ்வரன் கோவில்', 1], t: tm([['6:00', '13:00'], ['16:00', '21:00']]),
     f: B('Thai and Panguni Brahmotsavam; Tuesdays', 'தை, பங்குனி பிரம்மோற்சவம்; செவ்வாய்க்கிழமைகள்'),
   },
@@ -362,7 +388,7 @@ const RAW = {
   thirumanancheri: {
     s: B('Shiva and Parvati are seen in their wedding form; garland prayer for marriage.', 'சிவனும் பார்வதியும் திருமணக் கோலத்தில்; திருமண மாலை வேண்டுதல்.'),
     p: B('Removal of marriage delays; couples return to give thanks.', 'திருமணத் தடை நீக்கம்; மணமான பின் நன்றி செலுத்த மீண்டும் வருகை.'),
-    v: B('Shiva married Parvati here after she was freed from a curse; the town is named for the wedding (thirumanam).', 'சாப விமோசனம் பெற்ற பார்வதியை சிவன் இங்கு மணந்தார்; ஊரின் பெயரே திருமணத்தைக் குறிக்கிறது.'),
+    v: B('Shiva married Parvati here after she was freed from a curse; the town is named for the wedding (thirumanam).', 'சாப விமோசனம் பெற்ற பார்வதியைச் சிவன் இங்கு மணந்தார்; ஊரின் பெயரே திருமணத்தைக் குறிக்கிறது.'),
     r: ['Kuthalam', 'குத்தாலம்', 6], t: tm([['6:00', '13:00'], ['15:30', '20:00']]),
     f: B('Chithirai Thirukalyanam', 'சித்திரைத் திருக்கல்யாணம்'),
   },
@@ -528,7 +554,7 @@ const RAW = {
     f: B('Karthigai Brahmotsavam (Panchami Theertham)', 'கார்த்திகைப் பிரம்மோற்சவம் (பஞ்சமி தீர்த்தம்)'),
   },
   chottanikkara: {
-    s: B('Bhagavathy worshipped as Saraswati in the morning, Lakshmi at noon and Durga in the evening.', 'காலையில் சரஸ்வதி, மதியம் லட்சுமி, மாலை துர்க்கையாக பகவதி வழிபாடு.'),
+    s: B('Bhagavathy worshipped as Saraswati in the morning, Lakshmi at noon and Durga in the evening.', 'காலையில் சரஸ்வதி, மதியம் லட்சுமி, மாலை துர்க்கையாகப் பகவதி வழிபாடு.'),
     p: B('Relief from mental illness and evil influences.', 'மன நோய், தீய சக்தி பாதிப்பு நீக்கம்.'),
     v: B('The lower shrine of Keezhkavu Bhagavathy is believed to free devotees from mental afflictions; a nail-studded tree there carries their offerings.', 'கீழ்க்காவு பகவதி சன்னிதி மனப் பாதிப்புகளை நீக்குவதாக நம்பிக்கை; அங்குள்ள மரத்தில் ஆணி அடிக்கும் வழக்கம்.'),
     r: ['Ernakulam Junction', 'எர்ணாகுளம் சந்திப்பு', 17], t: tm([['4:00', '12:00'], ['16:00', '20:30']]),
@@ -541,6 +567,119 @@ const RAW = {
     r: ['Thiruvananthapuram Central', 'திருவனந்தபுரம் சென்ட்ரல்', 2], t: tm([['4:30', '12:30'], ['17:00', '20:30']]),
     f: B('Attukal Pongala (Kumbham)', 'ஆற்றுக்கால் பொங்கல் (மாசி)'),
   },
+  // ---- Temples abroad (timings deliberately not listed)
+  nallur: {
+    s: B('Golden-towered Murugan temple; worship runs strictly to the clock, and the Vel is the main object of worship.', 'பொன் கோபுர முருகன் கோவில்; நேரந்தவறாத பூசை, வேலே மூலவழிபாடு.'),
+    p: B('Courage, success in studies and work, family welfare.', 'தைரியம், கல்வி, தொழில் வெற்றி, குடும்ப நலன்.'),
+    v: B('The temple has stood at Nallur, the old capital of the Jaffna kingdom, for centuries; the present temple dates from the 18th century.', 'யாழ்ப்பாண அரசின் பழைய தலைநகர் நல்லூரில் பல நூற்றாண்டுகளாக உள்ள கோவில்; இன்றைய கோவில் 18-ஆம் நூற்றாண்டில் கட்டப்பட்டது.'),
+    f: B('Nallur Mahotsavam (25 days, Aug–Sep)', 'நல்லூர் மகோற்சவம் (25 நாள், ஆவணி–புரட்டாசி)'),
+  },
+  koneswaram: {
+    s: B('Shiva temple on a sea cliff (Swami Rock) above Trincomalee harbour.', 'திருகோணமலைத் துறைமுகத்தின் மேல் கடல் பாறையில் சிவாலயம்.'),
+    p: B('Peace of mind, removal of obstacles, blessings for ancestors.', 'மன அமைதி, தடை நீக்கம், முன்னோர் அருள்.'),
+    v: B('Praised by Thirugnanasambandar in the Thevaram; destroyed in 1622 and rebuilt in the 20th century.', 'திருஞானசம்பந்தர் தேவாரத்தில் பாடிய தலம்; 1622-ல் அழிக்கப்பட்டு 20-ஆம் நூற்றாண்டில் மீண்டும் கட்டப்பட்டது.'),
+    f: B('Ther and Theertham festival', 'தேர், தீர்த்தத் திருவிழா'),
+  },
+  ketheeswaram: {
+    s: B('Ancient Shiva temple beside the Palavi tank near Mannar.', 'மன்னார் அருகே பாலாவித் தீர்த்தக் கரையில் தொன்மையான சிவாலயம்.'),
+    p: B('Relief from planetary troubles (Ketu worshipped Shiva here in tradition), health.', 'கிரக தோஷ நீக்கம் (மரபுப்படி கேது வழிபட்ட தலம்), ஆரோக்கியம்.'),
+    v: B('Sung by Thirugnanasambandar and Sundarar in the Thevaram.', 'திருஞானசம்பந்தர், சுந்தரர் தேவாரம் பாடிய தலம்.'),
+    f: B('Maha Shivaratri', 'மகா சிவராத்திரி'),
+  },
+  munneswaram: {
+    s: B('A temple complex with the Shiva temple and shrines for Kali and others, near Chilaw.', 'சிலாபம் அருகே சிவன், காளி உள்ளிட்ட சன்னதிகள் கொண்ட கோவில் வளாகம்.'),
+    p: B('Removal of sins and obstacles.', 'பாவ, தடை நீக்கம்.'),
+    v: B('Tradition says Rama worshipped Shiva here after the war in Lanka.', 'இலங்கைப் போருக்குப் பின் ராமர் இங்கு சிவனை வழிபட்டதாக மரபு.'),
+    f: B('Munneswaram festival (Aug–Sep)', 'முன்னேஸ்வரம் உற்சவம் (ஆவணி–புரட்டாசி)'),
+  },
+  kataragama: {
+    s: B('Shared sacred site of Hindus, Buddhists, Muslims and the Vedda people, by the Menik Ganga.', 'மாணிக்க கங்கை அருகே இந்து, பௌத்த, இஸ்லாமிய, வேடுவ மக்கள் போற்றும் புனிதத் தலம்.'),
+    p: B('Fulfilment of vows, protection, courage.', 'நேர்த்திக்கடன் நிறைவு, பாதுகாப்பு, தைரியம்.'),
+    v: B('Murugan is said to have met and married Valli here; worship is conducted in silence behind a curtain.', 'முருகன் வள்ளியைச் சந்தித்து மணந்த இடம் என மரபு; திரைக்குப் பின் மௌன வழிபாடு.'),
+    f: B('Esala festival (Jul–Aug) and the Pada Yatra', 'ஆடி எசல விழா, பாத யாத்திரை'),
+  },
+  nainativu: {
+    s: B('Island temple of the Goddess, reached by a short boat ride.', 'சிறு படகுப் பயணத்தில் அடையும் தீவு அம்மன் கோவில்.'),
+    p: B('Marriage, children and relief from naga dosham.', 'திருமணம், குழந்தைப்பேறு, நாக தோஷ நீக்கம்.'),
+    v: B('Counted among the Shakti peethams; a cobra worshipping the Goddess with a flower is part of its legend.', 'சக்தி பீடங்களில் ஒன்றாகப் போற்றப்படுகிறது; நாகம் பூவால் அம்மனை வழிபட்ட கதை இதன் தல வரலாறு.'),
+    f: B('Aani Thiruvizha (Jun–Jul)', 'ஆனித் திருவிழா'),
+  },
+  batu_caves: {
+    s: B('A cave temple in a limestone hill, 272 steps up, with a 42 m golden Murugan statue at the foot.', 'சுண்ணாம்பு மலைக் குகைக் கோவில்; 272 படிகள், அடிவாரத்தில் 42 மீ தங்க முருகன் சிலை.'),
+    p: B('Fulfilment of vows (kavadi), courage, success.', 'நேர்த்திக்கடன் (காவடி), தைரியம், வெற்றி.'),
+    v: B('Founded in 1890 by K. Thamboosamy Pillai, who also founded the Sri Mahamariamman Temple in Kuala Lumpur.', '1890-ல் கே. தம்புசாமிப் பிள்ளை நிறுவினார்; கோலாலம்பூர் மகா மாரியம்மன் கோவிலையும் அவரே நிறுவினார்.'),
+    f: B('Thaipusam', 'தைப்பூசம்'),
+  },
+  kl_mahamariamman: {
+    s: B('A five-tier gopuram in the heart of Kuala Lumpur.', 'கோலாலம்பூர் மையத்தில் ஐந்து நிலைக் கோபுரம்.'),
+    p: B('Protection from illness, family welfare.', 'நோய் நீக்கம், குடும்ப நலன்.'),
+    v: B('Founded in 1873 by K. Thamboosamy Pillai.', '1873-ல் கே. தம்புசாமிப் பிள்ளை நிறுவினார்.'),
+    f: B('Thaipusam (silver chariot to Batu Caves)', 'தைப்பூசம் (பத்துமலைக்கு வெள்ளி ரதம்)'),
+  },
+  penang_waterfall: {
+    s: B('Hilltop temple with views over Penang, beside the Botanic Gardens.', 'பினாங்கு தாவரவியல் பூங்கா அருகே மலை மேல் கோவில்.'),
+    p: B('Fulfilment of vows, courage.', 'நேர்த்திக்கடன், தைரியம்.'),
+    v: B('Murugan worship at Waterfall Hill goes back to the 19th century; the new hilltop temple opened in 2012.', 'தண்ணீர்மலை முருகன் வழிபாடு 19-ஆம் நூற்றாண்டு முதல்; புதிய மலைக் கோவில் 2012-ல் திறக்கப்பட்டது.'),
+    f: B('Thaipusam', 'தைப்பூசம்'),
+  },
+  sg_mariamman: {
+    s: B('A national monument with a richly sculpted gopuram on South Bridge Road.', 'சவுத் பிரிட்ஜ் சாலையில் சிற்பக் கோபுரம் கொண்ட தேசியச் சின்னம்.'),
+    p: B('Protection from illness, family welfare.', 'நோய் நீக்கம், குடும்ப நலன்.'),
+    v: B('Founded in 1827 by Naraina Pillai.', '1827-ல் நாராயண பிள்ளை நிறுவினார்.'),
+    f: B('Theemithi (fire-walking)', 'தீமிதித் திருவிழா'),
+  },
+  sg_srinivasa_perumal: {
+    s: B('A national monument in Little India with a tall six-tier gopuram.', 'லிட்டில் இந்தியாவில் ஆறு நிலைக் கோபுரம் கொண்ட தேசியச் சின்னம்.'),
+    p: B('Prosperity, protection and moksha.', 'செல்வம், பாதுகாப்பு, முக்தி.'),
+    v: B('Begun in the 1850s as a Narasimha shrine; later dedicated to Srinivasa Perumal.', '1850-களில் நரசிம்மர் சன்னதியாகத் தொடங்கி, பின் சீனிவாசப் பெருமாளுக்கு அர்ப்பணிக்கப்பட்டது.'),
+    f: B('Thaipusam procession start; Purattasi Saturdays', 'தைப்பூச ஊர்வலத் தொடக்கம்; புரட்டாசி சனிக்கிழமைகள்'),
+  },
+  sg_thendayuthapani: {
+    s: B('The Tank Road temple of the Nattukottai Chettiars, a national monument.', 'நகரத்தார் கட்டிய டேங்க் ரோடு கோவில்; தேசியச் சின்னம்.'),
+    p: B('Fulfilment of vows, courage, success.', 'நேர்த்திக்கடன், தைரியம், வெற்றி.'),
+    v: B('Built by the Nattukottai Chettiar community in 1859.', '1859-ல் நகரத்தார் சமூகத்தினர் கட்டினர்.'),
+    f: B('Thaipusam; Navarathri', 'தைப்பூசம்; நவராத்திரி'),
+  },
+  grand_bassin: {
+    s: B('A sacred lake with a large Shiva statue (Mangal Mahadev) at the entrance.', 'நுழைவாயிலில் பெரிய சிவன் சிலை (மங்கள் மகாதேவ்) கொண்ட புனித ஏரி.'),
+    p: B('Purification, blessings of Shiva.', 'தூய்மை, சிவன் அருள்.'),
+    v: B('Consecrated with Ganga water in 1972 and called Ganga Talao.', '1972-ல் கங்கை நீரால் புனிதப்படுத்தப்பட்டு கங்கா தலாவ் என அழைக்கப்படுகிறது.'),
+    f: B('Maha Shivaratri pilgrimage', 'மகா சிவராத்திரி யாத்திரை'),
+  },
+};
+const RAW_EXTRA = {
+  // Dosham parigara sthalams (Oct 2026). Opening hours are NOT on file for these — shown as "please check with the
+  // temple" (t: ASK). Traditions are phrased as devotional associations; travel distances are estimates.
+  thirukarugavur: {
+    s: B('Goddess Garbharakshambigai — "protector of the womb" — is the heart of this Thevaram sthalam on the Vettar river.', 'கருவைக் காக்கும் அன்னை கர்ப்பரக்ஷாம்பிகை — வெட்டாறு கரையில் உள்ள தேவாரத் தலம்.'),
+    p: B('Prayers for children and for a safe pregnancy and delivery (tradition; alongside medical care).', 'குழந்தை பாக்கியம், சுகப்பிரசவத்திற்கான வேண்டுதல் (மரபு; மருத்துவ சிகிச்சையுடன் சேர்த்து).'),
+    v: B('The Goddess is said to have protected the unborn child of a sage\'s wife here, and is worshipped as the guardian of every expectant mother.', 'ஒரு முனிவரின் மனைவியின் கருவை அம்பாள் இங்கு காத்ததாகத் தல வரலாறு; கருவுற்ற தாய்மார்களின் காவல் தெய்வமாக வழிபடப்படுகிறாள்.'),
+    r: ['Papanasam', 'பாபநாசம்', 7], t: ASK,
+  },
+  thirupampuram: {
+    s: B('Rahu and Ketu are enshrined as one form worshipping Shiva — rare among temples.', 'ராகுவும் கேதுவும் ஒரே உருவில் சிவனை வழிபடும் அரிய தலம்.'),
+    p: B('Rahu–Ketu, sarpa and Kala Sarpa dosha parihara (tradition).', 'ராகு–கேது, சர்ப்ப, கால சர்ப்ப தோஷ பரிகாரம் (மரபு).'),
+    v: B('Adisesha and the serpent kings are said to have worshipped Shiva here to be freed of a curse.', 'ஆதிசேஷனும் நாகராஜர்களும் சாப விமோசனம் வேண்டி இங்கு சிவனை வழிபட்டதாகத் தல வரலாறு.'),
+    t: ASK,
+  },
+  nagercoil_nagaraja: {
+    s: B('The serpent king Nagaraja is the main deity; the sanctum has a thatched roof by tradition.', 'நாகராஜாவே மூலவர்; கருவறை மரபுப்படி ஓலைக் கூரையுடன்.'),
+    p: B('Naga dosha relief; prayers for marriage and children (tradition). Aayilyam (Ashlesha) days are special.', 'நாக தோஷ நிவர்த்தி; திருமணம், குழந்தை பாக்கியத்திற்கான வேண்டுதல் (மரபு). ஆயில்ய நாட்கள் சிறப்பு.'),
+    v: B('The town of Nagercoil takes its name from this temple of the serpent king.', 'நாகர்கோவில் நகரின் பெயரே இந்த நாகராஜா கோவிலிலிருந்து வந்தது.'),
+    t: ASK, f: B('Aayilyam pooja, especially in Aippasi (Thula) month', 'ஆயில்ய பூஜை — குறிப்பாக ஐப்பசி மாதம்'),
+  },
+  thilatharpanapuri: {
+    s: B('One of the pitru sthalams for thila (sesame) tharpanam; the Adi Vinayagar here has a human face.', 'எள்ளுடன் தர்ப்பணம் (தில தர்ப்பணம்) செய்யும் பித்ரு தலங்களில் ஒன்று; இங்குள்ள ஆதி விநாயகர் மனித முகத்துடன்.'),
+    p: B('Tharpanam and prayers for departed ancestors (pitru); Amavasai is the traditional day.', 'முன்னோர்களுக்கான தர்ப்பணமும் வழிபாடும்; அமாவாசை மரபான நாள்.'),
+    v: B('Sri Rama is said to have offered tharpanam here for King Dasaratha and Jatayu — the name means "the town of sesame tharpanam".', 'ஸ்ரீ ராமர் தசரதருக்கும் ஜடாயுவுக்கும் இங்கு தர்ப்பணம் செய்ததாகத் தல வரலாறு — ஊரின் பெயரே "எள் தர்ப்பணபுரி".'),
+    t: ASK,
+  },
+  thiruvallur_veeraraghava: {
+    s: B('Reclining Veeraraghava Perumal; Divya Desam sung by the Azhwars; the Hritha Papa Nasini tank.', 'சயனக் கோலத்தில் வீரராகவப் பெருமாள்; ஆழ்வார்கள் பாடிய திவ்ய தேசம்; ஹிருதாபநாசினி தீர்த்தம்.'),
+    p: B('Amavasai worship and ancestral rites; prayers for relief from worry and illness (tradition, alongside medical care).', 'அமாவாசை வழிபாடு, முன்னோர் கடன்; கவலை, நோய் நீங்க வேண்டுதல் (மரபு; மருத்துவத்துடன் சேர்த்து).'),
+    v: B('The Lord is said to have come as a guest to the sage Salihotra and asked "evvul" — "where shall I rest?" — giving the place its old name Thiruevvul.', 'சாலிஹோத்ர முனிவரிடம் விருந்தினராக வந்த பெருமாள் "எவ்வுள் உறங்குவது?" என்று கேட்டதாகத் தல வரலாறு — திருஎவ்வுள் என்ற பழைய பெயர்.'),
+    t: ASK, f: B('Thai Amavasai; Chithirai Brahmotsavam', 'தை அமாவாசை; சித்திரை பிரம்மோற்சவம்'),
+  },
   padmanabhaswamy: {
     s: B('Reclining Vishnu on Adisesha seen through three doors; Hindus only, strict dress code.', 'மூன்று வாயில்கள் வழி ஆதிசேஷன் மேல் சயனப் பெருமாள்; கடுமையான உடைக் கட்டுப்பாடு.'),
     p: B('Prosperity, protection and moksha.', 'செல்வம், பாதுகாப்பு, முக்தி.'),
@@ -550,6 +689,7 @@ const RAW = {
   },
 };
 
+Object.assign(RAW, RAW_EXTRA);
 export const TEMPLE_INFO = Object.fromEntries(TEMPLES.filter((t) => RAW[t.id]).map((t) => {
   const r = RAW[t.id];
   return [t.id, {
@@ -557,11 +697,18 @@ export const TEMPLE_INFO = Object.fromEntries(TEMPLES.filter((t) => RAW[t.id]).m
     power: r.p,
     varalaru: r.v,
     airport: nearestAirport(t),
-    rail: rail(...r.r),
-    timings: r.t || STD,
+    rail: r.r ? rail(...r.r) : NO_RAIL,
+    timings: r.t || (t.abroad ? ASK : STD),
     festival: r.f,
   }];
 }));
+
+/** Opening ranges in minutes after midnight, e.g. [[300, 750], [960, 1290]] (approximate; standard if unknown). */
+export function templeRanges(id) {
+  const r = (TEMPLE_INFO[id]?.timings || STD).ranges || STD.ranges;
+  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  return r.map(([a, b]) => [toMin(a), toMin(b)]);
+}
 
 /** Details for a temple id, or null. */
 export const templeInfo = (id) => TEMPLE_INFO[id] || null;

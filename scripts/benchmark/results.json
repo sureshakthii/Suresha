@@ -1,0 +1,542 @@
+{
+  "meta": {
+    "versions": {
+      "calcVersion": "2.0.1",
+      "rulesVersion": "1.0.0",
+      "engineVersion": "2.0.1",
+      "engineLabel": "calc 2.0.1 · rules 1.0.0",
+      "astronomyEngine": "2.1.19",
+      "contractEphemeris": "2.1.19",
+      "gitCommit": "36c9bf2",
+      "gitDirty": true,
+      "swissEphemeris": "2.10.03"
+    },
+    "reference": "Swiss Ephemeris 2.10.03 (sweph npm, SE data files sepl_18/semo_18), SE_SIDM_LAHIRI",
+    "engine": "shared/astro.js on astronomy-engine 2.1.19",
+    "samples": {
+      "positions": 500,
+      "days": 600,
+      "births": 300
+    },
+    "range": "1940-01-01 … 2060-12-31",
+    "cities": 31,
+    "seed": 7,
+    "ran": "2026-10-07T03:07:24.323Z",
+    "moshierFallbacks": 0
+  },
+  "positions": {
+    "Sun": {
+      "medianArcsec": 0.44,
+      "p95Arcsec": 1.43,
+      "maxArcsec": 2.5
+    },
+    "Moon": {
+      "medianArcsec": 1.15,
+      "p95Arcsec": 13.75,
+      "maxArcsec": 22.08
+    },
+    "Mars": {
+      "medianArcsec": 0.98,
+      "p95Arcsec": 3.95,
+      "maxArcsec": 11.44
+    },
+    "Mercury": {
+      "medianArcsec": 1.57,
+      "p95Arcsec": 4.95,
+      "maxArcsec": 11.98
+    },
+    "Jupiter": {
+      "medianArcsec": 2.7,
+      "p95Arcsec": 6.45,
+      "maxArcsec": 9.48
+    },
+    "Venus": {
+      "medianArcsec": 0.94,
+      "p95Arcsec": 6.33,
+      "maxArcsec": 15.53
+    },
+    "Saturn": {
+      "medianArcsec": 2.31,
+      "p95Arcsec": 8.68,
+      "maxArcsec": 12.71
+    },
+    "Rahu": {
+      "medianArcsec": 0.11,
+      "p95Arcsec": 0.13,
+      "maxArcsec": 0.13
+    },
+    "Ketu": {
+      "medianArcsec": 0.11,
+      "p95Arcsec": 0.13,
+      "maxArcsec": 0.13
+    },
+    "Lagna": {
+      "medianArcsec": 0.14,
+      "p95Arcsec": 1.95,
+      "maxArcsec": 3.23
+    },
+    "ayanamsa": {
+      "medianArcsec": 0.14,
+      "p95Arcsec": 0.27,
+      "maxArcsec": 0.35
+    },
+    "moonByEra": {
+      "upTo2025": {
+        "n": 352,
+        "medianArcsec": 0.75,
+        "maxArcsec": 5.56
+      },
+      "from2026": {
+        "n": 148,
+        "medianArcsec": 8.24,
+        "maxArcsec": 22.08
+      },
+      "note": "Future dates differ mainly through the two libraries' Delta-T (Earth rotation) extrapolations"
+    },
+    "meanNodeVsTrueNode": {
+      "medianArcsec": 3724.88,
+      "maxArcsec": 6820.3,
+      "note": "Expected: the app uses the MEAN node by convention; mean − true oscillates up to about ±1.7°"
+    }
+  },
+  "classification": {
+    "Sun": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Moon": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Mars": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Mercury": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Jupiter": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 99.8,
+      "n": 500
+    },
+    "Venus": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Saturn": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Rahu": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Ketu": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    },
+    "Lagna": {
+      "rasi": 100,
+      "nakshatra": 100,
+      "pada": 100,
+      "n": 500
+    }
+  },
+  "disagreements": [
+    {
+      "kind": "Jupiter pada",
+      "at": "2021-02-18T07:45:41.408Z",
+      "place": "",
+      "app": 290,
+      "ref": 290,
+      "deltaArcsec": -1.76,
+      "refDistToBoundaryArcsec": 0.06
+    }
+  ],
+  "panchang": {
+    "n": 600,
+    "agreementPercent": {
+      "tithi": 100,
+      "nakshatra": 100,
+      "yoga": 100,
+      "karana": 100,
+      "weekday": 100
+    },
+    "endTimeError": {
+      "tithi": {
+        "medianSec": 2.18,
+        "p95Sec": 26.01,
+        "maxSec": 39.94
+      },
+      "nakshatra": {
+        "medianSec": 1.76,
+        "p95Sec": 26.72,
+        "maxSec": 39.06
+      },
+      "yoga": {
+        "medianSec": 1.9,
+        "p95Sec": 27.02,
+        "maxSec": 38.18
+      },
+      "karana": {
+        "medianSec": 2.21,
+        "p95Sec": 26.01,
+        "maxSec": 39.35
+      }
+    },
+    "disagreements": []
+  },
+  "sunrise": {
+    "sunrise": {
+      "medianSec": 1.8,
+      "p95Sec": 2.79,
+      "maxSec": 3.32
+    },
+    "sunset": {
+      "medianSec": 1.82,
+      "p95Sec": 2.75,
+      "maxSec": 3.27
+    },
+    "n": 600,
+    "convention": "Upper limb on the sea-level horizon with standard refraction (both sides)"
+  },
+  "rahu": {
+    "start": {
+      "medianSec": 0.85,
+      "p95Sec": 1.64,
+      "maxSec": 2.49
+    },
+    "end": {
+      "medianSec": 0.86,
+      "p95Sec": 2,
+      "maxSec": 3.08
+    }
+  },
+  "dasa": {
+    "births": 300,
+    "firstLordAgreementPercent": 100,
+    "startErrorHours": {
+      "median": 2.82,
+      "p95": 39.58,
+      "max": 65.81
+    },
+    "startErrorHoursBirthsTo2025": {
+      "median": 1.69,
+      "p95": 6.44,
+      "max": 10.86
+    },
+    "convention": "1 dasa year = 365.25 days on both sides; differences come only from the Moon position at birth"
+  },
+  "subDasa": {
+    "births": 300,
+    "pratyantara": {
+      "lordPathAgreementPercent": 99,
+      "startErrorHours": {
+        "median": 3.05,
+        "p95": 28.62,
+        "max": 74.53
+      },
+      "startErrorHoursBirthsTo2025": {
+        "median": 1.79,
+        "p95": 6.62,
+        "max": 14.55
+      }
+    },
+    "sookshma": {
+      "lordPathAgreementPercent": 94.33,
+      "startErrorHours": {
+        "median": 2.79,
+        "p95": 26.09,
+        "max": 74.53
+      },
+      "startErrorHoursBirthsTo2025": {
+        "median": 1.77,
+        "p95": 6.62,
+        "max": 14.55
+      }
+    },
+    "disagreements": [
+      {
+        "level": "sookshma",
+        "birth": "2034-02-12T02:14:17.002Z",
+        "at": "2099-04-26T08:51:17.805Z",
+        "app": "Mars",
+        "ref": "Moon",
+        "hoursFromRefBoundary": 15.25
+      },
+      {
+        "level": "sookshma",
+        "birth": "2036-04-14T04:26:31.070Z",
+        "at": "2078-05-07T03:45:30.272Z",
+        "app": "Mars",
+        "ref": "Moon",
+        "hoursFromRefBoundary": 9.87
+      },
+      {
+        "level": "sookshma",
+        "birth": "2043-05-19T15:01:26.700Z",
+        "at": "2081-06-23T17:12:15.208Z",
+        "app": "Jupiter",
+        "ref": "Rahu",
+        "hoursFromRefBoundary": 8.76
+      },
+      {
+        "level": "sookshma",
+        "birth": "2007-03-17T22:58:36.418Z",
+        "at": "2070-10-24T13:17:19.216Z",
+        "app": "Rahu",
+        "ref": "Jupiter",
+        "hoursFromRefBoundary": 0.87
+      },
+      {
+        "level": "sookshma",
+        "birth": "2000-01-03T08:10:55.141Z",
+        "at": "2029-07-10T08:43:40.602Z",
+        "app": "Rahu",
+        "ref": "Mars",
+        "hoursFromRefBoundary": 3.45
+      },
+      {
+        "level": "sookshma",
+        "birth": "2042-06-21T16:50:07.140Z",
+        "at": "2053-06-10T06:56:08.857Z",
+        "app": "Mars",
+        "ref": "Moon",
+        "hoursFromRefBoundary": 19.37
+      },
+      {
+        "level": "pratyantara",
+        "birth": "2011-01-03T02:24:00.129Z",
+        "at": "2012-09-27T12:03:54.122Z",
+        "app": "Mercury",
+        "ref": "Saturn",
+        "hoursFromRefBoundary": 0.4
+      },
+      {
+        "level": "pratyantara",
+        "birth": "2056-01-31T11:48:44.995Z",
+        "at": "2109-10-14T17:06:40.194Z",
+        "app": "Mercury",
+        "ref": "Saturn",
+        "hoursFromRefBoundary": 3.13
+      },
+      {
+        "level": "sookshma",
+        "birth": "2059-03-30T09:15:58.927Z",
+        "at": "2059-08-28T18:22:02.663Z",
+        "app": "Mercury",
+        "ref": "Saturn",
+        "hoursFromRefBoundary": 11.87
+      },
+      {
+        "level": "sookshma",
+        "birth": "2047-10-25T17:42:22.877Z",
+        "at": "2053-01-04T21:28:11.912Z",
+        "app": "Jupiter",
+        "ref": "Rahu",
+        "hoursFromRefBoundary": 1.29
+      },
+      {
+        "level": "sookshma",
+        "birth": "2060-12-14T17:54:51.266Z",
+        "at": "2066-12-01T13:12:45.745Z",
+        "app": "Ketu",
+        "ref": "Mercury",
+        "hoursFromRefBoundary": 6.32
+      },
+      {
+        "level": "sookshma",
+        "birth": "2053-09-27T22:14:53.263Z",
+        "at": "2081-10-29T21:50:15.261Z",
+        "app": "Jupiter",
+        "ref": "Rahu",
+        "hoursFromRefBoundary": 32.97
+      },
+      {
+        "level": "sookshma",
+        "birth": "2048-11-25T13:56:36.304Z",
+        "at": "2084-10-29T10:07:20.120Z",
+        "app": "Moon",
+        "ref": "Sun",
+        "hoursFromRefBoundary": 7.42
+      },
+      {
+        "level": "sookshma",
+        "birth": "1963-10-03T21:20:40.098Z",
+        "at": "2014-03-21T22:05:26.953Z",
+        "app": "Mars",
+        "ref": "Moon",
+        "hoursFromRefBoundary": 0.54
+      },
+      {
+        "level": "pratyantara",
+        "birth": "1984-06-24T07:31:35.567Z",
+        "at": "2012-05-28T20:21:53.004Z",
+        "app": "Ketu",
+        "ref": "Venus",
+        "hoursFromRefBoundary": 1.13
+      },
+      {
+        "level": "sookshma",
+        "birth": "2054-02-22T18:19:24.907Z",
+        "at": "2081-10-14T02:20:35.431Z",
+        "app": "Ketu",
+        "ref": "Mercury",
+        "hoursFromRefBoundary": 46.25
+      },
+      {
+        "level": "sookshma",
+        "birth": "2050-09-12T02:40:33.577Z",
+        "at": "2116-08-27T21:56:35.485Z",
+        "app": "Venus",
+        "ref": "Ketu",
+        "hoursFromRefBoundary": 20.82
+      }
+    ],
+    "convention": "Proportional split, 1 dasa year = 365.25 days; one random instant within the first 80 years per birth; lords compared along the maha→bhukti→pratyantara→sookshma path"
+  },
+  "varga": {
+    "instants": 500,
+    "bodies": [
+      "Sun",
+      "Moon",
+      "Mars",
+      "Mercury",
+      "Jupiter",
+      "Venus",
+      "Saturn",
+      "Rahu",
+      "Ketu",
+      "Lagna"
+    ],
+    "placementAgreementPercent": {
+      "D9": 100,
+      "D10": 100,
+      "D12": 99.98,
+      "D30": 100,
+      "D60": 99.96
+    },
+    "placements": {
+      "D9": 5000,
+      "D10": 5000,
+      "D12": 5000,
+      "D30": 5000,
+      "D60": 5000
+    },
+    "mappingAgreementPercent": {
+      "D9": 100,
+      "D10": 100,
+      "D12": 100,
+      "D30": 100,
+      "D60": 100
+    },
+    "mappingSamples": {
+      "D9": 20216,
+      "D10": 20240,
+      "D12": 20288,
+      "D30": 20000,
+      "D60": 21440
+    },
+    "disagreements": [
+      {
+        "varga": "D12",
+        "body": "Jupiter",
+        "at": "2019-07-04T12:24:30.299Z",
+        "place": "",
+        "app": 4,
+        "ref": 3,
+        "deltaArcsec": 7.49,
+        "refDistToBoundaryArcsec": 6.8
+      },
+      {
+        "varga": "D60",
+        "body": "Jupiter",
+        "at": "2019-07-04T12:24:30.299Z",
+        "place": "",
+        "app": 4,
+        "ref": 3,
+        "deltaArcsec": 7.49,
+        "refDistToBoundaryArcsec": 6.8
+      },
+      {
+        "varga": "D60",
+        "body": "Moon",
+        "at": "2042-02-27T09:18:16.144Z",
+        "place": "",
+        "app": 4,
+        "ref": 3,
+        "deltaArcsec": 7.61,
+        "refDistToBoundaryArcsec": 6.44
+      }
+    ],
+    "maxBoundaryDistanceOfDisagreementArcsec": 6.8,
+    "note": "Placement = app longitude → app mapping vs Swiss longitude → reference mapping. Mapping = both mappings on the same longitude (random + exact boundaries)."
+  },
+  "sankranti": {
+    "n": 372,
+    "timeErrorSec": {
+      "medianSec": 11.42,
+      "p95Sec": 31.2,
+      "maxSec": 47.9
+    },
+    "tamilDay1Agreement": 100,
+    "day1Disagreements": []
+  },
+  "spot": [
+    {
+      "name": "Mesha Sankranti 2024 at about 21:15 IST on 13 Apr (after sunset) → Tamil New Year (Chithirai 1, Krodhi) on 14 Apr 2024",
+      "expected": "13 Apr 2024 ~21:15 IST; 14 Apr = Chithirai 1",
+      "actual": "2024-04-13T21:04 IST (Lahiri-VP285 variant: 21:13 IST); 14 Apr = Chithirai 1, Krodhi",
+      "ok": true
+    },
+    {
+      "name": "Makara Sankranti 2024 at about 02:54 IST on 15 Jan → Thai Pongal (Thai 1) on 15 Jan 2024",
+      "expected": "15 Jan 2024 ~02:54 IST; Thai 1",
+      "actual": "2024-01-15T02:43 IST (Lahiri-VP285 variant: 02:52 IST); Thai 1",
+      "ok": true
+    },
+    {
+      "name": "New moon of the total solar eclipse, 8 Apr 2024 18:21 UTC (NASA) = end of Amavasai",
+      "expected": "2024-04-08 18:21 UTC",
+      "actual": "2024-04-08T18:20",
+      "ok": true
+    },
+    {
+      "name": "Deepavali 2024: Chathurdasi ends / Amavasai begins 31 Oct 2024 ≈ 15:52 IST",
+      "expected": "31 Oct 2024 15:52 IST",
+      "actual": "2024-10-31T15:53 IST",
+      "ok": true
+    },
+    {
+      "name": "Makara Sankranti 2025 ≈ 09:03 IST on 14 Jan → Thai Pongal 14 Jan 2025",
+      "expected": "14 Jan 2025 ~09:03 IST",
+      "actual": "2025-01-14T08:55 IST (Lahiri-VP285 variant: 09:04 IST)",
+      "ok": true
+    },
+    {
+      "name": "Lahiri ayanamsa at J2000.0 = 23°51′11″ (Indian Astronomical Ephemeris, mean)",
+      "expected": "23.8531°",
+      "actual": "23.8532° (true, incl. nutation)",
+      "ok": true
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 // Ashtakoota (36 Guna Milan) — North-Indian marriage matching used by AstroSage / Prokerala style apps.
 // For NRI / inter-state marriages where the family expects a "guna score out of 36".
-// Tamil tradition uses the 10 poruthams (see porutham.js); this module is complementary.
+// Tamil tradition uses the 10 poruthams (see porutham.js); this module is complementary and is always shown
+// as its own tradition — never averaged with the poruthams into a "success percentage".
+// Varna here is the classical rasi grouping used by the koota table; it is NOT the person's caste or
+// community, and labels are shown as neutral group numbers. Documented asymmetric kootas: varna, gana.
 //
 // Classical tables (Muhurta Chintamani / Brihat Parashara as used in common software):
 //   Varna by rasi, Vashya groups, Tara (count of 9), 14 Yonis with the standard 14x14 matrix,
@@ -15,7 +18,9 @@ const PTA = (p) => PLANETS[p]?.ta || p;
 // 3 Brahmin (Kataka, Vrischika, Meena), 2 Kshatriya (Mesha, Simha, Dhanus),
 // 1 Vaishya (Rishaba, Kanni, Makara), 0 Shudra (Mithuna, Thula, Kumbha).
 const VARNA = [2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0, 3];
-const VARNA_NAMES = [T('Shudra', 'சூத்திரர்'), T('Vaishya', 'வைசியர்'), T('Kshatriya', 'க்ஷத்திரியர்'), T('Brahmin', 'பிராமணர்')];
+// Neutral labels: the koota's rasi groups, not anyone's caste or community.
+const VARNA_NAMES = [T('Rasi group 4', 'ராசிக் குழு 4'), T('Rasi group 3', 'ராசிக் குழு 3'), T('Rasi group 2', 'ராசிக் குழு 2'), T('Rasi group 1', 'ராசிக் குழு 1')];
+export const ASHTAKOOTA_ASYMMETRIC = ['varna', 'gana'];
 
 // ---------------------------------------------------------------- 2. Vashya groups
 // 0 Chatushpada (quadruped), 1 Manava (human), 2 Jalachara (water), 3 Vanachara (wild), 4 Keeta (insect).
@@ -112,16 +117,13 @@ const NADI_NAMES = [T('Adi (Vata)', 'ஆதி (வாதம்)'), T('Madhya (P
 
 const KOOTA_TA = { varna: 'வர்ணம்', vashya: 'வசியம்', tara: 'தாரை', yoni: 'யோனி', maitri: 'கிரக மைத்ரம்', gana: 'கணம்', bhakoot: 'பகூட்', nadi: 'நாடி' };
 
-export const GUNA_VERDICTS = {
-  excellent: T('Excellent match', 'மிகச் சிறந்த பொருத்தம்'),
-  good: T('Good match', 'நல்ல பொருத்தம்'),
-  average: T('Average — acceptable with care', 'சுமாரான பொருத்தம் — கவனத்துடன் ஏற்கலாம்'),
-  low: T('Low — not recommended', 'குறைவு — பரிந்துரைக்கப்படவில்லை'),
-};
+// No verdict labels: the /36 total is a traditional score of this one school, shown only on its own screen and
+// never combined with the 10 poruthams.
+export const GUNA_SCORE_LABEL = T('Traditional Ashtakoota points (North-Indian method) — not a verdict', 'அஷ்டகூட மரபுப் புள்ளிகள் (வட இந்திய முறை) — தீர்ப்பு அல்ல');
 
 /**
  * Ashtakoota Guna Milan. Each side: { star: 0..26, rasi: 0..11 } (Moon nakshatra and Moon sign).
- * Returns 8 rows (max 1..8 = 36 total), verdict, Nadi/Bhakoot doshas and classical cancellations.
+ * Returns 8 rows (max 1..8 = 36 total — a traditional score only, no verdict), Nadi/Bhakoot doshas and classical cancellations.
  */
 export function gunaMilan(bride, groom) {
   const bs = bride.star, gs = groom.star, br = bride.rasi, gr = groom.rasi;
@@ -170,7 +172,6 @@ export function gunaMilan(bride, groom) {
   push('nadi', 'Nadi', 8, bn === gn ? 0 : 8, pair(NADI_NAMES[bn], NADI_NAMES[gn]));
 
   const total = rows.reduce((s, r) => s + r.got, 0);
-  const verdict = total >= 28 ? 'excellent' : total >= 24 ? 'good' : total >= 18 ? 'average' : 'low';
   const doshas = { nadi: bn === gn, bhakoot: !!badPair };
 
   // Classical cancellations (parihara).
@@ -188,7 +189,9 @@ export function gunaMilan(bride, groom) {
   }
 
   return {
-    rows, total, max: 36, verdict, doshas, cancellations,
+    rows, total, max: 36, scoreLabel: GUNA_SCORE_LABEL, noVerdict: true, doshas, cancellations,
+    tradition: 'north-indian-ashtakoota-36', asymmetricFactors: ASHTAKOOTA_ASYMMETRIC, averagedWithPorutham: false,
+    note: T('A traditional points table from one school — mutual understanding and family values matter most.', 'ஒரு மரபுப் பள்ளியின் புள்ளி அட்டவணை — பரஸ்பரப் புரிதலும் குடும்ப மதிப்புகளுமே முதன்மை.'),
     bride: { star: NAKSHATRAS[bs], rasi: RASIS[br], yoni: YONI_NAMES[by], gana: GANA_NAMES[bg], nadi: NADI_NAMES[bn], varna: VARNA_NAMES[bv] },
     groom: { star: NAKSHATRAS[gs], rasi: RASIS[gr], yoni: YONI_NAMES[gy], gana: GANA_NAMES[gg], nadi: NADI_NAMES[gn], varna: VARNA_NAMES[gv] },
   };

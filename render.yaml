@@ -4,6 +4,8 @@
 # A persistent disk needs a paid instance type (Starter or above).
 services:
   - type: web
+    # Service, disk and DB file keep their original names: renaming them in a Blueprint creates a NEW service and
+    # an empty disk (all accounts lost). The public name users see comes from the app, not from these ids.
     name: kaippesi-jothidar
     runtime: docker
     dockerfilePath: ./Dockerfile

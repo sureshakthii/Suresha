@@ -16,10 +16,10 @@ test('1 Jan 1990 chart matches known sidereal positions', () => {
   const p = c.planets;
   assert.equal(p.Sun.rasiName, 'Dhanusu'); // Sun enters Makara ~14 Jan
   assert.equal(p.Saturn.rasiName, 'Dhanusu');
-  assert.equal(p.Jupiter.rasiName, 'Mithuna');
+  assert.equal(p.Jupiter.rasiName, 'Mithunam');
   assert.equal(p.Jupiter.retrograde, true);
   assert.equal(p.Mercury.retrograde, true); // Mercury retrograde late Dec 1989 – mid Jan 1990
-  assert.equal(p.Rahu.rasiName, 'Makara');
+  assert.equal(p.Rahu.rasiName, 'Magaram');
   assert.equal((p.Rahu.rasi + 6) % 12, p.Ketu.rasi);
   assert.equal(c.charts.rasi.flat().length, 10);
   const total = c.dasa.periods.reduce((s, d) => s + d.years, 0);

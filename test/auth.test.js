@@ -36,7 +36,7 @@ async function login(channel, to, name) {
 
 test('providers endpoint reports dev mode', async () => {
   const p = await (await fetch(`${base}/api/auth/providers`)).json();
-  assert.deepEqual(p, { sms: 'dev', email: 'dev', facebook: false, devMode: true });
+  assert.deepEqual(p, { sms: 'dev', smsWorldwide: true, email: 'dev', facebook: false, devMode: true });
 });
 
 test('invalid phone and email are rejected with 400', async () => {

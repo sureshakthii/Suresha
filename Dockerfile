@@ -1,4 +1,5 @@
-# Kaippesi Jothidar — production server image (Express API + PWA).
+# Thunai (துணை) — production server image (Express API + PWA).
+# The image / volume / DB file keep their original "kaippesi" names so existing deployments keep their data.
 # Build: docker build -t kaippesi .
 # Run:   docker run -p 3000:3000 -v kaippesi-data:/data --env-file .env kaippesi
 FROM node:22-slim

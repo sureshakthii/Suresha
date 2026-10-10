@@ -2,6 +2,9 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import express from 'express';
 import { getDb } from './db.js';
+import { requireAdmin as adminRole, audit } from './admin.js';
+import { notifyUser } from './push.js';
+import { BRAND } from '../shared/brand.js';
 import { currentUser, normalizePhone } from './auth.js';
 
 // Marketplace: pooja store (Razorpay), priest directory, service requests, admin.
@@ -46,7 +49,29 @@ const SERVICE_IDS = new Set(SERVICES.map((s) => s.id));
 const ORDER_ADMIN_STATUSES = ['paid', 'shipped', 'delivered', 'cancelled'];
 const PRIEST_STATUSES = ['pending', 'verified', 'rejected'];
 const REQUEST_TYPES = ['service', 'annadhanam', 'temple_booking', 'package'];
-const REQUEST_ADMIN_STATUSES = ['confirmed', 'assigned', 'completed', 'cancelled'];
+/**
+ * Request lifecycle: requested → awaiting_confirmation (set right after submit) → confirmed → (assigned) →
+ * completed / cancelled / refunded. 'requested' is kept for rows created before awaiting_confirmation existed.
+ */
+const REQUEST_ADMIN_STATUSES = ['awaiting_confirmation', 'confirmed', 'assigned', 'completed', 'cancelled', 'refunded'];
+const REQUEST_OPEN = ['requested', 'awaiting_confirmation', 'confirmed', 'assigned'];
+/**
+ * Store refunds (public/legal.js): a paid order may be refunded before delivery, and up to ORDER_REFUND_DAYS days
+ * after delivery (the delivered status time). The customer asks; the team (finance role) decides and refunds.
+ */
+const ORDER_REFUND_DAYS = 7;
+const REFUNDABLE_ORDER = ['paid', 'shipped', 'delivered'];
+/** Last moment a refund can be asked for (null = no deadline yet, i.e. not delivered); undefined = not refundable. */
+function refundDeadline(o) {
+  if (!REFUNDABLE_ORDER.includes(o.status)) return undefined;
+  return o.status === 'delivered' ? (o.updated_at || o.created_at) + ORDER_REFUND_DAYS * 86400000 : null;
+}
+/**
+ * Operational switch: seva / priest / package request intake is OFF unless SERVICES_OPEN=1 — nobody can fulfil
+ * requests until partners are onboarded, so the app must not take them. Priest registration stays open.
+ */
+export const servicesOpen = () => env('SERVICES_OPEN') === '1';
+export const SERVICES_CLOSED_MESSAGE = 'Coming soon — we are not accepting seva, priest or package requests yet. Nothing has been booked or charged.';
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS store_orders (
@@ -76,6 +101,14 @@ const SCHEMA = `
     created_at INTEGER,
     updated_at INTEGER
   );
+  CREATE TABLE IF NOT EXISTS request_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS request_events_req ON request_events(request_id);
   CREATE TABLE IF NOT EXISTS service_requests (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -97,6 +130,16 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS service_requests_user ON service_requests(user_id);
   CREATE INDEX IF NOT EXISTS service_requests_priest ON service_requests(priest_id);
+  CREATE TABLE IF NOT EXISTS order_refund_requests (
+    id TEXT PRIMARY KEY,
+    order_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    reason TEXT,
+    status TEXT NOT NULL,
+    created_at INTEGER,
+    resolved_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS order_refund_requests_order ON order_refund_requests(order_id);
 `;
 
 const env = (k) => (process.env[k] || '').trim();
@@ -187,6 +230,22 @@ function parseAddress(a) {
 }
 
 /** Prices always come from the catalogue; client-sent prices are ignored. */
+/**
+ * Units no longer available per product: sold (paid / shipped / delivered) plus a 30-minute hold for orders
+ * awaiting payment, so two people cannot buy the last item. Stock in products.json is the opening stock.
+ */
+const HOLD_MS = 30 * 60000;
+function committedQty() {
+  const out = new Map();
+  let rows = [];
+  try {
+    rows = db().prepare("SELECT items, status, created_at FROM store_orders WHERE status IN ('paid', 'shipped', 'delivered') OR (status IN ('awaiting_payment', 'awaiting_payment_setup') AND created_at > ?)").all(now() - HOLD_MS);
+  } catch { return out; }
+  for (const r of rows) for (const l of parse(r.items, [])) out.set(l.id, (out.get(l.id) || 0) + (Number(l.qty) || 0));
+  return out;
+}
+export const availableStock = (id) => Math.max(0, (PRODUCTS.get(id)?.stock || 0) - (committedQty().get(id) || 0));
+
 function priceItems(items) {
   if (!Array.isArray(items) || !items.length) fail('items must be a non-empty list');
   if (items.length > 50) fail('Too many items in one order (max 50)');
@@ -198,16 +257,19 @@ function priceItems(items) {
     qty.set(p.id, (qty.get(p.id) || 0) + int(it.qty, `qty for ${p.id}`, 1, 20));
   }
   const lines = [];
+  const committed = committedQty();
   for (const [id, q] of qty) {
     const p = PRODUCTS.get(id);
     if (q > 20) fail(`qty for ${id} must be a whole number from 1 to 20`);
-    if (q > p.stock) fail(`Only ${p.stock} left in stock for ${p.name.en}`);
+    const left = Math.max(0, p.stock - (committed.get(id) || 0));
+    if (q > left) fail(left ? `Only ${left} left in stock for ${p.name.en}` : `${p.name.en} is out of stock`);
     lines.push({ id, name: p.name, unit: p.unit, price: p.price, qty: q, lineTotal: p.price * q });
   }
   return { lines, total: lines.reduce((s, l) => s + l.lineTotal, 0) };
 }
 
 const razorpayConfigured = () => !!(env('RAZORPAY_KEY_ID') && env('RAZORPAY_KEY_SECRET'));
+const razorpayAuth = () => `Basic ${Buffer.from(`${env('RAZORPAY_KEY_ID')}:${env('RAZORPAY_KEY_SECRET')}`).toString('base64')}`;
 
 async function createRazorpayOrder(amountPaise, receipt) {
   const auth = Buffer.from(`${env('RAZORPAY_KEY_ID')}:${env('RAZORPAY_KEY_SECRET')}`).toString('base64');
@@ -225,10 +287,16 @@ async function createRazorpayOrder(amountPaise, receipt) {
 
 const parse = (s, d) => { try { return JSON.parse(s); } catch { return d; } };
 
+const refundOut = (x) => x && ({ id: x.id, orderId: x.order_id, reason: x.reason || '', status: x.status, createdAt: x.created_at, resolvedAt: x.resolved_at ?? null });
+const latestRefund = (orderId) => { try { return db().prepare('SELECT * FROM order_refund_requests WHERE order_id = ? ORDER BY created_at DESC LIMIT 1').get(orderId) || null; } catch { return null; } };
+
 const orderOut = (o, admin = false) => ({
   id: o.id, total: o.total, currency: 'INR', status: o.status, items: parse(o.items, []),
   address: parse(o.address, null), razorpayOrderId: o.razorpay_order_id || null,
   paymentId: o.razorpay_payment_id || null, createdAt: o.created_at, updatedAt: o.updated_at,
+  refundRequest: refundOut(latestRefund(o.id)),
+  refundEligible: refundDeadline(o) !== undefined && (refundDeadline(o) === null || now() <= refundDeadline(o)),
+  refundableUntil: refundDeadline(o) ?? null,
   ...(admin ? { userId: o.user_id } : {}),
 });
 
@@ -237,6 +305,26 @@ const priestPublic = (p) => ({
   services: parse(p.services, []), experience_years: p.experience_years, about: p.about || '',
 });
 const priestFull = (p) => ({ ...priestPublic(p), phone: p.phone, status: p.status, userId: p.user_id, createdAt: p.created_at, updatedAt: p.updated_at });
+
+/** Fulfilment tracking: every status change of a request is recorded with who made it. */
+function logRequest(id, status, actor) {
+  db().prepare('INSERT INTO request_events (request_id, status, actor, at) VALUES (?, ?, ?, ?)').run(id, status, actor, now());
+}
+const requestHistory = (id) => db().prepare('SELECT status, actor, at FROM request_events WHERE request_id = ? ORDER BY id').all(id);
+
+const STATUS_TEXT = {
+  awaiting_confirmation: ['Your request is waiting for confirmation', 'உங்கள் கோரிக்கை உறுதிப்படுத்தலுக்குக் காத்திருக்கிறது'],
+  refunded: ['Your payment for this request was refunded', 'இந்தக் கோரிக்கைக்கான கட்டணம் திருப்பித் தரப்பட்டது'],
+  confirmed: ['Your request is confirmed', 'உங்கள் கோரிக்கை உறுதி செய்யப்பட்டது'],
+  assigned: ['A priest / partner has been assigned', 'புரோகிதர் / கூட்டாளர் நியமிக்கப்பட்டார்'],
+  completed: ['Your seva is completed 🙏', 'உங்கள் சேவை நிறைவடைந்தது 🙏'],
+  cancelled: ['Your request was cancelled', 'உங்கள் கோரிக்கை ரத்து செய்யப்பட்டது'],
+};
+function notifyStatus(row, status) {
+  const t = STATUS_TEXT[status];
+  if (!t || !row.user_id || row.user_id === 'deleted') return;
+  notifyUser(row.user_id, { title: `${BRAND.name} · ${t[0]}`, body: `${t[1]} — ${row.service || row.type} · ${row.date}`, url: '/#bookings', tag: `req-${row.id}` }).catch(() => {});
+}
 
 const requestOut = (q, admin = false) => ({
   id: q.id, type: q.type, service: q.service, priestId: q.priest_id, templeId: q.temple_id,
@@ -255,14 +343,8 @@ function requireUser(req, res, next) {
   next();
 }
 
-function requireAdmin(req, res, next) {
-  const token = env('ADMIN_TOKEN');
-  if (!token) return res.status(503).json({ error: 'Admin is not configured (set ADMIN_TOKEN)' });
-  const given = req.get('x-admin-token');
-  if (!given) return res.status(401).json({ error: 'Admin token required' });
-  if (!safeEqual(given, token)) return res.status(403).json({ error: 'Invalid admin token' });
-  next();
-}
+// Named, role-based admin tokens with lock-out (server/admin.js).
+const requireAdmin = adminRole('support');
 
 // Turns validator errors into 400s; everything else falls through to the app error handler.
 const handle = (fn) => async (req, res, next) => {
@@ -284,11 +366,15 @@ export function marketRouter() {
   r.get('/store/products', handle((req, res) => {
     const cat = req.query.category;
     if (cat !== undefined && !CATEGORIES.some((c) => c.id === cat)) fail(`category must be one of: ${CATEGORIES.map((c) => c.id).join(', ')}`);
-    const products = cat ? CATALOG.products.filter((p) => p.category === cat) : CATALOG.products;
-    res.json({ sample: !!CATALOG.sample, currency: CATALOG.currency, categories: CATEGORIES, products });
+    const committed = committedQty();
+    const products = (cat ? CATALOG.products.filter((p) => p.category === cat) : CATALOG.products)
+      .map((p) => ({ ...p, stock: Math.max(0, p.stock - (committed.get(p.id) || 0)) }));
+    res.json({ sample: !!CATALOG.sample, open: !CATALOG.sample || env('STORE_ALLOW_SAMPLE') === '1', currency: CATALOG.currency, categories: CATEGORIES, products });
   }));
 
   r.post('/store/orders', requireUser, handle(async (req, res) => {
+    // Never sell the sample catalogue. A real catalogue sets "sample": false; STORE_ALLOW_SAMPLE=1 is for dev/tests only.
+    if (CATALOG.sample && env('STORE_ALLOW_SAMPLE') !== '1') return res.status(409).json({ error: 'The store is not open yet — the catalogue shown is a sample and is not for sale.', storeClosed: true });
     const b = body(req);
     const { lines, total } = priceItems(b.items);
     const address = parseAddress(b.address);
@@ -334,8 +420,28 @@ export function marketRouter() {
     res.json({ orders: rows.map((o) => orderOut(o)) });
   });
 
+  // The customer asks for a refund of their own paid order within the stated window; this creates a request that
+  // the team (finance role) reviews and refunds with POST /admin/orders/:id/refund.
+  r.post('/store/orders/:id/refund-request', requireUser, handle((req, res) => {
+    const d = db();
+    const order = d.prepare('SELECT * FROM store_orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (!REFUNDABLE_ORDER.includes(order.status)) return res.status(409).json({ error: `Only paid orders can be refunded (this order is ${order.status})` });
+    const deadline = refundDeadline(order);
+    if (deadline !== null && now() > deadline) return res.status(409).json({ error: `Refunds can be requested up to ${ORDER_REFUND_DAYS} days after delivery` });
+    const open = d.prepare("SELECT * FROM order_refund_requests WHERE order_id = ? AND status IN ('open', 'refund_pending')").get(order.id);
+    if (open) return res.json({ refundRequest: refundOut(open), already: true });
+    const reason = text(body(req).reason, 'reason', { min: 0, max: 500, optional: true }) || '';
+    const id = crypto.randomUUID();
+    d.prepare("INSERT INTO order_refund_requests (id, order_id, user_id, reason, status, created_at) VALUES (?, ?, ?, ?, 'open', ?)").run(id, order.id, req.user.id, reason, now());
+    audit({ admin: { name: `user:${req.user.id}`, role: 'customer' }, ip: req.ip }, 'order.refund.request', order.id, { refundRequest: id });
+    res.status(201).json({ refundRequest: refundOut(d.prepare('SELECT * FROM order_refund_requests WHERE id = ?').get(id)) });
+  }));
+
   // Priests
   r.get('/services', (_req, res) => res.json(SERVICES));
+  /** Whether seva / priest / package requests are being accepted (SERVICES_OPEN). */
+  r.get('/service-status', (_req, res) => res.json({ open: servicesOpen(), message: servicesOpen() ? null : SERVICES_CLOSED_MESSAGE }));
 
   r.post('/priests/register', requireUser, handle((req, res) => {
     const b = body(req);
@@ -393,8 +499,22 @@ export function marketRouter() {
     res.json({ requests: rows.map((q) => requestOut(q)) });
   });
 
+  // Acceptance: the assigned priest accepts (stays assigned, logged) or declines (back to the team to reassign).
+  r.post('/priests/me/requests/:id/respond', requireUser, handle((req, res) => {
+    const d = db();
+    const priest = d.prepare("SELECT id FROM priests WHERE user_id = ? AND status = 'verified'").get(req.user.id);
+    if (!priest) return res.status(404).json({ error: 'No verified priest profile for this account' });
+    const row = d.prepare("SELECT * FROM service_requests WHERE id = ? AND priest_id = ? AND status = 'assigned'").get(req.params.id, priest.id);
+    if (!row) return res.status(404).json({ error: 'No assigned request with this id' });
+    const decision = oneOf(body(req).decision, ['accept', 'decline'], 'decision');
+    if (decision === 'decline') d.prepare("UPDATE service_requests SET status = 'confirmed', priest_id = NULL, updated_at = ? WHERE id = ?").run(now(), row.id);
+    logRequest(row.id, decision === 'accept' ? 'accepted' : 'declined', `priest:${priest.id}`);
+    res.json({ request: requestOut(d.prepare('SELECT * FROM service_requests WHERE id = ?').get(row.id)) });
+  }));
+
   // Service requests / bookings
   r.post('/requests', requireUser, handle((req, res) => {
+    if (!servicesOpen()) return res.status(503).json({ error: SERVICES_CLOSED_MESSAGE, servicesClosed: true });
     const b = body(req);
     const type = oneOf(b.type, REQUEST_TYPES, 'type');
     let service = null;
@@ -427,18 +547,32 @@ export function marketRouter() {
     };
     const t = now();
     db().prepare(`INSERT INTO service_requests (id, user_id, type, service, priest_id, temple_id, date, time, city, people, meals, amount,
-      notes, contact_phone, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'requested', ?, ?)`)
+      notes, contact_phone, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_confirmation', ?, ?)`)
       .run(q.id, req.user.id, q.type, q.service, q.priestId, q.templeId, q.date, q.time, q.city, q.people, q.meals, q.amount,
         q.notes, q.contactPhone, t, t);
+    logRequest(q.id, 'requested', 'customer');
+    logRequest(q.id, 'awaiting_confirmation', 'system');
     res.status(201).json({ request: requestOut(db().prepare('SELECT * FROM service_requests WHERE id = ?').get(q.id)) });
   }));
 
   r.get('/requests', requireUser, (req, res) => {
     const rows = db().prepare('SELECT * FROM service_requests WHERE user_id = ? ORDER BY created_at DESC').all(req.user.id);
-    res.json({ requests: rows.map((q) => requestOut(q)) });
+    res.json({ requests: rows.map((q) => ({ ...requestOut(q), history: requestHistory(q.id) })) });
   });
 
   // Admin (each route checks x-admin-token)
+
+  // The customer can cancel their own request before it is completed (fulfilment tracking keeps the history).
+  r.post('/requests/:id/cancel', requireUser, handle((req, res) => {
+    const d = db();
+    const row = d.prepare('SELECT * FROM service_requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!row) return res.status(404).json({ error: 'Request not found' });
+    if (!REQUEST_OPEN.includes(row.status)) return res.status(409).json({ error: `This request is already ${row.status}` });
+    d.prepare("UPDATE service_requests SET status = 'cancelled', updated_at = ? WHERE id = ?").run(now(), row.id);
+    audit({ admin: { name: `user:${req.user.id}`, role: 'customer' }, ip: req.ip }, 'request.cancel', row.id, { from: row.status });
+    logRequest(row.id, 'cancelled', 'customer');
+    res.json({ request: requestOut(d.prepare('SELECT * FROM service_requests WHERE id = ?').get(row.id)) });
+  }));
 
   r.get('/admin/priests', requireAdmin, handle((req, res) => {
     const { status } = req.query;
@@ -454,6 +588,7 @@ export function marketRouter() {
     const d = db();
     const { changes } = d.prepare('UPDATE priests SET status = ?, updated_at = ? WHERE id = ?').run(status, now(), req.params.id);
     if (!changes) return res.status(404).json({ error: 'Priest not found' });
+    audit(req, 'priest.status', req.params.id, { status });
     res.json({ priest: priestFull(d.prepare('SELECT * FROM priests WHERE id = ?').get(req.params.id)) });
   }));
 
@@ -467,8 +602,45 @@ export function marketRouter() {
     const d = db();
     const { changes } = d.prepare('UPDATE store_orders SET status = ?, updated_at = ? WHERE id = ?').run(status, now(), req.params.id);
     if (!changes) return res.status(404).json({ error: 'Order not found' });
+    audit(req, 'order.status', req.params.id, { status });
     res.json({ order: orderOut(d.prepare('SELECT * FROM store_orders WHERE id = ?').get(req.params.id), true) });
   }));
+
+  // Refund a store order (finance role). With Razorpay configured and a captured payment: calls the Razorpay refund
+  // API (status 'refunded' when processed, else 'refund_pending' until the refund.processed webhook). Without a
+  // gateway payment: marks 'refund_pending' for a manual refund. Every step is audited.
+  r.post('/admin/orders/:id/refund', adminRole('finance'), handle(async (req, res) => {
+    const d = db();
+    const order = d.prepare('SELECT * FROM store_orders WHERE id = ?').get(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.status === 'refunded') return res.json({ order: orderOut(order, true), already: true });
+    if (![...REFUNDABLE_ORDER, 'refund_pending'].includes(order.status)) return res.status(409).json({ error: `Order is ${order.status} — nothing was paid to refund` });
+    const b = body(req);
+    const paid = order.total * 100;
+    const amount = b.amountMinor === undefined ? paid : Number(b.amountMinor);
+    if (!Number.isInteger(amount) || amount < 1 || amount > paid) fail('amountMinor must be between 1 and the amount paid');
+    let status = 'refund_pending', refundId = null;
+    if (razorpayConfigured() && order.razorpay_payment_id) {
+      const r2 = await marketFetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(order.razorpay_payment_id)}/refund`, {
+        method: 'POST', headers: { Authorization: razorpayAuth(), 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, notes: { order: order.id } }),
+      });
+      const out = await r2.json().catch(() => ({}));
+      if (!r2.ok) return res.status(502).json({ error: `Razorpay refund failed (${r2.status})` });
+      refundId = out.id || null;
+      if (out.status === 'processed' && amount >= paid) status = 'refunded';
+    } else if (b.markRefunded === true) status = 'refunded'; // the team refunded by hand (bank transfer / UPI) and confirms it
+    const t = now();
+    d.prepare('UPDATE store_orders SET status = ?, updated_at = ? WHERE id = ?').run(status, t, order.id);
+    d.prepare("UPDATE order_refund_requests SET status = ?, resolved_at = ? WHERE order_id = ? AND status IN ('open', 'refund_pending')")
+      .run(status, status === 'refunded' ? t : null, order.id);
+    audit(req, 'order.refund', order.id, { amount, refundId, status, manual: !refundId });
+    res.json({ order: orderOut(d.prepare('SELECT * FROM store_orders WHERE id = ?').get(order.id), true), refundId, manual: !refundId });
+  }));
+
+  r.get('/admin/refund-requests', requireAdmin, (_req, res) => {
+    const rows = db().prepare('SELECT * FROM order_refund_requests ORDER BY created_at DESC').all();
+    res.json({ refundRequests: rows.map((x) => ({ ...refundOut(x), userId: x.user_id })) });
+  });
 
   r.get('/admin/requests', requireAdmin, (_req, res) => {
     const rows = db().prepare('SELECT * FROM service_requests ORDER BY created_at DESC').all();
@@ -489,6 +661,9 @@ export function marketRouter() {
     }
     if (status === 'assigned' && !priestId) fail("priestId is required when status is 'assigned'");
     d.prepare('UPDATE service_requests SET status = ?, priest_id = ?, updated_at = ? WHERE id = ?').run(status, priestId, now(), row.id);
+    audit(req, 'request.status', row.id, { from: row.status, status, priestId });
+    logRequest(row.id, status, `admin:${req.admin.name}`);
+    if (status !== row.status) notifyStatus(row, status);
     res.json({ request: requestOut(d.prepare('SELECT * FROM service_requests WHERE id = ?').get(row.id), true) });
   }));
 

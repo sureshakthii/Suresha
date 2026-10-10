@@ -2,6 +2,7 @@
 // for elders with a quick "vibe" card for the young generation.
 import { NAKSHATRAS, RASIS, panchang, todaySnapshot, calendarWeekday } from './shared/astro.js';
 import { tamilDay, offsetOnDay, nallaNeramWindows } from './shared/tamilcal.js';
+import { RASI_DAY_PALAN } from './shared/good-day.js';
 import { personalGuide, DAY_COLOR } from './shared/personal.js';
 import {
   state, $, $$, L, ta, esc, bi, GLYPH, COLOR, planetName, rasiName, nakName, fmtTime, fmtDate, activeMember, chartOf,
@@ -142,21 +143,8 @@ const SOOLAM = [
   ['West', 'மேற்கு', 'Jaggery', 'வெல்லம்'], ['East', 'கிழக்கு', 'Curd', 'தயிர்'], ['North', 'வடக்கு', 'Milk', 'பால்'], ['North', 'வடக்கு', 'Milk', 'பால்'],
   ['South', 'தெற்கு', 'Oil (thailam)', 'தைலம்'], ['West', 'மேற்கு', 'Jaggery', 'வெல்லம்'], ['East', 'கிழக்கு', 'Curd', 'தயிர்'],
 ];
-// Daily rasi palan from the Moon's position counted from each janma rasi.
-const PALAN = {
-  1: ['warn', 3, 'Moon in your sign — keep calm, avoid hasty words.', 'ஜென்ம சந்திரன் — மனதில் சிறு சஞ்சலம், நிதானமாகப் பேசுங்கள்.'],
-  2: ['warn', 3, 'Mixed money matters; speak gently with family.', 'பண வரவு கலவை; குடும்பத்தில் இனிமையாகப் பேசுங்கள்.'],
-  3: ['good', 5, 'Courage and success — efforts bear fruit.', 'தைரியம், வெற்றி — முயற்சிகள் பலிக்கும்.'],
-  4: ['warn', 3, 'Take care of home and mother; drive carefully.', 'வீடு, தாய் நலனில் கவனம்; வாகனத்தில் கவனம்.'],
-  5: ['warn', 3, 'Think twice before decisions; children bring news.', 'முடிவுகளை யோசித்து எடுங்கள்; பிள்ளைகளால் செய்தி.'],
-  6: ['good', 4, 'Obstacles clear, health improves, debts reduce.', 'தடைகள் விலகும், ஆரோக்கியம் சீராகும், கடன் குறையும்.'],
-  7: ['good', 4, 'Good for partnerships, meetings and travel.', 'கூட்டு முயற்சி, சந்திப்பு, பயணம் நன்று.'],
-  8: ['bad', 1, 'Chandrashtamam — avoid new starts and arguments; pray and rest.', 'சந்திராஷ்டமம் — புதிய முயற்சி, வாக்குவாதம் தவிர்க்கவும்; வழிபட்டு ஓய்வெடுங்கள்.'],
-  9: ['warn', 4, 'Blessings of elders; a good day for prayer.', 'பெரியோர் ஆசி; வழிபாட்டிற்கு நல்ல நாள்.'],
-  10: ['good', 5, 'Progress and praise at work.', 'தொழிலில் முன்னேற்றம், பாராட்டு.'],
-  11: ['good', 5, 'Gains and good news.', 'லாபம், நல்ல செய்தி.'],
-  12: ['warn', 2, 'Expenses — spend wisely and rest well.', 'செலவுகள் — கவனமாகச் செலவிட்டு நன்கு ஓய்வெடுங்கள்.'],
-};
+// Daily rasi palan from the Moon's position counted from each janma rasi (shared with the Good Day card).
+const PALAN = RASI_DAY_PALAN;
 const starsInRasi = (r) => [...new Set(Array.from({ length: 9 }, (_, i) => Math.floor((r * 9 + i) / 4)))];
 const panUi = { offset: 0 };
 

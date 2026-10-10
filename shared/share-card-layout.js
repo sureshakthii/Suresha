@@ -7,7 +7,7 @@
 // Privacy: a card carries only the text the caller passes — callers never pass birth dates / times / places of
 // anyone; cardText() refuses a spec that contains a birth-data pattern, and health-guide content is never used.
 import { fmtDay, fmtClock, fmtClockRange, until, WEEKDAYS_TA, WEEKDAYS_EN } from './fmt.js';
-export const SIZES = Object.freeze({ portrait: { w: 1080, h: 1350 }, square: { w: 1080, h: 1080 } });
+export const SIZES = Object.freeze({ portrait: { w: 1080, h: 1350 }, square: { w: 1080, h: 1080 }, tall: { w: 1080, h: 1620 } });
 
 export const COLORS = Object.freeze({
   page: '#fbf7ef', page2: '#f3e7d3', card: '#ffffff', maroon: '#7a1f3d', maroon2: '#c2305a', gold: '#b07014', goldSoft: '#f5c26b',
@@ -20,7 +20,7 @@ export const FONT = Object.freeze({
 const font = (weight, px, fam = FONT.sans) => `${weight} ${px}px ${fam}`;
 
 /** Card kinds the app makes. */
-export const CARD_KINDS = ['today', 'panchangam', 'festival', 'match', 'starbday', 'diary', 'invite', 'week', 'month', 'milestone', 'reflection'];
+export const CARD_KINDS = ['today', 'panchangam', 'festival', 'match', 'starbday', 'diary', 'invite', 'week', 'month', 'milestone', 'reflection', 'goodday'];
 
 // A date of birth, a birth time or "born on/at" wording must never be printed on a card.
 const BIRTH_DATA = /\b(19|20)\d{2}-\d{2}-\d{2}\b|\b\d{1,2}:\d{2}(:\d{2})?\s*(am|pm)?\s*(birth|born)|\bborn (on|at|in)\b|\bbirth (time|date|place)\b|பிறந்த\s*(நேரம்|தேதி|இடம்)/i;
@@ -29,7 +29,7 @@ const HEALTH = /\b(disease|diagnos|medicine|medical|blood pressure|diabetes|surg
 
 /** All text strings of a spec (for the privacy and wording checks). */
 export function cardText(spec) {
-  const out = [spec.kicker, spec.title, spec.subtitle, spec.quote, spec.closing, spec.invite, spec.brand, spec.tagline, ...(spec.lines || [])];
+  const out = [spec.kicker, spec.title, spec.subtitle, spec.quote, spec.closing, spec.invite, spec.brand, spec.tagline, spec.qrLabel, ...(spec.lines || []), ...(spec.grid || []).flatMap((g) => [g.label, g.value])];
   return out.filter((x) => typeof x === 'string' && x);
 }
 /** Throws when a spec would print birth data or health content. Returns the spec. */
@@ -79,7 +79,8 @@ export function layoutCard(spec, { size = 'portrait', measure } = {}) {
   const maxW = w - 2 * M;
   const square = size === 'square';
   const headH = square ? 170 : 200;
-  const footH = spec.invite ? (square ? 150 : 170) : (square ? 110 : 120);
+  const qrSize = spec.qr ? 210 : 0; // Good Day card: a QR code to download Thunai, in the footer
+  const footH = spec.qr ? qrSize + 60 : spec.invite ? (square ? 150 : 170) : (square ? 110 : 120);
   const items = [];
   // Page, header band, logo and brand.
   items.push({ t: 'bg', x: 0, y: 0, w, h, from: COLORS.page, to: COLORS.page2 });
@@ -108,10 +109,15 @@ export function layoutCard(spec, { size = 'portrait', measure } = {}) {
   const fy = h - footH;
   items.push({ t: 'rule', x: M, y: fy, w: maxW, color: COLORS.line });
   items.push({ t: 'text', text: 'Thunai · துணை', x: M, y: fy + 58, font: font(700, 34, FONT.serif), color: COLORS.maroon, base: 'alphabetic', role: 'footer' });
-  items.push({ t: 'text', text: spec.footerNote || (spec.lang === 'en' ? 'Your companion on life’s path' : 'உங்கள் வாழ்வின் வழித்துணை'), x: w - M, y: fy + 58, font: font(500, 26), color: COLORS.muted, align: 'right', base: 'alphabetic', maxW: maxW - 330 });
+  if (!spec.qr) items.push({ t: 'text', text: spec.footerNote || (spec.lang === 'en' ? 'Your companion on life’s path' : 'உங்கள் வாழ்வின் வழித்துணை'), x: w - M, y: fy + 58, font: font(500, 26), color: COLORS.muted, align: 'right', base: 'alphabetic', maxW: maxW - 330 });
+  if (spec.qr) {
+    const qx = w - M - qrSize, qy = fy + 30;
+    items.push({ t: 'qr', x: qx, y: qy, size: qrSize, modules: spec.qr });
+    if (spec.qrLabel) items.push({ t: 'text', text: spec.qrLabel, x: qx + qrSize / 2, y: qy + qrSize + 26, font: font(600, 22), color: COLORS.muted, base: 'alphabetic', align: 'center' });
+  }
   if (spec.invite) {
     const f = font(600, 28);
-    const lines = wrap(spec.invite, maxW, f, measure).slice(0, 2);
+    const lines = wrap(spec.invite, spec.qr ? maxW - qrSize - 30 : maxW, f, measure).slice(0, spec.qr ? 3 : 2);
     lines.forEach((ln, i) => items.push({ t: 'text', text: ln, x: M, y: fy + 104 + i * 36, font: f, color: COLORS.gold, base: 'alphabetic', role: 'invite' }));
   }
   return { w, h, size, items, overflow, bodyPx };
@@ -155,6 +161,19 @@ function content(spec, { M, maxW, top, titlePx, bodyPx, measure }) {
       items.push({ t: 'text', text: ln, x: M + 46, y, font: bf, color: COLORS.text, base: 'alphabetic', role: 'body' });
     });
     y += bodyPx * gap;
+  }
+  // grid: the 12 rasis today — two columns of "name ★★★☆☆ / short line".
+  if (spec.grid?.length) {
+    y += 18;
+    const colW = (maxW - 30) / 2, nf = font(700, Math.round(bodyPx * 0.78)), lf = font(500, Math.round(bodyPx * 0.7));
+    const rowH = bodyPx * 2.35;
+    spec.grid.forEach((g, i) => {
+      const cx = M + (i % 2) * (colW + 30), cy = y + Math.floor(i / 2) * rowH;
+      items.push({ t: 'text', text: g.label, x: cx, y: cy + bodyPx * 0.8, font: nf, color: COLORS.maroon, base: 'alphabetic', maxW: colW * 0.55, role: 'body' });
+      items.push({ t: 'text', text: g.stars, x: cx + colW, y: cy + bodyPx * 0.8, font: font(700, Math.round(bodyPx * 0.62)), color: COLORS.gold, base: 'alphabetic', align: 'right' });
+      items.push({ t: 'text', text: g.value, x: cx, y: cy + bodyPx * 1.85, font: lf, color: COLORS.text, base: 'alphabetic', maxW: colW, role: 'body' });
+    });
+    y += Math.ceil(spec.grid.length / 2) * rowH;
   }
   if (spec.closing) {
     const cf = font(600, Math.round(bodyPx * 0.9));

@@ -3,6 +3,7 @@ import { panchang, todaySnapshot, calendarDate, planetPositions, buildCharts, RA
 import { CATEGORIES, evaluatePrasna } from './shared/prasna.js';
 import { buildContext, ruleBasedReply } from './shared/narrator.js';
 import { tamilDay, nallaNeramWindows } from './shared/tamilcal.js';
+import { goodDayCardHtml, bindGoodDayCard } from './good-day-card.js';
 import { grahaStrength, dailyParigaram, NAVAGRAHA } from './shared/remedies.js';
 import { doshams } from './shared/porutham.js';
 import { diagnoseDoshams, primarySthalam } from './shared/dosham.js';
@@ -305,6 +306,7 @@ function renderHome(sec) {
     ${growHomeHtml(m, snap, loc, td)}
     ${todayPlanCard(m, snap, loc, td)}
     ${timeStrip(td, snap, loc)}
+    ${goodDayCardHtml(td, snap)}
     ${lifeGuideCard(m)}
     ${weekCardHtml()}
     ${goalsCardHtml()}
@@ -383,6 +385,7 @@ function renderHome(sec) {
   $('#dcShare')?.addEventListener('click', () => shareDaily(m, snap, loc));
   bindCompatCard(sec);
   $('#shareToday').addEventListener('click', () => import('./screens-tools.js').then((mod) => mod.shareToday(td, snap)));
+  bindGoodDayCard(document, td, snap);
   $$('.fam-row', sec).forEach((r) => r.addEventListener('click', () => { state.activeId = r.dataset.id; saveFamily(); renderHome(sec); }));
   $$('[data-who]', sec).forEach((b) => b.addEventListener('click', () => { state.activeId = b.dataset.who; saveFamily(); renderHome(sec); }));
   const ask = (q) => { q = (q || '').trim(); if (q) go('chat', { q }); };

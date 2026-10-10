@@ -105,6 +105,13 @@ function paint(ctx, it, logo) {
     ctx.fillStyle = it.color; ctx.beginPath(); ctx.moveTo(it.x + 170, it.y - 9); ctx.lineTo(it.x + 179, it.y); ctx.lineTo(it.x + 170, it.y + 9); ctx.lineTo(it.x + 161, it.y); ctx.closePath(); ctx.fill();
     return;
   }
+  if (it.t === 'qr') {
+    const n = it.modules.length, quiet = 2, cell = it.size / (n + quiet * 2);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(it.x, it.y, it.size, it.size);
+    ctx.fillStyle = '#1a1208';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (it.modules[r][c]) ctx.fillRect(Math.floor(it.x + (c + quiet) * cell), Math.floor(it.y + (r + quiet) * cell), Math.ceil(cell), Math.ceil(cell));
+    return;
+  }
   if (it.t === 'dot') { ctx.fillStyle = it.color; ctx.beginPath(); ctx.arc(it.x, it.y, it.r, 0, Math.PI * 2); ctx.fill(); return; }
   if (it.t === 'quote') { ctx.fillStyle = it.color; ctx.font = `700 ${Math.round(it.size)}px Georgia, serif`; ctx.textBaseline = 'top'; ctx.fillText('“', it.x - 8, it.y - it.size * 0.3); return; }
   if (it.t === 'text') {
@@ -152,10 +159,11 @@ const whatsappText = (spec, invite) => [spec.title, spec.subtitle, spec.quote ? 
  * Preview + share sheet for a card. spec: see shared/share-card-layout.js (text already in one language).
  * The invite line is added here (and can be left off by the person).
  */
-export async function openShareCard(spec, { filename = 'thunai-card.png' } = {}) {
+export async function openShareCard(spec, { filename = 'thunai-card.png', size = 'portrait', shareText = null, invite = null } = {}) {
   try { assertShareable(spec); } catch { toast(L('This card cannot be shared.', 'இந்த அட்டையைப் பகிர இயலாது.')); return; }
   const info = await inviteInfo();
-  const ui = { size: 'portrait', invite: true, blob: null };
+  const ui = { size, invite: true, blob: null };
+  const inviteText = () => (invite || inviteLine(info, spec.lang));
   const box = document.createElement('div');
   box.className = 'modal sc-modal';
   box.innerHTML = `<div class="modal-card card glass sc-sheet" role="dialog" aria-modal="true" aria-labelledby="scTitle">
@@ -166,11 +174,12 @@ export async function openShareCard(spec, { filename = 'thunai-card.png' } = {})
     <p class="muted small">${L('Only the picture you see is shared. No birth details are on it.', 'நீங்கள் பார்க்கும் படம் மட்டுமே பகிரப்படும். இதில் பிறப்பு விவரங்கள் இல்லை.')}</p>
     <div class="btn-row"><button class="btn-gold" data-sc="share">📤 ${L('Share', 'பகிர்')}</button><button class="chip-btn" data-sc="save">⬇️ ${L('Save image', 'படத்தைச் சேமி')}</button><button class="chip-btn" data-sc="wa">WhatsApp ${L('text', 'உரை')}</button></div>
   </div>`;
+  if (size === 'tall') box.querySelector('.sc-size')?.remove(); // the Good Day card has one size
   document.body.append(box);
   const opener = document.activeElement;
   const close = () => { box.remove(); opener?.focus?.({ preventScroll: true }); };
   const draw = async () => {
-    const full = { ...spec, invite: ui.invite ? inviteLine(info, spec.lang) : '' };
+    const full = { ...spec, invite: ui.invite ? inviteText() : '' };
     const { canvas } = await renderCard(full, { size: ui.size });
     ui.blob = await toBlob(canvas);
     const url = canvas.toDataURL('image/png');
@@ -192,11 +201,11 @@ export async function openShareCard(spec, { filename = 'thunai-card.png' } = {})
     const act = b.dataset.sc;
     if (act === 'x') close();
     else if (act === 'share' && ui.blob) {
-      const how = await shareImage(ui.blob, { filename, text: ui.invite ? inviteLine(info, spec.lang) : '' });
+      const how = await shareImage(ui.blob, { filename, text: shareText || (ui.invite ? inviteText() : '') });
       if (how === 'downloaded') toast(L('Image saved — attach it in WhatsApp', 'படம் சேமிக்கப்பட்டது — WhatsApp-இல் இணைக்கவும்'));
       if (how !== 'cancelled') document.dispatchEvent(new CustomEvent('kj:task', { detail: `sharecard:${spec.kind}` }));
     } else if (act === 'save' && ui.blob) { downloadBlob(ui.blob, filename); toast(L('Image saved', 'படம் சேமிக்கப்பட்டது')); }
-    else if (act === 'wa') window.open(`https://wa.me/?text=${encodeURIComponent(whatsappText(spec, ui.invite ? inviteLine(info, spec.lang) : ''))}`, '_blank', 'noopener');
+    else if (act === 'wa') window.open(`https://wa.me/?text=${encodeURIComponent(shareText || whatsappText(spec, ui.invite ? inviteText() : ''))}`, '_blank', 'noopener');
   });
   box.querySelector('[data-sc="invite"]').addEventListener('change', async (e) => { ui.invite = e.target.checked; await draw(); });
 }
